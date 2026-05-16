@@ -1,0 +1,1 @@
+"sqlcmd -S NB-PAOLOG\SQLEXPRESS -U user -d industria40 -P PaoloG6" 

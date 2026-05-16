@@ -1,0 +1,179 @@
+@import './base.css';
+
+#app {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  font-weight: normal;
+}
+
+a,
+.green {
+  text-decoration: none;
+  color: hsla(160, 100%, 37%, 1);
+  transition: 0.4s;
+  padding: 3px;
+}
+
+@media (hover: hover) {
+  a:hover {
+    background-color: hsla(160, 100%, 37%, 0.2);
+  }
+}
+
+@media (min-width: 1024px) {
+  body {
+    display: flex;
+    place-items: center
+  }
+
+  #app {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    padding: 0 2rem;
+  }
+}
+
+
+/* palette globali */
+
+html,
+body,
+#app {
+  background: var(--bg);
+  color: var(--text)
+}
+
+main,
+content,
+.page,
+.view,
+.container,
+.wrapper,
+.wrap,
+.pure-g,
+.pure-u-1,
+.pure-u-md-10-24,
+.pure-u-md-13-24 {
+  background: transparent;
+}
+
+.card,
+.panel,
+.tile,
+.box,
+.ui-card,
+.pure-card,
+.pure-panel,
+[class*="card"],
+[class*="panel"],
+[class*="tile"],
+[class*="box"] {
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border)
+}
+
+/* pure.css */
+
+:root {
+  --menu-link-color: #000;
+  --menu-link-hover: #222;
+}
+
+html.dark {
+  --menu-link-color: #fff;
+  --menu-link-hover: #ddd;
+}
+
+.pure-table,
+.pure-table-bordered {
+  background: var(--bg);
+  color: var(--text);
+  border-color: var(--border)
+}
+
+.pure-table-th {
+  background: var(--bg);
+  color: var(--text);
+  border-color: var(--border)
+}
+
+.pure-table-td {
+  background: var(--bg);
+  border-color: var(--border)
+}
+
+/* bottini pure.css */
+
+.pure-button {
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border)
+}
+
+.pire-button.pire-button-primary,
+.pire-button-primary {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
+}
+
+
+/* campi input */
+input,
+select,
+textarea {
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border)
+}
+
+a {
+  color: var(--brand)
+}
+
+@media (min-width:1024px) {
+  body {
+    display: flex;
+    place-items: center;
+  }
+}
+
+/* === Hide scrollbar but keep scrolling (APP) === */
+
+/* 1) Evita la scrollbar del BODY se lo scroll è spostato su content */
+html,
+body {
+  height: 100%;
+}
+
+/* 2) Nascondi scrollbar su body + root app + contenuto */
+html,
+body,
+#app,
+.content {
+  scrollbar-width: none;
+  /* Firefox */
+  -ms-overflow-style: none;
+  /* old Edge/IE */
+}
+
+/* Chrome/Edge/Safari */
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+#app::-webkit-scrollbar,
+.content::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+/* 3) Se vuoi che scrolli SOLO il contenuto (consigliato) */
+body {
+  overflow: hidden;
+}
+
+.content {
+  overflow-y: auto;
+  height: calc(100vh - var(--topbar-h));
+}

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+    <title>{{title}}</title>
+</head>
+<body>
+    <h1>{{content}}</h1>
+	<hr>
+	<div>
+		<table border="1" style="margin-left: auto;
+  margin-right: auto;">
+			<TR>
+				<th>Ordine</th>
+				<th>Programma</th>
+				<th>Quantita</th>
+			</TR>
+			{{#each workOrds}}
+				<tr>
+					<td>
+						<a href="temporeale/{{this.program}}"> 
+						{{this.workOrder}}
+						</a>
+					</td>
+					<td>{{this.program}}</td>
+					<td>{{this.quantity}}</td>
+			{{/each}}
+		</table>
+	</div>
+	<hr>
+</body>
+</html>

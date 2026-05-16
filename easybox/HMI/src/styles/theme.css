@@ -1,0 +1,46 @@
+/* theme.css */
+:root {
+  --bg: transparent;
+  --text: #616161;
+  --muted: #ffffff;
+  --card: #f7f7f7;
+  --border: #e5e7eb;
+  --brand: #2563eb;
+
+  --menu-link-color: #ffffff;
+  --menu-link-hover: #ffffff;
+
+  
+  /*--icon-filter: grayscale(1) brightness(0) contrast(100);*/
+}
+
+:root.dark {
+  --bg: #3e3a3a;
+  --text: #e5e7eb;
+  --muted: #9ca3af;
+  --card: #272525;
+  --border: #1f2937;
+  --brand: #60a5fa;
+
+  --menu-link-color: #fff;
+  --menu-link-hover: #ddd;
+
+  
+  --icon-filter:  grayscale(1) brightness(1) contrast(100);
+}
+
+html, body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+.card   { background: var(--card); border: 1px solid var(--border); }
+.border { border-color: var(--border); }
+.muted  { color: var(--muted); }
+a       { color: var(--brand); }
+
+input, select, textarea {
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border);
+}

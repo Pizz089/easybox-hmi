@@ -1,0 +1,160 @@
+<?xml version="1.0" standalone="no"?>
+<!--DOCTYPE .svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"-->
+
+<!--svg height="725" width="840" xmlns="http://www.w3.org/2000/svg"-->
+<svg width="840" height="725" viewBox="-5 -5 900 900" xmlns="http://www.w3.org/2000/svg">
+  <title>Grating 128x123</title>
+  <desc>made by EasyBox</desc>
+  <!-- profilo esterno -->
+  <path d="M25 10 
+           l122 0 l0 -4 l100 0 l0 4 
+		   l390 0 l0 -4 l100 0 l0 4
+           L825 10
+           L830 15
+		   L830 250 l6 0 l0 25 l-12 0 
+		   l0 71 l12 0 l0 25 l-6 0 
+           L830 600 
+           L825 605
+		   l-115 0 l0 4 l-100 0 l0 -4 
+		   l-385 0 l0 4 l-100 0 l0 -4 
+           L15 605
+           L10 600
+           L10 370 l-6 0 l0 -25 l12 0 
+           l0 -71 l-12 0 l0 -25 l6 0 
+           L10 25 Z" 
+        style="fill:none;stroke:red;stroke-width:1"/>
+  
+  <!-- riga 1 -->
+  <rect x="30" y="30" rx="0" ry="0" 
+		width="128" height="123"
+        style="fill:gray;stroke:red;stroke-width:1"/>
+  
+  <rect x="193" y="30" rx="0" ry="0" 
+		width="128" height="123"
+        style="fill:gray;stroke:red;stroke-width:1"/>
+ 
+   <rect x="356" y="30" rx="0" ry="0" 
+		width="128" height="123"
+        style="fill:gray;stroke:red;stroke-width:1"/>
+ 
+  <rect x="519" y="30" rx="0" ry="0" 
+		width="128" height="123" 
+        style="fill:gray;stroke:red;stroke-width:1"/>
+ 
+  <rect x="682" y="30" rx="0" ry="0" 
+		width="128" height="123" 
+        style="fill:gray;stroke:red;stroke-width:1"/>
+  
+  <!-- riga 2 -->
+  <!--text x="15" y="215" fill="blue" font-size="10" rotate="0">20</text-->
+  <rect x="30" y="175" rx="0" ry="0" 
+		width="128" height="123" 
+        style="fill:gray;stroke:red;stroke-width:1"/>
+  
+  <!--text x="165" y="215" fill="blue" font-size="10">40</text-->
+  <rect x="193" y="175" rx="0" ry="0" 
+		width="128" height="123" 
+        style="fill:gray;stroke:red;stroke-width:1"/>
+		
+   <rect x="356" y="175" rx="0" ry="0" 
+		width="128" height="123" 
+        style="fill:gray;stroke:red;stroke-width:1"/>
+  
+  <rect x="519" y="175" rx="0" ry="0" 
+		width="128" height="123" 
+        style="fill:gray;stroke:red;stroke-width:1"/>
+	
+	<rect x="682" y="175" rx="0" ry="0" 
+		width="128" height="123" 
+        style="fill:gray;stroke:red;stroke-width:1"/>
+	
+	<!-- riga 3 -->
+  <!--text x="15" y="215" fill="blue" font-size="10" rotate="0">20</text-->
+  <rect x="30" y="320" rx="0" ry="0" 
+		width="128" height="123" 
+        style="fill:gray;stroke:red;stroke-width:1"/>
+  
+  <!--text x="165" y="215" fill="blue" font-size="10">40</text-->
+  <rect x="193" y="320" rx="0" ry="0" 
+		width="128" height="123" 
+        style="fill:gray;stroke:red;stroke-width:1"/>
+		
+   <rect x="356" y="320" rx="0" ry="0" 
+		width="128" height="123" 
+        style="fill:gray;stroke:red;stroke-width:1"/>
+  
+  <rect x="519" y="320" rx="0" ry="0" 
+		width="128" height="123" 
+        style="fill:gray;stroke:red;stroke-width:1"/>
+	
+	<rect x="682" y="320" rx="0" ry="0" 
+		width="128" height="123" 
+        style="fill:gray;stroke:red;stroke-width:1"/>
+
+	<!-- riga 4 -->
+  <!--text x="15" y="215" fill="blue" font-size="10" rotate="0">20</text-->
+  <rect x="30" y="465" rx="0" ry="0" 
+		width="128" height="123" 
+        style="fill:gray;stroke:red;stroke-width:1"/>
+  
+  <!--text x="165" y="215" fill="blue" font-size="10">40</text-->
+  <rect x="193" y="465" rx="0" ry="0" 
+		width="128" height="123" 
+        style="fill:gray;stroke:red;stroke-width:1"/>
+		
+   <rect x="356" y="465" rx="0" ry="0" 
+		width="128" height="123" 
+        style="fill:gray;stroke:red;stroke-width:1"/>
+  
+  <rect x="519" y="465" rx="0" ry="0" 
+		width="128" height="123" 
+        style="fill:gray;stroke:red;stroke-width:1"/>
+	
+	<rect x="682" y="465" rx="0" ry="0" 
+		width="128" height="123" 
+        style="fill:gray;stroke:red;stroke-width:1"/>
+		
+  <!-- dimensioni foro -->
+  <!--text x="40" y="60" fill="blue" font-size="10" rotate="0">128x123</text-->
+  <text x="40" y="60" fill="dark" font-size="10" rotate="0">128</text>
+  <text x="40" y="70" fill="dark" font-size="10" rotate="90">1</text>
+  <text x="40" y="75" fill="dark" font-size="10" rotate="90">2</text>
+  <text x="40" y="80" fill="dark" font-size="10" rotate="90">3</text>
+  
+  <!-- fori -->
+  <circle r="3" cx="25"  cy="20" style="fill:none;stroke:red;stroke-width:1"/>
+  <circle r="3" cx="415" cy="20" style="fill:none;stroke:red;stroke-width:1"/>
+  <circle r="3" cx="815" cy="20" style="fill:none;stroke:red;stroke-width:1"/>
+  
+  <circle r="3" cx="25"  cy="310" style="fill:none;stroke:red;stroke-width:1"/>
+  <circle r="3" cx="415" cy="310" style="fill:none;stroke:red;stroke-width:1"/>
+  <circle r="3" cx="815" cy="310" style="fill:none;stroke:red;stroke-width:1"/>
+  
+  <circle r="3" cx="25"  cy="595" style="fill:none;stroke:red;stroke-width:1"/>
+  <circle r="3" cx="415" cy="595" style="fill:none;stroke:red;stroke-width:1"/>
+  <circle r="3" cx="815" cy="595" style="fill:none;stroke:red;stroke-width:1"/>
+
+ <!-- misure-->
+  <text x="15" y="75" 	fill="dark" font-size="10" rotate="0">20</text>
+  <text x="165" y="75" 	fill="dark" font-size="10">40</text>
+  
+  <text x="87" y="15" 	fill="dark" font-size="10" rotate="90">2</text>
+  <text x="87" y="20" 	fill="dark" font-size="10" rotate="90">0</text>
+  
+  <text x="87" y="160" 	fill="dark" font-size="10" rotate="90">1</text>
+  <text x="87" y="165" 	fill="dark" font-size="10" rotate="90">7</text>
+  
+  <!-- cartiglio -->
+  <text x="20" y="655" 	fill="dark" font-size="14" rotate="0">
+		Nome: Grigliato Standard 128x123
+  </text>
+  <text x="20" y="675" 	fill="dark" font-size="14" rotate="0">
+		Generato il: 25/09/2025 23:30
+  </text>
+  <text x="20" y="695" 	fill="dark" font-size="14" rotate="0">
+		== Made with happiness by EasyBox software ==
+  </text>
+    Sorry, your browser does not support inline SVG.
+</svg>		   
+		   

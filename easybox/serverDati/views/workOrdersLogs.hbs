@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+    <title>{{title}}</title>
+</head>
+<body>
+    <h1>{{title}}</h1>
+	<hr>
+	<div>
+		<table border="1" style="margin-left: auto;
+  margin-right: auto;">
+			<TR>
+				<th>Ordine</th>
+				<th>Programma</th>
+				<th>lato</th>
+				<th>start</th>
+				<th>stop</th>
+			</TR>
+			{{#each workOrdsLogs}}
+				<tr>
+					<td>{{this.Order}}</td>
+					<td>{{this.program}}</td>
+					<td>{{this.Side}}</td>
+					<td>{{this.Start}}</td>
+					<td>{{this.stop}}</td>
+				</tr>
+			{{/each}}
+		</table>
+	</div>
+	<hr>
+</body>
+</html>
