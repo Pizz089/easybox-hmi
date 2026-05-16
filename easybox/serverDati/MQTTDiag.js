@@ -29,14 +29,27 @@ const buffer  = [];   // tail circolare degli ultimi BUFFER_MAX messaggi
 let   pending = [];   // batch in attesa di emit verso i client
 let   flushTimer = null;
 
+// 2c-C: invio snapshot ridotto al socket richiedente. Usato sia al primo
+// connection (automatico) sia al reconnect (su richiesta esplicita del client).
+function sendSnapshot(socket) {
+	if (buffer.length === 0) return;
+	// snapshot ridotto: solo gli ultimi SNAPSHOT_MAX messaggi
+	// (per cronistorie più lunghe → LOG\access.log o tabella LOG SQL)
+	socket.emit('mqtt-bulk', buffer.slice(-SNAPSHOT_MAX));
+}
+
 nsp.on('connection', (socket) => {
 	try {
 		log.standard("DIAG client connesso (tot:" + nsp.sockets.size + ")");
-		if (buffer.length > 0) {
-			// snapshot ridotto: solo gli ultimi SNAPSHOT_MAX messaggi
-			// (per cronistorie più lunghe → LOG\access.log o tabella LOG SQL)
-			socket.emit('mqtt-bulk', buffer.slice(-SNAPSHOT_MAX));
-		}
+		sendSnapshot(socket);
+
+		// 2c-C: il client può richiedere uno snapshot esplicito al reconnect
+		// (al primo connect lo riceve automaticamente sopra). Idempotente,
+		// emit solo al chiamante. Fallimento silenzioso accettato.
+		socket.on('request-snapshot', () => {
+			try { sendSnapshot(socket); } catch (_) {}
+		});
+
 		socket.on('disconnect', () => {
 			try {
 				log.standard("DIAG client disconnesso (tot:" + nsp.sockets.size + ")");

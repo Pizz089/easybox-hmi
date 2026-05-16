@@ -26,6 +26,60 @@ client.on('error', function (err){
 		});
 	} catch (_) {}
 });
+
+// Lifecycle broker (sessione di refactor maggio 2026):
+// flag `reconnectLogged` evita lo spam emettendo solo il primo reconnect dopo
+// un close, fino a un nuovo connect o nuovo close. Allineato con la convenzione
+// "_" per topic interni backend già introdotta in _BROKER/ERROR.
+let reconnectLogged = false;
+const BROKER_URL_DISPLAY = `${client.options.protocol}://${client.options.hostname}:${client.options.port}`;
+
+client.on('connect', function () {
+	reconnectLogged = false;
+	try {
+		const payloadStr = "connected to " + BROKER_URL_DISPLAY;
+		diag.publish({
+			ts: Date.now(),
+			dir: "IN",
+			topic: "_BROKER/CONNECT",
+			payload: payloadStr,
+			source: "BACKEND",
+			size: Buffer.byteLength(payloadStr)
+		});
+	} catch (_) {}
+});
+
+client.on('close', function () {
+	reconnectLogged = false;
+	try {
+		const payloadStr = "disconnected";
+		diag.publish({
+			ts: Date.now(),
+			dir: "IN",
+			topic: "_BROKER/CLOSE",
+			payload: payloadStr,
+			source: "BACKEND",
+			size: Buffer.byteLength(payloadStr)
+		});
+	} catch (_) {}
+});
+
+client.on('reconnect', function () {
+	if (reconnectLogged) return;
+	reconnectLogged = true;
+	try {
+		const payloadStr = "attempting reconnect";
+		diag.publish({
+			ts: Date.now(),
+			dir: "IN",
+			topic: "_BROKER/RECONNECT",
+			payload: payloadStr,
+			source: "BACKEND",
+			size: Buffer.byteLength(payloadStr)
+		});
+	} catch (_) {}
+});
+
 //server lanciato cosi: mosquitto -p 1883 -v -c mosquitto.conf
 //client.publish("HMI/updateStatus/MC", "Working");
 
@@ -132,9 +186,30 @@ client.on('message', function (topic, message) {
 				break;
 			case 'CMD_MAN':
 				break;
-			case 'STARTPP':		//FROM_PLANT/STARTPP/MC1 
-				HEIDENHAIN.startPP(1,"192.168.30.35",message.toString());  //startPP(ID,IP,fileName) //////\\\\\\\
+			case 'STARTPP': {	//FROM_PLANT/STARTPP/MC1
+				// Sanity check multi-CNC (N4-1, sessione di refactor maggio 2026):
+				// STARTPP è il topic legacy del PLC per Heidenhain. Se la macchina è
+				// configurata HAAS, il PLC dovrebbe usare TO_PLANT/HAAS_CMD/MC1 con
+				// payload JSON. Configurazione incoerente → segnala nel diag e ignora,
+				// per evitare di triggerare il driver sbagliato.
+				const cnType = getCnType(1);
+				if (cnType !== 'heidenhain') {
+					try {
+						const payloadStr = "PLC ha pubblicato STARTPP/MC1 ma CN_TYPE_MC1='" + cnType + "' — ignorato (atteso HAAS_CMD)";
+						diag.publish({
+							ts: Date.now(),
+							dir: "IN",
+							topic: "_HAAS/CONFIG_MISMATCH",
+							payload: payloadStr,
+							source: "BACKEND",
+							size: Buffer.byteLength(payloadStr)
+						});
+					} catch (_) {}
+					break;
+				}
+				HEIDENHAIN.startPP(1,"192.168.30.35",message.toString());  //startPP(ID,IP,fileName)
 				break;
+			}
 			default:
 				log.standard("UNKNOWN: "+topic.toString()+":\t"+message.toString())	
 		}
@@ -393,6 +468,21 @@ function getCMD(cmd){
 		case 1512: return cmd + " -> Positioning MC2		";
 		default: return cmd;
 	}
+}
+
+/**
+ * getCnType(mcNum) → 'heidenhain' | 'haas'
+ * Legge process.env['CN_TYPE_MC' + mcNum]. Fallback a 'heidenhain' se assente o invalido
+ * (backwards-compat con impianti esistenti). Letto a runtime per rispettare l'ordine di
+ * caricamento require → dotenv.config() (vedi server.js).
+ */
+function getCnType(mcNum) {
+	const val = (process.env['CN_TYPE_MC' + mcNum] || '').toLowerCase().trim();
+	if (val === 'haas')       return 'haas';
+	if (val === 'heidenhain') return 'heidenhain';
+	if (val === '')           return 'heidenhain';   // default backwards-compat
+	log.standard("CN_TYPE_MC" + mcNum + "='" + val + "' non valido, fallback a 'heidenhain'");
+	return 'heidenhain';
 }
 
 /*

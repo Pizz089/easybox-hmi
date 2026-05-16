@@ -1,6 +1,6 @@
 <script setup>
 import {
-  ref, reactive, computed,
+  ref, reactive, computed, watch,
   onMounted, onBeforeUnmount, nextTick, markRaw,
 } from 'vue'
 import { dataStored } from '@/data'
@@ -15,6 +15,7 @@ const SCROLL_THRESHOLD_PX = 5;       // distanza dal bottom per considerare "in 
 const STATS_WINDOW_MS     = 10000;   // sliding window per msg/sec
 const STATS_TICK_MS       = 500;     // intervallo aggiornamento stats e session duration
 const PAYLOAD_PREVIEW_MAX = 100;     // troncamento preview payload in tabella
+const STORAGE_KEY_FILTERS = 'mqttdiag:filters';   // chiave dedicata, namespace mqttdiag per evitare collisioni
 
 // ============================================================================
 // STATO REATTIVO
@@ -37,6 +38,11 @@ const paused      = ref(false);
 const autoScroll  = ref(true);
 const connected   = ref(false);
 const received    = ref(0);          // totale messaggi arrivati nella sessione
+
+// 2c-C: distinguiamo primo connect (backend manda mqtt-bulk automaticamente)
+// da reconnect (dobbiamo chiederlo esplicitamente con request-snapshot).
+// Non reactive: serve solo come flag logico interno.
+let bulkReceived = false;
 
 // Filtri client-side (combinati in AND).
 const filters = reactive({
@@ -80,6 +86,35 @@ const sessionDuration = computed(() => {
 // ============================================================================
 // FILTRI E COMPUTED
 // ============================================================================
+
+// 2c-A: persistenza filtri in localStorage. Fail silent se non disponibile
+// (privacy mode, quota piena, JSON corrotto) — filtri restano ai default.
+function loadFilters() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_FILTERS);
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return;
+    if (typeof parsed.topic === 'string') filters.topic = parsed.topic;
+    if (parsed.dir === 'ALL' || parsed.dir === 'IN' || parsed.dir === 'OUT') {
+      filters.dir = parsed.dir;
+    }
+    if (parsed.source === 'ALL' || parsed.source === 'PLC'
+        || parsed.source === 'HMI' || parsed.source === 'BACKEND') {
+      filters.source = parsed.source;
+    }
+  } catch (_) { /* silent: localStorage indisponibile o JSON corrotto */ }
+}
+
+function saveFilters() {
+  try {
+    localStorage.setItem(STORAGE_KEY_FILTERS, JSON.stringify({
+      topic:  filters.topic,
+      dir:    filters.dir,
+      source: filters.source,
+    }));
+  } catch (_) { /* silent: localStorage indisponibile o quotaExceeded */ }
+}
 
 function matchesFilter(m) {
   if (filters.topic) {
@@ -311,6 +346,15 @@ function payloadPreview(p) {
   return str.slice(0, PAYLOAD_PREVIEW_MAX) + '…';
 }
 
+// 2c-N1 + N4-1: pattern generico per evidenziare in rosso eventi anomali
+// del backend. Convenzione "_" topic + suffisso ERROR/MISMATCH cattura sia
+// _BROKER/ERROR sia _HAAS/CONFIG_MISMATCH e futuri _<X>/ERROR/MISMATCH
+// senza bisogno di hardcodare un elenco di topic.
+function isErrorTopic(topic) {
+  if (!topic || !topic.startsWith('_')) return false;
+  return topic.endsWith('/ERROR') || topic.endsWith('/MISMATCH');
+}
+
 function tryPrettyJson(payload) {
   if (payload == null || payload === '') return '';
   try {
@@ -340,6 +384,11 @@ function copyToClipboard(m) {
 // ============================================================================
 
 onMounted(() => {
+  // 2c-A: ripristina filtri persistiti prima del setup socket, poi attiva il
+  // watcher che li salva ad ogni cambio (deep perché filters è reactive nested).
+  loadFilters();
+  watch(filters, saveFilters, { deep: true });
+
   sessionStart.value = Date.now();
   nowTick.value = Date.now();
 
@@ -347,9 +396,20 @@ onMounted(() => {
   const socket = io(dataStored.WS.brokerURL + '/diag');
   dataStored.WS.diagSocket = socket;
 
-  socket.on('connect',    () => { connected.value = true; });
+  socket.on('connect', () => {
+    connected.value = true;
+    // 2c-C: al primo connect il backend manda mqtt-bulk automaticamente.
+    // Su reconnect (bulkReceived già true), richiediamo esplicitamente lo snapshot.
+    // Fallimento silenzioso accettato (caso edge raro, non vale retry).
+    if (bulkReceived) {
+      try { socket.emit('request-snapshot'); } catch (_) {}
+    }
+  });
   socket.on('disconnect', () => { connected.value = false; });
-  socket.on('mqtt-bulk',  onIncomingBatch);   // snapshot iniziale (ultimi ~200)
+  socket.on('mqtt-bulk', (batch) => {
+    bulkReceived = true;
+    onIncomingBatch(batch);
+  });
   socket.on('mqtt-batch', onIncomingBatch);   // stream live (ogni 100ms)
 
   statsInterval = setInterval(tickStats, STATS_TICK_MS);
@@ -501,7 +561,7 @@ onBeforeUnmount(() => {
             <div
               class="diag-row"
               :class="{
-                'row-error': m.topic === '_BROKER/ERROR',
+                'row-error': isErrorTopic(m.topic),
                 'row-expanded': expandedSet.has(m._id),
               }"
               @click="toggleExpand(m._id)"
