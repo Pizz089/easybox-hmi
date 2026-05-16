@@ -82,3 +82,9 @@ coverage/
 *.tmp
 *.bak
 *.orig
+
+# Token / credenziali personali (non condividere mai)
+Token GIT.txt
+*.token
+*token*.txt
+*credentials*
