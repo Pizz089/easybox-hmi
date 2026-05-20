@@ -293,98 +293,108 @@ export default {
 
 
 <style scoped>
-/* CARDS */
+/* ============ CARD ============ */
 .card {
-    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 1.2);
-    transition: 0.6s;
-    padding-top: 24px;
-    margin-top: 11px;
-    margin-left: 8px;
-    margin-right: 8px;
-    place-items: center;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--elevation-2);
+    transition:
+        box-shadow var(--transition-base),
+        transform var(--transition-fast);
+
+    padding: var(--space-5) var(--space-3) var(--space-3);
+    margin: var(--space-3) var(--space-2) 0;
+
     display: grid;
-    border-radius: 20px;
+    place-items: center;
 }
 
+.card:hover {
+    box-shadow: var(--elevation-3);
+}
 
 .card img {
     border-radius: 22px;
     padding: 2px;
 }
 
-.card .img,
+
+/* ============ STATUS (applicato a .img-wrapper) ============ */
+/* HMI: border spessi (3-4px) per leggibilita' a colpo d'occhio dal lato.
+   .normal e' 2px perche' e' lo stato idle/default (non deve catturare). */
+
 .normal {
-    background-color: #07197230;
+    background: var(--bg-surface-2);
+    border: 2px solid var(--border-subtle);
 }
 
-.card .img,
-.auto {
-    background-color: yellowgreen;
-}
-
-.card .img,
-.remote {
-    background-color: yellowgreen;
-}
-
-.card .img,
+.auto,
+.remote,
 .local {
-    background-color: yellowgreen;
+    background: var(--color-success-bg);
+    border: 3px solid var(--color-success);
 }
 
-.card .img,
 .manual {
-    background-color: #ebeb13;
-    /*rgba(241, 241, 52, 0.967); */
+    background: var(--color-warning-bg);
+    border: 3px solid var(--color-warning);
 }
 
-.card .img,
-.alarm {
-    background-color: #F56056;
-    /*lightcoral;*/
-}
-
-.card .img,
 .working {
-    background-color: #54a4F5;
-    /*rgba(102, 147, 244, 0.751)*/
+    background: var(--color-info-bg);
+    border: 3px solid var(--color-info);
 }
 
-.card .img,
+.alarm {
+    background: var(--color-danger-bg);
+    border: 4px solid var(--color-danger);
+    /* glow esterno: HMI deve gridare l'allarme da lontano */
+    box-shadow: 0 0 8px var(--color-danger);
+}
+
 .hold {
-    background-color: #54a4F5;
-    border: 4px solid blue;
+    background: var(--color-info-bg);
+    border: 4px solid var(--color-info);
     animation: blinker 1s linear infinite;
 }
 
+/* Blink: preserva struttura originale (singolo keyframe 80%, durata 1s).
+   Funzionale: robot in attesa intervento operatore (HMI critical). */
 @keyframes blinker {
     80% {
-        border-color: #54a4F5;
+        border-color: var(--accent-hover);
     }
 }
 
 
-
-.card:hover {
-    box-shadow: 0 8px 16px 0 rgba(0, 0, 0, 0.2);
+/* ============ TIPOGRAFIA ============ */
+.container {
+    padding: var(--space-1) var(--space-4);
 }
 
-.container {
-    padding: 2px 16px;
+.card h4 {
+    color: var(--text-primary);
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: var(--space-2) 0 var(--space-1);
+}
+
+.card h6 {
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-normal);
+    margin: 0;
 }
 
 .center {
     justify-content: center;
 }
 
-/*
-.container_card{
-    padding: 10px;
-    border: 1px solid;
-}
-*/
-/* === UNIFORM TILE SIZING (usa variabili per ogni card) === */
 
+/* ============ GEOMETRIA IMG (preservata) ============ */
 .img-wrapper {
     display: flex;
     align-items: center;
@@ -392,16 +402,18 @@ export default {
     width: 100px;
     height: 90px;
     border-radius: 13px !important;
-    margin: 0 auto 8px auto;
+    margin: 0 auto var(--space-2);
     overflow: hidden;
 }
 
-.card .pure-robot {
+.card .pure-robot,
+.card .pure-cnc,
+.card .pure-cnc2 {
     width: 100px;
     height: 90px;
     object-fit: contain;
     display: block;
-    margin: 8px auto 6px;
+    margin: var(--space-2) auto var(--space-1);
     border-radius: 13px;
 }
 
@@ -410,24 +422,4 @@ export default {
     max-height: 120px;
     background-color: transparent;
 }
-
-.card .pure-cnc {
-    width: 100px;
-    height: 90px;
-    object-fit: contain;
-    display: block;
-    margin: 8px auto 6px;
-    border-radius: 13px;
-}
-
-.card .pure-cnc2 {
-    width: 100px;
-    height: 90px;
-    object-fit: contain;
-    display: block;
-    margin: 8px auto 6px;
-    border-radius: 13px;
-}
-
-
 </style>
