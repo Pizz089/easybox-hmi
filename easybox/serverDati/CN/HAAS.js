@@ -53,6 +53,8 @@ const ERROR_CODES = {
 	WRITE_FAILED:  'write_failed',
 	CLOSED:        'closed',
 	CLOSING:       'closing',
+	SHUTTING_DOWN: 'shutting_down',
+	MISSING_CONFIG: 'missing_config',
 };
 
 // ============================================================================
@@ -81,7 +83,9 @@ let shuttingDown = false;
  */
 function createHaas(mcNum, opts) {
 	if (shuttingDown) {
-		throw new Error('HAAS module shutting down, cannot create new instances');
+		const err = new Error('HAAS module shutting down, cannot create new instances');
+		err.code = ERROR_CODES.SHUTTING_DOWN;
+		throw err;
 	}
 	const key = Number(mcNum);
 	const existing = instances.get(key);
@@ -142,11 +146,15 @@ function makeHaasInstance(mcNum, opts) {
 	const timeoutMs  = opts.timeoutMs  || DEFAULT_TIMEOUT_MS;
 	const triggerVar = opts.triggerVar || DEFAULT_PROGRAM_TRIGGER_VAR;
 
-	// Errore di config statica (manca .env): gestito da bootEagerHaas in
-	// MQTT_Client.js, che pubblica _HAAS/CONFIG_ERROR nel diag. Niente err.code:
-	// non è un errore di runtime ma di setup, non coinvolge il dispatcher.
+	// Errore di config statica (manca .env). Intercettato in 2 punti:
+	// 1) da bootEagerHaas in MQTT_Client.js al boot → diag _HAAS/CONFIG_ERROR
+	// 2) dal dispatcher HAAS_CMD via createHaas get-or-create → ACK no_instance
+	// err.code esposto per consentire al dispatcher mapping pulito senza
+	// substring matching su err.message.
 	if (!ip) {
-		throw new Error('HAAS MC' + mcNum + ': IP non configurato (HAAS_MC' + mcNum + '_IP)');
+		const err = new Error('HAAS MC' + mcNum + ': IP non configurato (HAAS_MC' + mcNum + '_IP)');
+		err.code = ERROR_CODES.MISSING_CONFIG;
+		throw err;
 	}
 
 	// --- state ---

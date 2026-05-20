@@ -87,8 +87,8 @@ client.on('reconnect', function () {
 
 client.subscribe({'FROM_PLANT/#':{qos:2, retain:true}}) 
 				 		
-//GESTIONE PLC => HMI						
-client.on('message', function (topic, message) {
+//GESTIONE PLC => HMI
+client.on('message', function (topic, message, packet) {
 	log.standard("ricevo MQTT: "+topic+":\t"+message.toString().trim())
 	try {
 		const payloadStr = message.toString();
@@ -102,10 +102,32 @@ client.on('message', function (topic, message) {
 		});
 	} catch (_) {}
 
-	let param = topic.toUpperCase().trim().split("/");   
-	if (param[0] !="FROM_PLANT") 
+	let param = topic.toUpperCase().trim().split("/");
+	if (param[0] !="FROM_PLANT")
 		return;
-		
+
+	// Branch HAAS_CMD (N4-3b): per FROM_PLANT/HAAS_CMD/<MC> delego al dispatcher
+	// dedicato. Return per evitare fall-through nei rami sotto (LOG/ALARM/MC*/...).
+	if (param[1] === "HAAS_CMD") {
+		const mcMatch = (param[2] || '').match(/^MC(\d+)$/);
+		if (!mcMatch) {
+			try {
+				const msg = "FROM_PLANT/HAAS_CMD/" + (param[2] || '?') + " — topic malformato, mcNum non estraibile";
+				diag.publish({
+					ts: Date.now(),
+					dir: "IN",
+					topic: "_HAAS/ERROR",
+					payload: msg,
+					source: "BACKEND",
+					size: Buffer.byteLength(msg)
+				});
+			} catch (_) {}
+			return;
+		}
+		handleHaasCmd(parseInt(mcMatch[1], 10), message, packet);
+		return;
+	}
+
 	if (param[1] =="LOG") {			
 		if (param[2] == "QUERY"){	//es: FROM_PLANT/LOG/QUERY
 			insertLog( message.toString(), 'PLC', 'QUERY' )
@@ -518,6 +540,197 @@ function bootEagerHaas() {
 }
 
 bootEagerHaas();
+
+// ============================================================================
+// HAAS DISPATCHER (N4-3b)
+//
+// Dispatcher per i comandi HAAS dal PLC su FROM_PLANT/HAAS_CMD/<MC>.
+//
+// Request payload (JSON):
+//   {
+//     "cmd":   "setMacro" | "runProgram",
+//     "reqId": "<opzionale, echo nell'ACK per correlazione>",
+//     // setMacro:
+//     "var":   <int positivo>,
+//     "value": <number finito>,
+//     // runProgram:
+//     "num":   <int positivo>
+//   }
+//
+// ACK pubblicato su TO_PLANT/HAAS_ACK/<MC> (QoS 1, no retain):
+//   {
+//     "status": "ok" | "ko",
+//     "cmd":    "<echo cmd, null se parse fallito>",
+//     "reqId":  "<echo reqId se presente>",
+//     "ts":     <epoch ms>,
+//     // status ok + setMacro:   "var", "value" (echo confermato da HAAS)
+//     // status ok + runProgram: "num", "value"
+//     // status ko: "error", "message" (opzionale)
+//   }
+//
+// Enum codici error machine-readable (per PLC TIA Portal):
+//   invalid_json      — JSON non parsabile
+//   invalid_shape     — JSON valido ma non oggetto
+//   missing_cmd       — campo "cmd" mancante o non stringa
+//   unknown_cmd       — "cmd" non in whitelist {setMacro, runProgram}
+//   missing_field     — campo obbligatorio (var/value/num) mancante
+//   invalid_field     — campo presente ma con tipo/valore invalido
+//   cn_type_mismatch  — MC<n> non configurata 'haas' in .env
+//   no_instance       — istanza HAAS non disponibile (es. IP mancante)
+//   shutting_down     — modulo HAAS in shutdown
+//   haas_timeout      — HAAS non ha risposto entro HAAS_TIMEOUT_MS
+//   haas_nak          — HAAS ha risposto NAK
+//   socket_closed     — TCP socket caduto durante la richiesta
+//   haas_error        — altro errore HAAS (write fail, parse response, ecc.)
+// ============================================================================
+
+function publishHaasAck(mcNum, ackPayload) {
+	const topic = "TO_PLANT/HAAS_ACK/MC" + mcNum;
+	const payloadStr = JSON.stringify(ackPayload);
+	try {
+		client.publish(topic, payloadStr, { qos: 1, retain: false });
+	} catch (_) { /* swallow: ack failure non deve rompere il dispatcher */ }
+	try {
+		diag.publish({
+			ts: Date.now(),
+			dir: "OUT",
+			topic,
+			payload: payloadStr,
+			source: "BACKEND",
+			size: Buffer.byteLength(payloadStr)
+		});
+	} catch (_) {}
+}
+
+// Helper interno: costruisce e pubblica un ACK KO. Fattorizza la struttura
+// ripetuta { status:'ko', cmd, reqId, ts, error, message } usata 9 volte.
+function ackKo(mcNum, cmd, reqId, error, message) {
+	const ack = { status: 'ko', cmd, reqId, ts: Date.now(), error };
+	if (message !== undefined) ack.message = message;
+	publishHaasAck(mcNum, ack);
+}
+
+function handleHaasCmd(mcNum, message, packet) {
+	// Skip retained: un comando ritrasmesso al riavvio backend ri-triggererebbe
+	// un'azione meccanica già fatta. Log diag per visibilità.
+	if (packet && packet.retain === true) {
+		try {
+			const msg = "FROM_PLANT/HAAS_CMD/MC" + mcNum + " arrivato con retain=true — ignorato";
+			diag.publish({
+				ts: Date.now(), dir: "IN", topic: "_HAAS/ERROR",
+				payload: msg, source: "BACKEND", size: Buffer.byteLength(msg)
+			});
+		} catch (_) {}
+		return;
+	}
+
+	// CN type mismatch: MC<n> non configurata 'haas' in .env.
+	// Decisione: ACK KO esplicito (diversamente da N4-1 STARTPP che usa silenzio,
+	// qui chi manda HAAS_CMD lo fa con intenzione e merita feedback).
+	const cnType = getCnType(mcNum);
+	if (cnType !== 'haas') {
+		ackKo(mcNum, null, null, 'cn_type_mismatch',
+			"MC" + mcNum + " configurata come '" + cnType + "', non 'haas'");
+		return;
+	}
+
+	// JSON parse difensivo: ogni payload arrivato dal PLC è untrusted.
+	let obj;
+	try {
+		obj = JSON.parse(message.toString());
+	} catch (e) {
+		ackKo(mcNum, null, null, 'invalid_json', e.message);
+		return;
+	}
+	if (!obj || typeof obj !== 'object' || Array.isArray(obj)) {
+		ackKo(mcNum, null, null, 'invalid_shape');
+		return;
+	}
+
+	const cmd = obj.cmd;
+	const reqId = (typeof obj.reqId === 'string') ? obj.reqId : null;
+
+	if (typeof cmd !== 'string' || cmd.length === 0) {
+		ackKo(mcNum, null, reqId, 'missing_cmd');
+		return;
+	}
+
+	// Get-or-create istanza HAAS. Sfrutta il singleton Map di createHaas: se
+	// l'istanza esiste (boot eager riuscito), la ritorna; altrimenti rilancia
+	// makeHaasInstance. Errori identificati via err.code (no substring matching).
+	let inst;
+	try {
+		inst = HAAS.createHaas(mcNum);
+	} catch (e) {
+		let errCode;
+		switch (e.code) {
+			case HAAS.errorCodes.SHUTTING_DOWN:  errCode = 'shutting_down'; break;
+			case HAAS.errorCodes.MISSING_CONFIG: errCode = 'no_instance'; break;
+			default:                             errCode = 'no_instance'; break;
+		}
+		ackKo(mcNum, cmd, reqId, errCode, e.message);
+		return;
+	}
+
+	// Dispatch per comando.
+	let promise;
+	switch (cmd) {
+		case 'setMacro': {
+			const varNum = obj.var;
+			const value  = obj.value;
+			if (varNum === undefined || value === undefined) {
+				ackKo(mcNum, cmd, reqId, 'missing_field', "setMacro richiede 'var' e 'value'");
+				return;
+			}
+			if (!Number.isInteger(varNum) || varNum <= 0 || !Number.isFinite(value)) {
+				ackKo(mcNum, cmd, reqId, 'invalid_field', "setMacro richiede var:int>0 e value:number finito");
+				return;
+			}
+			promise = inst.setMacroVar(varNum, value).then((res) => ({
+				status: 'ok', cmd, reqId, ts: Date.now(),
+				var: res.varNum, value: res.value
+			}));
+			break;
+		}
+		case 'runProgram': {
+			const num = obj.num;
+			if (num === undefined) {
+				ackKo(mcNum, cmd, reqId, 'missing_field', "runProgram richiede 'num'");
+				return;
+			}
+			if (!Number.isInteger(num) || num <= 0) {
+				ackKo(mcNum, cmd, reqId, 'invalid_field', "runProgram richiede num:int>0");
+				return;
+			}
+			promise = inst.requestProgram(num).then((res) => ({
+				status: 'ok', cmd, reqId, ts: Date.now(),
+				num, value: res.value
+			}));
+			break;
+		}
+		default:
+			ackKo(mcNum, cmd, reqId, 'unknown_cmd',
+				"cmd '" + cmd + "' non riconosciuto (validi: setMacro, runProgram)");
+			return;
+	}
+
+	// Then/catch HAAS: mapping err.code → codice ACK (no substring matching).
+	promise.then((okAck) => {
+		publishHaasAck(mcNum, okAck);
+	}).catch((err) => {
+		let errCode;
+		switch (err.code) {
+			case HAAS.errorCodes.TIMEOUT:        errCode = 'haas_timeout'; break;
+			case HAAS.errorCodes.NAK:            errCode = 'haas_nak'; break;
+			case HAAS.errorCodes.SOCKET_CLOSED:  errCode = 'socket_closed'; break;
+			case HAAS.errorCodes.CLOSED:
+			case HAAS.errorCodes.CLOSING:        errCode = 'shutting_down'; break;
+			case HAAS.errorCodes.WRITE_FAILED:
+			default:                             errCode = 'haas_error'; break;
+		}
+		ackKo(mcNum, cmd, reqId, errCode, err.message);
+	});
+}
 
 /*
 client.subscribe('#')
