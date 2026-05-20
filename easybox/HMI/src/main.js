@@ -1,3 +1,4 @@
+import '@/assets/css/design-tokens.css'
 import './assets/pure.css'
 import './assets/email.css'
 import './assets/card.css'
