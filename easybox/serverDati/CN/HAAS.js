@@ -11,6 +11,8 @@
 //   - TCP keepalive 30s come rete di sicurezza passiva (kernel-level).
 //   - Hook diag MQTT per lifecycle (_HAAS/CONNECT, _HAAS/CLOSE, _HAAS/RECONNECT)
 //     e errori protocollo (_HAAS/ERROR), entrambi visibili nel pannello /diag/mqtt.
+//   - Errori delle Promise (setMacroVar/requestProgram reject) espongono err.code:
+//     contratto pubblico in exports.errorCodes, no substring matching su err.message.
 //
 // Sintassi W-protocol assunta — TODO_VERIFY su manuale HAAS Macro Programming
 // Reference o test su cantiere. Le funzioni buildSetMacroPacket /
@@ -35,6 +37,23 @@ const RECONNECT_BACKOFF_MS = [1000, 2000, 5000, 10000, 30000];
 
 // TCP keepalive (kernel-level, rete di sicurezza passiva contro morte silenziosa).
 const TCP_KEEPALIVE_MS = 30000;
+
+// ============================================================================
+// ERROR CODES — contratto pubblico per chi cattura le Promise di setMacroVar /
+// requestProgram. Ogni reject genera un Error con err.code === uno di questi
+// valori. Pattern coerente con Node.js core (fs ENOENT, net ECONNREFUSED).
+// Il dispatcher MQTT li mappa direttamente in codici ACK PLC, evitando il
+// substring-matching fragile su err.message.
+// ============================================================================
+
+const ERROR_CODES = {
+	TIMEOUT:       'haas_timeout',
+	NAK:           'haas_nak',
+	SOCKET_CLOSED: 'socket_closed',
+	WRITE_FAILED:  'write_failed',
+	CLOSED:        'closed',
+	CLOSING:       'closing',
+};
 
 // ============================================================================
 // SINGLETON REGISTRY
@@ -104,7 +123,9 @@ function parseSetMacroResponse(line) {
 	const varNum = parseInt(m[1], 10);
 	const rest = m[2].trim();
 	if (rest.startsWith('STATUS=')) {
-		throw new Error('HAAS NAK: ' + rest);
+		const err = new Error('HAAS NAK: ' + rest);
+		err.code = ERROR_CODES.NAK;
+		throw err;
 	}
 	const value = parseFloat(rest);
 	if (Number.isNaN(value)) throw new Error('Invalid value in response: ' + JSON.stringify(rest));
@@ -121,6 +142,9 @@ function makeHaasInstance(mcNum, opts) {
 	const timeoutMs  = opts.timeoutMs  || DEFAULT_TIMEOUT_MS;
 	const triggerVar = opts.triggerVar || DEFAULT_PROGRAM_TRIGGER_VAR;
 
+	// Errore di config statica (manca .env): gestito da bootEagerHaas in
+	// MQTT_Client.js, che pubblica _HAAS/CONFIG_ERROR nel diag. Niente err.code:
+	// non è un errore di runtime ma di setup, non coinvolge il dispatcher.
 	if (!ip) {
 		throw new Error('HAAS MC' + mcNum + ': IP non configurato (HAAS_MC' + mcNum + '_IP)');
 	}
@@ -197,7 +221,9 @@ function makeHaasInstance(mcNum, opts) {
 				const p = pendingRequest;
 				pendingRequest = null;
 				busy = false;
-				p.reject(new Error('HAAS MC' + mcNum + ': socket closed during request'));
+				const err = new Error('HAAS MC' + mcNum + ': socket closed during request');
+				err.code = ERROR_CODES.SOCKET_CLOSED;
+				p.reject(err);
 			}
 			socket = null;
 			if (connState === 'reconnecting') _scheduleReconnect();
@@ -268,7 +294,9 @@ function makeHaasInstance(mcNum, opts) {
 			pendingRequest = null;
 			busy = false;
 			publishDiag('ERROR', 'MC' + mcNum + ' ' + req.label + ' timeout (' + timeoutMs + 'ms)');
-			req.reject(new Error('HAAS MC' + mcNum + ' timeout: ' + req.label));
+			const err = new Error('HAAS MC' + mcNum + ' timeout: ' + req.label);
+			err.code = ERROR_CODES.TIMEOUT;
+			req.reject(err);
 			_processQueue();
 		}, timeoutMs);
 		try {
@@ -277,7 +305,9 @@ function makeHaasInstance(mcNum, opts) {
 			clearTimeout(req.timeoutHandle);
 			pendingRequest = null;
 			busy = false;
-			req.reject(new Error('HAAS MC' + mcNum + ' write failed: ' + e.message));
+			const err = new Error('HAAS MC' + mcNum + ' write failed: ' + e.message);
+			err.code = ERROR_CODES.WRITE_FAILED;
+			req.reject(err);
 			// il socket emetterà 'close' che triggera reconnect
 		}
 	}
@@ -286,8 +316,15 @@ function makeHaasInstance(mcNum, opts) {
 
 	function setMacroVar(varNum, value) {
 		return new Promise((resolve, reject) => {
-			if (connState === 'closed' || connState === 'closing') {
-				return reject(new Error('HAAS MC' + mcNum + ' closed'));
+			if (connState === 'closed') {
+				const err = new Error('HAAS MC' + mcNum + ' closed');
+				err.code = ERROR_CODES.CLOSED;
+				return reject(err);
+			}
+			if (connState === 'closing') {
+				const err = new Error('HAAS MC' + mcNum + ' closing');
+				err.code = ERROR_CODES.CLOSING;
+				return reject(err);
 			}
 			queue.push({
 				packet: buildSetMacroPacket(varNum, value),
@@ -326,12 +363,16 @@ function makeHaasInstance(mcNum, opts) {
 			if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
 			if (pendingRequest) {
 				if (pendingRequest.timeoutHandle) clearTimeout(pendingRequest.timeoutHandle);
-				pendingRequest.reject(new Error('HAAS MC' + mcNum + ' closing'));
+				const err = new Error('HAAS MC' + mcNum + ' closing');
+				err.code = ERROR_CODES.CLOSING;
+				pendingRequest.reject(err);
 				pendingRequest = null;
 			}
 			busy = false;
 			for (const req of queue) {
-				req.reject(new Error('HAAS MC' + mcNum + ' closing'));
+				const err = new Error('HAAS MC' + mcNum + ' closing');
+				err.code = ERROR_CODES.CLOSING;
+				req.reject(err);
 			}
 			queue = [];
 			if (socket) {
@@ -375,3 +416,4 @@ exports.createHaas              = createHaas;
 exports.closeAll                = closeAll;
 exports.buildSetMacroPacket     = buildSetMacroPacket;
 exports.parseSetMacroResponse   = parseSetMacroResponse;
+exports.errorCodes              = ERROR_CODES;
