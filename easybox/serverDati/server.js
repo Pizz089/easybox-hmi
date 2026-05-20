@@ -131,21 +131,38 @@ const server = app.listen(process.env.serverPort, () => {
   
 })
 
-process.on('SIGTERM', () => {
-  console.log('SIGTERM signal received.'); 
-  log.emptingStream(0);
-  server.close(() => {
-    // Additional cleanup tasks go here
-  });
-});
+// Shutdown pulito (N4-3d): SIGTERM/SIGINT/SIGBREAK convergono in un unico
+// handler che chiude le istanze HAAS, flusha i log, chiude il server HTTP,
+// e poi exit(0). forceExitTimer 10s come safety net se server.close si
+// blocca (es. Socket.IO clients HMI non si disconnettono).
+let shuttingDownLocal = false;
+async function shutdownHandler(signal) {
+  if (shuttingDownLocal) return;
+  shuttingDownLocal = true;
+  log.standard(signal + ' received, shutting down');
 
-//process.on('SIGINT', () => {
-//  console.log('SIGINT signal received.');
-//  log.emptingStream(0);
-//  server.close(() => {
-//    // Additional cleanup tasks go here 
-//  });
-//});
+  const forceExitTimer = setTimeout(() => {
+    log.standard('Shutdown timeout exceeded, forcing exit');
+    process.exit(1);
+  }, 10000);
+
+  try {
+    await MQTT.HAAS.closeAll();
+    log.emptingStream(0);
+    server.close(() => {
+      clearTimeout(forceExitTimer);
+      process.exit(0);
+    });
+  } catch (err) {
+    log.standard('Shutdown error: ' + err.message);
+    clearTimeout(forceExitTimer);
+    process.exit(1);
+  }
+}
+
+process.on('SIGTERM',  () => shutdownHandler('SIGTERM'));
+process.on('SIGINT',   () => shutdownHandler('SIGINT'));
+process.on('SIGBREAK', () => shutdownHandler('SIGBREAK'));
 
 async function getAndCheckLicense(_len) {
   console.log("check license...")
