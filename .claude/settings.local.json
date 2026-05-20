@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir C:\\\\Users\\\\biagi\\\\Desktop\\\\InterfacciaVertibox *)",
+      "Bash(dir C:\\\\Users\\\\biagi\\\\Desktop\\\\InterfacciaVertibox\\\\src *)",
+      "Bash(dir *)",
+      "Read(//c/Users/biagi/Documents/SQL Server Management Studio/EASYBOX/Databases/**)",
+      "Read(//c/Users/biagi/Documents/SQL Server Management Studio/EASYBOX/**)",
+      "PowerShell(Get-ChildItem -Force \"C:\\\\Users\\\\biagi\\\\Documents\\\\SQL Server Management Studio\\\\EASYBOX\" -Recurse -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName })",
+      "PowerShell(Test-Path *)",
+      "PowerShell(Get-ChildItem *)",
+      "PowerShell($base = \"C:\\\\Users\\\\biagi\\\\Desktop\\\\newInterface\\\\easybox\\\\serverDati\"; Write-Output \"=== MQTTDiag.js ===\"; & node --check \"$base\\\\MQTTDiag.js\" 2>&1; Write-Output \"exit=$LASTEXITCODE\"; Write-Output \"=== MQTT_Client.js ===\"; & node --check \"$base\\\\MQTT_Client.js\" 2>&1; Write-Output \"exit=$LASTEXITCODE\"; Write-Output \"=== server.js ===\"; & node --check \"$base\\\\server.js\" 2>&1; Write-Output \"exit=$LASTEXITCODE\")",
+      "PowerShell(Get-NetTCPConnection *)",
+      "PowerShell(Set-Location *)",
+      "PowerShell($base = \"C:\\\\Users\\\\biagi\\\\Desktop\\\\newInterface\\\\easybox\\\\HMI\\\\src\"; Write-Output \"=== it.json ===\"; & node -e \"try { JSON.parse\\(require\\('fs'\\).readFileSync\\('$\\($base.Replace\\('\\\\','/'\\)\\)/locales/it.json','utf8'\\)\\); console.log\\('OK'\\); } catch\\(e\\) { console.error\\('FAIL:',e.message\\); process.exit\\(1\\); }\"; Write-Output \"exit=$LASTEXITCODE\"; Write-Output \"=== en.json ===\"; & node -e \"try { JSON.parse\\(require\\('fs'\\).readFileSync\\('$\\($base.Replace\\('\\\\','/'\\)\\)/locales/en.json','utf8'\\)\\); console.log\\('OK'\\); } catch\\(e\\) { console.error\\('FAIL:',e.message\\); process.exit\\(1\\); }\"; Write-Output \"exit=$LASTEXITCODE\")",
+      "PowerShell(& node --check \"C:\\\\Users\\\\biagi\\\\Desktop\\\\newInterface\\\\easybox\\\\serverDati\\\\MQTT_Client.js\" 2>&1; Write-Output \"exit=$LASTEXITCODE\")",
+      "PowerShell(& node --check \"C:\\\\Users\\\\biagi\\\\Desktop\\\\newInterface\\\\easybox\\\\serverDati\\\\MQTTDiag.js\" 2>&1; Write-Output \"exit=$LASTEXITCODE\")",
+      "Bash(git *)",
+      "Bash(node --check C:/Users/biagi/Desktop/newInterface/easybox/serverDati/CN/HAAS.js)"
+    ]
+  }
+}

@@ -42,6 +42,13 @@ const TCP_KEEPALIVE_MS = 30000;
 
 const instances = new Map();   // mcNum (number) → instance object
 
+// Flag globale di shutdown. Settato a true da closeAll(), blocca creazioni
+// di nuove istanze finché il processo non muore. Previene race: dispatcher
+// MQTT che chiama createHaas() mentre closeAll() è in volo otterrebbe
+// altrimenti una nuova istanza con connessione TCP fresca in parallelo a
+// quelle che si stanno chiudendo.
+let shuttingDown = false;
+
 /**
  * createHaas(mcNum, opts) → instance
  * Singleton per-MC: due chiamate con lo stesso mcNum ritornano la stessa istanza.
@@ -54,6 +61,9 @@ const instances = new Map();   // mcNum (number) → instance object
  *   triggerVar: number  (HAAS_PROGRAM_TRIGGER_VAR, default 500)
  */
 function createHaas(mcNum, opts) {
+	if (shuttingDown) {
+		throw new Error('HAAS module shutting down, cannot create new instances');
+	}
 	const key = Number(mcNum);
 	const existing = instances.get(key);
 	if (existing) return existing;
@@ -67,6 +77,7 @@ function createHaas(mcNum, opts) {
  * Chiude pulitamente tutte le instances. Da chiamare al SIGTERM del backend.
  */
 function closeAll() {
+	shuttingDown = true;
 	const promises = [];
 	for (const inst of instances.values()) {
 		promises.push(inst.close().catch(() => {}));
@@ -247,7 +258,6 @@ function makeHaasInstance(mcNum, opts) {
 		if (busy || queue.length === 0) return;
 		if (connState !== 'connected') {
 			// non posso processare ora; al prossimo 'connect' la coda riprende automaticamente
-			if (connState === 'idle') _connect();
 			return;
 		}
 		const req = queue.shift();
@@ -325,6 +335,17 @@ function makeHaasInstance(mcNum, opts) {
 			}
 			queue = [];
 			if (socket) {
+				// Rimuovo i listener originali prima di registrare il mio handler di
+				// chiusura. Senza questo, se siamo in stato 'connecting' e il
+				// 'connect' tardivo arriva durante close(), il listener originale
+				// sovrascrive connState='closing'→'connected', poi il close handler
+				// originale vede wasClosing=false e schedula reconnect (con
+				// _HAAS/RECONNECT spurio nel diag, e reconnectTimer orfano).
+				socket.removeAllListeners();
+				// Swallow di eventuali 'error' asincroni durante socket.end(): senza
+				// handler diventerebbero uncaughtException. Caso raro (RST tardivo,
+				// stack TCP in errore) ma fatale per il processo.
+				socket.on('error', () => {});
 				socket.once('close', () => { connState = 'closed'; resolve(); });
 				try { socket.end(); } catch (_) {}
 			} else {
