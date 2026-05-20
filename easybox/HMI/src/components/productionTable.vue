@@ -161,75 +161,131 @@ export default {
 </script>
 
 <style scoped>
-.table-divisor {
-    width: 10px;        
-    padding: 0px;         
-    border-radius: 30px;
+/* ============ STATUS BADGE ============ */
+/* Le classi status (WORKING/RAW/PAUSED/STOP/ABORT/FINISHED) sono applicate
+   al td.table-divisor che e' largo 0 (custom-fix.css). Per rendere il
+   badge visibile applichiamo lo stile al td adiacente (quello con il
+   testo STATUS_DESC) via sibling combinator '+ td'.
+   Mappatura allineata a custom-fix.css UI-1.6: RAW=info(blu), WORKING=success(verde). */
+
+td.table-divisor.WORKING + td,
+td.table-divisor.working + td,
+td.table-divisor.RAW + td,
+td.table-divisor.raw + td,
+td.table-divisor.PAUSED + td,
+td.table-divisor.paused + td,
+td.table-divisor.STOP + td,
+td.table-divisor.stop + td,
+td.table-divisor.ABORT + td,
+td.table-divisor.abort + td,
+td.table-divisor.FINISHED + td,
+td.table-divisor.finished + td {
+    font-weight: var(--font-weight-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
-.pure-table-horizontal #td {
-    justify-content: center;
-    display: flex;
+/* WORKING = lavorazione attiva = success/verde */
+main.content table.pure-table tbody tr td.table-divisor.WORKING + td,
+main.content table.pure-table tbody tr td.table-divisor.working + td {
+    color: var(--color-success) !important;
+    background: var(--color-success-bg) !important;
 }
 
-.pure-table {
-    width: inherit;
-    background-color: transparent;
+/* RAW = materia grezza in attesa = info/blu */
+main.content table.pure-table tbody tr td.table-divisor.RAW + td,
+main.content table.pure-table tbody tr td.table-divisor.raw + td {
+    color: var(--color-info) !important;
+    background: var(--color-info-bg) !important;
 }
 
-.td_odd{
-        background-color: transparent;
+/* PAUSED = stato pausa = grigio neutro, no bg colorato */
+main.content table.pure-table tbody tr td.table-divisor.PAUSED + td,
+main.content table.pure-table tbody tr td.table-divisor.paused + td {
+    color: var(--text-muted) !important;
 }
 
-.PAUSED, .paused {
-    color: gray;
-    background-color: lightblue;
-    opacity: 90%;
-    color: black;
-    /*border-radius: 12px;*/
-    /* background-image: url(/src/assets/pause.png);
-        background-repeat: no-repeat;
-        background-size: 50px;
-        background-position-x: 0%;
-        background-color:lightgray;*/
+/* STOP / ABORT = errore o interrotto = danger/rosso */
+main.content table.pure-table tbody tr td.table-divisor.STOP + td,
+main.content table.pure-table tbody tr td.table-divisor.stop + td,
+main.content table.pure-table tbody tr td.table-divisor.ABORT + td,
+main.content table.pure-table tbody tr td.table-divisor.abort + td {
+    color: var(--color-danger) !important;
+    background: var(--color-danger-bg) !important;
 }
 
-.FINISHED, .finished {
-    background-color: #080866;
-    /*#ff0000ab;*/
-    opacity: 90%;
-    color: white;    
-    /*border-radius: 12px;*/
+/* FINISHED = concluso = neutro */
+main.content table.pure-table tbody tr td.table-divisor.FINISHED + td,
+main.content table.pure-table tbody tr td.table-divisor.finished + td {
+    color: var(--text-secondary) !important;
+    background: var(--bg-surface-2) !important;
 }
 
-.STOP, .stop {
-    background-color: #eb2c2c;
-    opacity: 90%;
-    color: black;
-    /*border-radius: 12px;*/
-    /* background-image: url('../assets/stop.png');
-        background-repeat: no-repeat;
-        */
+
+/* ============ SMALL TEXT (PIECE_DESC sotto PIECE) ============ */
+small {
+    color: var(--text-muted);
+    font-size: var(--font-size-xs);
 }
 
-.ABORT, .abort {
-    background-color: #ff0000ab;
-    opacity: 90%;
-    color: white;
-    /*border-radius: 12px;*/
+
+/* ============ PROGRESS BAR (bonus D5) ============ */
+/* height/border-radius/overflow gia' gestiti da custom-fix.css */
+progress::-webkit-progress-bar {
+    background: var(--bg-surface);
+    border-radius: var(--radius-pill);
 }
 
-.WORKING, .working{
-    background-color: lightblue;
-    opacity: 90%;
-    color: gray;
-    /*border-radius: 12px;*/
+progress::-webkit-progress-value {
+    background: var(--accent);
+    border-radius: var(--radius-pill);
+    transition: width var(--transition-base);
 }
 
-.RAW, .raw{
-    background-color: limegreen;
-    opacity: 90%;
-    color: white;
-    /*border-radius: 20px;*/
+progress::-moz-progress-bar {
+    background: var(--accent);
+    border-radius: var(--radius-pill);
+}
+
+
+/* ============ DELETE POPUP ============ */
+.popUpOnLine {
+    background: var(--bg-surface-2) !important;
+    padding: var(--space-4) !important;
+}
+
+.popUpOnLine h3 {
+    color: var(--text-primary);
+    margin-bottom: var(--space-3);
+}
+
+/* Override inline style="background-color:coral" su bottone DELETE (D6) */
+.popUpOnLine button.button-error {
+    background: var(--color-danger) !important;
+    color: var(--text-primary);
+    border: 0;
+    border-radius: var(--radius-md);
+    font-weight: var(--font-weight-semibold);
+    padding: var(--space-2) var(--space-4);
+}
+
+.popUpOnLine button.button-error:hover {
+    background: var(--color-danger-bg) !important;
+    color: var(--color-danger);
+}
+
+/* Bottone EXIT (class typo 'butto-secondary' non matcha niente, stiliziamo
+   come secondary tramite :not(.button-error) sui bottoni del popup) */
+.popUpOnLine button:not(.button-error) {
+    background: var(--bg-input);
+    color: var(--text-primary);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    padding: var(--space-2) var(--space-4);
+}
+
+.popUpOnLine button:not(.button-error):hover {
+    background: var(--bg-surface-2);
+    border-color: var(--border-strong);
 }
 </style>

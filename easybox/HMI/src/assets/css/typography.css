@@ -1,0 +1,31 @@
+/* typography.css
+ * Default colors per tipografia in dark theme.
+ * Forza esplicitamente i token sui headings invece di dipendere
+ * dalla class .dark di theme.css (fragile, dipende da JS init order).
+ *
+ * Override scoped nei .vue continuano a vincere per specificity.
+ * font-family: rimandato a UI-8 cleanup trasversale.
+ */
+
+h1, h2, h3, h4 {
+  color: var(--text-primary);
+}
+
+h5, h6 {
+  color: var(--text-secondary);
+}
+
+label {
+  color: var(--text-secondary);
+}
+
+p {
+  color: var(--text-primary);
+}
+
+/* .area = pannello stato in CNC1/CNC2/Robot con bg lightgray.
+   Preserva la cascade originale (color: black ereditato da .area)
+   finche' UI-6 e UI-7 non ridisegneranno .area con token. */
+.area :is(h1, h2, h3, h4, h5, h6) {
+  color: inherit;
+}

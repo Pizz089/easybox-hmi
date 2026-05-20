@@ -1,4 +1,5 @@
 import '@/assets/css/design-tokens.css'
+import '@/assets/css/typography.css'
 import './assets/pure.css'
 import './assets/email.css'
 import './assets/card.css'

@@ -6,9 +6,9 @@
 
 :root {
   /* ---------- Color tokens ---------- */
-  --bg-base:        #0F1620;
-  --bg-surface:     #1A2332;
-  --bg-surface-2:   #243043;
+  --bg-base:        #050A12;
+  --bg-surface:     #243043;
+  --bg-surface-2:   #3A4A60;
   --bg-input:       #2A3548;
 
   --text-primary:   #E8EEF7;
@@ -16,9 +16,9 @@
   --text-muted:     #6B7889;
   --text-disabled:  #4A5468;
 
-  --border-subtle:  #2A3548;
-  --border-default: #3A475C;
-  --border-strong:  #5A6B82;
+  --border-subtle:  #4A5A75;
+  --border-default: #6B7B95;
+  --border-strong:  #8B9AAE;
 
   --accent:         #4A9EFF;
   --accent-hover:   #6BAFFF;
@@ -31,7 +31,7 @@
   --color-success-bg: #1A3A2A;
   --color-warning-bg: #3A2F1A;
   --color-danger-bg:  #3A1F1F;
-  --color-info-bg:    #1F2D3D;
+  --color-info-bg:    #1A3D5C;
 
   /* ---------- Spacing tokens (multipli di 4) ---------- */
   --space-1: 4px;
