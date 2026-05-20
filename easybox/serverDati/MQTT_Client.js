@@ -4,6 +4,7 @@ const DBf 	= require('./DBFunct');
 const log 	= require('./LogFunct');
 const mqtt 	= require("mqtt");
 var HEIDENHAIN		= require('./CN/HEIDENHAIN');
+var HAAS			= require('./CN/HAAS');
 const diag			= require('./MQTTDiag');
 
 //const client = mqtt.connect("mqtt://172.20.70.111");
@@ -189,13 +190,13 @@ client.on('message', function (topic, message) {
 			case 'STARTPP': {	//FROM_PLANT/STARTPP/MC1
 				// Sanity check multi-CNC (N4-1, sessione di refactor maggio 2026):
 				// STARTPP è il topic legacy del PLC per Heidenhain. Se la macchina è
-				// configurata HAAS, il PLC dovrebbe usare TO_PLANT/HAAS_CMD/MC1 con
+				// configurata HAAS, il PLC dovrebbe usare FROM_PLANT/HAAS_CMD/MC1 con
 				// payload JSON. Configurazione incoerente → segnala nel diag e ignora,
 				// per evitare di triggerare il driver sbagliato.
 				const cnType = getCnType(1);
 				if (cnType !== 'heidenhain') {
 					try {
-						const payloadStr = "PLC ha pubblicato STARTPP/MC1 ma CN_TYPE_MC1='" + cnType + "' — ignorato (atteso HAAS_CMD)";
+						const payloadStr = "PLC ha pubblicato STARTPP/MC1 ma CN_TYPE_MC1='" + cnType + "' — ignorato (atteso FROM_PLANT/HAAS_CMD/MC1)";
 						diag.publish({
 							ts: Date.now(),
 							dir: "IN",
@@ -485,6 +486,39 @@ function getCnType(mcNum) {
 	return 'heidenhain';
 }
 
+/**
+ * bootEagerHaas() — eager init delle istanze HAAS al boot del backend.
+ *
+ * Per ogni MC con CN_TYPE_MC<n>='haas', tenta HAAS.createHaas(n). Ogni fallimento
+ * (IP mancante, parametri invalidi) viene loggato e pubblicato sul diag come
+ * _HAAS/CONFIG_ERROR (pattern suffix-based già highlightato in rosso da N4-1).
+ * Non blocca il boot del backend: gli altri CN/MC restano operativi.
+ */
+function bootEagerHaas() {
+	for (let mcNum = 1; mcNum <= 3; mcNum++) {
+		if (getCnType(mcNum) !== 'haas') continue;
+		try {
+			HAAS.createHaas(mcNum);
+			log.standard("HAAS MC" + mcNum + ": eager init triggered (CN_TYPE_MC" + mcNum + "=haas)");
+		} catch (e) {
+			const msg = "HAAS MC" + mcNum + " boot failed: " + (e.message || String(e));
+			log.standard(msg);
+			try {
+				diag.publish({
+					ts: Date.now(),
+					dir: "IN",
+					topic: "_HAAS/CONFIG_ERROR",
+					payload: msg,
+					source: "BACKEND",
+					size: Buffer.byteLength(msg)
+				});
+			} catch (_) {}
+		}
+	}
+}
+
+bootEagerHaas();
+
 /*
 client.subscribe('#')
 client.on('message', function (topic, message) {
@@ -707,3 +741,4 @@ function publish(topic, msg){
 	} catch (_) {}
 }
 exports.publish = publish
+exports.HAAS = HAAS;

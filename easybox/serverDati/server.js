@@ -1,5 +1,9 @@
 const express 		= require('express')
 const dotenv 		= require('dotenv');
+// dotenv.config() PRIMA di tutti i require successivi: alcuni moduli leggono
+// process.env a require-time (es. MQTT_Client → bootEagerHaas → getCnType).
+// Posizione precedente (in fondo al file) era un bug latente.
+dotenv.config();
 var path 			= require('path')
 const os 			= require('node:os');
 const si 			= require('systeminformation');
@@ -65,8 +69,6 @@ app.use('/api/pp'			, PP_Router);
 //app.use('/api/rest', restRouter);
 //app.set("view engine","hbs")
 
-
-dotenv.config();
 process.env.TOKEN_SECRET;
 
 //saluto nella HMI

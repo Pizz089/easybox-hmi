@@ -17,7 +17,9 @@
       "PowerShell(& node --check \"C:\\\\Users\\\\biagi\\\\Desktop\\\\newInterface\\\\easybox\\\\serverDati\\\\MQTTDiag.js\" 2>&1; Write-Output \"exit=$LASTEXITCODE\")",
       "Bash(git *)",
       "Bash(node --check C:/Users/biagi/Desktop/newInterface/easybox/serverDati/CN/HAAS.js)",
-      "Bash(node -e \"process.env.HAAS_MC1_IP=''; const m=require\\('module'\\); const orig=m._load; m._load=function\\(req,par\\){ if\\(req.includes\\('LogFunct'\\)||req.includes\\('MQTTDiag'\\)||req.includes\\('DBFunct'\\)\\){return new Proxy\\({},{get:\\(\\)=>\\(\\)=>{}}\\);} return orig.apply\\(this,arguments\\);}; const HAAS=require\\('./easybox/serverDati/CN/HAAS'\\); console.log\\('errorCodes:'\\); console.log\\(JSON.stringify\\(HAAS.errorCodes,null,2\\)\\); console.log\\('keys count:', Object.keys\\(HAAS.errorCodes\\).length\\);\")"
+      "Bash(node -e \"process.env.HAAS_MC1_IP=''; const m=require\\('module'\\); const orig=m._load; m._load=function\\(req,par\\){ if\\(req.includes\\('LogFunct'\\)||req.includes\\('MQTTDiag'\\)||req.includes\\('DBFunct'\\)\\){return new Proxy\\({},{get:\\(\\)=>\\(\\)=>{}}\\);} return orig.apply\\(this,arguments\\);}; const HAAS=require\\('./easybox/serverDati/CN/HAAS'\\); console.log\\('errorCodes:'\\); console.log\\(JSON.stringify\\(HAAS.errorCodes,null,2\\)\\); console.log\\('keys count:', Object.keys\\(HAAS.errorCodes\\).length\\);\")",
+      "Bash(node --check C:/Users/biagi/Desktop/newInterface/easybox/serverDati/MQTT_Client.js)",
+      "Bash(node --check C:/Users/biagi/Desktop/newInterface/easybox/serverDati/server.js)"
     ]
   }
 }
