@@ -184,7 +184,7 @@
 }
 
 .pure-button-group .pure-button:hover {
-    background: var(--bg-input);
+    background: var(--border-subtle);
 }
 
 /* Pressed: override App.vue `.button_pressed:active { bg: lightblue }` */
