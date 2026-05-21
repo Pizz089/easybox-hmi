@@ -17,6 +17,9 @@ import { useTheme } from '@/composables/useTheme';
         <!--div class="searchMenu">
             <input type="text" placeholder="search" v-model="dataStored.searchQuery" style="margin-left:34px;">
         </div-->
+        <div class="topbar-logo">
+            <img src="@/assets/logo.png" alt="ADMG Logo" />
+        </div>
         <h3 v-if="!dataStored.WS.connected">in attesa di connessione!!</h3>
         <div>
             <RouterLink to="/changeUser">
@@ -108,6 +111,20 @@ const { isDark, toggleTheme, setTheme, theme } = useTheme();
 
 
 <style scoped>
+/* Logo ADMG nella TopBar (spostato da SideBar in UI-3.2).
+   height 48px sta comodo nei 64px di TopBar lasciando 8px breathing top/bottom. */
+.topbar-logo {
+    display: flex;
+    align-items: center;
+    height: 48px;
+}
+
+.topbar-logo img {
+    height: 48px;
+    width: auto;
+    object-fit: contain;
+}
+
 .theme-btn{
     background-color: transparent;
     border-color: darkgrey;

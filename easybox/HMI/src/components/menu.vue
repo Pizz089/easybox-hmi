@@ -11,7 +11,17 @@ const toggleSidebar = () => {
 
 <template>
   <div class="layout">
-    <SideBar :open="isOpen" @toggle="toggleSidebar" />
+    <SideBar :open="isOpen" />
+
+    <button
+      class="toggle-btn"
+      :class="{ open: isOpen, closed: !isOpen }"
+      @click="toggleSidebar"
+      :aria-label="isOpen ? 'Collassa sidebar' : 'Espandi sidebar'"
+      type="button"
+    >
+      <span>{{ isOpen ? "«" : "»" }}</span>
+    </button>
 
     <main class="content" :class="{ 'content--collapsed': !isOpen }">
       <slot />
@@ -27,14 +37,60 @@ const toggleSidebar = () => {
 
 .content {
   flex: 1;
-  padding: 16px 24px;
+  padding: 80px var(--space-5) var(--space-4);  /* top 80 = 64 TopBar fixed + 16 breathing */
   box-sizing: border-box;
-  margin-left: 260px; 
+  margin-left: 220px;                            /* sidebar piena (era 260) */
   transition: margin-left 0.25s ease-in-out;
 }
 
 .content--collapsed {
-  margin-left: 80px; 
+  margin-left: 0;                                /* sidebar invisibile (era 80) */
+}
+
+/* Toggle button: pillola fissa fra sidebar e contenuto.
+   left transiziona sincronizzato con sidebar width per restare attaccata
+   al bordo della sidebar durante l'animazione (entrambe 0.25s ease-in-out). */
+.toggle-btn {
+  position: fixed;
+  top: 50vh;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  color: var(--text-primary);
+  cursor: pointer;
+  z-index: 950;                                  /* sopra sidebar (900), sotto TopBar (1000) */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  line-height: 1;
+  padding: 0;
+  box-shadow: var(--elevation-2);
+  transition:
+    left 0.25s ease-in-out,
+    background var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.toggle-btn.open {
+  left: 204px;                                   /* 220 sidebar - 16 = half-in half-out */
+}
+
+.toggle-btn.closed {
+  left: 4px;                                     /* visibile sul bordo sx del viewport */
+}
+
+.toggle-btn:hover,
+.toggle-btn:focus-visible {
+  background: var(--bg-surface-2);
+  border-color: var(--border-strong);
+}
+
+.toggle-btn:focus {
+  outline: none;
 }
 </style>
 
