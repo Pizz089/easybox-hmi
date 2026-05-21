@@ -1,7 +1,11 @@
 <script setup>
     //import { RouterLink, RouterView } from 'vue-router'
     import { dataStored } from '../../data.js'
+    import { useI18n } from 'vue-i18n'
     import  workOrderStep  from '../../components/workOrder_step.vue'
+    import CubeIcon3D from '../../components/CubeIcon3D.vue'
+
+    const { t } = useI18n()
 </script>
 
 <template>
@@ -16,23 +20,23 @@
           <!--button class="pure-button-primary">create new </button--> 
       </h3> 
 
-      <div class="container_card pure-u-1-2 pure-u-md-1-3 pure-u-xl-1-4" >
+      <div class="container_card pure-u-1-2 pure-u-md-1-3 pure-u-lg-1-5">
         <div class="card" @click="nextStep(0)" style="background-color: coral;">
-            <div class="container" style="padding-bottom: 21px;">
-                <h4><b>NO PALLET</b></h4>              
-            </div>
+            <h4><b>{{ t('wizard.value.noPallet') }}</b></h4>
         </div>
       </div>
-      <div v-for="(p) in data" :key="p.ID"  
-          class="container_card pure-u-1-2 pure-u-md-1-3 pure-u-xl-1-4">
-        
-        <div class="card" @click="nextStep(p.ID)">
+      <div v-for="(p) in data" :key="p.ID"
+          class="container_card pure-u-1-2 pure-u-md-1-3 pure-u-lg-1-5">
 
-            <div class="container" style="padding-bottom: 21px;">
-                <h4><b>{{ p.FAMILY }}</b></h4>
-                <h4>{{p.DESCR}}</h4>
-                <h4> Dim: {{ p.X/1000 }}x{{ p.Y/1000 }}  H{{ p.Z/1000 }}</h4> 
-                <h4> Pos: {{getPosition(p)}} </h4>
+        <div class="card card--detailed" @click="nextStep(p.ID)">
+            <CubeIcon3D :w="p.X" :d="p.Y" :h="p.Z" :prisma="true" :bgMode="true" />
+            <span class="card-name">{{ p.FAMILY }}</span>
+            <div class="card-meta">
+                <span class="card-descr">{{ p.DESCR }}</span>
+                <span class="card-dim">
+                    Dim: {{ p.X/1000 }}×{{ p.Y/1000 }} H{{ p.Z/1000 }}
+                </span>
+                <span class="card-pos">{{ getPosition(p) }}</span>
             </div>
         </div>
       </div>

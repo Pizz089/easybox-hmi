@@ -128,6 +128,8 @@ import { dataStored } from './data';
    Dashboard (units.vue) e Conf (PartsView) hanno scoped .card che vince
    per specificity. */
 .card {
+    position: relative;
+    overflow: hidden;
     background: var(--bg-surface);
     border-radius: 18px;
     padding: var(--space-5);
@@ -177,7 +179,66 @@ import { dataStored } from './data';
     color: var(--text-primary);
 }
 
+/* Variant detailed: nome top-left in pill, meta block bottom-center.
+   Override del centering flex del .card base (display:block + position
+   absolute children). Usato da selectPiece/Pallet/Vice/Fixture wizard. */
+.card.card--detailed {
+    display: block;
+    padding: 0;
+    min-height: 240px;
+}
+
+.card--detailed .card-name {
+    position: absolute;
+    top: var(--space-3);
+    left: var(--space-3);
+    background: var(--bg-surface-2);
+    color: var(--text-primary);
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 14px;
+    z-index: 2;
+    max-width: calc(100% - 2 * var(--space-3));
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.card--detailed .card-meta {
+    position: absolute;
+    bottom: var(--space-3);
+    left: 0;
+    right: 0;
+    text-align: center;
+    z-index: 2;
+    padding: 0 var(--space-3);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.card--detailed .card-descr {
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+.card--detailed .card-dim {
+    color: var(--text-primary);
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.card--detailed .card-pos {
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-style: italic;
+    margin-top: 2px;
+}
+
 .container {
+    position: relative;
+    z-index: 1;
     padding: 0;
     width: 100%;
     text-align: center;

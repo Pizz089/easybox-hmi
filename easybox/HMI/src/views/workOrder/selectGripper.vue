@@ -14,7 +14,7 @@
       <h3> 
           Tipo Pinza
       </h3> 
-      <div v-for="(p) in data" :key="p.ID" class="container_card pure-u-1-2 pure-u-md-1-3 pure-u-xl-1-4">
+      <div v-for="(p) in data" :key="p.ID" class="container_card pure-u-1-2 pure-u-md-1-3 pure-u-lg-1-5">
 
         <div class="card" @click="nextStep(p.ID)">
             <div class="container" style="padding-bottom: 21px;">

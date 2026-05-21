@@ -458,6 +458,7 @@
       "noPallet": "No pallet",
       "fixture": "Fixture {id}",
       "noFixture": "No fixture",
+      "noVice": "No vice",
       "machine": "MC {id}"
     },
     "search": {

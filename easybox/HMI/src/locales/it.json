@@ -454,12 +454,13 @@
     },
     "value": {
       "piece": "Pezzo {id}",
-      "manualVice": "Manual Vice",
+      "manualVice": "Morsa Manuale",
       "gripper": "Pinza {id}",
       "pallet": "Pallet {id}",
       "noPallet": "Nessun pallet",
       "fixture": "Attrezzatura {id}",
       "noFixture": "Nessuna attrezzatura",
+      "noVice": "Nessuna morsa",
       "machine": "MC {id}"
     },
     "search": {

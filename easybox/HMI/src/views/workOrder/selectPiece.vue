@@ -3,6 +3,7 @@
     import { dataStored } from '../../data.js'
     import { useI18n } from 'vue-i18n'
     import  workOrderStep  from '../../components/workOrder_step.vue'
+    import CubeIcon3D from '../../components/CubeIcon3D.vue'
 
     const { t } = useI18n()
 </script>
@@ -29,26 +30,25 @@
               v-model="searchQuery"
           />
       </div>
-      <div class="container_card pure-u-1-2 pure-u-md-1-3 pure-u-xl-1-4" >
-        <div class="card" @click="nextStep(0)" style="background-color: coral;min-height: 238px;">
-            <div class="container" style="padding-bottom: 21px;">
-                <h4><b>Manual Vice</b></h4>              
-            </div>
+      <div class="container_card pure-u-1-2 pure-u-md-1-3 pure-u-lg-1-5">
+        <div class="card" @click="nextStep(0)" style="background-color: coral;">
+            <h4><b>{{ t('wizard.value.manualVice') }}</b></h4>
         </div>
       </div>
       <div v-for="(p) in piecesFiltered" :key="p.ID"
-        class="container_card pure-u-1-2 pure-u-md-1-3 pure-u-xl-1-4">
+        class="container_card pure-u-1-2 pure-u-md-1-3 pure-u-lg-1-5">
 
-        <div class="card" @click="nextStep(p.ID)">
-            
-            <img v-if="p.PRISMA" src="../../assets/cube2.png" alt="prisma" width="65px;">
-            <img v-if="!p.PRISMA" src="../../assets/cylinder.png" alt="cylinder" >
-            <div class="container" style="padding-bottom: 21px;">
-                <h4><b>{{ p.FAMILY }}</b></h4>
-                <h5>{{p.DESCR}}</h5>
-                <h5 v-if="p.PRISMA"> Dim: {{ p.X/1000 }}x{{ p.Y/1000 }}  H{{ p.Z/1000 }}</h5> 
-                <h5 v-else> Dim: R{{ p.X/1000 }}   H{{ p.Z/1000 }}</h5> 
-                <!--h6>Program: {{p.PARTPROGRAM}}</h6-->
+        <div class="card card--detailed" @click="nextStep(p.ID)">
+            <CubeIcon3D :w="p.X" :d="p.Y" :h="p.Z" :prisma="p.PRISMA" :bgMode="true" />
+            <span class="card-name">{{ p.FAMILY }}</span>
+            <div class="card-meta">
+                <span class="card-descr">{{ p.DESCR }}</span>
+                <span v-if="p.PRISMA" class="card-dim">
+                    Dim: {{ p.X/1000 }}×{{ p.Y/1000 }} H{{ p.Z/1000 }}
+                </span>
+                <span v-else class="card-dim">
+                    Dim: R{{ p.X/1000 }} H{{ p.Z/1000 }}
+                </span>
             </div>
         </div>
       </div>
