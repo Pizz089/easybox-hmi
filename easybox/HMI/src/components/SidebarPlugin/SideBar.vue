@@ -137,7 +137,14 @@ const filteredDiagItems = filterByLevel(diagItems);
   left: 0;
   height: calc(100vh - 64px);                    /* altezza viewport meno TopBar */
   width: 220px;
-  background: radial-gradient(circle at top, var(--bg-surface), var(--bg-base) 55%);
+  background: #141D2A;
+  /* DEBITO TECNICO: mid-tone calcolato tra --bg-base (#050A12) e
+     --bg-surface (#243043) per differenziare la sidebar dalla
+     TopBar (entrambe userebbero bg-surface) e creare gerarchia
+     visiva (sidebar incassata sotto TopBar alzata). Da promuovere
+     a token --bg-sidebar o --bg-surface-0-5 in un futuro sub-step
+     di tokens consolidation. */
+  border-radius: 0 12px 12px 0;                  /* solo angoli destri, coerenti con TopBar */
   color: var(--text-primary);
   box-shadow: var(--elevation-2);
   overflow: hidden;
@@ -156,9 +163,9 @@ const filteredDiagItems = filterByLevel(diagItems);
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 20px;
-  padding: 0 6px;
+  padding: var(--space-3) 6px 0;
   overflow-y: auto;
 }
 
@@ -169,12 +176,16 @@ const filteredDiagItems = filterByLevel(diagItems);
 }
 
 .section-title {
-  margin: 0 14px 4px;
-  font-size: 11px;
+  padding: 6px var(--space-3);
+  margin: 0 0 var(--space-2) 0;
+  background: var(--bg-input);
+  border-radius: 4px;
+  font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
-  color: var(--text-muted);
-  letter-spacing: 0.18em;
+  text-align: center;
+  color: var(--text-secondary);
+  letter-spacing: 0.08em;
 }
 
 ul {
@@ -208,7 +219,7 @@ a.router-link-active {
   color: var(--text-primary);
   box-shadow:
     inset 4px 0 0 var(--text-primary),
-    0 0 0 1px var(--border-default);
+    inset 0 0 0 2px var(--text-primary);
 }
 
 /* Hover + focus-visible (navigazione tastiera): stesso stile. */

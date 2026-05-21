@@ -73,8 +73,8 @@ import { dataStored } from '../data.js'
     <div class="container_card pure-u-1 pure-u-md-1-2 pure-u-lg-1-4">
         <div class="card link" style="--tile-w:220px; --tile-h:150px; --img-max:100px;"
             @click="$router.push('/unit/robot');">
-            <div class="img-wrapper" :class="getStatus(smallBox_status)">
-                <img src="../assets/robot.png" alt="robot" class="pure-robot" :class="getStatus(robot_status)">
+            <div class="img-wrapper" :class="getStatus(robot_status)">
+                <img src="../assets/robot.png" alt="robot" class="pure-robot">
             </div>
             <div class="container" style="padding-bottom: 0px;">
                 <h4><b>{{ $t(robot_desc) }}</b></h4>
@@ -103,8 +103,8 @@ import { dataStored } from '../data.js'
     <div class="container_card pure-u-1 pure-u-md-1-2 pure-u-lg-1-4">
         <div class="card link" style="--tile-w:220px; --tile-h:150px; --img-max:95px;"
             @click="$router.push('/unit/cnc1');">
-            <div class="img-wrapper" :class="getStatus(smallBox_status)">
-                <img src="../assets/cnc.svg" alt="cnc" class="pure-cnc" :class="getStatus(mc1_status)">
+            <div class="img-wrapper" :class="getStatus(mc1_status)">
+                <img src="../assets/cnc.svg" alt="cnc" class="pure-cnc">
             </div>
             <div class="container">
                 <h4><b>{{ $t(cnc1_desc) }} </b></h4>
@@ -116,8 +116,8 @@ import { dataStored } from '../data.js'
     <div class="container_card pure-u-1 pure-u-md-1-2 pure-u-lg-1-4">
         <div class="card link" style="--tile-w:220px; --tile-h:150px; --img-max:95px;"
             @click="$router.push('/unit/cnc2');">
-            <div class="img-wrapper" :class="getStatus(smallBox_status)">
-                <img src="../assets/cnc.svg" alt="cnc" class="pure-cnc2" :class="getStatus(mc2_status)">
+            <div class="img-wrapper" :class="getStatus(mc2_status)">
+                <img src="../assets/cnc.svg" alt="cnc" class="pure-cnc2">
             </div>
             <div class="container">
                 <h4><b>{{ $t(cnc2_desc) }}</b></h4>
@@ -296,7 +296,7 @@ export default {
 /* ============ CARD ============ */
 .card {
     background: var(--bg-surface);
-    border: 1px solid var(--border-subtle);
+    border: 0;
     border-radius: var(--radius-lg);
     box-shadow: var(--elevation-2);
     transition:
@@ -324,46 +324,40 @@ export default {
 /* HMI: border spessi (3-4px) per leggibilita' a colpo d'occhio dal lato.
    .normal e' 2px perche' e' lo stato idle/default (non deve catturare). */
 
-.normal {
+.img-wrapper.normal {
     background: var(--bg-surface-2);
-    border: 2px solid var(--border-subtle);
 }
 
-.auto,
-.remote,
-.local {
-    background: var(--color-success-bg);
-    border: 3px solid var(--color-success);
+.img-wrapper.auto,
+.img-wrapper.remote,
+.img-wrapper.local {
+    background: var(--color-success);
 }
 
-.manual {
-    background: var(--color-warning-bg);
-    border: 3px solid var(--color-warning);
+.img-wrapper.manual {
+    background: var(--color-warning);
 }
 
-.working {
+.img-wrapper.working {
     background: var(--color-info-bg);
-    border: 3px solid var(--color-info);
 }
 
-.alarm {
-    background: var(--color-danger-bg);
-    border: 4px solid var(--color-danger);
+.img-wrapper.alarm {
+    background: var(--color-danger);
     /* glow esterno: HMI deve gridare l'allarme da lontano */
     box-shadow: 0 0 8px var(--color-danger);
 }
 
-.hold {
-    background: var(--color-info-bg);
-    border: 4px solid var(--color-info);
+.img-wrapper.hold {
+    background: var(--color-info);
     animation: blinker 1s linear infinite;
 }
 
-/* Blink: preserva struttura originale (singolo keyframe 80%, durata 1s).
-   Funzionale: robot in attesa intervento operatore (HMI critical). */
+/* Blink: pulse background tra color-info e accent-hover (entrambi blu).
+   Refactored da border-color a background dopo rimozione bordi UI-3.3. */
 @keyframes blinker {
     80% {
-        border-color: var(--accent-hover);
+        background: var(--accent-hover);
     }
 }
 

@@ -58,7 +58,6 @@ const toggleSidebar = () => {
   height: 32px;
   border-radius: 50%;
   background: var(--bg-surface);
-  border: 1px solid var(--border-default);
   color: var(--text-primary);
   cursor: pointer;
   z-index: 950;                                  /* sopra sidebar (900), sotto TopBar (1000) */

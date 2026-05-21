@@ -247,9 +247,6 @@
 }
 
 @media (max-width: 1022px) {
-    .pure-button-group .pure-button {
-        border: 1px solid var(--border-subtle);
-    }
     .oneColumn {
         display: table-caption;
     }

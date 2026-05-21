@@ -134,7 +134,6 @@ export default {
   padding: 5px;
   margin-top: 10px;
   text-align: center;
-  border: 1px solid;
 }
 </style>
 

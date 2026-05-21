@@ -279,7 +279,6 @@ progress::-moz-progress-bar {
 .popUpOnLine button:not(.button-error) {
     background: var(--bg-input);
     color: var(--text-primary);
-    border: 1px solid var(--border-default);
     border-radius: var(--radius-md);
     padding: var(--space-2) var(--space-4);
 }

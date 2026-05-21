@@ -427,7 +427,6 @@ button {
   padding: 5px;
   margin-top: 10px;
   text-align: center;
-  border: 1px solid;
 }
 
 .specialCMD {
