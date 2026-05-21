@@ -45,14 +45,14 @@ body {
   height: 64px;
   z-index: 1000;
 
-  background: linear-gradient(90deg, var(--bg-surface), var(--bg-surface-2));
-  border-bottom: 2px solid var(--border-default) !important;
+  background: var(--bg-surface);
+  border-radius: 0 0 12px 12px;
 
   display: flex;
   align-items: center;
   justify-content: space-between;
 
-  padding: 0 var(--space-5);
+  padding: 0 var(--space-4) 0 0;
 
   overflow: hidden !important;
   scrollbar-width: none;
@@ -65,22 +65,33 @@ body {
   height: 0;
 }
 
-#rigaInAlto .operatorLevel,
-#rigaInAlto .languageMenu,
-#rigaInAlto .productionMenu {
+/* Regole legacy scoped a > div:not(.topbar-logo) per non impattare il logo (UI-3.2 fix-up). */
+
+/* Wrapper dei 3 controlli (terzo figlio non-logo): flex row con gap.
+   Senza questo i 3 controlli (h6 + a inline-flex) erano separati solo
+   dal whitespace (~4px) e sembravano troppo vicini. */
+#rigaInAlto > div:not(.topbar-logo) {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+#rigaInAlto > div:not(.topbar-logo) .operatorLevel,
+#rigaInAlto > div:not(.topbar-logo) .languageMenu,
+#rigaInAlto > div:not(.topbar-logo) .productionMenu {
   float: none !important;
   padding: 0 !important;
   margin: 0 !important;
   top: auto !important;
 }
 
-#rigaInAlto h6 {
+#rigaInAlto > div:not(.topbar-logo) h6 {
   margin: 0 !important;
   padding: 0 !important;
   line-height: 0 !important;
 }
 
-#rigaInAlto :is(div, h6, a, span, button):has(img) {
+#rigaInAlto > div:not(.topbar-logo) :is(div, h6, a, span, button):has(img) {
   display: inline-flex !important;
   align-items: center !important;
   margin: 0 !important;
@@ -88,11 +99,7 @@ body {
   line-height: 0 !important;
 }
 
-#rigaInAlto :is(div, h6):has(img) {
-  gap: 18px;
-}
-
-#rigaInAlto img {
+#rigaInAlto > div:not(.topbar-logo) img {
   width: 55px;
   height: 55px;
   padding: 7px;
@@ -120,12 +127,12 @@ body {
     filter var(--transition-fast);
 }
 
-#rigaInAlto img:hover,
-#rigaInAlto a:focus-visible img {
+#rigaInAlto > div:not(.topbar-logo) img:hover,
+#rigaInAlto > div:not(.topbar-logo) a:focus-visible img {
   filter: brightness(1.05);
 }
 
-#rigaInAlto img:active {
+#rigaInAlto > div:not(.topbar-logo) img:active {
   transform: translateY(1px);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.05),
@@ -133,18 +140,9 @@ body {
     var(--elevation-1);
 }
 
-#rigaInAlto img[src*="translate"],
-#rigaInAlto img[src*="on_"] {
-  position: relative;
-  top: 6px;
-}
 
 
 /* ============ C. Dashboard card + tabella ordini ============ */
-
-main.content:has(table.pure-table.pure-table-horizontal) {
-  padding-top: var(--space-4);
-}
 
 main.content:has(table.pure-table.pure-table-horizontal) .container_card .card {
   background: var(--bg-surface) !important;

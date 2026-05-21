@@ -112,109 +112,18 @@ const { isDark, toggleTheme, setTheme, theme } = useTheme();
 
 <style scoped>
 /* Logo ADMG nella TopBar (spostato da SideBar in UI-3.2).
-   height 48px sta comodo nei 64px di TopBar lasciando 8px breathing top/bottom. */
+   .topbar-logo riempie tutta l'altezza TopBar (64px), l'img dentro
+   lascia 4px breathing top+bottom (height calc(100% - 8px) = 56px).
+   Layout/bg/box-shadow TopBar gestiti da custom-fix.css sezione B. */
 .topbar-logo {
     display: flex;
     align-items: center;
-    height: 48px;
+    height: 100%;
 }
 
 .topbar-logo img {
-    height: 48px;
+    height: calc(100% - 8px);
     width: auto;
     object-fit: contain;
-}
-
-.theme-btn{
-    background-color: transparent;
-    border-color: darkgrey;
-    border-radius: 12px;
-    margin-left: 10px;
-}
-
-img {
-    margin-top: -13px;
-}
-.productionMenu{
-    background-color: transparent;
-    
-    
-}
-
-#rigaInAlto {
-    /*position: sticky;*/
-    height: 4em;
-    top: 0px;
-    left: 200px;
-    background: transparent; /*white;*/
-    overflow-y: auto;
-    border-bottom: 2px solid rgb(0, 0, 192);
-    /*border-color: #071972;*/
-}
-
-#rigaInAlto p {
-    float: right;
-    padding-right: 80px;
-    background-image: url('/src/assets/casco.PNG');
-    background-repeat: no-repeat;
-    background-size: 1.8em;
-    background-position-x: 50%;
-    opacity: 66%;
-    /*
-        border-radius: 35px;
-        background-color: rgb(201, 201, 153);
-        */
-}
-
-.operatorLevel {
-    float: right;
-    padding-right: 30px;
-    padding-top: 22px;
-}
-
-.languageMenu {
-    float: right;
-    padding-right: 40px;
-    padding-top: 0px;
-    /*background-image: url('../assets/translate.png');
-        background-position: 1px 1px;*/
-    background-repeat: no-repeat;
-    background-size: 44%;
-    border: 0px;
-    padding-left: 16px;
-}
-
-.productionMenu {
-    float: right;
-    padding-right: 28px;
-    padding-top: 0px;
-    background-repeat: no-repeat;
-    background-size: 40px;
-    background-position: 1px 12px;
-    border: 0px;
-    padding-left: 16px;
-}
-
-.alarmMenu {
-    float: right;
-    padding-right: 112px;
-    padding-top: 0px;
-    background-image: url('../assets/campana.png');
-    background-repeat: no-repeat;
-    background-size: 34%;
-    background-position: 31px 12px;
-    border: 0px;
-}
-
-.searchMenu {
-    float: left;
-    padding-right: 3px;
-    padding-top: 30px;
-    background-image: url('../assets/lente.png');
-    background-repeat: no-repeat;
-    background-size: 15%;
-    background-position: 14px 18px;
-    border: 0px;
-    padding-left: 16px;
 }
 </style>

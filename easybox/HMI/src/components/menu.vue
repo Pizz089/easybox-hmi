@@ -37,7 +37,7 @@ const toggleSidebar = () => {
 
 .content {
   flex: 1;
-  padding: 80px var(--space-5) var(--space-4);  /* top 80 = 64 TopBar fixed + 16 breathing */
+  padding: 80px var(--space-5) var(--space-4);  /* top 80 = 64 TopBar + 16 breathing (sotto ombra proiettata) */
   box-sizing: border-box;
   margin-left: 220px;                            /* sidebar piena (era 260) */
   transition: margin-left 0.25s ease-in-out;
