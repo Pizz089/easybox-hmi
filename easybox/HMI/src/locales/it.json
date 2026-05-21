@@ -442,5 +442,47 @@
       "9":"9",
       "10":"10"
     }
+  },
+  "wizard": {
+    "step": {
+      "piece": "PEZZO",
+      "gripper": "PINZA",
+      "pallet": "PALLET",
+      "fixture": "ATTREZZATURA",
+      "machine": "MACCHINA",
+      "final": "RIEPILOGO"
+    },
+    "value": {
+      "piece": "Pezzo {id}",
+      "manualVice": "Manual Vice",
+      "gripper": "Pinza {id}",
+      "pallet": "Pallet {id}",
+      "noPallet": "Nessun pallet",
+      "fixture": "Attrezzatura {id}",
+      "noFixture": "Nessuna attrezzatura",
+      "machine": "MC {id}"
+    },
+    "search": {
+      "piecePlaceholder": "Cerca pezzo..."
+    }
+  },
+  "changeUser": {
+    "title": "Cambia livello operatore",
+    "subtitle": "Inserisci la password per cambiare il livello di accesso",
+    "currentLevel": "Livello attuale",
+    "levelLabel": {
+      "0": "Operatore",
+      "1": "Manutenzione",
+      "2": "Amministratore"
+    },
+    "passwordLabel": "Password",
+    "placeholder": "Inserisci password",
+    "submit": "Accedi",
+    "error": "Password non valida",
+    "close": "Chiudi",
+    "successAlert": {
+      "title": "Livello modificato",
+      "desc": "Nuovo livello: {level}"
+    }
   }
 }

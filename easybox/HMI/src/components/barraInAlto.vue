@@ -1,10 +1,10 @@
 <script setup>
-import { RouterLink, RouterView } from 'vue-router'
+import { ref, onMounted } from 'vue';
 import { dataStored } from '../data.js'
-import { onMounted } from 'vue';
 import { useTheme } from '@/composables/useTheme';
+import ChangeUserModal from './ChangeUserModal.vue';
 
-
+const userModalOpen = ref(false);
 </script>
 
 <template>
@@ -22,11 +22,16 @@ import { useTheme } from '@/composables/useTheme';
         </div>
         <h3 v-if="!dataStored.WS.connected">in attesa di connessione!!</h3>
         <div>
-            <RouterLink to="/changeUser">
+            <button
+                type="button"
+                class="user-trigger"
+                @click="userModalOpen = true"
+                :aria-label="'Cambia livello utente'"
+            >
                 <img v-if="dataStored.userLevel == 0" src="../assets/casco.png" width="45px" class="operatorLevel">
                 <img v-if="dataStored.userLevel == 1" src="../assets/chiaveIng.svg" width="45px" class="operatorLevel">
                 <img v-if="dataStored.userLevel == 2" src="../assets/laurea.png" width="45px" class="operatorLevel">
-            </RouterLink>
+            </button>
 
             <h6 class="languageMenu" @click="changeLang">
                 <img src="/src/assets/translate.png" width="45px">
@@ -49,9 +54,7 @@ import { useTheme } from '@/composables/useTheme';
 
     </div>
 
-    <!--main>
-        <RouterView />
-    </main-->
+    <ChangeUserModal :open="userModalOpen" @close="userModalOpen = false" />
 </template>
 
 
@@ -125,5 +128,18 @@ const { isDark, toggleTheme, setTheme, theme } = useTheme();
     height: calc(100% - 8px);
     width: auto;
     object-fit: contain;
+}
+
+/* Trigger modale ChangeUser: button stripped del default UA per
+   apparire identico al precedente RouterLink (custom-fix.css gestisce
+   padding/margin/line-height via :is(button):has(img)). */
+.user-trigger {
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+}
+
+.user-trigger:focus {
+    outline: none;
 }
 </style>

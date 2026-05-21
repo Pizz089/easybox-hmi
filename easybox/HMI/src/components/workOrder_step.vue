@@ -1,124 +1,232 @@
 <script setup>
-    //import { RouterLink, RouterView } from 'vue-router'
-    import { dataStored } from '../data.js'
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
+import { dataStored } from '../data.js'
+
+const { t } = useI18n()
+const route = useRoute()
+
+function getState(isComplete, isCurrent) {
+  if (isCurrent) return 'current'
+  if (isComplete) return 'completed'
+  return 'pending'
+}
+
+const steps = computed(() => {
+  const wo = dataStored.createWorkOrder
+  const currentRoute = route.name
+
+  return [
+    {
+      key: 'piece',
+      route: '/selectPiece',
+      value:
+        wo.pieceID > 0
+          ? t('wizard.value.piece', { id: wo.pieceID })
+          : wo.pieceID === 0
+            ? t('wizard.value.manualVice')
+            : null,
+      state: getState(wo.pieceID >= 0, currentRoute === 'selectPiece'),
+    },
+    {
+      key: 'gripper',
+      route: '/selectGripper',
+      value: wo.gripperID > 0 ? t('wizard.value.gripper', { id: wo.gripperID }) : null,
+      state: getState(wo.gripperID > 0, currentRoute === 'selectGripper'),
+    },
+    {
+      key: 'pallet',
+      route: '/selectPallet',
+      value:
+        wo.palletID > 0
+          ? t('wizard.value.pallet', { id: wo.palletID })
+          : wo.palletID === 0
+            ? t('wizard.value.noPallet')
+            : null,
+      state: getState(wo.palletID >= 0, currentRoute === 'selectPallet'),
+    },
+    {
+      key: 'fixture',
+      route: '/selectFixture',
+      value:
+        wo.fixtureID > 0
+          ? t('wizard.value.fixture', { id: wo.fixtureID })
+          : wo.fixtureID === 0
+            ? t('wizard.value.noFixture')
+            : null,
+      state: getState(wo.fixtureID >= 0, currentRoute === 'selectFixture'),
+    },
+    {
+      key: 'machine',
+      route: '/selectMC',
+      value: wo.machineID > 0 ? t('wizard.value.machine', { id: wo.machineID }) : null,
+      state: getState(wo.machineID > 0, currentRoute === 'selectMC'),
+    },
+    {
+      key: 'final',
+      route: '/lastData',
+      value: null,
+      state: currentRoute === 'lastData' ? 'current' : 'pending',
+    },
+  ]
+})
 </script>
 
 <template>
-    <nav class="breadcrumbs" v-if="dataStored.createWorkOrder.pieceID>=0">
-    <!--div class="pure-u-1" v-if="dataStored.createWorkOrder.pieceID>=0"-->
-        <br>
-        <!--&nbsp; {{$t('WORKORDER')}}: --> &nbsp;
-            <span v-if="dataStored.createWorkOrder.pieceID>0" @click="$router.push('/selectPiece')" class="breadcrumbs__item">      
-                Piece {{ dataStored.createWorkOrder.pieceID }}    
-                <img src="../assets/link.png" width="18px">
-            </span> 
-            <span v-if="dataStored.createWorkOrder.pieceID==0" @click="$router.push('/selectPiece')" class="breadcrumbs__item">     
-                Manual Vice 
-                <img src="../assets/link.png" width="18px"> 
-            </span> 
-
-            <span v-if="dataStored.createWorkOrder.gripperID>0"  @click="$router.push('/selectGripper')" class="breadcrumbs__item">    
-                Gripper {{ dataStored.createWorkOrder.gripperID }} 
-                <img src="../assets/link.png" width="18px"> 
-            </span> 
-            <span v-else class="breadcrumbs__item">&nbsp;</span>
-
-            <span v-if="dataStored.createWorkOrder.palletID>0"  @click="$router.push('/selectPallet')" class="breadcrumbs__item">     
-                Pallet {{ dataStored.createWorkOrder.palletID }}  
-                <img src="../assets/link.png" width="18px"> 
-            </span> 
-            <span v-if="dataStored.createWorkOrder.palletID==0"  @click="$router.push('/selectPallet')" class="breadcrumbs__item">     
-                NO pallet 
-                <img src="../assets/link.png" width="18px"> 
-            </span> 
-
-            <span v-if="dataStored.createWorkOrder.fixtureID>0"  @click="$router.push('/selectFixture')" class="breadcrumbs__item">       
-                Fixture {{ dataStored.createWorkOrder.fixtureID }}    
-                <img src="../assets/link.png" width="18px"> 
-            </span> 
-            <span v-if="dataStored.createWorkOrder.fixtureID==0"  @click="$router.push('/selectFixture')" class="breadcrumbs__item">       
-                NO Fixture
-                <img src="../assets/link.png" width="18px"> 
-            </span> 
-
-            <span v-if="dataStored.createWorkOrder.machineID>0"  @click="$router.push('/selectMC')" class="breadcrumbs__item">      
-                MC {{ dataStored.createWorkOrder.machineID }}   
-                <img src="../assets/link.png" width="18px"> 
-            </span>
-            <span v-else class="breadcrumbs__item">&nbsp;</span>
-        &nbsp;
-        <img src="../assets/finish2.png" width="28px" height="26px" style="margin-top: 0.6em;"> 
-        <!--hr width="80%"-->
-        </nav>  
+  <nav class="wizard-stepper">
+    <div
+      v-for="step in steps"
+      :key="step.key"
+      :class="['step-item', step.state]"
+      @click="step.state === 'completed' && $router.push(step.route)"
+      :role="step.state === 'completed' ? 'button' : undefined"
+      :tabindex="step.state === 'completed' ? 0 : -1"
+    >
+      <div class="step-dot">
+        <svg
+          v-if="step.key === 'final' && step.state === 'current'"
+          class="step-icon"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <polyline points="20 6 9 17 4 12" />
+        </svg>
+      </div>
+      <span class="step-label">{{ t(`wizard.step.${step.key}`) }}</span>
+      <span class="step-value" v-if="step.value">{{ step.value }}</span>
+    </div>
+  </nav>
 </template>
 
-<script>
-    export default {
-    }
-</script>
-
 <style scoped>
-    span{
-        margin-right: 5px;
-        background-color:lightblue;
-        /*background-color:lightblue;
-        background-image: url('../assets/link.png');*/
-    }
+.wizard-stepper {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-4);
+  margin-bottom: var(--space-5);
+  position: relative;
+}
 
-    .breadcrumbs {
-        /*border: 1px solid #cbd2d9;*/
-        border-radius: 0.3rem;
-        display: inline-flex;
-        overflow: hidden;
-    }
+.step-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+}
 
-    .breadcrumbs__item {
-        background: #fff;
-        color: #333;
-        outline: none;
-        padding: 0.75em 0.75em 0.75em 1.25em;
-        position: relative;
-        text-decoration: none;
-        transition: background 0.2s linear;
-    }
+/* Linea che connette il centro del dot N al centro del dot N+1.
+   width = 100% (step-item) + gap (var(--space-3)) per coprire la
+   distanza fino al dot successivo (left:50% del prossimo step-item).
+   z-index:1 sta sotto il dot (z:2). */
+.step-item:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  width: calc(100% + var(--space-3));
+  height: 2px;
+  background: var(--border-subtle);
+  z-index: 1;
+}
 
-    .breadcrumbs__item:hover:after,
-    .breadcrumbs__item:hover {
-        background: #edf1f5;
-    }
+.step-item.completed {
+  cursor: pointer;
+}
 
-    .breadcrumbs__item:focus:after,
-    .breadcrumbs__item:focus,
-    .breadcrumbs__item.is-active:focus {
-        background: #323f4a;
-        color: #fff;
-    }
+.step-item.pending {
+  cursor: default;
+}
 
-    .breadcrumbs__item:after,
-    .breadcrumbs__item:before {
-        background: white;
-        bottom: 0;
-        clip-path: polygon(50% 50%, -50% -50%, 0 100%);
-        content: "";
-        left: 100%;
-        position: absolute;
-        top: 0;
-        transition: background 0.2s linear;
-        width: 1em;
-        z-index: 1;
-    }
+/* Pending state: color shift mirato su label/value invece di opacity globale.
+   Il dot pending resta bg-base solido cosi' copre la linea sotto. */
+.step-item.pending .step-label,
+.step-item.pending .step-value {
+  color: var(--text-muted);
+}
 
-    .breadcrumbs__item:before {
-        background: #cbd2d9;
-        margin-left: 1px;
-    }
+.step-dot {
+  position: relative;
+  z-index: 2;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--bg-base);
+  border: 2px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+  color: var(--bg-base);
+}
 
-    .breadcrumbs__item:last-child {
-        border-right: none;
-    }
+.step-item.completed .step-dot {
+  background: var(--text-primary);
+  border-color: var(--text-primary);
+}
 
-    .breadcrumbs__item.is-active {
-        background: #edf1f5;
-    }
+.step-item.current .step-dot {
+  background: var(--bg-base);
+  border: 3px solid var(--text-primary);
+  /* glow subtle: text-primary #E8EEF7 con alpha 0.15 */
+  box-shadow: 0 0 0 4px rgba(232, 238, 247, 0.15);
+}
 
+.step-item.completed:hover .step-dot,
+.step-item.completed:focus-visible .step-dot {
+  filter: brightness(0.92);
+  outline: none;
+}
+
+.step-item.completed:focus-visible,
+.step-item.current:focus-visible {
+  outline: none;
+}
+
+.step-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.step-item.current .step-label {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.step-item.completed .step-label {
+  color: var(--text-secondary);
+}
+
+.step-value {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.step-item.completed .step-value {
+  color: var(--text-primary);
+}
+
+.step-icon {
+  color: var(--bg-base);
+}
 </style>

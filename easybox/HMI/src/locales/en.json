@@ -440,5 +440,47 @@
       "9":"9",
       "10":"10"
     }
+  },
+  "wizard": {
+    "step": {
+      "piece": "PIECE",
+      "gripper": "GRIPPER",
+      "pallet": "PALLET",
+      "fixture": "FIXTURE",
+      "machine": "MACHINE",
+      "final": "SUMMARY"
+    },
+    "value": {
+      "piece": "Piece {id}",
+      "manualVice": "Manual Vice",
+      "gripper": "Gripper {id}",
+      "pallet": "Pallet {id}",
+      "noPallet": "No pallet",
+      "fixture": "Fixture {id}",
+      "noFixture": "No fixture",
+      "machine": "MC {id}"
+    },
+    "search": {
+      "piecePlaceholder": "Search piece..."
+    }
+  },
+  "changeUser": {
+    "title": "Change operator level",
+    "subtitle": "Enter the password to change your access level",
+    "currentLevel": "Current level",
+    "levelLabel": {
+      "0": "Operator",
+      "1": "Maintenance",
+      "2": "Administrator"
+    },
+    "passwordLabel": "Password",
+    "placeholder": "Enter password",
+    "submit": "Sign in",
+    "error": "Invalid password",
+    "close": "Close",
+    "successAlert": {
+      "title": "Level changed",
+      "desc": "New level: {level}"
+    }
   }
 }

@@ -123,31 +123,70 @@ import { dataStored } from './data';
     background-color: white;
 }
 
+/* Card global (wizard /selectPiece, /selectGripper, ..., e altre view che
+   usano .card senza scoped override). UI-5.5b refactor con design tokens.
+   Dashboard (units.vue) e Conf (PartsView) hanno scoped .card che vince
+   per specificity. */
 .card {
-  box-shadow: 0 4px 8px 0 rgba(0,0,0,1.2);
-  transition: 0.6s;
-  padding-top: 24px;
-  margin-top: 11px;
-  margin-left: 8px;
-  margin-right: 8px;
-  place-items: center;    
-  display:grid;
-  min-height: 240px;
+    background: var(--bg-surface);
+    border-radius: 18px;
+    padding: var(--space-5);
+    min-height: 240px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    cursor: pointer;
+    box-shadow: var(--elevation-2);
+    transition:
+        transform var(--transition-fast),
+        box-shadow var(--transition-fast),
+        background var(--transition-fast);
+    color: var(--text-primary);
+    margin: var(--space-2);
 }
-
-.card img{
-    border-radius: 22px;
-    background-color: #30644330;
-    padding: 2px;
-}
-
 
 .card:hover {
-  box-shadow: 0 8px 16px 0 rgba(0,0,0,0.2);
+    background: var(--bg-surface-2);
+    transform: translateY(-2px);
+    box-shadow: var(--elevation-3);
+}
+
+.card h4 {
+    color: var(--text-primary);
+    margin: var(--space-2) 0;
+    text-align: center;
+}
+
+.card img {
+    border-radius: 12px;
+    background-color: transparent;
+    padding: 0;
+    margin: 0 auto var(--space-3);
+    max-width: 80px;
+    max-height: 80px;
+    object-fit: contain;
+}
+
+/* Card opt-out (Manual Vice, NO PALLET, NO VICE, NO FIXTURE) — bg coral
+   inline mantenuto come segnale semantico "opt-out". Text-primary su coral
+   per leggibilita' (contrast ~3.5:1, accettabile per testo bold/large). */
+.card[style*="coral"],
+.card[style*="coral"] h4 {
+    color: var(--text-primary);
 }
 
 .container {
-  padding: 2px 16px;
+    padding: 0;
+    width: 100%;
+    text-align: center;
+}
+
+.container h4,
+.container p {
+    text-align: center;
+    margin: var(--space-1) 0;
 }
 
 .center {
