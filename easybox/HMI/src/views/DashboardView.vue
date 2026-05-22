@@ -8,16 +8,36 @@ import prodtable from '../components/productionTable.vue'
 </script>
 
 <template>
-    <div  class="pure-u-1" >
-    
-        <unitsList></unitsList>
+    <div class="pure-u-1 dashboard-view-root">
+        <div>
+            <unitsList></unitsList>
+        </div>
+        <div class="dashboard-prodtable-wrap">
+            <prodtable></prodtable>
+        </div>
     </div>
-
-    <div class="pure-u-1" >
-        <prodtable></prodtable>
-    </div>
-
 </template>
+
+<style scoped>
+.dashboard-view-root {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 100px);
+    gap: var(--space-3);
+}
+
+.dashboard-prodtable-wrap {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.dashboard-prodtable-wrap > * {
+    flex: 1;
+    min-height: 0;
+}
+</style>
 
 <script>
 </script>

@@ -211,9 +211,13 @@
     "order": "Ordine",
     "status": "Stato",
     "part": "Pezzo",
+    "machine": "Macchina",
+    "production": "Produzione",
+    "actions": "Azioni",
     "quantity": "Quantità",
     "comand": "Comandi",
-    "sure": "sei sicuro?"
+    "sure": "sei sicuro?",
+    "noOrderYet": "Nessun ordine al momento"
   },
   "robot": {
     "MODE_LOCAL_REMOTE": "AUTOMAZIONE IN MANUALE/AUTOMATICO",
@@ -465,6 +469,19 @@
     },
     "search": {
       "piecePlaceholder": "Cerca pezzo..."
+    },
+    "lastData": {
+      "title": "Dettagli ordine",
+      "setupSection": "Setup",
+      "positioningSection": "POSIZIONAMENTO",
+      "positioningUnit": "(valori in centesimi di mm)",
+      "trayColumn": "Cassetto",
+      "machineColumn": "Macchina",
+      "pickup": "Prelievo",
+      "deposit": "Deposito",
+      "partProgram": "Part Program",
+      "partProgramPlaceholder": "Seleziona programma...",
+      "save": "Salva ordine"
     }
   },
   "changeUser": {

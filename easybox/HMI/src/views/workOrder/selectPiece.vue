@@ -42,13 +42,13 @@
             <CubeIcon3D :w="p.X" :d="p.Y" :h="p.Z" :prisma="p.PRISMA" :bgMode="true" />
             <span class="card-name">{{ p.FAMILY }}</span>
             <div class="card-meta">
-                <span class="card-descr">{{ p.DESCR }}</span>
                 <span v-if="p.PRISMA" class="card-dim">
                     Dim: {{ p.X/1000 }}×{{ p.Y/1000 }} H{{ p.Z/1000 }}
                 </span>
                 <span v-else class="card-dim">
                     Dim: R{{ p.X/1000 }} H{{ p.Z/1000 }}
                 </span>
+                <span class="card-descr">{{ p.DESCR }}</span>
             </div>
         </div>
       </div>

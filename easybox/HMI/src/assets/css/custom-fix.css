@@ -162,14 +162,16 @@ main.content:has(table.pure-table.pure-table-horizontal) table.pure-table.pure-t
   width: 100% !important;
   border-collapse: separate !important;
   border-spacing: 0 var(--space-2) !important;
-  margin-top: var(--space-5) !important;
+  margin-top: 0 !important;
+  border: 0 !important;
 }
 
 main.content:has(table.pure-table.pure-table-horizontal) table.pure-table td {
-  background: var(--bg-surface) !important;
+  background: var(--bg-base) !important;
   border: 0 !important;
   color: var(--text-primary) !important;
   padding: var(--space-3) var(--space-4) !important;
+  vertical-align: middle !important;
 }
 
 main.content:has(table.pure-table.pure-table-horizontal) table.pure-table tr td:first-child {
@@ -181,7 +183,7 @@ main.content:has(table.pure-table.pure-table-horizontal) table.pure-table tr td:
 }
 
 main.content:has(table.pure-table.pure-table-horizontal) .td_odd {
-  background: var(--bg-surface-2) !important;
+  background: var(--bg-input) !important;
 }
 
 main.content:has(table.pure-table.pure-table-horizontal) progress {
@@ -190,11 +192,27 @@ main.content:has(table.pure-table.pure-table-horizontal) progress {
   overflow: hidden !important;
 }
 
+main.content:has(table.pure-table.pure-table-horizontal) table.pure-table thead,
+main.content:has(table.pure-table.pure-table-horizontal) table.pure-table thead tr,
 main.content:has(table.pure-table.pure-table-horizontal) table.pure-table thead th {
   background: var(--bg-surface-2) !important;
+  background-color: var(--bg-surface-2) !important;
+}
+
+main.content:has(table.pure-table.pure-table-horizontal) table.pure-table thead th {
   color: var(--text-primary) !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.08em !important;
+  text-align: left !important;
+  padding: var(--space-2) var(--space-4) !important;
   border: 0 !important;
-  padding: var(--space-3) var(--space-4) !important;
+  border-bottom: 1px solid var(--border-subtle) !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 10 !important;
+  background: var(--bg-surface-2) !important;
 }
 
 main.content:has(table.pure-table.pure-table-horizontal) table.pure-table tbody tr:hover td {

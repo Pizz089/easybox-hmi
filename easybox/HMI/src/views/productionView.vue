@@ -4,7 +4,7 @@ import { dataStored } from '../data';
 </script>
 
 <template>
-    <div class="pure-u-1">
+    <div class="pure-u-1 production-view-root">
         <div class="page-header">
             <h2 class="page-title">{{ $t('production.welcome') }}</h2>
             <button
@@ -47,6 +47,13 @@ export default {
 </script>
 
 <style scoped>
+.production-view-root {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 100px);
+    gap: var(--space-3);
+}
+
 .page-header {
     display: flex;
     align-items: center;

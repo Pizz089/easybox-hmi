@@ -1,112 +1,185 @@
 <script setup>
-    //import { RouterLink, RouterView } from 'vue-router'
     import { dataStored } from '../../data.js'
-    import  workOrderStep  from '../../components/workOrder_step.vue'
+    import { useI18n } from 'vue-i18n'
+    import workOrderStep from '../../components/workOrder_step.vue'
+
+    const { t } = useI18n()
 </script>
 
 <template>
-   <workOrderStep></workOrderStep>
-  <div class="pure-g">
-    <div class="pure-u-1-24">
-          &nbsp;
+  <workOrderStep />
+
+  <div class="last-data-page">
+
+    <!-- ===== SETUP CARD: Quantita' + Part Program ===== -->
+    <section class="setup-card">
+      <h2 class="setup-title">{{ t('wizard.lastData.setupSection') }}</h2>
+
+      <div class="form-row">
+        <label for="ld-quantity" class="form-label">
+          {{ t('quantity') }}<span class="required">*</span>
+        </label>
+        <input
+          id="ld-quantity"
+          type="number"
+          class="form-input form-input--small"
+          v-model="dataStored.createWorkOrder.quantity"
+          min="1"
+        />
       </div>
-    <span class="pure-u-22-24">
-      <h3> 
-          <!--Quanti pezzi? -->
-          &nbsp;
-      </h3> 
-      <div class="pure-u-22-24">
 
-        <div class="pure-form pure-form-aligned" >
-            <!--fieldset-->
-                <div class="pure-control-group">
-                    <label for="aligned-foo">* {{$t('quantity')}}</label>
-                    <input type="number" id="aligned-foo" name="quantity" 
-                           v-model="dataStored.createWorkOrder.quantity" placeholder=""/>
-                </div>
-                
-                <!--h3> 
-                    PartProgram
-                </h3--> 
-                <div class="pure-control-group">
-                    <label for="aligned-foo">* PartProgram</label>
-                    <select class="pure-u-1" id="aligned-foo" name="PPList" 
-                        v-model="PPindex" :readonly="dataStored.userLevel<0" style="max-width: 218px;">
-                        <option value="0"> No selected </option>
-                        <template v-for="(pp,index) in PPList" :key="pp.ID">
-                            <option :value="index+1"> 
-                                {{pp.NAME.trim()}}
-                            </option>
-                        </template>  
-                    </select>
-                </div>
-                <br>
-                <h3>Dati per il posizionameto</h3>
-                
-                <hr>
+      <div class="form-row">
+        <label for="ld-pp" class="form-label">
+          {{ t('wizard.lastData.partProgram') }}<span class="required">*</span>
+        </label>
+        <select
+          id="ld-pp"
+          class="form-select"
+          v-model="PPindex"
+          :readonly="dataStored.userLevel<0"
+        >
+          <option value="0">{{ t('wizard.lastData.partProgramPlaceholder') }}</option>
+          <option v-for="(pp, index) in PPList" :key="pp.ID" :value="index+1">
+            {{ pp.NAME.trim() }}
+          </option>
+        </select>
+      </div>
+    </section>
 
-                <p>{{$t('decentrated_tray.pick')}} {{$t('decentrated_tray.tray')}}</p>
-                <div class="pure-control-group">
-                    <label for="aligned-foo">{{$t('decentrated_tray.x_pick')}}</label>
-                    <input type="number" id="aligned-foo" name="decentrated_tray_x_pick" 
-                           v-model="dataStored.createWorkOrder.decentrated_tray_x_pick" placeholder=""/> <small>0.01 mm</small>
-                </div>
-                <div class="pure-control-group">
-                    <label for="aligned-foo">{{$t('decentrated_tray.y_pick')}}</label>
-                    <input type="number" id="aligned-foo" name="decentrated_tray_y_pick" 
-                           v-model="dataStored.createWorkOrder.decentrated_tray_y_pick" placeholder=""/> <small>0.01 mm</small>
-                </div>
-                
-                <p>{{$t('decentrated_tray.place')}} {{$t('decentrated_tray.macchina')}}</p>
-                <div class="pure-control-group">
-                    <label for="aligned-foo">{{$t('decentrated_tray.x_place')}}</label>
-                    <input type="number" id="aligned-foo" name="decentrated_tray_x_place" 
-                           v-model="dataStored.createWorkOrder.decentrated_tray_x_place" placeholder=""/> <small>0.01 mm</small>
-                </div>
-                <div class="pure-control-group">
-                    <label for="aligned-foo">{{$t('decentrated_tray.y_place')}}</label>
-                    <input type="number" id="aligned-foo" name="decentrated_tray_y_place" 
-                           v-model="dataStored.createWorkOrder.decentrated_tray_y_place" placeholder=""/> <small>0.01 mm</small>
-                </div>
-                <br>
-                <hr>
+    <!-- ===== POSITIONING CARD: 2-col Cassetto vs Macchina ===== -->
+    <section class="positioning-card">
+      <header class="positioning-header">
+        <h2 class="positioning-title">{{ t('wizard.lastData.positioningSection') }}</h2>
+        <span class="positioning-unit">{{ t('wizard.lastData.positioningUnit') }}</span>
+      </header>
 
-                <p>{{$t('decentrated_tray.pick')}} {{$t('decentrated_tray.macchina')}}</p>
-                <div class="pure-control-group">
-                    <label for="aligned-foo">{{$t('decentrated_tray.x_pick')}}</label>
-                    <input type="number" id="aligned-foo" name="decentrated_MC_x_pick" 
-                           v-model="dataStored.createWorkOrder.decentrated_MC_x_pick" placeholder=""/> <small>0.01 mm</small>
-                </div>
-                <div class="pure-control-group">
-                    <label for="aligned-foo">{{$t('decentrated_tray.y_pick')}}</label>
-                    <input type="number" id="aligned-foo" name="decentrated_MC_y_pick" 
-                           v-model="dataStored.createWorkOrder.decentrated_MC_y_pick" placeholder=""/> <small>0.01 mm</small>
-                </div>
-                <p>{{$t('decentrated_tray.place')}} {{$t('decentrated_tray.tray')}}</p>
-                <div class="pure-control-group">
-                    <label for="aligned-foo">{{$t('decentrated_tray.x_place')}}</label>
-                    <input type="number" id="aligned-foo" name="decentrated_MC_x_place" 
-                           v-model="dataStored.createWorkOrder.decentrated_MC_x_place" placeholder=""/> <small>0.01 mm</small>
-                </div>
-                <div class="pure-control-group">
-                    <label for="aligned-foo">{{$t('decentrated_tray.y_place')}}</label>
-                    <input type="number" id="aligned-foo" name="decentrated_MC_y_place" 
-                           v-model="dataStored.createWorkOrder.decentrated_MC_y_place" placeholder=""/> <small>0.01 mm</small>
-                </div>
+      <div class="positioning-cols">
 
-                <div class="pure-controls">
-                    <button type="submit" 
-                        class="pure-button pure-button-primary" 
-                        @click="saveData()" 
-                        :disabled="PPindex<=0||dataStored.createWorkOrder.quantity<=0"> <!--:disabled="dataStored.userLevel==0"-->
-                        Save
-                    </button>
+        <!-- LEFT: CASSETTO -->
+        <div class="positioning-col">
+          <h3 class="col-title">{{ t('wizard.lastData.trayColumn') }}</h3>
 
-                </div>
-            <!--/fieldset-->
+          <div class="sub-section">
+            <h4 class="sub-title">
+              <svg class="sub-icon" width="16" height="16" viewBox="0 0 24 24"
+                   fill="none" stroke="currentColor" stroke-width="2"
+                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 19V5M5 12l7-7 7 7"/>
+              </svg>
+              {{ t('wizard.lastData.pickup') }}
+            </h4>
+            <div class="xy-row">
+              <div class="xy-pair">
+                <label class="xy-label">X</label>
+                <input type="number" class="form-input form-input--xs"
+                       v-model="dataStored.createWorkOrder.decentrated_tray_x_pick" />
+                <span class="input-unit">0.01 mm</span>
+              </div>
+              <div class="xy-pair">
+                <label class="xy-label">Y</label>
+                <input type="number" class="form-input form-input--xs"
+                       v-model="dataStored.createWorkOrder.decentrated_tray_y_pick" />
+                <span class="input-unit">0.01 mm</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="sub-section">
+            <h4 class="sub-title">
+              <svg class="sub-icon" width="16" height="16" viewBox="0 0 24 24"
+                   fill="none" stroke="currentColor" stroke-width="2"
+                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 5v14M19 12l-7 7-7-7"/>
+              </svg>
+              {{ t('wizard.lastData.deposit') }}
+            </h4>
+            <div class="xy-row">
+              <div class="xy-pair">
+                <label class="xy-label">X</label>
+                <input type="number" class="form-input form-input--xs"
+                       v-model="dataStored.createWorkOrder.decentrated_MC_x_place" />
+                <span class="input-unit">0.01 mm</span>
+              </div>
+              <div class="xy-pair">
+                <label class="xy-label">Y</label>
+                <input type="number" class="form-input form-input--xs"
+                       v-model="dataStored.createWorkOrder.decentrated_MC_y_place" />
+                <span class="input-unit">0.01 mm</span>
+              </div>
+            </div>
+          </div>
         </div>
+
+        <!-- RIGHT: MACCHINA -->
+        <div class="positioning-col">
+          <h3 class="col-title">{{ t('wizard.lastData.machineColumn') }}</h3>
+
+          <div class="sub-section">
+            <h4 class="sub-title">
+              <svg class="sub-icon" width="16" height="16" viewBox="0 0 24 24"
+                   fill="none" stroke="currentColor" stroke-width="2"
+                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 19V5M5 12l7-7 7 7"/>
+              </svg>
+              {{ t('wizard.lastData.pickup') }}
+            </h4>
+            <div class="xy-row">
+              <div class="xy-pair">
+                <label class="xy-label">X</label>
+                <input type="number" class="form-input form-input--xs"
+                       v-model="dataStored.createWorkOrder.decentrated_MC_x_pick" />
+                <span class="input-unit">0.01 mm</span>
+              </div>
+              <div class="xy-pair">
+                <label class="xy-label">Y</label>
+                <input type="number" class="form-input form-input--xs"
+                       v-model="dataStored.createWorkOrder.decentrated_MC_y_pick" />
+                <span class="input-unit">0.01 mm</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="sub-section">
+            <h4 class="sub-title">
+              <svg class="sub-icon" width="16" height="16" viewBox="0 0 24 24"
+                   fill="none" stroke="currentColor" stroke-width="2"
+                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 5v14M19 12l-7 7-7-7"/>
+              </svg>
+              {{ t('wizard.lastData.deposit') }}
+            </h4>
+            <div class="xy-row">
+              <div class="xy-pair">
+                <label class="xy-label">X</label>
+                <input type="number" class="form-input form-input--xs"
+                       v-model="dataStored.createWorkOrder.decentrated_tray_x_place" />
+                <span class="input-unit">0.01 mm</span>
+              </div>
+              <div class="xy-pair">
+                <label class="xy-label">Y</label>
+                <input type="number" class="form-input form-input--xs"
+                       v-model="dataStored.createWorkOrder.decentrated_tray_y_place" />
+                <span class="input-unit">0.01 mm</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
-    </span>
+    </section>
+
+    <!-- ===== SAVE ===== -->
+    <div class="save-row">
+      <button
+        type="button"
+        class="btn-save"
+        @click="saveData"
+        :disabled="PPindex<=0 || dataStored.createWorkOrder.quantity<=0"
+      >
+        {{ t('wizard.lastData.save') }}
+      </button>
+    </div>
+
   </div>
 </template>
 
@@ -120,8 +193,6 @@ export default {
         }
     },
     methods: {
-        nextStep(ID){
-        },
         getPPList(){
             fetch( dataStored.server+'api/pp/show/all',{ method: 'GET'})
                 .then(response => {
@@ -149,7 +220,7 @@ export default {
             dataStored.createWorkOrder.decentrated_MC_x_place   *= 100;
             dataStored.createWorkOrder.decentrated_MC_y_place   *= 100;
             dataStored.createWorkOrder.PP                        = this.PPindex;
-            
+
             if (!this.createNew){
                 //eseguo aggiornamento -> update DB
                 cmd = dataStored.server+'api/order/updateOrder?' + new URLSearchParams( dataStored.createWorkOrder ).toString();
@@ -176,3 +247,231 @@ export default {
       }
     }
   </script>
+
+<style scoped>
+.last-data-page {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 0 var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+/* ============ Setup card ============ */
+.setup-card {
+  background: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.setup-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+}
+
+.form-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.form-label {
+  flex: 0 0 200px;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.required {
+  color: var(--color-danger);
+  margin-left: 2px;
+}
+
+.form-input,
+.form-select {
+  background: var(--bg-base);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 10px 16px;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-family: inherit;
+  transition: border-color var(--transition-fast);
+}
+
+.form-input--small { width: 120px; }
+.form-input--xs    { width: 80px; text-align: center; }
+
+.form-select {
+  width: 300px;
+  max-width: 100%;
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 36px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23A4B0C2' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  cursor: pointer;
+}
+
+.form-input:focus,
+.form-input:focus-visible,
+.form-select:focus,
+.form-select:focus-visible {
+  outline: none;
+  border-color: var(--text-primary);
+}
+
+/* Hide native number spinners (HMI touch, no +/- arrows) */
+.form-input[type="number"]::-webkit-outer-spin-button,
+.form-input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.form-input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* ============ Positioning card ============ */
+.positioning-card {
+  background: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+}
+
+.positioning-header {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.positioning-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-primary);
+}
+
+.positioning-unit {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.positioning-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-5);
+}
+
+.positioning-col {
+  background: var(--bg-base);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.col-title {
+  margin: 0 0 var(--space-3);
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-primary);
+}
+
+.sub-section {
+  background: var(--bg-surface);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.sub-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+}
+
+.sub-icon {
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.xy-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+}
+
+.xy-pair {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.xy-label {
+  color: var(--text-primary);
+  font-weight: 700;
+  font-size: 14px;
+  width: 16px;
+}
+
+.input-unit {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-left: 2px;
+  white-space: nowrap;
+}
+
+/* ============ Save button ============ */
+.save-row {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-3) 0 var(--space-5);
+}
+
+.btn-save {
+  background: var(--text-primary);
+  color: var(--bg-base);
+  border: 0;
+  border-radius: var(--radius-md);
+  padding: 14px 48px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter var(--transition-fast), opacity var(--transition-fast);
+}
+
+.btn-save:hover:not(:disabled),
+.btn-save:focus-visible:not(:disabled) {
+  filter: brightness(0.92);
+  outline: none;
+}
+
+.btn-save:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+</style>
