@@ -9,7 +9,7 @@
     </div>
     <div class="pure-u-10-24">
       <h1>{{$t('Stato')}} EasyBox </h1>
-      <div class="area pure-u-1" :style="getColorFromStatus()">
+      <div class="status-card pure-u-1" :class="getColorFromStatus()">
           <h5>
             {{ getDescriptionFromStatus(status) }}
             <span v-if="error>0 && error<999">
@@ -31,9 +31,9 @@
         </h5>
       </div-->
 
-      <div class="area pure-u-1">
+      <div class="status-card pure-u-1">
         <h5>
-          {{getTrayExtract()>0? $t("tray.extract")+getTrayExtract(): $t("tray.no_extract")}} 
+          {{getTrayExtract()>0? $t("tray.extract")+getTrayExtract(): $t("tray.no_extract")}}
         </h5>
       </div>
     </div>
@@ -147,16 +147,18 @@ export default {
         },
         getColorFromStatus() {
           if (this.status == dataStored.status_manual)
-            return 'background-color:yellow'
+            return 'manual'
           if (this.status == dataStored.status_alarm)
-            return 'background-color:red'
-          if (this.status == dataStored.status_auto || this.status == dataStored.status_local)
-            return 'background-color:green'
-          if (this.status == dataStored.status_remote)
-            return 'background-color:lime'
-          if (this.status == dataStored.status_working || this.status == dataStored.status_hold)
-            return 'background-color: #54a4F5;'
-          return 'background-color:lightgray'
+            return 'alarm'
+          if (this.status == dataStored.status_auto ||
+              this.status == dataStored.status_local ||
+              this.status == dataStored.status_remote)
+            return 'auto'
+          if (this.status == dataStored.status_hold)
+            return 'hold'
+          if (this.status == dataStored.status_working)
+            return 'working'
+          return 'normal'
         },
         getTrayExtract(){
           for (let i=0; i<this.data.length; i++){
@@ -192,37 +194,3 @@ export default {
     }
   }
 </script>
-
-<style scoped>
-@media (min-width: 1024px) {
-  .about {
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-  }
-}
-.pure-button-micromission{
-  background-color: rgb(33, 33, 211);
-  color: whitesmoke;
-}
-.pure-button-mission{
-  background-color: orange;
-}
-.area {
-  color: black;
-  background-color: lightgray;
-  padding: 5px;
-  margin-top: 10px;
-  text-align: center;
-}
-button {
-  margin-top: 10px;
-  padding: 10px;
-}
-.specialCMD {
-  border-radius: 20px;
-  background-color: coral;
-}
-
-</style>
-
