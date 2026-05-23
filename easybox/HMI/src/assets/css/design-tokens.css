@@ -20,6 +20,13 @@
   --border-default: #6B7B95;
   --border-strong:  #8B9AAE;
 
+  /* Card outlined pattern (UI-7.6 Cobra Panel): overlay sottile rgba bianco
+     sopra --bg-base scuro per outlined card con leggero lightening senza
+     hardcoding HEX. Valori di partenza conservativi — affinare
+     post-verifica visuale se necessario. */
+  --border-card: 1px solid rgba(255, 255, 255, 0.22);
+  --bg-card:     rgba(255, 255, 255, 0.08);
+
   --accent:         #4A9EFF;
   --accent-hover:   #6BAFFF;
   --accent-active:  #2E7FE0;
@@ -32,6 +39,14 @@
   --color-warning-bg: #3A2F1A;
   --color-danger-bg:  #3A1F1F;
   --color-info-bg:    #1A3D5C;
+
+  /* Warning button-specific (UI-7.6): amber desaturato per CTA mission
+     (.pure-button-mission). Distinto da --color-warning (#FBBF24 saturato)
+     che resta in uso per status/badge (es. units.vue .img-wrapper.manual
+     dashboard manual mode). Pattern asimmetrico vs success/danger/info
+     giustificato dall'uso ambivalente di warning (status + action). */
+  --color-warning-button: #D4A017;
+  --color-warning-text:   var(--text-primary);
 
   /* Critical: per CTA macro action (RESET/HOLD/START/RESTART, delete confirms).
      Distinto da --color-danger (status alarm "errore corrente") - questo e'

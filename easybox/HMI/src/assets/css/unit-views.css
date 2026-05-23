@@ -58,29 +58,30 @@
     color: var(--text-primary);
     border: 0;
     border-radius: var(--radius-md);
-    padding: var(--space-3);
-    margin-top: var(--space-3);
+    padding: 14px 24px;
+    min-height: 52px;
+    font-weight: var(--font-weight-medium);
+    letter-spacing: 0.025em;
     cursor: pointer;
     transition: filter var(--transition-fast);
-}
-
-.pure-button-micromission:hover:not(:disabled) {
-    filter: brightness(1.08);
 }
 
 .pure-button-mission {
-    background: var(--color-warning);
-    color: var(--bg-base);
+    background: var(--color-warning-button);
+    color: var(--color-warning-text);
     border: 0;
     border-radius: var(--radius-md);
-    padding: var(--space-3);
-    margin-top: var(--space-3);
+    padding: 14px 24px;
+    min-height: 52px;
+    font-weight: var(--font-weight-medium);
+    letter-spacing: 0.025em;
     cursor: pointer;
     transition: filter var(--transition-fast);
 }
 
+.pure-button-micromission:hover:not(:disabled),
 .pure-button-mission:hover:not(:disabled) {
-    filter: brightness(1.08);
+    filter: brightness(1.12);
 }
 
 /* Disabled: UI-7.5 fix leggibilita' HMI - opacity 0.7 (vs 0.5) + text-secondary
@@ -123,11 +124,19 @@
 /* ============ COMMAND SECTION ============ */
 /* Card wrapper per raggruppare set di comandi correlati nella colonna
    Comandi delle view stato unita'. Pattern allineato a lastData.vue
-   UI-5.5c (.setup-card / .positioning-card). Introdotto UI-7 su robotView. */
+   UI-5.5c (.setup-card / .positioning-card). Introdotto UI-7 su robotView.
+   UI-7.6: migrato a outlined card pattern (Cobra Panel I.Dea Pack):
+   bg-card overlay + border-card + radius-md (era bg-surface elevation lg). */
 .command-section {
-    background: var(--bg-surface);
-    border-radius: var(--radius-lg);
-    padding: var(--space-4) var(--space-5) var(--space-5);
+    background: var(--bg-card);
+    border: var(--border-card);
+    border-radius: var(--radius-md);
+    padding: var(--space-4);
+    /* Spacing tra card gestito via margin-top child invece di gap parent
+       perché parent <div class="pure-u-10-24"> è PureCSS grid col, modificarlo
+       richiederebbe tocco template .vue (fuori scope UI-7.6 CSS-only).
+       Se in futuro il parent viene refactorato a flex column con gap, sposta
+       spacing al container e rimuovi questo margin. */
     margin-top: var(--space-4);
     display: flex;
     flex-direction: column;
@@ -137,9 +146,9 @@
 .command-section-title {
     margin: 0;
     font-size: var(--font-size-sm);
-    font-weight: var(--font-weight-bold);
+    font-weight: var(--font-weight-semibold);
     text-transform: uppercase;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.05em;
     color: var(--text-secondary);
 }
 
@@ -147,8 +156,8 @@
    sotto "Movimenti"). Tipografia leggermente piu' light vs section-title. */
 .command-subsection-title {
     margin: var(--space-3) 0 0;
-    font-size: var(--font-size-sm);
-    font-weight: var(--font-weight-semibold);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
     text-transform: uppercase;
     letter-spacing: 0.05em;
     color: var(--text-muted);
