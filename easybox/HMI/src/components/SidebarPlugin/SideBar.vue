@@ -29,6 +29,7 @@ const unitItems = [
   { key: "menu.robot", fallback: "Robot", path: "/unit/robot" },
   { key: "menu.cnc1", fallback: "CNC 1", path: "/unit/CNC1" },
   { key: "menu.cnc2", fallback: "CNC 2", path: "/unit/CNC2" },
+  { key: "menu.smallbox", fallback: "EasyBox", path: "/unit/smallbox" },
 ];
 
 const confItems = [

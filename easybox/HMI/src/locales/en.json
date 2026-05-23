@@ -161,7 +161,7 @@
   "menu": {
     "production": "Production",
     "robot": "Robot",
-    "smallbox": "Easybox",
+    "smallbox": "EasyBox",
     "cnc1": "CNC 1",
     "cnc2": "CNC 2",
     "grippers": "Grippers",
