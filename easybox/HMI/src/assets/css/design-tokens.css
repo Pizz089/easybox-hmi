@@ -33,6 +33,12 @@
   --color-danger-bg:  #3A1F1F;
   --color-info-bg:    #1A3D5C;
 
+  /* Critical: per CTA macro action (RESET/HOLD/START/RESTART, delete confirms).
+     Distinto da --color-danger (status alarm "errore corrente") - questo e'
+     azione operatore "presta attenzione". Rosso urgente classico (semaforo). */
+  --color-critical:       #E63946;
+  --color-critical-hover: #C92434;
+
   /* ---------- Spacing tokens (multipli di 4) ---------- */
   --space-1: 4px;
   --space-2: 8px;
