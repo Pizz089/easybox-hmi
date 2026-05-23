@@ -261,7 +261,13 @@
     "alarm_900001": "EMERGENZA PREMUTA SU MC1",
     "alarm_900002": "EMERGENZA PREMUTA SU MC2",
     "alarm_900010": "EMERGENZA PREMUTA SU ROBOT",
-    "alarm_900011": "EMERGENZA PREMUTA SU PULPITO"
+    "alarm_900011": "EMERGENZA PREMUTA SU PULPITO",
+    "section": {
+      "critical": "Comandi critici",
+      "movement": "Movimenti",
+      "destination": "Punti di destinazione",
+      "mission": "Missioni"
+    }
   },
   "unit": {
     "ready": "Disponibile",

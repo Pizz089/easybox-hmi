@@ -1,20 +1,14 @@
 <script setup>
   import { dataStored } from '../../data.js'
-  import numericField from '../../components/numericField.vue';
-  import { computed } from 'vue';
 </script>
 
 <template>
-  <!--div class="about">
-    <h1>robot page</h1>
-
-  </div-->
   <div class="pure-u-1">
     <div class="pure-u-1-24">
     </div>
     <div class="pure-u-10-24">
       <h1>{{ $t('Stato') }} Robot </h1>
-      <div class="area pure-u-1" :style="getColorFromStatus()">
+      <div class="status-card pure-u-1" :class="getColorFromStatus()">
         <h5>
           <span v-if="dataRobot.DESCR>0">
             {{dataRobot.DESCR}}: 
@@ -23,7 +17,7 @@
         </h5>
       </div>
 
-      <div class="area pure-u-1 link" @click="$router.push('../../conf/grippers')">
+      <div class="status-card pure-u-1 link" @click="$router.push('../../conf/grippers')">
 
         <span v-if="dataGripper.length>0">
           <h5 v-if="dataGripper[0].ID > 0">{{ dataGripper[0].FAMILY }} - {{ dataGripper[0].DESCR }}</h5>
@@ -64,11 +58,11 @@
             @update="newVal => updateSpeed(newVal)">
         </numericField-->
         <span class="pure-u-1">
-          <button class="pure-u-1-5 speedButton button_pressed" @click="updateSpeed(1)"   :style="[dataStored.robotSpeed<=1  ? 'background-color:lime':'']">  1% </button>
-          <button class="pure-u-1-5 speedButton button_pressed" @click="updateSpeed(10)"  :style="[dataStored.robotSpeed==10 ? 'background-color:lime':'']"> 10% </button>
-          <button class="pure-u-1-5 speedButton button_pressed" @click="updateSpeed(20)"  :style="[dataStored.robotSpeed==20 ? 'background-color:lime':'']"> 20% </button>
-          <button class="pure-u-1-5 speedButton button_pressed" @click="updateSpeed(50)"  :style="[dataStored.robotSpeed==50 ? 'background-color:lime':'']"> 50% </button>
-          <button class="pure-u-1-5 speedButton button_pressed" @click="updateSpeed(100)" :style="[dataStored.robotSpeed==100? 'background-color:lime':'']">100% </button>
+          <button class="pure-u-1-5 speed-button button_pressed" @click="updateSpeed(1)"   :class="{ active: dataStored.robotSpeed <= 1 }"> 1% </button>
+          <button class="pure-u-1-5 speed-button button_pressed" @click="updateSpeed(10)"  :class="{ active: dataStored.robotSpeed == 10 }"> 10% </button>
+          <button class="pure-u-1-5 speed-button button_pressed" @click="updateSpeed(20)"  :class="{ active: dataStored.robotSpeed == 20 }"> 20% </button>
+          <button class="pure-u-1-5 speed-button button_pressed" @click="updateSpeed(50)"  :class="{ active: dataStored.robotSpeed == 50 }"> 50% </button>
+          <button class="pure-u-1-5 speed-button button_pressed" @click="updateSpeed(100)" :class="{ active: dataStored.robotSpeed == 100 }"> 100% </button>
         </span>
       </div>
 
@@ -76,136 +70,98 @@
     <div class="pure-u-1-24">
     </div>
     <div class="pure-u-10-24">
-      <h1> {{ $t('Comandi') }}</h1>  
-      <!--button class="pure-button-micromission pure-u-1 specialCMD"
-        @click="sendToRobot(dataStored.RobotInLocalMode ? 81 : 82)">
-        {{ $t('robot.MODE_LOCAL_REMOTE') }}
-      </button-->
-      <button class="pure-button-micromission pure-u-1 specialCMD button_pressed" 
-        @click="sendToRobot(99)">
-        RESET
-      </button>
-      <button class="pure-button-micromission pure-u-1 specialCMD button_pressed" :class="{'hold':dataRobot.STATUS==dataStored.status_hold}"
-        v-if="dataRobot.STATUS!=dataStored.status_off"
-        @click="sendToRobot(17)">
-        <span v-if="dataRobot.STATUS!=dataStored.status_hold && dataRobot.STATUS!=dataStored.status_off">
-          <span style="font-size: 16px;">HOLD</span>
-        </span>
-        <!--span v-if="dataRobot.STATUS==dataStored.status_off">
-          <span style="font-size: 16px;animation: blinker 1s linear infinite;border:3px dashed white;padding:5px" >START</span>
-        </span-->
-        <span v-if="dataRobot.STATUS==dataStored.status_hold">
-        <small>HOLD</small> => <span style="font-size: 16px;">{{$t("CONTINUE")}}</span>
-        </span>
-      </button>
-      <button class="pure-button-micromission pure-u-1 specialCMD button_pressed" :class="{'hold':dataRobot.STATUS==dataStored.status_hold}"
-        style="animation: blinker 1s linear infinite;border:3px solid black;"
-        @click="sendToRobot(17)"
-        v-if="dataRobot.STATUS==dataStored.status_off">
-        <span>
-          <span style="font-size: 16px;" >START</span>
-        </span>
-      </button>
-      
-      <button class="pure-button-micromission pure-u-1 specialCMD button_pressed" :disabled="dataRobot.STATUS!=dataStored.status_hold"
-        :class="[dataRobot.STATUS!=dataStored.status_hold ? 'pure-button-disable' : 'pure-button-micromission']"
-        :style="[dataRobot.STATUS!=dataStored.status_hold ? 'background-color:lightgray;color:gray': '']"
-        @click="sendToRobot(18)">
-        RESTART MAIN PROGRAM
-      </button> 
+      <h1>{{ $t('Comandi') }}</h1>
 
-      <h6>{{ $t("unit.simpleCommand") }}</h6>
-      <button class="pure-u-1 button_pressed"
-        :class="[dataStored.cmdActive==0? 'pure-button-disable' : 'pure-button-micromission']"
-        @click="dataStored.cmdActive==1?sendToRobot(20):''">
-        {{ $t('HOME') }} </button>
+      <!-- ===== CARD 1: Comandi critici (RESET / HOLD-START / RESTART) ===== -->
+      <section class="command-section">
+        <h3 class="command-section-title">{{ $t('robot.section.critical') }}</h3>
 
-      <button class="pure-u-1 button_pressed"
-        :class="[dataStored.cmdActive==0? 'pure-button-disable' : 'pure-button-micromission']"
-        @click="dataStored.cmdActive==1?sendToRobot(21):''">
-        {{ $t('MAINTENANCE') }}
-      </button>
-      
-      <div class="pure-g">
-        <div class="pure-u-1-3" >
-          <button style="width:100%" class="button_pressed"
-            :class="[dataStored.cmdActive==0? 'pure-button-disable' : 'pure-button-micromission']"
-            @click="dataStored.cmdActive==1?sendToRobot('15;1'):''">
-            {{ $t('Easybox') }}
-          </button> 
+        <button class="pure-button-micromission pure-u-1 specialCMD button_pressed"
+          @click="sendToRobot(99)">
+          RESET
+        </button>
+
+        <button class="pure-button-micromission pure-u-1 specialCMD button_pressed" :class="{'button-hold':dataRobot.STATUS==dataStored.status_hold}"
+          v-if="dataRobot.STATUS!=dataStored.status_off"
+          @click="sendToRobot(17)">
+          <span v-if="dataRobot.STATUS!=dataStored.status_hold && dataRobot.STATUS!=dataStored.status_off">
+            <span style="font-size: 16px;">HOLD</span>
+          </span>
+          <span v-if="dataRobot.STATUS==dataStored.status_hold">
+            <small>HOLD</small> => <span style="font-size: 16px;">{{$t("CONTINUE")}}</span>
+          </span>
+        </button>
+
+        <button class="pure-button-micromission pure-u-1 specialCMD button_pressed" :class="{'button-hold':dataRobot.STATUS==dataStored.status_hold}"
+          style="animation: blinker 1s linear infinite;border:3px solid black;"
+          @click="sendToRobot(17)"
+          v-if="dataRobot.STATUS==dataStored.status_off">
+          <span>
+            <span style="font-size: 16px;">START</span>
+          </span>
+        </button>
+
+        <button class="pure-button-micromission pure-u-1 specialCMD button_pressed" :disabled="dataRobot.STATUS!=dataStored.status_hold"
+          :class="[dataRobot.STATUS!=dataStored.status_hold ? 'pure-button-disable' : 'pure-button-micromission']"
+          :style="[dataRobot.STATUS!=dataStored.status_hold ? 'background-color:lightgray;color:gray': '']"
+          @click="sendToRobot(18)">
+          RESTART MAIN PROGRAM
+        </button>
+      </section>
+
+      <!-- ===== CARD 2: Movimenti (HOME/MAINT + Punti destinazione) ===== -->
+      <section class="command-section">
+        <h3 class="command-section-title">{{ $t('robot.section.movement') }}</h3>
+
+        <button class="pure-u-1 button_pressed"
+          :class="[dataStored.cmdActive==0? 'pure-button-disable' : 'pure-button-micromission']"
+          @click="dataStored.cmdActive==1?sendToRobot(20):''">
+          {{ $t('HOME') }}
+        </button>
+
+        <button class="pure-u-1 button_pressed"
+          :class="[dataStored.cmdActive==0? 'pure-button-disable' : 'pure-button-micromission']"
+          @click="dataStored.cmdActive==1?sendToRobot(21):''">
+          {{ $t('MAINTENANCE') }}
+        </button>
+
+        <h4 class="command-subsection-title">{{ $t('robot.section.destination') }}</h4>
+        <div class="pure-g">
+          <div class="pure-u-1-3">
+            <button style="width:100%" class="button_pressed"
+              :class="[dataStored.cmdActive==0? 'pure-button-disable' : 'pure-button-micromission']"
+              @click="dataStored.cmdActive==1?sendToRobot('15;1'):''">
+              {{ $t('Easybox') }}
+            </button>
+          </div>
+          <div class="pure-u-1-3">
+            <button style="width:100%" class="button_pressed"
+              :class="[dataStored.cmdActive==0? 'pure-button-disable' : 'pure-button-micromission']"
+              @click="dataStored.cmdActive==1?sendToRobot('15;11'):''">
+              {{ $t('MC1') }}
+            </button>
+          </div>
+          <div class="pure-u-1-3">
+            <button style="width:100%" class="button_pressed"
+              :class="[dataStored.cmdActive==0? 'pure-button-disable' : 'pure-button-micromission']"
+              @click="dataStored.cmdActive==1?sendToRobot('15;12'):''">
+              {{ $t('MC2') }}
+            </button>
+          </div>
         </div>
-        <div class="pure-u-1-3" >
-          <button style="width:100%" class="button_pressed"
-            :class="[dataStored.cmdActive==0? 'pure-button-disable' : 'pure-button-micromission']"
-            @click="dataStored.cmdActive==1?sendToRobot('15;11'):''">
-            {{ $t('MC1') }}
-          </button>
-        </div>
-        <div class="pure-u-1-3">
-          <button style="width:100%" class="button_pressed"
-            :class="[dataStored.cmdActive==0? 'pure-button-disable' : 'pure-button-micromission']"
-            @click="dataStored.cmdActive==1?sendToRobot('15;12'):''">
-            {{ $t('MC2') }}
-          </button>
-        </div>
-      </div>
+      </section>
 
-      <!--div class="pure-u-1-2">
-        <button class="pure-u-1"
-          :class="dataStored.cmdActive">
-          {{ $t('APRI PINZA') }} 1
-        </button>
-      </div>
-      <div class="pure-u-1-2">
-        <button class="pure-u-1"
-          :class="dataStored.cmdActive">
-          {{ $t('CHIUDI PINZA') }} 1
-        </button>
-      </div>
+      <!-- ===== CARD 3: Missioni (SCARICA PINZA) ===== -->
+      <section class="command-section">
+        <h3 class="command-section-title">{{ $t('robot.section.mission') }}</h3>
 
-      <div v-if="dataGripper[0].SUB_POS != 0" class="pure-u-1-2">
-        <button class="pure-u-1"
-          :class="dataStored.cmdActive">
-          {{ $t('APRI PINZA') }} 2
-        </button>
-      </div>
-      <div v-if="dataGripper[0].SUB_POS != 0" class="pure-u-1-2">
-        <button class="pure-u-1"
-          :class="dataStored.cmdActive">
-          {{ $t('CHIUDI PINZA') }} 2
-        </button>
-      </div-->
-
-      <h6> {{ $t("unit.MacroMission") }}
-      </h6>
-       <!--div class="pure-u-1-2">
-        <button class="pure-button-mission pure-u-1"  > {{ $t('CARICA PINZA')}} </button>
-      </div-->
-      <div class="pure-u-1 button_pressed">
-        <button class="pure-u-1"
+        <button class="pure-u-1 button_pressed"
           :class="[dataStored.cmdActiveMission==0? 'pure-button-disable' : 'pure-button-mission']"
           @click="dataStored.cmdActiveMission==1?sendToRobot(12):''">
-          {{ $t('SCARICA PINZA') }} 
+          {{ $t('SCARICA PINZA') }}
         </button>
-      </div>
-      <!--button class="pure-button-mission pure-u-1"  > {{ $t('INSERISCI CASSETTO')}} </button-->
+      </section>
     </div>
-    <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
 
   </div>
 </template>
@@ -325,16 +281,19 @@ export default {
     },
     getColorFromStatus() {
       if (this.dataRobot.STATUS == dataStored.status_manual)
-        return 'background-color:yellow'
-      if (this.dataRobot.STATUS == dataStored.status_alarm || this.dataRobot.STATUS == dataStored.status_notDef )
-        return 'background-color:red'
-      if (this.dataRobot.STATUS  == dataStored.status_auto || this.dataRobot.STATUS  == dataStored.status_local)
-            return 'background-color:#00fd0033'; //#00c900'
-      if (this.dataRobot.STATUS  == dataStored.status_remote)
-            return 'background-color:lime'
-      if (this.dataRobot.STATUS == dataStored.status_working || this.dataRobot.STATUS == dataStored.status_hold)
-        return 'background-color: #54a4F5;'
-      return 'background-color:lightgray'
+        return 'manual'
+      if (this.dataRobot.STATUS == dataStored.status_alarm ||
+          this.dataRobot.STATUS == dataStored.status_notDef)
+        return 'alarm'
+      if (this.dataRobot.STATUS == dataStored.status_auto ||
+          this.dataRobot.STATUS == dataStored.status_local ||
+          this.dataRobot.STATUS == dataStored.status_remote)
+        return 'auto'
+      if (this.dataRobot.STATUS == dataStored.status_hold)
+        return 'hold'
+      if (this.dataRobot.STATUS == dataStored.status_working)
+        return 'working'
+      return 'normal'
     },
     sendToRobot(val) {
       dataStored.WS.socket.emit("TO_PLANT/CMD/ROBOT", val);
@@ -398,63 +357,45 @@ export default {
 }
 </script>
 
-<style>
+<style scoped>
 small {
   font-size: 0.8em;
 }
 
-button {
-  margin-top: 10px;
-  padding: 10px;
-}
-
-.pure-button-micromission {
-  background-color: rgb(33, 33, 211);
-  color: whitesmoke;
-}
-
-.pure-button-mission {
-  background-color: orange;
-}
-
-.pure-button-disable {
-  color: lightgray
-}
-
-.area {
-  color: black;
-  background-color: lightgray;
-  padding: 5px;
-  margin-top: 10px;
-  text-align: center;
-}
-
-.specialCMD {
-  border-radius: 20px;
-  background-color: coral;
-}
-
-/*
-.specialCMD:active {
-    transform: scale(0.9);
-    background-color: lightblue;
-}
-*/
-
-h6{
+h6 {
   margin-bottom: 3px;
 }
 
-.hold{
-    background-color: #54a4F5;
-    border : 4px solid blue;
-    animation: blinker 1s linear infinite;
-}
-@keyframes blinker { 60% { border-color:#54a4F5 ; background-color: #54a4F5;}  }
-
-.speedButton{
-  background-color: lightsteelblue;
-  max-width:62px;
+/* Override .specialCMD (rosso) quando robot e' in stato HOLD: bg blu vivido
+   + border accent + animazione blinker (definita in unit-views.css) per
+   richiamare attenzione sul bottone CONTINUE. */
+.button-hold {
+  background: var(--color-info);
+  border: 4px solid var(--accent);
+  animation: blinker 1s linear infinite;
 }
 
+/* Speed selector: 5 bottoni preset 1/10/20/50/100%. Base scura distinguibile
+   da action buttons; selezionato evidenziato via .active (accent solido). */
+.speed-button {
+  background: var(--bg-input);
+  color: var(--text-primary);
+  border: 2px solid transparent;
+  border-radius: var(--radius-md);
+  padding: var(--space-2);
+  margin-top: var(--space-3);
+  max-width: 62px;
+  cursor: pointer;
+  transition: filter var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.speed-button:hover:not(.active) {
+  filter: brightness(1.15);
+}
+
+.speed-button.active {
+  background: var(--accent);
+  border-color: var(--accent-hover);
+  font-weight: var(--font-weight-semibold);
+}
 </style>

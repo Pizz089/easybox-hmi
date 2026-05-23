@@ -260,7 +260,13 @@
     "alarm_900001": "EMERGENCY BUTTON PRESSED ON MC1",
     "alarm_900002": "EMERGENCY BUTTON PRESSED ON MC2",
     "alarm_900010": "EMERGENCY BUTTON PRESSED ON ROBOT",
-    "alarm_900011": "EMERGENCY BUTTON PRESSED ON HMI"
+    "alarm_900011": "EMERGENCY BUTTON PRESSED ON HMI",
+    "section": {
+      "critical": "Critical commands",
+      "movement": "Movements",
+      "destination": "Destinations",
+      "mission": "Missions"
+    }
   },
   "unit": {
     "ready": "Ready",
