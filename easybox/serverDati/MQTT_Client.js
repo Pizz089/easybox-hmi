@@ -8,7 +8,8 @@ var HAAS			= require('./CN/HAAS');
 const diag			= require('./MQTTDiag');
 
 //const client = mqtt.connect("mqtt://172.20.70.111");
-const client = mqtt.connect("mqtt://HMI:HMI@127.0.0.1:9001",
+// URL broker configurabile via .env (MQTT_BROKER_URL). Fallback al valore storico.
+const client = mqtt.connect(process.env.MQTT_BROKER_URL || "mqtt://HMI:HMI@127.0.0.1:9001",
 							{clientId:'API_' + Math.random().toString(16).substr(2, 8),qos:2});
 
 client.on('error', function (err){
@@ -688,7 +689,7 @@ function handleHaasCmd(mcNum, message, packet) {
 			}
 			promise = inst.setMacroVar(varNum, value).then((res) => ({
 				status: 'ok', cmd, reqId, ts: Date.now(),
-				var: res.varNum, value: res.value
+				var: varNum, value: value
 			}));
 			break;
 		}
@@ -704,7 +705,7 @@ function handleHaasCmd(mcNum, message, packet) {
 			}
 			promise = inst.requestProgram(num).then((res) => ({
 				status: 'ok', cmd, reqId, ts: Date.now(),
-				num, value: res.value
+				num, value: num
 			}));
 			break;
 		}
