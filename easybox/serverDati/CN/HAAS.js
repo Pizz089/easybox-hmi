@@ -118,22 +118,30 @@ function buildSetMacroPacket(varNum, value) {
 	return '?E' + varNum + ' ' + Number(value) + '\r\n';
 }
 
-function parseSetMacroResponse(line) {
-	// TODO_VERIFY: formato corrente assunto:
-	//   Success: ?E<var> <value>     (echo con valore confermato)
-	//   Error:   ?E<var> STATUS=<code>
-	const m = line.match(/^\?E(\d+)\s+(.+)$/);
-	if (!m) throw new Error('Invalid response format: ' + JSON.stringify(line));
-	const varNum = parseInt(m[1], 10);
-	const rest = m[2].trim();
-	if (rest.startsWith('STATUS=')) {
-		const err = new Error('HAAS NAK: ' + rest);
+function parseSetMacroResponse(raw) {
+	// Formato risposta MDC HAAS (verificato a cantiere, comando ?E<var> <value>):
+	//   '!'  -> scrittura ANDATA A BUON FINE
+	//   '?'  -> scrittura RIFIUTATA (allarme attivo, variabile non scrivibile, ecc.)
+	// La macchina NON fa echo del valore. Può però rimandare indietro un echo del
+	// comando inviato ("?E10200 1") prima/insieme alla risposta: per questo si
+	// valuta PRIMA la presenza di '!' (successo certo); il '?' viene considerato
+	// errore solo se NON è il '?' iniziale dell'echo del comando (cioè un '?' non
+	// seguito da 'E').
+	//
+	// NOTA go-live: se la tua macchina rispondesse diversamente, è l'unico punto
+	// da ritoccare. Il raw ricevuto è loggato in _onResponseLine per ispezione.
+	const t = String(raw).trim();
+
+	if (t.indexOf('!') !== -1) {
+		return { ok: true, raw: t };
+	}
+	// '?' di errore = un '?' che non sia parte di un echo "?E..."
+	if (/\?(?!E)/.test(t) || t === '?') {
+		const err = new Error('HAAS NAK: scrittura rifiutata (allarme attivo o variabile non scrivibile) [' + t + ']');
 		err.code = ERROR_CODES.NAK;
 		throw err;
 	}
-	const value = parseFloat(rest);
-	if (Number.isNaN(value)) throw new Error('Invalid value in response: ' + JSON.stringify(rest));
-	return { varNum, value };
+	throw new Error('Invalid response format: ' + JSON.stringify(t));
 }
 
 // ============================================================================
@@ -206,14 +214,21 @@ function makeHaasInstance(mcNum, opts) {
 
 		socket.on('data', (chunk) => {
 			recvBuffer += chunk.toString();
-			while (true) {
-				const idx = recvBuffer.indexOf('\n');
-				if (idx === -1) break;
-				let line = recvBuffer.slice(0, idx);
-				if (line.endsWith('\r')) line = line.slice(0, -1);
-				recvBuffer = recvBuffer.slice(idx + 1);
-				if (line.length === 0) continue;
-				_onResponseLine(line);
+			// La HAAS risponde con '!' o '?' e tipicamente SENZA terminatore di
+			// linea: non possiamo aspettare '\n' (andremmo in timeout). Appena il
+			// buffer contiene un terminatore di risposta valido, lo processiamo.
+			//   - '!'        -> successo (consideriamo la risposta completa)
+			//   - '?' non-E  -> NAK (un '?' isolato, non l'echo "?E..." del comando)
+			//   - '\n'       -> fallback: linea completa (compat con echo terminato)
+			const hasOk  = recvBuffer.indexOf('!') !== -1;
+			const hasNak = /\?(?!E)/.test(recvBuffer);
+			const hasEol = recvBuffer.indexOf('\n') !== -1;
+			if (hasOk || hasNak || hasEol) {
+				let resp = recvBuffer;
+				recvBuffer = '';
+				if (resp.endsWith('\r\n')) resp = resp.slice(0, -2);
+				else if (resp.endsWith('\n') || resp.endsWith('\r')) resp = resp.slice(0, -1);
+				if (resp.length > 0) _onResponseLine(resp);
 			}
 		});
 
@@ -270,6 +285,7 @@ function makeHaasInstance(mcNum, opts) {
 	}
 
 	function _onResponseLine(line) {
+		log.standard('HAAS MC' + mcNum + ': risposta raw = ' + JSON.stringify(line));
 		if (!pendingRequest) {
 			log.standard('HAAS MC' + mcNum + ': unsolicited response: ' + JSON.stringify(line));
 			return;

@@ -88,3 +88,11 @@ Token GIT.txt
 *.token
 *token*.txt
 *credentials*
+
+# PartProgram: dati runtime / part-program della macchina (es. .nc/.h) non vanno in repo.
+# Il sorgente PartProgram.js resta tracciato (eccezione esplicita).
+easybox/serverDati/PartProgram/*
+!easybox/serverDati/PartProgram/PartProgram.js
+
+# Cartella log della HMI (lowercase, oltre a *.log e LOG/ già presenti sopra)
+easybox/serverDati/log/

@@ -70,7 +70,7 @@ router.get('/updateOrder', (req, res) => {
             return;
         }
 
-		let query = `UPDATE WORKORDER SET 
+		let query = `UPDATE WORKORDERS SET
 					PIECE_ID='${req.query.pieceID}', 
 					GRIPPER_ID='${req.query.gripperID}', 
 					VICE_ID='${req.query.viceID}', 
@@ -114,7 +114,7 @@ router.get('/insertOrder', (req, res) => {
         }
 		
 		var request = new sql.Request();
-        let query = `INSERT INTO WORKORDER
+        let query = `INSERT INTO WORKORDERS
 					(PIECE_ID, GRIPPER_ID, VICE_ID, FIXTURE_ID, PALLET_ID, STATUS, MACHINE_ID, QUANTITY, X_PICK_DECENTRATED_TRAY, X_PLACE_DECENTRATED_TRAY, Y_PICK_DECENTRATED_TRAY, Y_PLACE_DECENTRATED_TRAY, X_PICK_DECENTRATED_MC, X_PLACE_DECENTRATED_MC, Y_PICK_DECENTRATED_MC, Y_PLACE_DECENTRATED_MC, PartProg_ID)
 					VALUES(
 					'${req.query.pieceID}', 
@@ -159,7 +159,7 @@ router.delete('/:ID', (req, res) => {
         }
 		
 		var request = new sql.Request();
-        let query = `DELETE FROM WORKORDER WHERE ID=${req.params.ID};`
+        let query = `DELETE FROM WORKORDERS WHERE ID=${req.params.ID};`
 					
         log.info('query ' + query);
         // query to the database and get the records
