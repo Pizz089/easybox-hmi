@@ -602,7 +602,10 @@ bootEagerHaas();
 // ============================================================================
 
 function publishHaasAck(mcNum, ackPayload) {
-	const topic = "TO_PLANT/HAAS_ACK/MC" + mcNum;
+	// PLC sottoscritto a TO_PLANT/CMD/# e distingue l'esito dal solo topic:
+	// ko -> HAAS_NACK (PLC va in errore, non avvia), altrimenti HAAS_ACK.
+	const kind = (ackPayload && ackPayload.status === 'ko') ? "HAAS_NACK" : "HAAS_ACK";
+	const topic = "TO_PLANT/CMD/" + kind + "/MC" + mcNum;
 	const payloadStr = JSON.stringify(ackPayload);
 	try {
 		client.publish(topic, payloadStr, { qos: 1, retain: false });
