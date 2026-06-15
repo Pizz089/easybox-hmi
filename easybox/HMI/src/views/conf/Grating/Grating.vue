@@ -164,7 +164,8 @@
                         <img src="../../../assets/pdf.png" width="15%"></img>
                     </button-->
                     <button @click="createModelFile()">modello</button>
-                </div> 
+                    <button @click="esportaDXF()" :disabled="listPz.length === 0">DXF</button>
+                </div>
                 <div class="pure-u-1" style="margin-top:20px">
                     <img
                         src="../../../assets/pdf.png" 
@@ -351,6 +352,33 @@
 </template>
 
 <script>
+function buildGratingDxf({ width, height, pieces, dimX, dimY, radius, flipY = true }) {
+  const W = Number(width), H = Number(height);
+  const fy = (y) => (flipY ? H - Number(y) : Number(y));
+  const out = [];
+  const e = (...v) => out.push(...v);
+  e('0','SECTION','2','HEADER','9','$INSUNITS','70','4','0','ENDSEC'); // 4 = mm
+  e('0','SECTION','2','ENTITIES');
+  const rect = (layer, x, y, w, h) => {
+    x = Number(x); y = Number(y); w = Number(w); h = Number(h);
+    const yTop = fy(y), yBot = fy(y + h);
+    const xs = [x, x + w, x + w, x];
+    const ys = [yTop, yTop, yBot, yBot];
+    e('0','LWPOLYLINE','8',layer,'90','4','70','1');
+    for (let i = 0; i < 4; i++) e('10', String(xs[i]), '20', String(ys[i]));
+  };
+  rect('TRAY', 0, 0, W, H);
+  for (const p of pieces) {
+    if (p.prisma) {
+      rect('PIECES', p.x, p.y, dimX, dimY);
+    } else {
+      e('0','CIRCLE','8','PIECES','10', String(Number(p.x)), '20', String(fy(p.y)), '40', String(Number(radius)));
+    }
+  }
+  e('0','ENDSEC','0','EOF');
+  return out.join('\n') + '\n';
+}
+
 export default {
     data(){
         return {
@@ -764,8 +792,32 @@ export default {
             // Rimuovi il link e l'URL temporaneo dopo il download.
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-        },       
-        stampaDiv() { 
+        },
+        esportaDXF() {
+            if (!this.listPz || this.listPz.length === 0) {
+                alert('Nessun pezzo distribuito: niente da esportare.');
+                return;
+            }
+            const dxf = buildGratingDxf({
+                width: this.grating.width,
+                height: this.grating.height,
+                pieces: this.listPz,
+                dimX: this.dim_x,
+                dimY: this.dim_y,
+                radius: this.radius,
+                flipY: true,
+            });
+            const blob = new Blob([dxf], { type: 'application/dxf' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = (this.grating.NAME || 'grating') + '.dxf';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        },
+        stampaDiv() {
             //aprendo la finestra di stampa, posso stampare il modello o salvarlo come PDF 
             var contenutoOriginale = document.body.innerHTML;
             var contenutoStampa = document.getElementById('trayLayout');
