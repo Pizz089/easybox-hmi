@@ -352,11 +352,26 @@
 </template>
 
 <script>
-function buildGratingDxf({ width, height, pieces, dimX, dimY, radius, flipY = true }) {
+function buildGratingDxf({ width, height, pieces, dimX, dimY, radius, flipY = true, profileD = null, holes = [] }) {
   const W = Number(width), H = Number(height);
   const fy = (y) => (flipY ? H - Number(y) : Number(y));
   const out = [];
   const e = (...v) => out.push(...v);
+  const pathToPts = (d) => {
+    const toks = d.match(/[MmLlZz]|-?\d*\.?\d+/g) || [];
+    const pts = []; let i = 0, x = 0, y = 0, cmd = null;
+    while (i < toks.length) {
+      const t = toks[i];
+      if (/^[MmLlZz]$/.test(t)) { cmd = t; i++; if (t === 'Z' || t === 'z') break; continue; }
+      const a = parseFloat(toks[i]), b = parseFloat(toks[i + 1]); i += 2;
+      if (cmd === 'M') { x = a; y = b; cmd = 'L'; }
+      else if (cmd === 'm') { x += a; y += b; cmd = 'l'; }
+      else if (cmd === 'L') { x = a; y = b; }
+      else if (cmd === 'l') { x += a; y += b; }
+      pts.push([x, y]);
+    }
+    return pts;
+  };
   e('0','SECTION','2','HEADER',
     '9','$ACADVER','1','AC1009',
     '9','$INSUNITS','70','4',
@@ -365,29 +380,30 @@ function buildGratingDxf({ width, height, pieces, dimX, dimY, radius, flipY = tr
     '0','TABLE','2','LTYPE','70','1',
     '0','LTYPE','2','CONTINUOUS','70','0','3','Solid line','72','65','73','0','40','0',
     '0','ENDTAB',
-    '0','TABLE','2','LAYER','70','3',
+    '0','TABLE','2','LAYER','70','4',
     '0','LAYER','2','0','70','0','62','7','6','CONTINUOUS',
-    '0','LAYER','2','TRAY','70','0','62','7','6','CONTINUOUS',
-    '0','LAYER','2','PIECES','70','0','62','1','6','CONTINUOUS',
+    '0','LAYER','2','PROFILE','70','0','62','7','6','CONTINUOUS',
+    '0','LAYER','2','HOLES','70','0','62','1','6','CONTINUOUS',
+    '0','LAYER','2','PIECES','70','0','62','3','6','CONTINUOUS',
     '0','ENDTAB',
     '0','ENDSEC');
   e('0','SECTION','2','ENTITIES');
-  const polyRect = (layer, x, y, w, h) => {
-    x = Number(x); y = Number(y); w = Number(w); h = Number(h);
-    const yTop = fy(y), yBot = fy(y + h);
-    const xs = [x, x + w, x + w, x];
-    const ys = [yTop, yTop, yBot, yBot];
+  const polyClosed = (layer, pts) => {
     e('0','POLYLINE','8',layer,'66','1','70','1');
-    for (let i = 0; i < 4; i++) e('0','VERTEX','8',layer,'10',String(xs[i]),'20',String(ys[i]));
+    for (const [px, py] of pts) e('0','VERTEX','8',layer,'10',String(px),'20',String(fy(py)));
     e('0','SEQEND','8',layer);
   };
-  polyRect('TRAY', 0, 0, W, H);
+  const polyRect = (layer, x, y, w, h) => {
+    x = Number(x); y = Number(y); w = Number(w); h = Number(h);
+    polyClosed(layer, [[x, y], [x + w, y], [x + w, y + h], [x, y + h]]);
+  };
+  if (profileD) polyClosed('PROFILE', pathToPts(profileD));
+  for (const hh of holes) {
+    e('0','CIRCLE','8','HOLES','10', String(Number(hh.cx)), '20', String(fy(hh.cy)), '40', String(Number(hh.r)));
+  }
   for (const p of pieces) {
-    if (p.prisma) {
-      polyRect('PIECES', p.x, p.y, dimX, dimY);
-    } else {
-      e('0','CIRCLE','8','PIECES','10', String(Number(p.x)), '20', String(fy(p.y)), '40', String(Number(radius)));
-    }
+    if (p.prisma) polyRect('PIECES', p.x, p.y, dimX, dimY);
+    else e('0','CIRCLE','8','PIECES','10', String(Number(p.x)), '20', String(fy(p.y)), '40', String(Number(radius)));
   }
   e('0','ENDSEC','0','EOF');
   return out.join('\n') + '\n';
@@ -812,14 +828,26 @@ export default {
                 alert('Nessun pezzo distribuito: niente da esportare.');
                 return;
             }
+            const svg = document.getElementById('trayLayout');
+            const profEl = svg && svg.querySelector(':scope > path');
+            const profileD = profEl ? profEl.getAttribute('d') : null;
+            const holes = svg
+              ? Array.from(svg.querySelectorAll(':scope > circle')).map(c => ({
+                  cx: parseFloat(c.getAttribute('cx')),
+                  cy: parseFloat(c.getAttribute('cy')),
+                  r:  parseFloat(c.getAttribute('r')),
+                }))
+              : [];
             const dxf = buildGratingDxf({
-                width: this.grating.width,
-                height: this.grating.height,
-                pieces: this.listPz,
-                dimX: this.dim_x,
-                dimY: this.dim_y,
-                radius: this.radius,
-                flipY: true,
+              width: this.grating.width,
+              height: this.grating.height,
+              pieces: this.listPz,
+              dimX: this.dim_x,
+              dimY: this.dim_y,
+              radius: this.radius,
+              flipY: true,
+              profileD,
+              holes,
             });
             const blob = new Blob([dxf], { type: 'application/dxf' });
             const url = URL.createObjectURL(blob);
