@@ -357,20 +357,34 @@ function buildGratingDxf({ width, height, pieces, dimX, dimY, radius, flipY = tr
   const fy = (y) => (flipY ? H - Number(y) : Number(y));
   const out = [];
   const e = (...v) => out.push(...v);
-  e('0','SECTION','2','HEADER','9','$INSUNITS','70','4','0','ENDSEC'); // 4 = mm
+  e('0','SECTION','2','HEADER',
+    '9','$ACADVER','1','AC1009',
+    '9','$INSUNITS','70','4',
+    '0','ENDSEC');
+  e('0','SECTION','2','TABLES',
+    '0','TABLE','2','LTYPE','70','1',
+    '0','LTYPE','2','CONTINUOUS','70','0','3','Solid line','72','65','73','0','40','0',
+    '0','ENDTAB',
+    '0','TABLE','2','LAYER','70','3',
+    '0','LAYER','2','0','70','0','62','7','6','CONTINUOUS',
+    '0','LAYER','2','TRAY','70','0','62','7','6','CONTINUOUS',
+    '0','LAYER','2','PIECES','70','0','62','1','6','CONTINUOUS',
+    '0','ENDTAB',
+    '0','ENDSEC');
   e('0','SECTION','2','ENTITIES');
-  const rect = (layer, x, y, w, h) => {
+  const polyRect = (layer, x, y, w, h) => {
     x = Number(x); y = Number(y); w = Number(w); h = Number(h);
     const yTop = fy(y), yBot = fy(y + h);
     const xs = [x, x + w, x + w, x];
     const ys = [yTop, yTop, yBot, yBot];
-    e('0','LWPOLYLINE','8',layer,'90','4','70','1');
-    for (let i = 0; i < 4; i++) e('10', String(xs[i]), '20', String(ys[i]));
+    e('0','POLYLINE','8',layer,'66','1','70','1');
+    for (let i = 0; i < 4; i++) e('0','VERTEX','8',layer,'10',String(xs[i]),'20',String(ys[i]));
+    e('0','SEQEND','8',layer);
   };
-  rect('TRAY', 0, 0, W, H);
+  polyRect('TRAY', 0, 0, W, H);
   for (const p of pieces) {
     if (p.prisma) {
-      rect('PIECES', p.x, p.y, dimX, dimY);
+      polyRect('PIECES', p.x, p.y, dimX, dimY);
     } else {
       e('0','CIRCLE','8','PIECES','10', String(Number(p.x)), '20', String(fy(p.y)), '40', String(Number(radius)));
     }
