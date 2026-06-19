@@ -1,3 +1,16 @@
+/* custom-fix.css
+ * Override CSS che battono Pure CSS framework usando i design tokens.
+ * I 51 !important sono necessari per la specificita' contro .pure-table / .pure-g.
+ *
+ * Sezioni:
+ *   A. Reset globale + sfondo applicazione
+ *   B. TopBar (#rigaInAlto)
+ *   C. Dashboard card + tabella ordini
+ *   D. Hide scrollbars (HMI touch screen)
+ */
+
+/* ============ A. Reset + ambient bg ============ */
+
 html,
 body,
 #app {
@@ -5,7 +18,7 @@ body,
   margin: 0;
   padding: 0;
 
-  background: radial-gradient(circle at 20% 10%, #1a3556 0%, #0f2238 45%, #0b1a2b 100%);
+  background: var(--bg-base);
 
   overflow-x: hidden;
 }
@@ -18,29 +31,33 @@ body {
   overflow-x: hidden;
 }
 
+
+/* ============ B. TopBar (#rigaInAlto) ============ */
+/* UI-3.2: TopBar fissa sopra tutto (z-index 1000) full-width.
+   Spazio per logo a sx + controlli a dx via justify-content: space-between.
+   Rimossi i negative-margin trick precedenti (non piu' serve span-out di main.content). */
+
 #rigaInAlto {
-  background: linear-gradient(90deg, #1a3556, #23456f);
-  border-bottom: 2px solid rgba(180, 190, 205, 0.35) !important;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 64px;
+  z-index: 1000;
+
+  background: var(--bg-surface);
+  border-radius: 0 0 12px 12px;
 
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
 
-  padding: 10px 22px;
+  padding: 0 var(--space-4) 0 0;
 
   overflow: hidden !important;
   scrollbar-width: none;
 
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    0 10px 24px rgba(0, 0, 0, 0.25),
-    0 1px 0 rgba(0, 0, 0, 0.45);
-
-  margin-top: -16px;
-
-  width: calc(100% + 238px);
-  margin-left: -213px;
-  padding-left: 238px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
 }
 
 #rigaInAlto::-webkit-scrollbar {
@@ -48,22 +65,33 @@ body {
   height: 0;
 }
 
-#rigaInAlto .operatorLevel,
-#rigaInAlto .languageMenu,
-#rigaInAlto .productionMenu {
+/* Regole legacy scoped a > div:not(.topbar-logo) per non impattare il logo (UI-3.2 fix-up). */
+
+/* Wrapper dei 3 controlli (terzo figlio non-logo): flex row con gap.
+   Senza questo i 3 controlli (h6 + a inline-flex) erano separati solo
+   dal whitespace (~4px) e sembravano troppo vicini. */
+#rigaInAlto > div:not(.topbar-logo) {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+#rigaInAlto > div:not(.topbar-logo) .operatorLevel,
+#rigaInAlto > div:not(.topbar-logo) .languageMenu,
+#rigaInAlto > div:not(.topbar-logo) .productionMenu {
   float: none !important;
   padding: 0 !important;
   margin: 0 !important;
   top: auto !important;
 }
 
-#rigaInAlto h6 {
+#rigaInAlto > div:not(.topbar-logo) h6 {
   margin: 0 !important;
   padding: 0 !important;
   line-height: 0 !important;
 }
 
-#rigaInAlto :is(div, h6, a, span, button):has(img) {
+#rigaInAlto > div:not(.topbar-logo) :is(div, h6, a, span, button):has(img) {
   display: inline-flex !important;
   align-items: center !important;
   margin: 0 !important;
@@ -71,11 +99,7 @@ body {
   line-height: 0 !important;
 }
 
-#rigaInAlto :is(div, h6):has(img) {
-  gap: 18px;
-}
-
-#rigaInAlto img {
+#rigaInAlto > div:not(.topbar-logo) img {
   width: 55px;
   height: 55px;
   padding: 7px;
@@ -85,109 +109,114 @@ body {
 
   border-radius: 16px;
 
-  background: linear-gradient(180deg, #425b77 0%, #2a3f57 100%);
-  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: var(--bg-surface-2);
 
+  /* inset highlight/shadow = cue 3D pulsante tattile (HMI touch), preservati */
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.08),
     inset 0 -1px 0 rgba(0, 0, 0, 0.35),
-    0 5px 12px rgba(0, 0, 0, 0.28);
+    var(--elevation-2);
 
   display: inline-block;
   box-sizing: border-box;
 
-  transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
+  transition:
+    transform var(--transition-fast),
+    box-shadow var(--transition-fast),
+    filter var(--transition-fast);
 }
 
-#rigaInAlto img:hover {
+#rigaInAlto > div:not(.topbar-logo) img:hover,
+#rigaInAlto > div:not(.topbar-logo) a:focus-visible img {
   filter: brightness(1.05);
 }
 
-#rigaInAlto img:active {
+#rigaInAlto > div:not(.topbar-logo) img:active {
   transform: translateY(1px);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.05),
     inset 0 -1px 0 rgba(0, 0, 0, 0.45),
-    0 3px 8px rgba(0, 0, 0, 0.25);
-}
-
-#rigaInAlto img[src*="translate"],
-#rigaInAlto img[src*="on_"] {
-  position: relative;
-  top: 6px;
+    var(--elevation-1);
 }
 
 
-/*style DEL DASHBOARD*/
 
-
-main.content:has(table.pure-table.pure-table-horizontal) {
-  padding-top: 18px;
-}
+/* ============ C. Dashboard card + tabella ordini ============ */
 
 main.content:has(table.pure-table.pure-table-horizontal) .container_card .card {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, rgba(0, 0, 0, 0.18) 100%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.10) !important;
-  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.28) !important;
+  background: var(--bg-surface) !important;
+  box-shadow: var(--elevation-2) !important;
   backdrop-filter: none;
 }
 
 main.content:has(table.pure-table.pure-table-horizontal) .container_card .card:hover {
-  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.32) !important;
+  box-shadow: var(--elevation-3) !important;
 }
 
 main.content:has(table.pure-table.pure-table-horizontal) .container_card .card h4,
 main.content:has(table.pure-table.pure-table-horizontal) .container_card .card h6 {
-  color: rgba(235, 242, 250, 0.92) !important;
-}
-
-main.content:has(table.pure-table.pure-table-horizontal) .container_card .img-wrapper {
-  border: 1px solid rgba(255, 255, 255, 0.10) !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+  color: var(--text-primary) !important;
 }
 
 main.content:has(table.pure-table.pure-table-horizontal) table.pure-table.pure-table-horizontal {
   width: 100% !important;
   border-collapse: separate !important;
-  border-spacing: 0 10px !important;
-  margin-top: 26px !important;
+  border-spacing: 0 var(--space-2) !important;
+  margin-top: 0 !important;
+  border: 0 !important;
 }
 
 main.content:has(table.pure-table.pure-table-horizontal) table.pure-table td {
-  background: rgba(255, 255, 255, 0.04) !important;
-  border-top: 1px solid rgba(255, 255, 255, 0.06) !important;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.35) !important;
-  color: rgba(235, 242, 250, 0.92) !important;
-  padding: 12px 14px !important;
+  background: var(--bg-base) !important;
+  border: 0 !important;
+  color: var(--text-primary) !important;
+  padding: var(--space-3) var(--space-4) !important;
+  vertical-align: middle !important;
 }
 
 main.content:has(table.pure-table.pure-table-horizontal) table.pure-table tr td:first-child {
-  border-radius: 12px 0 0 12px !important;
+  border-radius: var(--radius-lg) 0 0 var(--radius-lg) !important;
 }
 
 main.content:has(table.pure-table.pure-table-horizontal) table.pure-table tr td:last-child {
-  border-radius: 0 12px 12px 0 !important;
+  border-radius: 0 var(--radius-lg) var(--radius-lg) 0 !important;
 }
 
 main.content:has(table.pure-table.pure-table-horizontal) .td_odd {
-  background: rgba(255, 255, 255, 0.035) !important;
+  background: var(--bg-input) !important;
 }
 
 main.content:has(table.pure-table.pure-table-horizontal) progress {
   height: 10px !important;
-  border-radius: 999px !important;
+  border-radius: var(--radius-pill) !important;
   overflow: hidden !important;
 }
 
+main.content:has(table.pure-table.pure-table-horizontal) table.pure-table thead,
+main.content:has(table.pure-table.pure-table-horizontal) table.pure-table thead tr,
 main.content:has(table.pure-table.pure-table-horizontal) table.pure-table thead th {
-  background: rgba(255, 255, 255, 0.06) !important;
-  color: rgba(235, 242, 250, 0.95) !important;
+  background: var(--bg-surface-2) !important;
+  background-color: var(--bg-surface-2) !important;
+}
+
+main.content:has(table.pure-table.pure-table-horizontal) table.pure-table thead th {
+  color: var(--text-primary) !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.08em !important;
+  text-align: left !important;
+  padding: var(--space-2) var(--space-4) !important;
   border: 0 !important;
-  padding: 12px 14px !important;
+  border-bottom: 1px solid var(--border-subtle) !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 10 !important;
+  background: var(--bg-surface-2) !important;
 }
 
 main.content:has(table.pure-table.pure-table-horizontal) table.pure-table tbody tr:hover td {
-  background: rgba(255, 255, 255, 0.06) !important;
+  background: var(--bg-surface-2) !important;
 }
 
 main.content:has(table.pure-table.pure-table-horizontal) td.table-divisor {
@@ -216,18 +245,20 @@ main.content:has(table.pure-table.pure-table-horizontal) td.WORKING:not(.table-d
   top: 10px;
   bottom: 10px;
   width: 3px;
-  border-radius: 99px;
+  border-radius: var(--radius-pill);
   opacity: 0.9;
 }
 
 main.content:has(table.pure-table.pure-table-horizontal) td.RAW:not(.table-divisor)::before {
-  background: rgba(130, 170, 255, 0.75);
+  background: var(--color-info);
 }
 
 main.content:has(table.pure-table.pure-table-horizontal) td.WORKING:not(.table-divisor)::before {
-  background: rgba(120, 220, 170, 0.70);
+  background: var(--color-success);
 }
 
+
+/* ============ D. Hide scrollbars (HMI touch) ============ */
 
 html,
 body,

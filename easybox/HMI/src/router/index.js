@@ -34,9 +34,7 @@ const router = createRouter({
     },
     {
       path: "/changeUser",
-      name: "changeUser",
-      meta: { layout: StandardMenu },
-      component: () => import("../views/ChangeUserView.vue"),
+      redirect: "/",
     },
     {
       path: "/unit/robot",

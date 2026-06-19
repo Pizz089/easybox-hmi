@@ -161,7 +161,7 @@
   "menu": {
     "production": "Produzione",
     "robot": "Robot",
-    "smallbox": "Easybox",
+    "smallbox": "EasyBox",
     "cnc1": "CNC 1",
     "cnc2": "CNC 2",
     "grippers": "Pinze",
@@ -211,9 +211,13 @@
     "order": "Ordine",
     "status": "Stato",
     "part": "Pezzo",
+    "machine": "Macchina",
+    "production": "Produzione",
+    "actions": "Azioni",
     "quantity": "Quantità",
     "comand": "Comandi",
-    "sure": "sei sicuro?"
+    "sure": "sei sicuro?",
+    "noOrderYet": "Nessun ordine al momento"
   },
   "robot": {
     "MODE_LOCAL_REMOTE": "AUTOMAZIONE IN MANUALE/AUTOMATICO",
@@ -257,7 +261,13 @@
     "alarm_900001": "EMERGENZA PREMUTA SU MC1",
     "alarm_900002": "EMERGENZA PREMUTA SU MC2",
     "alarm_900010": "EMERGENZA PREMUTA SU ROBOT",
-    "alarm_900011": "EMERGENZA PREMUTA SU PULPITO"
+    "alarm_900011": "EMERGENZA PREMUTA SU PULPITO",
+    "section": {
+      "critical": "Comandi critici",
+      "movement": "Movimenti",
+      "destination": "Punti di destinazione",
+      "mission": "Missioni"
+    }
   },
   "unit": {
     "ready": "Disponibile",
@@ -441,6 +451,62 @@
       "8":"8",
       "9":"9",
       "10":"10"
+    }
+  },
+  "wizard": {
+    "step": {
+      "piece": "PEZZO",
+      "gripper": "PINZA",
+      "pallet": "PALLET",
+      "fixture": "ATTREZZATURA",
+      "machine": "MACCHINA",
+      "final": "RIEPILOGO"
+    },
+    "value": {
+      "piece": "Pezzo {id}",
+      "manualVice": "Morsa Manuale",
+      "gripper": "Pinza {id}",
+      "pallet": "Pallet {id}",
+      "noPallet": "Nessun pallet",
+      "fixture": "Attrezzatura {id}",
+      "noFixture": "Nessuna attrezzatura",
+      "noVice": "Nessuna morsa",
+      "machine": "MC {id}"
+    },
+    "search": {
+      "piecePlaceholder": "Cerca pezzo..."
+    },
+    "lastData": {
+      "title": "Dettagli ordine",
+      "setupSection": "Setup",
+      "positioningSection": "POSIZIONAMENTO",
+      "positioningUnit": "(valori in centesimi di mm)",
+      "trayColumn": "Cassetto",
+      "machineColumn": "Macchina",
+      "pickup": "Prelievo",
+      "deposit": "Deposito",
+      "partProgram": "Part Program",
+      "partProgramPlaceholder": "Seleziona programma...",
+      "save": "Salva ordine"
+    }
+  },
+  "changeUser": {
+    "title": "Cambia livello operatore",
+    "subtitle": "Inserisci la password per cambiare il livello di accesso",
+    "currentLevel": "Livello attuale",
+    "levelLabel": {
+      "0": "Operatore",
+      "1": "Manutenzione",
+      "2": "Amministratore"
+    },
+    "passwordLabel": "Password",
+    "placeholder": "Inserisci password",
+    "submit": "Accedi",
+    "error": "Password non valida",
+    "close": "Chiudi",
+    "successAlert": {
+      "title": "Livello modificato",
+      "desc": "Nuovo livello: {level}"
     }
   }
 }

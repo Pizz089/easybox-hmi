@@ -9,7 +9,7 @@
     </div>
     <div class="pure-u-10-24">
       <h1>{{$t('Stato')}} {{ $t('MC1') }}</h1>
-      <div class="area pure-u-1">          
+      <div class="status-card pure-u-1">
           <h5 v-if="dataFixture.ID>0"> {{$t('Fixture')}} ID: {{ dataFixture.ID }} </h5>
           <h5 v-if="dataFixture.ID>0"> 
             {{ dataFixture.FAMILY }} 
@@ -26,40 +26,40 @@
       <h1> {{$t('Comandi')}} </h1>
       
       <div class="pure-u-1-2">
-        <button class="pure-button-micromission pure-u-1 button_pressed"  
-                style="margin-top:10px; padding:10px" @click="sendToPLC(30)"> 
+        <button class="pure-button-micromission pure-u-1 button_pressed"
+                @click="sendToPLC(30)">
                 {{ $t('APRI_PORTA')}}
         </button>
       </div>
       <div class="pure-u-1-2">
-        <button class="pure-button-micromission pure-u-1 button_pressed"  
-              style="margin-top:10px; padding:10px" @click="sendToPLC(31)">
+        <button class="pure-button-micromission pure-u-1 button_pressed"
+              @click="sendToPLC(31)">
               {{ $t('CHIUDI_PORTA')}}
         </button>
       </div>  
       
       <div class="pure-u-1-2">
-        <button class="pure-button-micromission pure-u-1 button_pressed"  
-                style="margin-top:10px; padding:10px" @click="sendToPLC(20)"> 
+        <button class="pure-button-micromission pure-u-1 button_pressed"
+                @click="sendToPLC(20)">
                 SBLOCCO PALLET
         </button>
       </div>
       <div class="pure-u-1-2">
-        <button class="pure-button-micromission pure-u-1 button_pressed"  
-              style="margin-top:10px; padding:10px" @click="sendToPLC(21)">
+        <button class="pure-button-micromission pure-u-1 button_pressed"
+              @click="sendToPLC(21)">
               BLOCCO PALLET
         </button>
       </div> 
 
       <div class="pure-u-1-2">
-        <button class="pure-button-micromission pure-u-1 button_pressed"  
-                style="margin-top:10px; padding:10px" @click="sendToPLC(10)"> 
+        <button class="pure-button-micromission pure-u-1 button_pressed"
+                @click="sendToPLC(10)">
                 SBLOCCO MORSA
         </button>
       </div>
       <div class="pure-u-1-2">
-        <button class="pure-button-micromission pure-u-1 button_pressed"  
-              style="margin-top:10px; padding:10px" @click="sendToPLC(11)">
+        <button class="pure-button-micromission pure-u-1 button_pressed"
+              @click="sendToPLC(11)">
               BLOCCO MORSA
         </button>
       </div> 
@@ -112,29 +112,3 @@ export default {
     }
   }
 </script>
-
-<style>
-@media (min-width: 1024px) {
-  .about {
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-  }
-}
-.pure-button-micromission{
-  background-color: rgb(33, 33, 211);
-  color: whitesmoke;
-}
-.pure-button-mission{
-  background-color: orange;
-}
-.area {
-  color: black;
-  background-color: lightgray;
-  padding: 5px;
-  margin-top: 10px;
-  text-align: center;
-  border: 1px solid;
-}
-</style>
-

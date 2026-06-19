@@ -161,7 +161,7 @@
   "menu": {
     "production": "Production",
     "robot": "Robot",
-    "smallbox": "Easybox",
+    "smallbox": "EasyBox",
     "cnc1": "CNC 1",
     "cnc2": "CNC 2",
     "grippers": "Grippers",
@@ -211,9 +211,13 @@
     "order": "Order",
     "status": "Status",
     "part": "Part",
+    "machine": "Machine",
+    "production": "Production",
+    "actions": "Actions",
     "quantity": "Quantity",
     "comand": "Commands",
-    "sure": "Are you sure?"
+    "sure": "Are you sure?",
+    "noOrderYet": "No order yet"
   },
   "robot": {
     "MODE_LOCAL_REMOTE": "MODE LOCAL/REMOTE",
@@ -256,7 +260,13 @@
     "alarm_900001": "EMERGENCY BUTTON PRESSED ON MC1",
     "alarm_900002": "EMERGENCY BUTTON PRESSED ON MC2",
     "alarm_900010": "EMERGENCY BUTTON PRESSED ON ROBOT",
-    "alarm_900011": "EMERGENCY BUTTON PRESSED ON HMI"
+    "alarm_900011": "EMERGENCY BUTTON PRESSED ON HMI",
+    "section": {
+      "critical": "Critical commands",
+      "movement": "Movements",
+      "destination": "Destinations",
+      "mission": "Missions"
+    }
   },
   "unit": {
     "ready": "Ready",
@@ -439,6 +449,62 @@
       "8":"8",
       "9":"9",
       "10":"10"
+    }
+  },
+  "wizard": {
+    "step": {
+      "piece": "PIECE",
+      "gripper": "GRIPPER",
+      "pallet": "PALLET",
+      "fixture": "FIXTURE",
+      "machine": "MACHINE",
+      "final": "SUMMARY"
+    },
+    "value": {
+      "piece": "Piece {id}",
+      "manualVice": "Manual Vice",
+      "gripper": "Gripper {id}",
+      "pallet": "Pallet {id}",
+      "noPallet": "No pallet",
+      "fixture": "Fixture {id}",
+      "noFixture": "No fixture",
+      "noVice": "No vice",
+      "machine": "MC {id}"
+    },
+    "search": {
+      "piecePlaceholder": "Search piece..."
+    },
+    "lastData": {
+      "title": "Order details",
+      "setupSection": "Setup",
+      "positioningSection": "POSITIONING",
+      "positioningUnit": "(values in hundredths of mm)",
+      "trayColumn": "Tray",
+      "machineColumn": "Machine",
+      "pickup": "Pickup",
+      "deposit": "Deposit",
+      "partProgram": "Part Program",
+      "partProgramPlaceholder": "Select program...",
+      "save": "Save order"
+    }
+  },
+  "changeUser": {
+    "title": "Change operator level",
+    "subtitle": "Enter the password to change your access level",
+    "currentLevel": "Current level",
+    "levelLabel": {
+      "0": "Operator",
+      "1": "Maintenance",
+      "2": "Administrator"
+    },
+    "passwordLabel": "Password",
+    "placeholder": "Enter password",
+    "submit": "Sign in",
+    "error": "Invalid password",
+    "close": "Close",
+    "successAlert": {
+      "title": "Level changed",
+      "desc": "New level: {level}"
     }
   }
 }

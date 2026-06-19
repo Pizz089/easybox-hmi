@@ -1,0 +1,101 @@
+/* design-tokens.css
+ * Design system EasyBox/Vertibox HMI - dark theme.
+ * Token unici applicati progressivamente nei .vue (UI-2 -> UI-7).
+ * Non sovrascrive theme.css ne custom-fix.css: nomi prefissati distinti.
+ */
+
+:root {
+  /* ---------- Color tokens ---------- */
+  --bg-base:        #050A12;
+  --bg-surface:     #243043;
+  --bg-surface-2:   #3A4A60;
+  --bg-input:       #2A3548;
+
+  --text-primary:   #E8EEF7;
+  --text-secondary: #A4B0C2;
+  --text-muted:     #6B7889;
+  --text-disabled:  #4A5468;
+
+  --border-subtle:  #4A5A75;
+  --border-default: #6B7B95;
+  --border-strong:  #8B9AAE;
+
+  /* Card outlined pattern (UI-7.6 Cobra Panel): overlay sottile rgba bianco
+     sopra --bg-base scuro per outlined card con leggero lightening senza
+     hardcoding HEX. Valori di partenza conservativi — affinare
+     post-verifica visuale se necessario. */
+  --border-card: 1px solid rgba(255, 255, 255, 0.22);
+  --bg-card:     rgba(255, 255, 255, 0.08);
+
+  --accent:         #4A9EFF;
+  --accent-hover:   #6BAFFF;
+  --accent-active:  #2E7FE0;
+
+  --color-success:    #4ADE80;
+  --color-warning:    #FBBF24;
+  --color-danger:     #F87171;
+  --color-info:       #60A5FA;
+  --color-success-bg: #1A3A2A;
+  --color-warning-bg: #3A2F1A;
+  --color-danger-bg:  #3A1F1F;
+  --color-info-bg:    #1A3D5C;
+
+  /* Warning button-specific (UI-7.6): amber desaturato per CTA mission
+     (.pure-button-mission). Distinto da --color-warning (#FBBF24 saturato)
+     che resta in uso per status/badge (es. units.vue .img-wrapper.manual
+     dashboard manual mode). Pattern asimmetrico vs success/danger/info
+     giustificato dall'uso ambivalente di warning (status + action). */
+  --color-warning-button: #D4A017;
+  --color-warning-text:   var(--text-primary);
+
+  /* Critical: per CTA macro action (RESET/HOLD/START/RESTART, delete confirms).
+     Distinto da --color-danger (status alarm "errore corrente") - questo e'
+     azione operatore "presta attenzione". Rosso urgente classico (semaforo). */
+  --color-critical:       #E63946;
+  --color-critical-hover: #C92434;
+
+  /* ---------- Spacing tokens (multipli di 4) ---------- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  /* ---------- Typography tokens ---------- */
+  --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+
+  --font-size-xs:   12px;
+  --font-size-sm:   13px;
+  --font-size-base: 14px;
+  --font-size-md:   16px;
+  --font-size-lg:   18px;
+  --font-size-xl:   22px;
+  --font-size-2xl:  28px;
+
+  --font-weight-normal:   400;
+  --font-weight-medium:   500;
+  --font-weight-semibold: 600;
+  --font-weight-bold:     700;
+
+  --line-height-tight:  1.2;
+  --line-height-normal: 1.5;
+
+  /* ---------- Elevation ---------- */
+  --elevation-0: none;
+  --elevation-1: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
+  --elevation-2: 0 3px 6px rgba(0,0,0,0.35), 0 2px 4px rgba(0,0,0,0.25);
+  --elevation-3: 0 8px 16px rgba(0,0,0,0.4), 0 4px 8px rgba(0,0,0,0.3);
+
+  /* ---------- Radius ---------- */
+  --radius-sm:   4px;
+  --radius-md:   8px;
+  --radius-lg:   12px;
+  --radius-pill: 999px;
+
+  /* ---------- Transitions ---------- */
+  --transition-fast: 150ms ease;
+  --transition-base: 250ms ease;
+}

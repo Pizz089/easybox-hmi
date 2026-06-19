@@ -1,7 +1,11 @@
 <script setup>
     //import { RouterLink, RouterView } from 'vue-router'
     import { dataStored } from '../../data.js'
+    import { useI18n } from 'vue-i18n'
     import  workOrderStep  from '../../components/workOrder_step.vue'
+    import CubeIcon3D from '../../components/CubeIcon3D.vue'
+
+    const { t } = useI18n()
 </script>
 
 <template>
@@ -11,34 +15,40 @@
           &nbsp;
       </div>
     <span class="pure-u-22-24">
-      <h3> 
-          Tipo pezzo
-          <!--button class="pure-button-primary">create new </button--> 
-      </h3> 
-      <h3 class="searchBar">
-            <input type="text" placeholder="search" 
-                   v-model="searchQuery" style="margin-left:40px;">
-        </h3>
-      <div class="container_card pure-u-1-2 pure-u-md-1-3 pure-u-xl-1-4" >
-        <div class="card" @click="nextStep(0)" style="background-color: coral;min-height: 238px;">
-            <div class="container" style="padding-bottom: 21px;">
-                <h4><b>Manual Vice</b></h4>              
-            </div>
+      <h3>Tipo pezzo</h3>
+      <div class="search-bar">
+          <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24"
+               fill="none" stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+          <input
+              type="text"
+              class="search-input"
+              :placeholder="t('wizard.search.piecePlaceholder')"
+              v-model="searchQuery"
+          />
+      </div>
+      <div class="container_card pure-u-1-2 pure-u-md-1-3 pure-u-lg-1-5">
+        <div class="card" @click="nextStep(0)" style="background-color: coral;">
+            <h4><b>{{ t('wizard.value.manualVice') }}</b></h4>
         </div>
       </div>
       <div v-for="(p) in piecesFiltered" :key="p.ID"
-        class="container_card pure-u-1-2 pure-u-md-1-3 pure-u-xl-1-4">
+        class="container_card pure-u-1-2 pure-u-md-1-3 pure-u-lg-1-5">
 
-        <div class="card" @click="nextStep(p.ID)">
-            
-            <img v-if="p.PRISMA" src="../../assets/cube2.png" alt="prisma" width="65px;">
-            <img v-if="!p.PRISMA" src="../../assets/cylinder.png" alt="cylinder" >
-            <div class="container" style="padding-bottom: 21px;">
-                <h4><b>{{ p.FAMILY }}</b></h4>
-                <h5>{{p.DESCR}}</h5>
-                <h5 v-if="p.PRISMA"> Dim: {{ p.X/1000 }}x{{ p.Y/1000 }}  H{{ p.Z/1000 }}</h5> 
-                <h5 v-else> Dim: R{{ p.X/1000 }}   H{{ p.Z/1000 }}</h5> 
-                <!--h6>Program: {{p.PARTPROGRAM}}</h6-->
+        <div class="card card--detailed" @click="nextStep(p.ID)">
+            <CubeIcon3D :w="p.X" :d="p.Y" :h="p.Z" :prisma="p.PRISMA" :bgMode="true" />
+            <span class="card-name">{{ p.FAMILY }}</span>
+            <div class="card-meta">
+                <span v-if="p.PRISMA" class="card-dim">
+                    Dim: {{ p.X/1000 }}×{{ p.Y/1000 }} H{{ p.Z/1000 }}
+                </span>
+                <span v-else class="card-dim">
+                    Dim: R{{ p.X/1000 }} H{{ p.Z/1000 }}
+                </span>
+                <span class="card-descr">{{ p.DESCR }}</span>
             </div>
         </div>
       </div>
@@ -112,11 +122,43 @@ export default {
     }
   </script>
 
-<style scope>
-    .searchBar{
-        background-image:url('/src/assets/lente.png');
-        background-repeat: no-repeat;
-        background-size: 1.7em;
-        background-position: left;
-    } 
+<style scoped>
+/* Search bar: wrapper relative con icona lente SVG inline a sx + input
+   con padding-left per spazio icona. Pattern coerente con ChangeUserModal (UI-4).
+   Fixed typo <style scope> -> <style scoped> (era global per quirk). */
+.search-bar {
+    position: relative;
+    max-width: 400px;
+    margin: 0 0 var(--space-4);
+}
+
+.search-icon {
+    position: absolute;
+    left: var(--space-3);
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    pointer-events: none;
+}
+
+.search-input {
+    width: 100%;
+    background: var(--bg-input);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 10px 16px 10px 36px;
+    color: var(--text-primary);
+    font-size: 14px;
+    transition: border-color var(--transition-fast);
+}
+
+.search-input::placeholder {
+    color: var(--text-muted);
+}
+
+.search-input:focus,
+.search-input:focus-visible {
+    outline: none;
+    border-color: var(--text-primary);
+}
 </style>

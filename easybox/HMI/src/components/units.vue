@@ -73,8 +73,8 @@ import { dataStored } from '../data.js'
     <div class="container_card pure-u-1 pure-u-md-1-2 pure-u-lg-1-4">
         <div class="card link" style="--tile-w:220px; --tile-h:150px; --img-max:100px;"
             @click="$router.push('/unit/robot');">
-            <div class="img-wrapper" :class="getStatus(smallBox_status)">
-                <img src="../assets/robot.png" alt="robot" class="pure-robot" :class="getStatus(robot_status)">
+            <div class="img-wrapper" :class="getStatus(robot_status)">
+                <img src="../assets/robot.png" alt="robot" class="pure-robot">
             </div>
             <div class="container" style="padding-bottom: 0px;">
                 <h4><b>{{ $t(robot_desc) }}</b></h4>
@@ -103,8 +103,8 @@ import { dataStored } from '../data.js'
     <div class="container_card pure-u-1 pure-u-md-1-2 pure-u-lg-1-4">
         <div class="card link" style="--tile-w:220px; --tile-h:150px; --img-max:95px;"
             @click="$router.push('/unit/cnc1');">
-            <div class="img-wrapper" :class="getStatus(smallBox_status)">
-                <img src="../assets/cnc.svg" alt="cnc" class="pure-cnc" :class="getStatus(mc1_status)">
+            <div class="img-wrapper" :class="getStatus(mc1_status)">
+                <img src="../assets/cnc.svg" alt="cnc" class="pure-cnc">
             </div>
             <div class="container">
                 <h4><b>{{ $t(cnc1_desc) }} </b></h4>
@@ -116,8 +116,8 @@ import { dataStored } from '../data.js'
     <div class="container_card pure-u-1 pure-u-md-1-2 pure-u-lg-1-4">
         <div class="card link" style="--tile-w:220px; --tile-h:150px; --img-max:95px;"
             @click="$router.push('/unit/cnc2');">
-            <div class="img-wrapper" :class="getStatus(smallBox_status)">
-                <img src="../assets/cnc.svg" alt="cnc" class="pure-cnc2" :class="getStatus(mc2_status)">
+            <div class="img-wrapper" :class="getStatus(mc2_status)">
+                <img src="../assets/cnc.svg" alt="cnc" class="pure-cnc2">
             </div>
             <div class="container">
                 <h4><b>{{ $t(cnc2_desc) }}</b></h4>
@@ -293,98 +293,102 @@ export default {
 
 
 <style scoped>
-/* CARDS */
+/* ============ CARD ============ */
 .card {
-    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 1.2);
-    transition: 0.6s;
-    padding-top: 24px;
-    margin-top: 11px;
-    margin-left: 8px;
-    margin-right: 8px;
-    place-items: center;
+    background: var(--bg-surface);
+    border: 0;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--elevation-2);
+    transition:
+        box-shadow var(--transition-base),
+        transform var(--transition-fast);
+
+    padding: var(--space-5) var(--space-3) var(--space-3);
+    margin: var(--space-3) var(--space-2) 0;
+
     display: grid;
-    border-radius: 20px;
+    place-items: center;
 }
 
+.card:hover {
+    box-shadow: var(--elevation-3);
+}
 
 .card img {
     border-radius: 22px;
     padding: 2px;
 }
 
-.card .img,
-.normal {
-    background-color: #07197230;
+
+/* ============ STATUS (applicato a .img-wrapper) ============ */
+/* HMI: border spessi (3-4px) per leggibilita' a colpo d'occhio dal lato.
+   .normal e' 2px perche' e' lo stato idle/default (non deve catturare). */
+
+.img-wrapper.normal {
+    background: var(--bg-surface-2);
 }
 
-.card .img,
-.auto {
-    background-color: yellowgreen;
+.img-wrapper.auto,
+.img-wrapper.remote,
+.img-wrapper.local {
+    background: var(--color-success);
 }
 
-.card .img,
-.remote {
-    background-color: yellowgreen;
+.img-wrapper.manual {
+    background: var(--color-warning);
 }
 
-.card .img,
-.local {
-    background-color: yellowgreen;
+.img-wrapper.working {
+    background: var(--color-info-bg);
 }
 
-.card .img,
-.manual {
-    background-color: #ebeb13;
-    /*rgba(241, 241, 52, 0.967); */
+.img-wrapper.alarm {
+    background: var(--color-danger);
+    /* glow esterno: HMI deve gridare l'allarme da lontano */
+    box-shadow: 0 0 8px var(--color-danger);
 }
 
-.card .img,
-.alarm {
-    background-color: #F56056;
-    /*lightcoral;*/
-}
-
-.card .img,
-.working {
-    background-color: #54a4F5;
-    /*rgba(102, 147, 244, 0.751)*/
-}
-
-.card .img,
-.hold {
-    background-color: #54a4F5;
-    border: 4px solid blue;
+.img-wrapper.hold {
+    background: var(--color-info);
     animation: blinker 1s linear infinite;
 }
 
+/* Blink: pulse background tra color-info e accent-hover (entrambi blu).
+   Refactored da border-color a background dopo rimozione bordi UI-3.3. */
 @keyframes blinker {
     80% {
-        border-color: #54a4F5;
+        background: var(--accent-hover);
     }
 }
 
 
-
-.card:hover {
-    box-shadow: 0 8px 16px 0 rgba(0, 0, 0, 0.2);
+/* ============ TIPOGRAFIA ============ */
+.container {
+    padding: var(--space-1) var(--space-4);
 }
 
-.container {
-    padding: 2px 16px;
+.card h4 {
+    color: var(--text-primary);
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: var(--space-2) 0 var(--space-1);
+}
+
+.card h6 {
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-normal);
+    margin: 0;
 }
 
 .center {
     justify-content: center;
 }
 
-/*
-.container_card{
-    padding: 10px;
-    border: 1px solid;
-}
-*/
-/* === UNIFORM TILE SIZING (usa variabili per ogni card) === */
 
+/* ============ GEOMETRIA IMG (preservata) ============ */
 .img-wrapper {
     display: flex;
     align-items: center;
@@ -392,16 +396,18 @@ export default {
     width: 100px;
     height: 90px;
     border-radius: 13px !important;
-    margin: 0 auto 8px auto;
+    margin: 0 auto var(--space-2);
     overflow: hidden;
 }
 
-.card .pure-robot {
+.card .pure-robot,
+.card .pure-cnc,
+.card .pure-cnc2 {
     width: 100px;
     height: 90px;
     object-fit: contain;
     display: block;
-    margin: 8px auto 6px;
+    margin: var(--space-2) auto var(--space-1);
     border-radius: 13px;
 }
 
@@ -410,24 +416,4 @@ export default {
     max-height: 120px;
     background-color: transparent;
 }
-
-.card .pure-cnc {
-    width: 100px;
-    height: 90px;
-    object-fit: contain;
-    display: block;
-    margin: 8px auto 6px;
-    border-radius: 13px;
-}
-
-.card .pure-cnc2 {
-    width: 100px;
-    height: 90px;
-    object-fit: contain;
-    display: block;
-    margin: 8px auto 6px;
-    border-radius: 13px;
-}
-
-
 </style>

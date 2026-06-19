@@ -21,7 +21,9 @@
       "Bash(node --check C:/Users/biagi/Desktop/newInterface/easybox/serverDati/MQTT_Client.js)",
       "Bash(node --check C:/Users/biagi/Desktop/newInterface/easybox/serverDati/server.js)",
       "Bash(node -e \"const m=require\\('module'\\); const orig=m._load; m._load=function\\(req,par\\){ if\\(req.includes\\('LogFunct'\\)||req.includes\\('MQTTDiag'\\)||req.includes\\('DBFunct'\\)\\){return new Proxy\\({},{get:\\(\\)=>\\(\\)=>{}}\\);} return orig.apply\\(this,arguments\\);}; const HAAS=require\\('./easybox/serverDati/CN/HAAS'\\); console.log\\('errorCodes:'\\); console.log\\(JSON.stringify\\(HAAS.errorCodes,null,2\\)\\); console.log\\('keys count:', Object.keys\\(HAAS.errorCodes\\).length\\);\")",
-      "Bash(echo \"---exit code: $?---\")"
+      "Bash(echo \"---exit code: $?---\")",
+      "Bash(node --check easybox/serverDati/CN/HAAS.js)",
+      "Bash(node --check easybox/serverDati/MQTT_Client.js)"
     ]
   }
 }

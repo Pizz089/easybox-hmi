@@ -29,6 +29,7 @@ const unitItems = [
   { key: "menu.robot", fallback: "Robot", path: "/unit/robot" },
   { key: "menu.cnc1", fallback: "CNC 1", path: "/unit/CNC1" },
   { key: "menu.cnc2", fallback: "CNC 2", path: "/unit/CNC2" },
+  { key: "menu.smallbox", fallback: "EasyBox", path: "/unit/smallbox" },
 ];
 
 const confItems = [
@@ -66,20 +67,6 @@ const filteredDiagItems = filterByLevel(diagItems);
 
 <template>
   <aside class="sb" :class="{ open: props.open }">
-    <div
-      class="toggle-btn"
-      :class="{ open: props.open, closed: !props.open }"
-      @click="emit('toggle')"
-    >
-      <span>{{ props.open ? "«" : "»" }}</span>
-    </div>
-
-    <div class="sb-logo">
-      <div class="sb-logo-img">
-        <img src="@/assets/logo.png" alt="Logo" />
-      </div>
-    </div>
-
     <nav class="sb-nav">
       <div class="section">
         <h4 v-if="props.open" class="section-title">
@@ -147,13 +134,20 @@ const filteredDiagItems = filterByLevel(diagItems);
 <style scoped>
 .sb {
   position: fixed;
-  top: 0;
+  top: 64px;                                     /* parte sotto la TopBar fissa */
   left: 0;
-  height: 100vh;
+  height: calc(100vh - 64px);                    /* altezza viewport meno TopBar */
   width: 220px;
-  background: radial-gradient(circle at top, #111827 0, #020817 55%);
-  color: #e5e7eb;
-  box-shadow: 4px 0 18px rgba(0, 0, 0, 0.45);
+  background: #141D2A;
+  /* DEBITO TECNICO: mid-tone calcolato tra --bg-base (#050A12) e
+     --bg-surface (#243043) per differenziare la sidebar dalla
+     TopBar (entrambe userebbero bg-surface) e creare gerarchia
+     visiva (sidebar incassata sotto TopBar alzata). Da promuovere
+     a token --bg-sidebar o --bg-surface-0-5 in un futuro sub-step
+     di tokens consolidation. */
+  border-radius: 0 12px 12px 0;                  /* solo angoli destri, coerenti con TopBar */
+  color: var(--text-primary);
+  box-shadow: var(--elevation-2);
   overflow: hidden;
   z-index: 900;
   transition: width 0.25s ease-in-out;
@@ -163,30 +157,16 @@ const filteredDiagItems = filterByLevel(diagItems);
 }
 
 .sb:not(.open) {
-  width: 70px;
-}
-
-.sb-logo {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 24px 0 14px;
-}
-
-.sb-logo-img img {
-  height: 62px;
-  border: 3.5px solid orange;
-  width: 205px;
-  border-radius: 10px;
+  width: 0;                                       /* sidebar invisibile (era 70px) */
 }
 
 .sb-nav {
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: center; 
+  justify-content: flex-start;
   gap: 20px;
-  padding: 0 6px;
+  padding: var(--space-3) 6px 0;
   overflow-y: auto;
 }
 
@@ -197,12 +177,16 @@ const filteredDiagItems = filterByLevel(diagItems);
 }
 
 .section-title {
-  margin: 0 14px 4px;
-  font-size: 11px;
+  padding: 6px var(--space-3);
+  margin: 0 0 var(--space-2) 0;
+  background: var(--bg-input);
+  border-radius: 4px;
+  font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
-  color: #6b7280;
-  letter-spacing: 0.18em;
+  text-align: center;
+  color: var(--text-secondary);
+  letter-spacing: 0.08em;
 }
 
 ul {
@@ -216,7 +200,7 @@ li {
 }
 
 a {
-  color: #d1d5db;
+  color: var(--text-secondary);
   text-decoration: none;
   display: flex;
   align-items: center;
@@ -229,10 +213,27 @@ a {
   transition: all 0.18s ease-out;
 }
 
-a:hover {
-  background: rgba(15, 23, 42, 0.98);
-  color: #e5e7eb;
-  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.7);
+/* Active route: barra bianca verticale a sinistra via inset shadow.
+   Vantaggio vs border-left: no layout shift del testo.
+   Vue Router applica .router-link-active automaticamente al link che matcha. */
+a.router-link-active {
+  color: var(--text-primary);
+  box-shadow:
+    inset 4px 0 0 var(--text-primary),
+    inset 0 0 0 2px var(--text-primary);
+}
+
+/* Hover + focus-visible (navigazione tastiera): stesso stile. */
+a:hover,
+a:focus-visible {
+  background: var(--bg-surface-2);
+  color: var(--text-primary);
+}
+
+/* HMI touch/mouse: rimuovo outline focus default browser.
+   Feedback navigazione tastiera dato da :focus-visible sopra. */
+a:focus {
+  outline: none;
 }
 
 .sb-nav::-webkit-scrollbar {
@@ -242,43 +243,8 @@ a:hover {
   background: transparent;
 }
 .sb-nav::-webkit-scrollbar-thumb {
-  background: rgba(75, 85, 99, 0.7);
+  background: var(--border-default);
   border-radius: 999px;
-}
-
-.toggle-btn {
-  position: absolute;
-  right: 0;
-  cursor: pointer;
-  user-select: none;
-  color: #e5e7eb;
-  z-index: 999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.toggle-btn.open {
-  top: 50%;
-  transform: translateY(-50%);
-  background: #020817;
-  width: 44px;
-  height: 44px;
-  border-radius: 22px 0 0 22px;
-  font-size: 24px;
-  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.95);
-  border: 1px solid rgba(56, 189, 248, 0.7);
-}
-
-.toggle-btn.closed {
-  top: 0;
-  height: 100vh;
-  width: 80px;
-  background: #020817;
-  font-size: 30px;
-  border-radius: 0 10px 10px 0;
-  box-shadow: 4px 0 16px rgba(0, 0, 0, 0.7);
-  border-left: 1px solid rgba(56, 189, 248, 0.35);
 }
 
 .sb:not(.open) .section-title,

@@ -1,0 +1,164 @@
+/* unit-views.css
+ * Stili condivisi per le view stato unita' (CNC1, CNC2, robot, smallbox).
+ * UI-6.1: estrazione di .area, button variants, .specialCMD dai 4 file
+ * src/views/unit/*.vue. Classi status allineate a units.vue UI-3.3.
+ */
+
+/* ============ STATUS CARD ============ */
+/* Sostituisce .area legacy (lightgray + black). Riceve modifier
+   .normal/.auto/.alarm/.working/.hold/.manual via :class binding,
+   tipicamente da getColorFromStatus() che ora ritorna nome-classe. */
+.status-card {
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    padding: var(--space-3);
+    margin-top: var(--space-3);
+    border-radius: var(--radius-md);
+    box-shadow: var(--elevation-2);
+    text-align: center;
+    transition: background var(--transition-base);
+}
+
+.status-card.normal {
+    background: var(--bg-surface);
+}
+
+.status-card.auto {
+    background: var(--color-success-bg);
+}
+
+.status-card.manual {
+    background: var(--color-warning-bg);
+}
+
+.status-card.working {
+    background: var(--color-info-bg);
+}
+
+.status-card.alarm {
+    background: var(--color-danger-bg);
+    /* glow esterno: HMI deve gridare l'allarme da lontano.
+       Se in prova visiva risulta troppo aggressivo su HMI 24/7, addolcire in p3. */
+    box-shadow: 0 0 8px var(--color-danger);
+}
+
+.status-card.hold {
+    background: var(--color-info-bg);
+    animation: blinker 1s linear infinite;
+}
+
+
+/* ============ BUTTON VARIANTS ============ */
+/* Nomi legacy (.pure-button-micromission|mission|disable, .specialCMD)
+   mantenuti per minimizzare diff nei template: UI-6.2/3/4 rimuovono
+   solo i <style> duplicati. Rename semantico candidato a step successivo. */
+
+.pure-button-micromission {
+    background: var(--accent);
+    color: var(--text-primary);
+    border: 0;
+    border-radius: var(--radius-md);
+    padding: 14px 24px;
+    min-height: 52px;
+    font-weight: var(--font-weight-medium);
+    letter-spacing: 0.025em;
+    cursor: pointer;
+    transition: filter var(--transition-fast);
+}
+
+.pure-button-mission {
+    background: var(--color-warning-button);
+    color: var(--color-warning-text);
+    border: 0;
+    border-radius: var(--radius-md);
+    padding: 14px 24px;
+    min-height: 52px;
+    font-weight: var(--font-weight-medium);
+    letter-spacing: 0.025em;
+    cursor: pointer;
+    transition: filter var(--transition-fast);
+}
+
+.pure-button-micromission:hover:not(:disabled),
+.pure-button-mission:hover:not(:disabled) {
+    filter: brightness(1.12);
+}
+
+/* Disabled: UI-7.5 fix leggibilita' HMI - opacity 0.7 (vs 0.5) + text-secondary
+   (vs text-disabled) per garantire che l'operatore legga quali comandi non
+   sono disponibili. Pattern "subdued ma leggibile" tipico HMI industriale. */
+.pure-button-disable,
+.pure-button-micromission:disabled,
+.pure-button-mission:disabled {
+    background: var(--bg-input);
+    color: var(--text-secondary);
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+/* specialCMD: pill rounded per RESET/HOLD/START/RESTART (macro action
+   critica/anomalia/manutenzione, non flusso normale).
+   UI-7.5: --color-critical (rosso urgente saturato, distinto da --color-danger
+   usato per status alarm). font-weight + letter-spacing rinforzano urgency.
+   Override ultimo nella cascade: vince su .pure-button-micromission. */
+.specialCMD {
+    border-radius: var(--radius-pill);
+    background: var(--color-critical);
+    color: var(--text-primary);
+    font-weight: var(--font-weight-bold);
+    letter-spacing: 0.05em;
+}
+
+.specialCMD:hover:not(:disabled) {
+    background: var(--color-critical-hover);
+}
+
+
+/* ============ ANIMATIONS ============ */
+/* @keyframes globale: allineato a units.vue UI-3.3 (pulse su accent-hover). */
+@keyframes blinker {
+    80% { background: var(--accent-hover); }
+}
+
+
+/* ============ COMMAND SECTION ============ */
+/* Card wrapper per raggruppare set di comandi correlati nella colonna
+   Comandi delle view stato unita'. Pattern allineato a lastData.vue
+   UI-5.5c (.setup-card / .positioning-card). Introdotto UI-7 su robotView.
+   UI-7.6: migrato a outlined card pattern (Cobra Panel I.Dea Pack):
+   bg-card overlay + border-card + radius-md (era bg-surface elevation lg). */
+.command-section {
+    background: var(--bg-card);
+    border: var(--border-card);
+    border-radius: var(--radius-md);
+    padding: var(--space-4);
+    /* Spacing tra card gestito via margin-top child invece di gap parent
+       perché parent <div class="pure-u-10-24"> è PureCSS grid col, modificarlo
+       richiederebbe tocco template .vue (fuori scope UI-7.6 CSS-only).
+       Se in futuro il parent viene refactorato a flex column con gap, sposta
+       spacing al container e rimuovi questo margin. */
+    margin-top: var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.command-section-title {
+    margin: 0;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+}
+
+/* Sub-heading h4 dentro command-section (es. "Punti di destinazione"
+   sotto "Movimenti"). Tipografia leggermente piu' light vs section-title. */
+.command-subsection-title {
+    margin: var(--space-3) 0 0;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+}

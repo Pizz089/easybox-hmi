@@ -123,31 +123,131 @@ import { dataStored } from './data';
     background-color: white;
 }
 
+/* Card global (wizard /selectPiece, /selectGripper, ..., e altre view che
+   usano .card senza scoped override). UI-5.5b refactor con design tokens.
+   Dashboard (units.vue) e Conf (PartsView) hanno scoped .card che vince
+   per specificity. */
 .card {
-  box-shadow: 0 4px 8px 0 rgba(0,0,0,1.2);
-  transition: 0.6s;
-  padding-top: 24px;
-  margin-top: 11px;
-  margin-left: 8px;
-  margin-right: 8px;
-  place-items: center;    
-  display:grid;
-  min-height: 240px;
+    position: relative;
+    overflow: hidden;
+    background: var(--bg-surface);
+    border-radius: 18px;
+    padding: var(--space-5);
+    min-height: 240px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    cursor: pointer;
+    box-shadow: var(--elevation-2);
+    transition:
+        transform var(--transition-fast),
+        box-shadow var(--transition-fast),
+        background var(--transition-fast);
+    color: var(--text-primary);
+    margin: var(--space-2);
 }
-
-.card img{
-    border-radius: 22px;
-    background-color: #30644330;
-    padding: 2px;
-}
-
 
 .card:hover {
-  box-shadow: 0 8px 16px 0 rgba(0,0,0,0.2);
+    background: var(--bg-surface-2);
+    transform: translateY(-2px);
+    box-shadow: var(--elevation-3);
+}
+
+.card h4 {
+    color: var(--text-primary);
+    margin: var(--space-2) 0;
+    text-align: center;
+}
+
+.card img {
+    border-radius: 12px;
+    background-color: transparent;
+    padding: 0;
+    margin: 0 auto var(--space-3);
+    max-width: 80px;
+    max-height: 80px;
+    object-fit: contain;
+}
+
+/* Card opt-out (Manual Vice, NO PALLET, NO VICE, NO FIXTURE) — bg coral
+   inline mantenuto come segnale semantico "opt-out". Text-primary su coral
+   per leggibilita' (contrast ~3.5:1, accettabile per testo bold/large). */
+.card[style*="coral"],
+.card[style*="coral"] h4 {
+    color: var(--text-primary);
+}
+
+/* Variant detailed: nome top-left in pill, meta block bottom-center.
+   Override del centering flex del .card base (display:block + position
+   absolute children). Usato da selectPiece/Pallet/Vice/Fixture wizard. */
+.card.card--detailed {
+    display: block;
+    padding: 0;
+    min-height: 240px;
+}
+
+.card--detailed .card-name {
+    position: absolute;
+    top: var(--space-3);
+    left: var(--space-3);
+    background: var(--bg-surface-2);
+    color: var(--text-primary);
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 14px;
+    z-index: 2;
+    max-width: calc(100% - 2 * var(--space-3));
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.card--detailed .card-meta {
+    position: absolute;
+    bottom: var(--space-3);
+    left: 0;
+    right: 0;
+    text-align: center;
+    z-index: 2;
+    padding: 0 var(--space-3);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.card--detailed .card-descr {
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+.card--detailed .card-dim {
+    color: var(--text-primary);
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.card--detailed .card-pos {
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-style: italic;
+    margin-top: 2px;
 }
 
 .container {
-  padding: 2px 16px;
+    position: relative;
+    z-index: 1;
+    padding: 0;
+    width: 100%;
+    text-align: center;
+}
+
+.container h4,
+.container p {
+    text-align: center;
+    margin: var(--space-1) 0;
 }
 
 .center {

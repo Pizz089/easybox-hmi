@@ -8,7 +8,7 @@
     </div>
     <div class="pure-u-10-24">
       <h1>{{$t('Stato')}} {{ $t('MC2') }}</h1>
-      <div class="area pure-u-1">
+      <div class="status-card pure-u-1">
           <h5 v-if="dataFixture.ID>0"> Gripper ID: {{ dataFixture.ID }} </h5>
           <h5 v-if="dataFixture.ID>0"> 
             {{ dataFixture.FAMILY }} 
@@ -25,10 +25,10 @@
       <h1> {{$t('Comandi')}} </h1>
       
       <div class="pure-u-1-2">
-        <button class="pure-button-micromission pure-u-1 button_pressed"  style="margin-top:10px; padding:10px"> {{ $t('APRI_PORTA')}}</button>
+        <button class="pure-button-micromission pure-u-1 button_pressed"> {{ $t('APRI_PORTA')}}</button>
       </div>
       <div class="pure-u-1-2">
-        <button class="pure-button-micromission pure-u-1 button_pressed"  style="margin-top:10px; padding:10px"> {{ $t('CHIUDI_PORTA')}}</button>
+        <button class="pure-button-micromission pure-u-1 button_pressed"> {{ $t('CHIUDI_PORTA')}}</button>
       </div>    
       
     </div>
@@ -76,29 +76,3 @@ export default {
     }
   }
 </script>
-
-<style>
-@media (min-width: 1024px) {
-  .about {
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-  }
-}
-.pure-button-micromission{
-  background-color: rgb(33, 33, 211);
-  color: whitesmoke;
-}
-.pure-button-mission{
-  background-color: orange;
-}
-.area {
-  color: black;
-  background-color: lightgray;
-  padding: 5px;
-  margin-top: 10px;
-  text-align: center;
-  border: 1px solid;
-}
-</style>
-

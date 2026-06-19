@@ -5,20 +5,18 @@
 </script>
 
 <template>
-    <div class="pure-u-1-24"> 
-    </div>
-    <div class="pure-u-23-24"> 
-        <table v-if="orders.length>0" class="pure-table pure-table-horizontal " style="margin-top: 30px;">
-            <!--thead>
-                <tr>
-                    <th>{{ $t('production.order')}}</th>
-                    <th>{{ $t('production.status')}}</th>
-                    <th>{{ $t('production.part')}}</th>
-                    <th>MC</th>
-                    <th>{{ $t('production.quantity')}}</th>
-                    <th>{{ $t('production.comand')}}</th>
+    <div class="prodtable-wrapper">
+        <table v-if="orders.length>0" class="pure-table pure-table-horizontal">
+            <thead>
+                <tr class="prodtable-head">
+                    <th>{{ $t('production.part') }}</th>
+                    <th>{{ $t('production.machine') }}</th>
+                    <th></th>
+                    <th>{{ $t('production.status') }}</th>
+                    <th>{{ $t('production.production') }}</th>
+                    <th></th>
                 </tr>
-            </thead-->
+            </thead>
             <tbody>
                 <template v-for="(o,index) in orders" :key="o.ID" >
                     <tr :class="{'pure-table-odd':index%2==1}">
@@ -29,24 +27,24 @@
                             <small>{{ o.PIECE_DESC }}</small>
                         </td>
                         <td :class="{'td_odd':index%2==1}">
-                            MC{{ o.MACHINE_ID}} 
+                            MC{{ o.MACHINE_ID}}
                         </td>
                         <td class="table-divisor" :class="o.STATUS_DESC">
                         </td>
-                        <td :class="{'td_odd':index%2==1}" 
+                        <td :class="{'td_odd':index%2==1}"
                             style="width: 20%;margin: 0 auto;">
-                            {{ o.STATUS_DESC }} 
+                            {{ o.STATUS_DESC }}
                             <hr width="30%" style="margin-left:0px">
                             [ {{ o.PP }} ]
                         </td>
                         <!--td>{{ o.GRIPPER }}</td-->
-                        
+
                         <td :class="{'td_odd':index%2==1}">
                             {{ o.PRODUCTED }} / {{ o.QUANTITY }}<br>
                             <progress :value="o.PRODUCTED" :max="o.QUANTITY" style="width:80px"> {{ o.PRODUCTED }} </progress>
                         </td>
                         <td :class="{'td_odd':index%2==1}">
-                            <orderCMD 
+                            <orderCMD
                                 :play=true         @cmdPlay="modifyOrderStatus(o.ID,dataStored.status_working,o.PIECE_ID)"
                                 :stop=true         @cmdStop="modifyOrderStatus(o.ID,dataStored.status_raw,o.PIECE_ID)"
                                 :del=true          @cmdDel="sicurezza(o.ID, o.STATUS_DESC)"
@@ -57,7 +55,7 @@
                                 :modifyDisable="o.STATUS_DESC=='WORKING'"
                             -->
                         </td>
-                    </tr>  
+                    </tr>
                     <tr v-if="_showPopUp(o.ID)">
                         <td class="popUpOnLine" colspan="20" >
                             <div class="center">
@@ -74,11 +72,11 @@
                                 </span>
                             </div>
                         </td>
-                    </tr>  
+                    </tr>
                 </template>
             </tbody>
         </table>
-        <h4 v-else>No order yet...</h4>
+        <h4 v-else>{{ $t('production.noOrderYet') }}</h4>
     </div>
 </template>
 
@@ -101,8 +99,6 @@ export default {
                     return response.json()
                 })
                 .then(data => {
-                    //console.log("pieces: "+JSON.stringify(data,null,4))
-                    //console.log(`Ricevo dati per ${data.length} ordini`);
                     this.orders=data;
                 })
                 .catch(error => {
@@ -110,11 +106,10 @@ export default {
                 });
         },
         modifyOrder(i){
-            //alert("modifica "+i);
             this.$router.push('/selectPiece');
         },
         modifyOrderStatus(id, stat, pieceID){
-            dataStored.WS.socket.emit("TO_PLANT/CMD/ORDER", 
+            dataStored.WS.socket.emit("TO_PLANT/CMD/ORDER",
                 {
                     id: id,
                     status: stat,
@@ -123,7 +118,7 @@ export default {
             );
         },
         sicurezza(id, desc){
-            if (desc == "WORKING") 
+            if (desc == "WORKING")
                 alert ("impossibile cancellare se è in esecuzione")
             else
                 this.showPopUp=id
@@ -161,75 +156,143 @@ export default {
 </script>
 
 <style scoped>
-.table-divisor {
-    width: 10px;        
-    padding: 0px;         
-    border-radius: 30px;
+/* ============ WRAPPER ============ */
+.prodtable-wrapper {
+    background: var(--bg-surface-2);
+    border-radius: var(--radius-lg);
+    padding: 0 var(--space-3);
+    margin-top: var(--space-4);
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
-.pure-table-horizontal #td {
-    justify-content: center;
-    display: flex;
+
+/* ============ STATUS BADGE ============ */
+/* Le classi status (WORKING/RAW/PAUSED/STOP/ABORT/FINISHED) sono applicate
+   al td.table-divisor che e' largo 0 (custom-fix.css). Per rendere il
+   badge visibile applichiamo lo stile al td adiacente (quello con il
+   testo STATUS_DESC) via sibling combinator '+ td'. */
+
+td.table-divisor.WORKING + td,
+td.table-divisor.working + td,
+td.table-divisor.RAW + td,
+td.table-divisor.raw + td,
+td.table-divisor.PAUSED + td,
+td.table-divisor.paused + td,
+td.table-divisor.STOP + td,
+td.table-divisor.stop + td,
+td.table-divisor.ABORT + td,
+td.table-divisor.abort + td,
+td.table-divisor.FINISHED + td,
+td.table-divisor.finished + td {
+    font-weight: var(--font-weight-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
-.pure-table {
-    width: inherit;
-    background-color: transparent;
+/* WORKING = lavorazione attiva = success/verde */
+main.content table.pure-table tbody tr td.table-divisor.WORKING + td,
+main.content table.pure-table tbody tr td.table-divisor.working + td {
+    color: var(--color-success) !important;
+    background: var(--color-success-bg) !important;
 }
 
-.td_odd{
-        background-color: transparent;
+/* RAW = materia grezza in attesa = info/blu */
+main.content table.pure-table tbody tr td.table-divisor.RAW + td,
+main.content table.pure-table tbody tr td.table-divisor.raw + td {
+    color: var(--color-info) !important;
+    background: var(--color-info-bg) !important;
 }
 
-.PAUSED, .paused {
-    color: gray;
-    background-color: lightblue;
-    opacity: 90%;
-    color: black;
-    /*border-radius: 12px;*/
-    /* background-image: url(/src/assets/pause.png);
-        background-repeat: no-repeat;
-        background-size: 50px;
-        background-position-x: 0%;
-        background-color:lightgray;*/
+/* PAUSED = stato pausa = grigio neutro, no bg colorato */
+main.content table.pure-table tbody tr td.table-divisor.PAUSED + td,
+main.content table.pure-table tbody tr td.table-divisor.paused + td {
+    color: var(--text-muted) !important;
 }
 
-.FINISHED, .finished {
-    background-color: #080866;
-    /*#ff0000ab;*/
-    opacity: 90%;
-    color: white;    
-    /*border-radius: 12px;*/
+/* STOP / ABORT = errore o interrotto = danger/rosso */
+main.content table.pure-table tbody tr td.table-divisor.STOP + td,
+main.content table.pure-table tbody tr td.table-divisor.stop + td,
+main.content table.pure-table tbody tr td.table-divisor.ABORT + td,
+main.content table.pure-table tbody tr td.table-divisor.abort + td {
+    color: var(--color-danger) !important;
+    background: var(--color-danger-bg) !important;
 }
 
-.STOP, .stop {
-    background-color: #eb2c2c;
-    opacity: 90%;
-    color: black;
-    /*border-radius: 12px;*/
-    /* background-image: url('../assets/stop.png');
-        background-repeat: no-repeat;
-        */
+/* FINISHED = concluso = neutro */
+main.content table.pure-table tbody tr td.table-divisor.FINISHED + td,
+main.content table.pure-table tbody tr td.table-divisor.finished + td {
+    color: var(--text-secondary) !important;
+    background: var(--bg-surface-2) !important;
 }
 
-.ABORT, .abort {
-    background-color: #ff0000ab;
-    opacity: 90%;
-    color: white;
-    /*border-radius: 12px;*/
+
+/* ============ SMALL TEXT (PIECE_DESC sotto PIECE) ============ */
+small {
+    color: var(--text-muted);
+    font-size: var(--font-size-xs);
 }
 
-.WORKING, .working{
-    background-color: lightblue;
-    opacity: 90%;
-    color: gray;
-    /*border-radius: 12px;*/
+
+/* ============ PROGRESS BAR ============ */
+/* height/border-radius/overflow gia' gestiti da custom-fix.css.
+   Bg-surface-2 contrasta sia con bg-base (row pari) che bg-input (row dispari). */
+progress::-webkit-progress-bar {
+    background: var(--bg-surface-2);
+    border-radius: var(--radius-pill);
 }
 
-.RAW, .raw{
-    background-color: limegreen;
-    opacity: 90%;
-    color: white;
-    /*border-radius: 20px;*/
+progress::-webkit-progress-value {
+    background: var(--accent);
+    border-radius: var(--radius-pill);
+    transition: width var(--transition-base);
+}
+
+progress::-moz-progress-bar {
+    background: var(--accent);
+    border-radius: var(--radius-pill);
+}
+
+
+/* ============ DELETE POPUP ============ */
+.popUpOnLine {
+    background: var(--bg-surface-2) !important;
+    padding: var(--space-4) !important;
+}
+
+.popUpOnLine h3 {
+    color: var(--text-primary);
+    margin-bottom: var(--space-3);
+}
+
+/* Override inline style="background-color:coral" su bottone DELETE */
+.popUpOnLine button.button-error {
+    background: var(--color-danger) !important;
+    color: var(--text-primary);
+    border: 0;
+    border-radius: var(--radius-md);
+    font-weight: var(--font-weight-semibold);
+    padding: var(--space-2) var(--space-4);
+}
+
+.popUpOnLine button.button-error:hover {
+    background: var(--color-danger-bg) !important;
+    color: var(--color-danger);
+}
+
+/* Bottone EXIT (class typo 'butto-secondary' non matcha niente, stiliziamo
+   come secondary tramite :not(.button-error) sui bottoni del popup) */
+.popUpOnLine button:not(.button-error) {
+    background: var(--bg-input);
+    color: var(--text-primary);
+    border-radius: var(--radius-md);
+    padding: var(--space-2) var(--space-4);
+}
+
+.popUpOnLine button:not(.button-error):hover {
+    background: var(--bg-surface-2);
+    border-color: var(--border-strong);
 }
 </style>
