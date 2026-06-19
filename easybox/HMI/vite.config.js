@@ -16,4 +16,8 @@ export default defineConfig({
     },
   },
   assetsInclude: ['**/*.PNG'],
+  server: {
+    host: true,
+    port: 5173,
+  },
 })

@@ -1,9 +1,11 @@
 import { reactive } from 'vue'
 
+const apiHost = window.location.hostname === 'localhost' ? '127.0.0.1' : window.location.hostname
+
 export const dataStored = reactive({
     userLevel: sessionStorage.getItem("userLevel") || 0,
     timeoutUserLevel : 5*60*1000, //5min
-    server:"http://127.0.0.1:8080/",
+    server:`http://${apiHost}:8080/`,
 
     RobotInLocalMode : true,
     cmdActive        : false,   //il robot puo' eseguire i comandi singoli
@@ -20,7 +22,7 @@ export const dataStored = reactive({
       client:null,
       socket:null,
       diagSocket:null,
-      brokerURL:'127.0.0.1:3000'
+      brokerURL:`${apiHost}:3000`
     },
 
     searchQuery     : '',

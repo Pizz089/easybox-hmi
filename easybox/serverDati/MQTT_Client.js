@@ -6,11 +6,19 @@ const mqtt 	= require("mqtt");
 var HEIDENHAIN		= require('./CN/HEIDENHAIN');
 var HAAS			= require('./CN/HAAS');
 const diag			= require('./MQTTDiag');
+console.log("DEBUG MQTT_BROKER_URL=", JSON.stringify(process.env.MQTT_BROKER_URL));
+console.log("DEBUG CN_TYPE_MC1=", JSON.stringify(process.env.CN_TYPE_MC1));
+console.log("DEBUG HAAS_MC1_IP=", JSON.stringify(process.env.HAAS_MC1_IP));
 
 //const client = mqtt.connect("mqtt://172.20.70.111");
 // URL broker configurabile via .env (MQTT_BROKER_URL). Fallback al valore storico.
 const client = mqtt.connect(process.env.MQTT_BROKER_URL || "mqtt://HMI:HMI@127.0.0.1:9001",
 							{clientId:'API_' + Math.random().toString(16).substr(2, 8),qos:2});
+
+// Nome tabella ordini di lavoro. Il PLC legge/scrive su 'WORKORDERS' (con la S;
+// esiste anche WORKORDERS_COUNTER con lo stesso prefisso). Centralizzato per
+// evitare che backend e PLC operino su tabelle diverse.
+const TABLE_WORKORDERS = 'WORKORDERS';
 
 client.on('error', function (err){
 	DBf.io.emit('PLC/ALARM/GENERIC', 'Impossible to connect to broker!    ['+err+']');
@@ -129,7 +137,15 @@ client.on('message', function (topic, message, packet) {
 		return;
 	}
 
-	if (param[1] =="LOG") {			
+	// CYCLE_DONE (fine ciclo PLC): FROM_PLANT/CYCLE_DONE/<MC>, payload = ID workorder.
+	// Senza questo handler PRODUCTED non avanza mai e il PLC riprende all'infinito
+	// lo stesso ordine. Delego a handleCycleDone e return per evitare fall-through.
+	if (param[1] == "CYCLE_DONE") {
+		handleCycleDone(param[2], message.toString());
+		return;
+	}
+
+	if (param[1] =="LOG") {
 		if (param[2] == "QUERY"){	//es: FROM_PLANT/LOG/QUERY
 			insertLog( message.toString(), 'PLC', 'QUERY' )
 			return;
@@ -391,7 +407,7 @@ DBf.io.on('connection', (socket) => {
 //			insertLog( "ERR TO_PLANT/CMD/ORDER: "+err.toString(), 'HMI', 'ORDER' );
 //            return;
 //        }
-//		let query = `UPDATE WORKORDER SET 
+//		let query = `UPDATE WORKORDERS SET
 //					STATUS='@status@' 
 //					WHERE ID=@id@;`
 //		query = query.replace("@status@", data.status); 
@@ -414,8 +430,8 @@ DBf.io.on('connection', (socket) => {
 			insertLog( "ERR TO_PLANT/CMD/ORDER: "+err.toString(), 'HMI', 'ORDER' );
             return;
         }
-		let query = `UPDATE WORKORDER SET 
-					STATUS='@status@' 
+		let query = `UPDATE WORKORDERS SET
+					STATUS='@status@'
 					WHERE ID=@id@;`;
 		
 		if (data.status == 3){  //WORKING
@@ -733,6 +749,44 @@ function handleHaasCmd(mcNum, message, packet) {
 			default:                             errCode = 'haas_error'; break;
 		}
 		ackKo(mcNum, cmd, reqId, errCode, err.message);
+	});
+}
+
+// ============================================================================
+// CYCLE_DONE — avanzamento produzione a fine ciclo.
+//
+// Il PLC pubblica su FROM_PLANT/CYCLE_DONE/<MC> con payload = ID del workorder
+// appena prodotto. Qui incrementiamo PRODUCTED e, se raggiunta QUANTITY, marchiamo
+// l'ordine FINISHED (STATUS=5), poi notifichiamo la HMI con PRODUCTION/CHANGED
+// (stesso evento usato dagli altri cambi di stato produzione).
+// ============================================================================
+function handleCycleDone(mcTopic, orderID) {
+	// Validazione: orderID deve essere intero positivo. Payload PLC = untrusted.
+	const id = parseInt(orderID, 10);
+	if (!Number.isInteger(id) || id <= 0) {
+		log.standard("CYCLE_DONE: orderID non valido [" + String(orderID) + "] da MC " + String(mcTopic) + " — ignorato");
+		return;
+	}
+
+	sql.connect(DBf.configDB, function (err) {
+		if (err) {
+			log.standard("CYCLE_DONE: err connessione DB: " + err);
+			return;
+		}
+		// 1) incrementa il prodotto; 2) se raggiunta la quantità → FINISHED (STATUS=5).
+		// id è un intero validato sopra → sicuro in interpolazione.
+		const query =
+			`UPDATE ${TABLE_WORKORDERS} SET PRODUCTED = PRODUCTED + 1 WHERE ID = ${id}; ` +
+			`UPDATE ${TABLE_WORKORDERS} SET STATUS = 5 WHERE ID = ${id} AND PRODUCTED >= QUANTITY;`;
+		log.info("query: " + query);
+		var request = new sql.Request();
+		request.query(query, function (err, recordset) {
+			if (err) {
+				log.standard("CYCLE_DONE: err query: " + err);
+				return;
+			}
+			DBf.io.emit('PRODUCTION/CHANGED');  //aggiorno la tabella di produzione
+		});
 	});
 }
 
