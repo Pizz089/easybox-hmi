@@ -4,8 +4,16 @@
  * dalla class .dark di theme.css (fragile, dipende da JS init order).
  *
  * Override scoped nei .vue continuano a vincere per specificity.
- * font-family: rimandato a UI-8 cleanup trasversale.
+ * font-family: governata SOLO dal token --font-family via la regola body
+ * qui sotto. Vince su pure.css (html { font-family: sans-serif }) perche'
+ * una dichiarazione diretta su body e' ereditata da tutti i discendenti.
+ * base.css NON e' nel bundle (importato solo da main.css, mai caricato).
  */
+
+/* Font effettiva del pannello: presa dal design system, non hardcoded. */
+body {
+  font-family: var(--font-family);
+}
 
 h1, h2, h3, h4 {
   color: var(--text-primary);
