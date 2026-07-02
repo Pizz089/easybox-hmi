@@ -174,6 +174,20 @@ Hover comune (dove non sovrascritto): `filter: brightness(1.12)`.
 }
 ```
 
+### 3.4 Sistema B — bottoni fuori dalle unit view (mappato in audit sessione 2)
+
+L'audit ha rivelato che il pannello ha DUE sistemi di bottoni paralleli. Il §3.2 descrive solo il **Sistema A** (le 4 classi unit-view: micromission/mission/specialCMD/disable), usato esclusivamente dalle 4 unit view e già a norma. Tutto il resto del pannello (config, production, diagnostica, componenti) usa il **Sistema B**, basato sulle classi PureCSS + classi ad-hoc per-view, NON ancora ricondotto alle 6 varianti canoniche.
+
+Censimento Sistema B (sessione 2): `pure-button-primary` (39 usi, la classe bottone più usata in assoluto), `pure-button-disabled` (13), `pure-button-secondary` (2), `pure-button-group` (16, è wrapper layout non variante), ~25 classi `btn-*` ad-hoc (btn-save, btn-add-order, btn-primary, btn-resume, btn-pause, btn-lock-icon, btn-clear-filter, btn-round, btn-rotate, btn-outline), ~140 tag `<button>` totali, e un componente condiviso `Button.vue` da ispezionare. Nessuna libreria UI esterna (no el-button).
+
+**Tre buchi doc-vs-codice da risolvere in sessione dedicata config/production (NON nelle unit view):**
+
+1. **Doppio "Primary".** Il doc dice Primary = `.pure-button-micromission` (Sistema A), ma il resto del pannello usa `pure-button-primary` (Sistema B, PureCSS) con 39 occorrenze. Sono due "primary" visivamente diversi. DA DECIDERE: quale diventa il canonico per config/production, e se riconciliare i due sistemi sotto un'unica variante Primary o tenerli distinti per dominio (unit view vs gestione).
+2. **Doppia grafia disabled.** `.pure-button-disable` (Sistema A, 8 usi) vs `pure-button-disabled` (Sistema B/PureCSS, 13 usi). DA UNIFICARE sotto un'unica variante Disabled.
+3. **secondary → ghost.** `pure-button-secondary` (2 usi) è il candidato naturale a diventare la variante Ghost del doc. DA CONFERMARE in fase di migrazione Sistema B.
+
+Finché questi non sono decisi, il Sistema B resta com'è. Le sessioni che toccano config/production/diagnostica li affrontano lì.
+
 > Nota touch: 44px è il minimo iOS/Material per target tappabili. Sotto i 44px su touch panel diventa difficile centrare il dito. Se la toolbar lo consente, preferire 52px anche per icon-only.
 
 ---

@@ -41,6 +41,9 @@ const confItems = [
   { key: "menu.pallets", fallback: "Pallets", path: "/conf/Pallets" },
   { key: "menu.gratings", fallback: "Grigliati", path: "/conf/Gratings" },
   { key: "menu.position", fallback: "Posizioni", path: "/conf/Position" },
+  // Config macchina (selettore brand): area tecnico, stesso pattern
+  // requiresLevel introdotto in N1-2a per la voce diagnostica.
+  { key: "menu.machines", fallback: "Macchine", path: "/conf/Machines", requiresLevel: 2 },
 ];
 
 const diagItems = [

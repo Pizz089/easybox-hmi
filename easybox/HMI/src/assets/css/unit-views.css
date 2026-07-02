@@ -11,8 +11,8 @@
 .status-card {
     background: var(--bg-surface);
     color: var(--text-primary);
-    padding: var(--space-3);
-    margin-top: var(--space-3);
+    padding: var(--space-4);
+    margin-top: var(--space-4);
     border-radius: var(--radius-md);
     box-shadow: var(--elevation-2);
     text-align: center;
@@ -58,7 +58,7 @@
     color: var(--text-primary);
     border: 0;
     border-radius: var(--radius-md);
-    padding: 14px 24px;
+    padding: var(--space-4) var(--space-5);
     min-height: 52px;
     font-weight: var(--font-weight-medium);
     letter-spacing: 0.025em;
@@ -71,7 +71,7 @@
     color: var(--color-warning-text);
     border: 0;
     border-radius: var(--radius-md);
-    padding: 14px 24px;
+    padding: var(--space-4) var(--space-5);
     min-height: 52px;
     font-weight: var(--font-weight-medium);
     letter-spacing: 0.025em;
@@ -113,6 +113,51 @@
     background: var(--color-critical-hover);
 }
 
+/* Varianti nuove (§3.3): definite qui ma NON ancora applicate ai template.
+   Pronte per le sessioni future (config/production/diag - Sistema B). */
+
+/* Ghost: azione minore/secondaria, no fill. Base comune §3.1 per
+   radius/min-height/padding/font; hover su bg/border/color (non filter,
+   che sarebbe inerte: l'hover non cambia luminosita' ma sfondo/bordo). */
+.btn-ghost {
+    background: transparent;
+    border: 1px solid var(--border-default);
+    color: var(--text-secondary);
+    border-radius: var(--radius-md);
+    min-height: 52px;
+    padding: var(--space-4) var(--space-5);
+    font-weight: var(--font-weight-medium);
+    letter-spacing: 0.025em;
+    cursor: pointer;
+    transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.btn-ghost:hover:not(:disabled) {
+    background: var(--bg-surface);
+    border-color: var(--border-strong);
+    color: var(--text-primary);
+}
+
+/* Icon-only: toolbar dense. Deroga a min-height 52 -> quadrato 44x44 (touch). */
+.btn-icon {
+    background: transparent;
+    border: 0;
+    color: var(--text-secondary);
+    min-height: 44px;
+    min-width: 44px;
+    border-radius: var(--radius-sm);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.btn-icon:hover:not(:disabled) {
+    background: var(--bg-surface-2);
+    color: var(--text-primary);
+}
+
 
 /* ============ ANIMATIONS ============ */
 /* @keyframes globale: allineato a units.vue UI-3.3 (pulse su accent-hover). */
@@ -140,7 +185,7 @@
     margin-top: var(--space-4);
     display: flex;
     flex-direction: column;
-    gap: var(--space-3);
+    gap: var(--space-2);
 }
 
 .command-section-title {
@@ -155,7 +200,7 @@
 /* Sub-heading h4 dentro command-section (es. "Punti di destinazione"
    sotto "Movimenti"). Tipografia leggermente piu' light vs section-title. */
 .command-subsection-title {
-    margin: var(--space-3) 0 0;
+    margin: var(--space-4) 0 0;
     font-size: var(--font-size-xs);
     font-weight: var(--font-weight-medium);
     text-transform: uppercase;

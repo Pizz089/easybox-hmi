@@ -172,6 +172,7 @@
     "pallets": "Pallets",
     "gratings": "Grigliati",
     "position": "Posizioni",
+    "machines": "Macchine",
     "diagnostics": "Diagnostica",
     "mqttDiag": "MQTT Live"
   },
@@ -317,6 +318,22 @@
       "auto": "Pronta",
       "off": "SPENTA"
     }
+  },
+  "machine": {
+    "welcome": "Configurazione macchine",
+    "brandSection": "Marca macchina",
+    "activeBrand": "Marca attiva",
+    "requestedBrand": "Marca richiesta",
+    "selectBrand": "Nuova marca",
+    "apply": "Applica",
+    "cancel": "Annulla",
+    "pending": "Cambio marca in attesa — la macchina deve essere ferma",
+    "configError": "Configurazione marca NON valida",
+    "configErrorDetail": "Errore {err} sulla marca {brand}",
+    "confirmTitle": "Confermare il cambio marca?",
+    "confirmText": "Il cambio marca riconfigura gli I/O della macchina: {from} → {to}. Il PLC applica la richiesta solo a macchina ferma.",
+    "waiting": "In attesa dei dati dal PLC ...",
+    "unknown": "Sconosciuta"
   },
   "vice": {
     "welcome": "Elenco morse",

@@ -6,7 +6,7 @@ const { Server } = require('socket.io');
 const configDB= { 
 	user: 'plc',
 	password: 'plc',
-	server: '172.20.70.80\\SQLEXPRESS' ,
+	server: 'localhost\\SQLEXPRESS' ,
 	database: 'ADMG', 
 	connectionTimeout: 5000, 
 	options: {

@@ -20,6 +20,20 @@ const client = mqtt.connect(process.env.MQTT_BROKER_URL || "mqtt://HMI:HMI@127.0
 // evitare che backend e PLC operino su tabelle diverse.
 const TABLE_WORKORDERS = 'WORKORDERS';
 
+// Brand macchina selezionabile a runtime (DB_MC<n> lato PLC, giugno 2026).
+// Range valido di brandID (1..16, id 3..16 riservati). Deve combaciare con
+// la validazione frontend (HMI/src/util/machineBrands.js) e con il PLC.
+const BRAND_ID_MIN = 1;
+const BRAND_ID_MAX = 16;
+
+// Cache dell'ultimo payload FROM_PLANT/BRAND/<MC> per MC ('MC1' -> raw JSON).
+// Serve per lo snapshot on-demand alle HMI (evento BRAND/REQUEST_SNAPSHOT):
+// lo stato brand viaggia a eventi, una HMI aperta dopo l'ultimo publish non
+// lo vedrebbe mai senza replay. NB: la libreria coda del PLC NON supporta
+// retained — il PLC pubblica al boot e su variazione; dopo un riavvio del
+// backend la cache resta vuota fino al successivo publish del PLC.
+const brandStateCache = {};
+
 client.on('error', function (err){
 	DBf.io.emit('PLC/ALARM/GENERIC', 'Impossible to connect to broker!    ['+err+']');
 	// Topic con prefisso "_" indicano eventi interni del backend,
@@ -142,6 +156,15 @@ client.on('message', function (topic, message, packet) {
 	// lo stesso ordine. Delego a handleCycleDone e return per evitare fall-through.
 	if (param[1] == "CYCLE_DONE") {
 		handleCycleDone(param[2], message.toString());
+		return;
+	}
+
+	// BRAND (marca macchina runtime): FROM_PLANT/BRAND/<MC>, payload JSON
+	// {"req":<int>,"act":<int>,"lastError":<int>,"lastErrorBrand":<int>}.
+	// Delego a handleBrandStatus e return per evitare fall-through (stesso
+	// pattern di HAAS_CMD/CYCLE_DONE).
+	if (param[1] == "BRAND") {
+		handleBrandStatus(param[2], message.toString());
 		return;
 	}
 
@@ -397,6 +420,47 @@ DBf.io.on('connection', (socket) => {
 			size: Buffer.byteLength(payloadStr)
 		});
 	} catch (_) {}
+  });
+
+  // Richiesta cambio marca per-MC: la HMI emette 'TO_PLANT/CMD/BRANDMC<n>' con
+  // il brandID selezionato; publish sullo stesso topic (convenzione socket-event
+  // == topic), payload intero plain-text. Il topic sta sotto TO_PLANT/CMD/
+  // perche' il PLC e' sottoscritto SOLO a TO_PLANT/CMD/# (verifica lato TIA,
+  // stesso motivo del HAAS_ACK in publishHaasAck). Il PLC scrive brandID_req
+  // e latcha su brandID_act solo a dispatcher fermo.
+  // Payload HMI = comunque untrusted: rivalido il range qui.
+  for (let mcNum = 1; mcNum <= 3; mcNum++) {
+	const brandTopic = 'TO_PLANT/CMD/BRANDMC' + mcNum;
+	socket.on(brandTopic, (brandId) => {
+		const id = parseInt(brandId, 10);
+		if (!Number.isInteger(id) || id < BRAND_ID_MIN || id > BRAND_ID_MAX) {
+			insertLog( "BRAND req scartata, id non valido ["+String(brandId)+"]", 'HMI', 'MC'+mcNum );
+			return;
+		}
+		insertLog( "Sent BRAND req: "+id, 'HMI', 'MC'+mcNum );
+		client.publish(brandTopic, String(id));
+		try {
+			const payloadStr = String(id);
+			diag.publish({
+				ts: Date.now(),
+				dir: "OUT",
+				topic: brandTopic,
+				payload: payloadStr,
+				source: "HMI",
+				size: Buffer.byteLength(payloadStr)
+			});
+		} catch (_) {}
+	});
+  }
+
+  // Snapshot brand on-demand (stesso spirito del 'request-snapshot' del diag):
+  // la view di config macchine lo emette al mount e ad ogni reconnect, perche'
+  // lo stato brand viaggia a eventi (niente polling frontend). Rispondo solo
+  // al socket richiedente con gli stessi eventi '<MC>/BRAND' del flusso live.
+  socket.on('BRAND/REQUEST_SNAPSHOT', () => {
+	for (const mcName of Object.keys(brandStateCache)) {
+		socket.emit(mcName + '/BRAND', brandStateCache[mcName]);
+	}
   });
   
 //  socket.on('TO_PLANT/CMD/ORDER', (data) => {
@@ -788,6 +852,36 @@ function handleCycleDone(mcTopic, orderID) {
 			DBf.io.emit('PRODUCTION/CHANGED');  //aggiorno la tabella di produzione
 		});
 	});
+}
+
+// ============================================================================
+// BRAND — marca macchina selezionabile a runtime (DB_MC<n> lato PLC).
+//
+// PLC -> HMI: FROM_PLANT/BRAND/<MC> (pubblicato al boot PLC e su variazione,
+// NO retained: la libreria coda del PLC non lo supporta), payload JSON:
+//   { "req": <brandID_req>, "act": <brandID_act>,
+//     "lastError": <DB_MachineConfig.lastError>,
+//     "lastErrorBrand": <DB_MachineConfig.lastErrorBrand> }
+// Rilanciato alla HMI come evento socket '<MC>/BRAND' (stesso pattern di
+// '<MC>/STATUS') + cache per lo snapshot BRAND/REQUEST_SNAPSHOT.
+//
+// HMI -> PLC: vedi handler socket 'TO_PLANT/CMD/BRANDMC<n>' sopra.
+// ============================================================================
+function handleBrandStatus(mcName, payloadStr) {
+	// mcName arriva gia' uppercase dallo split del topic. Payload PLC =
+	// untrusted: valido nome unita' e parsabilita' JSON prima di cachare.
+	if (!/^MC\d+$/.test(mcName || '')) {
+		log.standard("BRAND: unita' non valida [" + String(mcName) + "] — ignorato");
+		return;
+	}
+	try {
+		JSON.parse(payloadStr);
+	} catch (e) {
+		log.standard("BRAND: payload non JSON da " + mcName + " [" + payloadStr + "] — ignorato");
+		return;
+	}
+	brandStateCache[mcName] = payloadStr;
+	DBf.io.emit(mcName + '/BRAND', payloadStr);
 }
 
 /*

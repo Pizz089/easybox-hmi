@@ -166,6 +166,12 @@ const router = createRouter({
       meta: { layout: StandardMenu },
       component: () => import("../views/conf/PositionView.vue"),
     },
+    {
+      path: "/conf/Machines",
+      name: "Machines",
+      meta: { layout: StandardMenu },
+      component: () => import("../views/conf/Machine/MachineConfigView.vue"),
+    },
     //{
     //  path: '/conf/fixtureOnPallet',
     //  name: 'fixtureOnPallet',

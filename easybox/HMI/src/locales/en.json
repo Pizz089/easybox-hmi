@@ -172,6 +172,7 @@
     "pallets": "Pallets",
     "gratings": "Gratings",
     "position": "Position",
+    "machines": "Machines",
     "diagnostics": "Diagnostics",
     "mqttDiag": "MQTT Live"
   },
@@ -314,6 +315,22 @@
       "remote": "Remote",
       "auto": "Ready"
     }
+  },
+  "machine": {
+    "welcome": "Machines configuration",
+    "brandSection": "Machine brand",
+    "activeBrand": "Active brand",
+    "requestedBrand": "Requested brand",
+    "selectBrand": "New brand",
+    "apply": "Apply",
+    "cancel": "Cancel",
+    "pending": "Brand change pending — machine must be idle",
+    "configError": "Invalid brand configuration",
+    "configErrorDetail": "Error {err} on brand {brand}",
+    "confirmTitle": "Confirm brand change?",
+    "confirmText": "Changing the brand reconfigures the machine I/O: {from} → {to}. The PLC applies the request only when the machine is idle.",
+    "waiting": "Waiting for PLC data ...",
+    "unknown": "Unknown"
   },
   "vice": {
     "welcome": "List vices",
