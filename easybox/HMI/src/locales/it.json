@@ -159,6 +159,7 @@
     "dimensioniPz": "Dimensioni scasso [mm]"
   },
   "menu": {
+    "dashboard": "Dashboard",
     "production": "Produzione",
     "robot": "Robot",
     "smallbox": "EasyBox",
@@ -178,6 +179,9 @@
   },
   "sidebar": {
     "section": {
+      "menu": "Menu",
+      "unit": "Unità",
+      "conf": "Configurazione",
       "diagnostics": "Diagnostica"
     }
   },

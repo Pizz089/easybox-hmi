@@ -159,6 +159,7 @@
     "dimensioniPz": "Dimensions hole [mm]"
   },
   "menu": {
+    "dashboard": "Dashboard",
     "production": "Production",
     "robot": "Robot",
     "smallbox": "EasyBox",
@@ -178,6 +179,9 @@
   },
   "sidebar": {
     "section": {
+      "menu": "Menu",
+      "unit": "Unit",
+      "conf": "Configuration",
       "diagnostics": "Diagnostics"
     }
   },
