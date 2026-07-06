@@ -500,7 +500,7 @@ DBf.io.on('connection', (socket) => {
 		
 		if (data.status == 3){  //WORKING
 			query += `UPDATE [POSITION] SET Order_ID=@id@ WHERE id IN (
-						SELECT top 10 id FROM POSITION WHERE Part_Type=@PIECE_ID@ AND STATUS=4 AND ORDER_ID=0 
+						SELECT top (SELECT QUANTITY FROM WORKORDERS WHERE ID=@id@) id FROM POSITION WHERE Part_Type=@PIECE_ID@ AND STATUS=4 AND ORDER_ID=0 
 					  )`;
 		}
 		if (data.status == 4){  //RAW
