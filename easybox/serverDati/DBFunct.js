@@ -3,16 +3,21 @@ var sql 		 = require('mssql')
 const log 		 = require('./LogFunct');
 const { Server } = require('socket.io');
 
-const configDB= { 
-	user: 'plc',
-	password: 'plc',
-	server: 'localhost\\SQLEXPRESS' ,
-	database: 'ADMG', 
-	connectionTimeout: 5000, 
+// Config SQL da env var (chiude D2): override locale via .env (vedi
+// .env.example), fallback = configurazione di IMPIANTO. Mai localhost come
+// fallback: un deploy senza .env deve puntare al DB di produzione, non al dev.
+// Letto a require-time: ok perche' server.js chiama dotenv.config() PRIMA
+// dei require (stesso vincolo di MQTT_BROKER_URL/getCnType).
+const configDB= {
+	user:     process.env.DB_USER     || 'plc',
+	password: process.env.DB_PASSWORD || 'plc',
+	server:   process.env.DB_SERVER   || '172.20.70.80\\SQLEXPRESS',
+	database: process.env.DB_NAME     || 'ADMG',
+	connectionTimeout: 5000,
 	options: {
-		encrypt:false   
-	} 
-} 
+		encrypt:false
+	}
+}
 
 exports.io = new Server(3000,{cors:{ origin:'*', credentials:true }});
 //module.exports=configDB;
