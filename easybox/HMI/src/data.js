@@ -7,7 +7,6 @@ export const dataStored = reactive({
     timeoutUserLevel : 5*60*1000, //5min
     server:`http://${apiHost}:8080/`,
 
-    RobotInLocalMode : true,
     cmdActive        : false,   //il robot puo' eseguire i comandi singoli
     cmdActiveMission : false,   //il robot puo' eseguire le micromissioni
 

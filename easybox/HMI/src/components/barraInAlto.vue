@@ -38,14 +38,6 @@ const userModalOpen = ref(false);
                 <!--&nbsp;{{ $i18n.locale }}</h6-->
             </h6>
             
-            <h6 class="productionMenu" @click="sendToRobot(dataStored.RobotInLocalMode ? 81 : 82)">
-                <img :src="[dataStored.RobotInLocalMode ? '/src/assets/on_manual3.png' : '/src/assets/on_auto3.png']"
-                    width="90%">
-            </h6>
-            
-            <!--:style="[dataStored.RobotInLocalMode ? 'background-image: url(/src/assets/on_manual3.png);' : 'background-image: url(/src/assets/on_auto.png);']" -->
-
-
         </div>
 
         <!--RouterLink v-if="dataStored.alert.title!=''" to="/changeUser" class="alarmMenu">
@@ -82,27 +74,7 @@ export default {
                 this.langIndex = 0;
 
             this.$i18n.locale = this.languageDisp[this.langIndex];
-        },
-        sendToRobot(val) {
-            dataStored.WS.socket.emit("TO_PLANT/CMD/ROBOT", val);
         }
-    },
-    mounted() {
-        dataStored.WS.socket.on('ROBOT/STATUS', payload => {
-            //alert("payload: "+payload);
-            if (parseInt(payload) == dataStored.status_remote) {
-                dataStored.RobotInLocalMode = false;
-                //alert("local: "+dataStored.RobotInLocalMode);
-                //alert(this.$t("ROBOT READY FOR WORK!"));
-                //dataStored.alert.title=this.$t("ATTENTION");
-                //dataStored.alert.type="message";
-                //dataStored.alert.desc=this.$t("ROBOT READY FOR WORK!");
-            }
-            if (parseInt(payload) == dataStored.status_local) {
-                dataStored.RobotInLocalMode = true;
-                //alert("local: "+dataStored.RobotInLocalMode);
-            }
-        })
     },
     unmounted() {
         //dataStored.WS.socket.off('ROBOT/STATUS');

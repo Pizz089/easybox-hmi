@@ -303,25 +303,11 @@ export default {
       this.sendToRobot("100;"+val)
     },
     CMD_enabled(){
-      if (dataStored.RobotInLocalMode &&
-          this.dataRobot.STATUS!=dataStored.status_off &&
-          (this.dataRobot.STATUS==dataStored.status_auto || 
-           this.dataRobot.STATUS==dataStored.status_local)
-         )
-        dataStored.cmdActive = true;
-      else
-        dataStored.cmdActive = false;
+      dataStored.cmdActive = (this.dataRobot.STATUS == dataStored.status_hold);
     },
     Mission_enabled(){
-      if (dataStored.RobotInLocalMode && 
-          this.dataGripper[0].ID != null &&
-          this.dataRobot.STATUS!=dataStored.status_off &&
-          (this.dataRobot.STATUS==dataStored.status_auto || 
-          this.dataRobot.STATUS==dataStored.status_local)
-        )
-        dataStored.cmdActiveMission = true;
-      else
-        dataStored.cmdActiveMission = false;
+      dataStored.cmdActiveMission = (this.dataRobot.STATUS == dataStored.status_hold &&
+                                     this.dataGripper[0].ID != null);
     }
   },
   mounted() {
