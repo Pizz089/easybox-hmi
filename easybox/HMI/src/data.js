@@ -8,7 +8,9 @@ export const dataStored = reactive({
     server:`http://${apiHost}:8080/`,
 
     cmdActive        : false,   //il robot puo' eseguire i comandi singoli
-    cmdActiveMission : false,   //il robot puo' eseguire le micromissioni
+    cmdActiveMission : false,   //il robot puo' eseguire le micromissioni (hold + pinza a bordo)
+    cmdActiveLoad    : false,   //missione CARICA PINZA (hold + NESSUNA pinza a bordo)
+    cmdActivePallet  : false,   //missioni CARICA/SCARICA PALLET (hold + pinza a bordo)
 
     robotSpeed : 0,
     

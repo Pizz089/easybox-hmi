@@ -162,20 +162,20 @@
         </button>
 
         <button class="pure-u-1 button_pressed"
-          :class="[dataStored.cmdActiveMission==0? 'pure-button-disable' : 'pure-button-mission']"
-          @click="dataStored.cmdActiveMission==1?openDialog('gripper'):''">
+          :class="[dataStored.cmdActiveLoad==0? 'pure-button-disable' : 'pure-button-mission']"
+          @click="dataStored.cmdActiveLoad==1?openDialog('gripper'):''">
           {{ $t('CARICA PINZA') }}
         </button>
 
         <button class="pure-u-1 button_pressed"
-          :class="[dataStored.cmdActiveMission==0? 'pure-button-disable' : 'pure-button-mission']"
-          @click="dataStored.cmdActiveMission==1?openDialog('palletLoad'):''">
+          :class="[dataStored.cmdActivePallet==0? 'pure-button-disable' : 'pure-button-mission']"
+          @click="dataStored.cmdActivePallet==1?openDialog('palletLoad'):''">
           {{ $t('CARICA PALLET') }}
         </button>
 
         <button class="pure-u-1 button_pressed"
-          :class="[dataStored.cmdActiveMission==0? 'pure-button-disable' : 'pure-button-mission']"
-          @click="dataStored.cmdActiveMission==1?openDialog('palletUnload'):''">
+          :class="[dataStored.cmdActivePallet==0? 'pure-button-disable' : 'pure-button-mission']"
+          @click="dataStored.cmdActivePallet==1?openDialog('palletUnload'):''">
           {{ $t('SCARICA PALLET') }}
         </button>
 
@@ -383,8 +383,13 @@ export default {
       dataStored.cmdActive = (this.dataRobot.STATUS == dataStored.status_hold);
     },
     Mission_enabled(){
-      dataStored.cmdActiveMission = (this.dataRobot.STATUS == dataStored.status_hold &&
-                                     this.dataGripper[0].ID != null);
+      // accesso sicuro: dataGripper puo' essere {} (nessuna pinza a bordo)
+      const inHold = this.dataRobot.STATUS == dataStored.status_hold;
+      const gripperOnBoard = !!(this.dataGripper && this.dataGripper[0] &&
+                                this.dataGripper[0].ID != null);
+      dataStored.cmdActiveMission = inHold && gripperOnBoard;   // SCARICA PINZA + cassetti
+      dataStored.cmdActiveLoad    = inHold && !gripperOnBoard;  // CARICA PINZA
+      dataStored.cmdActivePallet  = inHold && gripperOnBoard;   // CARICA/SCARICA PALLET
     },
     getGrippersList() {
       fetch(dataStored.server + 'api/conf/gripper/show/all', { method: 'GET' })
@@ -448,9 +453,21 @@ export default {
       this.dialog.selected = null;
     },
     confirmDialog() {
-      // ri-verifica del gating alla conferma: lo stato missione puo' essere
-      // decaduto mentre il dialog era aperto
-      if (dataStored.cmdActiveMission != 1)
+      // ri-verifica del gating alla conferma (per tipo di missione): lo stato
+      // puo' essere decaduto mentre il dialog era aperto
+      let missionEnabled;
+      switch (this.dialog.type) {
+        case 'gripper':
+          missionEnabled = dataStored.cmdActiveLoad;
+          break;
+        case 'palletLoad':
+        case 'palletUnload':
+          missionEnabled = dataStored.cmdActivePallet;
+          break;
+        default:
+          missionEnabled = dataStored.cmdActiveMission;
+      }
+      if (missionEnabled != 1)
         return;
       // trayRelease e' a sola conferma, non richiede selezione
       if (this.dialog.type != 'trayRelease' && this.dialog.selected == null)
