@@ -34,6 +34,13 @@ const BRAND_ID_MAX = 16;
 // backend la cache resta vuota fino al successivo publish del PLC.
 const brandStateCache = {};
 
+// Cache dell'ultimo STATUS per unita' (chiave = namespace socket: 'ROBOT',
+// 'MC1', 'MC2', 'BOX'). Il PLC pubblica FROM_PLANT/STATUS/<UNIT> solo
+// on-change: una view montata dopo l'ultimo cambio non vedrebbe mai lo stato
+// corrente. Replay on-demand via evento UNIT/STATUS/REQUEST. Stesso limite di
+// brandStateCache: vuota dopo un riavvio backend finche' il PLC non ripubblica.
+const unitStatusCache = {};
+
 client.on('error', function (err){
 	DBf.io.emit('PLC/ALARM/GENERIC', 'Impossible to connect to broker!    ['+err+']');
 	// Topic con prefisso "_" indicano eventi interni del backend,
@@ -208,6 +215,7 @@ client.on('message', function (topic, message, packet) {
 		switch (param[1]){  
 			case "STATUS":		//es: FROM_PLANT/STATUS/ROBOT
 				setStatusOnDB('ROBOT',message.toString())
+				unitStatusCache['ROBOT'] = message.toString();
 				DBf.io.emit('ROBOT/STATUS', message.toString())
 				insertLog( "STATUS " + getStatus(message.toString()), 'PLC', 'ROBOT' )
 				break;
@@ -234,6 +242,7 @@ client.on('message', function (topic, message, packet) {
 		switch (param[1]){  
 			case "STATUS":		//FROM_PLANT/STATUS/MC1
 				setStatusOnDB('MC1',message.toString())
+				unitStatusCache['MC1'] = message.toString();
 				DBf.io.emit('MC1/STATUS', message.toString())
 				insertLog( "STATUS "+message.toString(), 'PLC', 'MC1' )
 				DBf.io.emit('PRODUCTION/CHANGED')  //aggiorno la tabella di produzione
@@ -281,6 +290,7 @@ client.on('message', function (topic, message, packet) {
 		switch (param[1]){  
 			case "STATUS":		//FROM_PLANT/STATUS/MC2
 				setStatusOnDB('MC2',message.toString())
+				unitStatusCache['MC2'] = message.toString();
 				DBf.io.emit('MC2/STATUS', message.toString())
 				insertLog( "STATUS "+message.toString(), 'PLC', 'MC2' )
 				break;
@@ -304,6 +314,9 @@ client.on('message', function (topic, message, packet) {
 		switch (param[1]){  
 			case "STATUS":		//FROM_PLANT/STATUS/BOX
 				setStatusOnDB('SMALLBOX',message.toString())
+				// chiave 'BOX' (namespace socket), non 'SMALLBOX' (nome DB):
+				// il replay emette unit+'/STATUS' e le view ascoltano BOX/STATUS
+				unitStatusCache['BOX'] = message.toString();
 				DBf.io.emit('BOX/STATUS', message.toString())
 				break;
 			case "DESCR":		//FROM_PLANT/DESCR/BOX
@@ -461,6 +474,15 @@ DBf.io.on('connection', (socket) => {
 	for (const mcName of Object.keys(brandStateCache)) {
 		socket.emit(mcName + '/BRAND', brandStateCache[mcName]);
 	}
+  });
+
+  // Snapshot STATUS on-demand: le view lo chiedono al mount perche' il PLC
+  // pubblica solo on-change. Risposta solo al socket richiedente, stesso
+  // evento del flusso live ('<UNIT>/STATUS'). Limite noto: cache vuota dopo
+  // un riavvio backend finche' il PLC non ripubblica (come brandStateCache).
+  socket.on('UNIT/STATUS/REQUEST', unit => {
+	if (unitStatusCache[unit] !== undefined)
+		socket.emit(unit + '/STATUS', unitStatusCache[unit]);
   });
   
 //  socket.on('TO_PLANT/CMD/ORDER', (data) => {

@@ -312,10 +312,10 @@ export default {
   },
   mounted() {
     this.getRobotData();
-    dataStored.WS.socket.on('ROBOT/STATUS', payload => {
+    this.statusHandler = payload => {
       this.dataRobot.STATUS = parseInt(payload);
       this.CMD_enabled();
-      this.Mission_enabled(); 
+      this.Mission_enabled();
       if (payload == dataStored.status_alarm){
         dataStored.alert.title= 'ALARM';
         dataStored.alert.desc= "robot.alarm_"+payload
@@ -324,7 +324,11 @@ export default {
         dataStored.alert.title = 'ALARM';
         dataStored.alert.desc = 'abort';
       }
-    });
+    };
+    dataStored.WS.socket.on('ROBOT/STATUS', this.statusHandler);
+    // Snapshot: il PLC pubblica STATUS solo on-change, senza questa richiesta
+    // una view montata dopo l'ultimo cambio resta sullo stato di default.
+    dataStored.WS.socket.emit('UNIT/STATUS/REQUEST', 'ROBOT');
     dataStored.WS.socket.on('ROBOT/DESCR', payload => {
       this.dataRobot.DESCR = payload;
     });
@@ -336,7 +340,9 @@ export default {
     })
   },
   unmounted() {
-    //dataStored.WS.socket.off('ROBOT/STATUS');
+    // off SPECIFICO (evento + callback): un off('ROBOT/STATUS') nudo
+    // staccherebbe anche i listener di altri componenti (es. units.vue).
+    dataStored.WS.socket.off('ROBOT/STATUS', this.statusHandler);
     //dataStored.WS.socket.off('ROBOT/DESCR');
     //dataStored.WS.socket.off('ROBOT/UPDATEGRIPPER');
   }
