@@ -22,6 +22,8 @@
   "CHIUDI PINZA": "Chiudi pinza",
   "CARICA PINZA": "Carica pinza",
   "SCARICA PINZA": "Scarica pinza",
+  "CARICA PALLET": "Carica pallet",
+  "SCARICA PALLET": "Scarica pallet",
   "Comandi": "Comandi",
   "HOME": "Posizione di home",
   "MAINTENANCE": "Posizione per la manutenzione",
@@ -225,6 +227,16 @@
     "noOrderYet": "Nessun ordine al momento"
   },
   "robot": {
+    "dialog": {
+      "chooseGripper": "Quale pinza caricare?",
+      "choosePalletLoad": "Quale pallet caricare?",
+      "choosePalletUnload": "Quale pallet scaricare?",
+      "confirm": "Conferma",
+      "cancel": "Annulla",
+      "empty": "Nessun elemento disponibile",
+      "slot": "Slot",
+      "position": "Posizione"
+    },
     "MODE_LOCAL_REMOTE": "AUTOMAZIONE IN MANUALE/AUTOMATICO",
     "alarm_1": "Orientamento non definito",
     "alarm_2": "Tipo approccio non definito",

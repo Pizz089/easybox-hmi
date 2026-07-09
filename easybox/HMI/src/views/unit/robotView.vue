@@ -151,7 +151,7 @@
         </div>
       </section>
 
-      <!-- ===== CARD 3: Missioni (SCARICA PINZA) ===== -->
+      <!-- ===== CARD 3: Missioni (SCARICA/CARICA PINZA + CARICA/SCARICA PALLET) ===== -->
       <section class="command-section">
         <h3 class="command-section-title">{{ $t('robot.section.mission') }}</h3>
 
@@ -160,6 +160,61 @@
           @click="dataStored.cmdActiveMission==1?sendToRobot(12):''">
           {{ $t('SCARICA PINZA') }}
         </button>
+
+        <button class="pure-u-1 button_pressed"
+          :class="[dataStored.cmdActiveMission==0? 'pure-button-disable' : 'pure-button-mission']"
+          @click="dataStored.cmdActiveMission==1?openDialog('gripper'):''">
+          {{ $t('CARICA PINZA') }}
+        </button>
+
+        <button class="pure-u-1 button_pressed"
+          :class="[dataStored.cmdActiveMission==0? 'pure-button-disable' : 'pure-button-mission']"
+          @click="dataStored.cmdActiveMission==1?openDialog('palletLoad'):''">
+          {{ $t('CARICA PALLET') }}
+        </button>
+
+        <button class="pure-u-1 button_pressed"
+          :class="[dataStored.cmdActiveMission==0? 'pure-button-disable' : 'pure-button-mission']"
+          @click="dataStored.cmdActiveMission==1?openDialog('palletUnload'):''">
+          {{ $t('SCARICA PALLET') }}
+        </button>
+
+        <!-- Dialog scelta elemento missione: nessuna preselezione, la conferma
+             si attiva solo con una voce selezionata esplicitamente. -->
+        <div v-if="dialog.type!=''" class="mission-dialog-overlay">
+          <div class="mission-dialog">
+            <h3 class="command-section-title">{{ $t(dialogTitle) }}</h3>
+
+            <div class="mission-dialog-list">
+              <div v-if="dialogItems.length==0" class="mission-dialog-empty">
+                {{ $t('robot.dialog.empty') }}
+              </div>
+              <button v-for="item in dialogItems" :key="item.ID"
+                class="mission-dialog-item"
+                :class="{ selected: dialog.selected!=null && dialog.selected.ID==item.ID }"
+                @click="dialog.selected=item">
+                <span>{{ (item.FAMILY || '').trim() }}</span>
+                <span v-if="dialog.type=='gripper'">{{ $t('robot.dialog.slot') }} {{ item.SUB_POS }}</span>
+                <span v-else>{{ $t('robot.dialog.position') }} {{ item.MAG_POS }}</span>
+              </button>
+            </div>
+
+            <div class="pure-g">
+              <div class="pure-u-1-2">
+                <button style="width:100%" class="button_pressed"
+                  :class="[dialog.selected==null? 'pure-button-disable' : 'pure-button-mission']"
+                  @click="dialog.selected!=null?confirmDialog():''">
+                  {{ $t('robot.dialog.confirm') }}
+                </button>
+              </div>
+              <div class="pure-u-1-2">
+                <button style="width:100%" class="btn-ghost" @click="closeDialog()">
+                  {{ $t('robot.dialog.cancel') }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
     </div>
 
@@ -172,8 +227,14 @@ export default {
     return {
       dataGripper: {},
       dataRobot: {},
-      polling: true
+      polling: true,
       //robotSpeed: ''
+      grippersList: [],   // pinze a magazzino per il dialog CARICA PINZA
+      palletsList: [],    // pallet per i dialog CARICA/SCARICA PALLET
+      dialog: {
+        type: '',         // '' | 'gripper' | 'palletLoad' | 'palletUnload'
+        selected: null    // riga selezionata; nessuna preselezione
+      }
     }
   },
   methods: {
@@ -308,10 +369,90 @@ export default {
     Mission_enabled(){
       dataStored.cmdActiveMission = (this.dataRobot.STATUS == dataStored.status_hold &&
                                      this.dataGripper[0].ID != null);
+    },
+    getGrippersList() {
+      fetch(dataStored.server + 'api/conf/gripper/show/all', { method: 'GET' })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Network response was not ok');
+          }
+          return response.json()
+        })
+        .then(grippers => {
+          // escludo la pinza gia' a bordo robot (POS_PLANT 1000)
+          this.grippersList = grippers.filter(g => g.POS_PLANT != 1000);
+        })
+        .catch(error => {
+          console.info("-------------")
+          console.info(error);
+          this.grippersList = [];
+        });
+    },
+    getPalletsList() {
+      fetch(dataStored.server + 'api/conf/pallet/show/all', { method: 'GET' })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Network response was not ok');
+          }
+          return response.json()
+        })
+        .then(pallets => {
+          this.palletsList = pallets;
+        })
+        .catch(error => {
+          console.info("-------------")
+          console.info(error);
+          this.palletsList = [];
+        });
+    },
+    openDialog(type) {
+      this.dialog.type = type;
+      this.dialog.selected = null;   // mai preselezionato
+    },
+    closeDialog() {
+      this.dialog.type = '';
+      this.dialog.selected = null;
+    },
+    confirmDialog() {
+      // ri-verifica del gating alla conferma: lo stato missione puo' essere
+      // decaduto mentre il dialog era aperto
+      if (dataStored.cmdActiveMission != 1 || this.dialog.selected == null)
+        return;
+      const sel = this.dialog.selected;
+      switch (this.dialog.type) {
+        case 'gripper':
+          this.sendToRobot('11;' + sel.ID);
+          break;
+        case 'palletLoad':
+          this.sendToRobot('13;3;' + sel.ID + ';' + sel.MAG_POS);
+          break;
+        case 'palletUnload':
+          this.sendToRobot('14;3;' + sel.ID + ';' + sel.MAG_POS);
+          break;
+      }
+      this.closeDialog();
+      // ricarico gli elenchi dopo ogni comando inviato
+      this.getGrippersList();
+      this.getPalletsList();
+    }
+  },
+  computed: {
+    dialogTitle() {
+      switch (this.dialog.type) {
+        case 'gripper':      return 'robot.dialog.chooseGripper';
+        case 'palletLoad':   return 'robot.dialog.choosePalletLoad';
+        case 'palletUnload': return 'robot.dialog.choosePalletUnload';
+      }
+      return '';
+    },
+    dialogItems() {
+      return this.dialog.type == 'gripper' ? this.grippersList : this.palletsList;
     }
   },
   mounted() {
     this.getRobotData();
+    this.getGrippersList();
+    this.getPalletsList();
     dataStored.WS.socket.on('ROBOT/STATUS', payload => {
       this.dataRobot.STATUS = parseInt(payload);
       this.CMD_enabled();
@@ -383,5 +524,66 @@ h6 {
   background: var(--accent);
   border-color: var(--accent-hover);
   font-weight: var(--font-weight-semibold);
+}
+
+/* Dialog scelta pinza/pallet per missioni (CARD 3). Overlay a schermo pieno
+   sopra sidebar (z 900); voci elenco min 52px = touch target industriale,
+   selezione a tap (nessuna interazione hover-only). */
+.mission-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mission-dialog {
+  background: var(--bg-surface);
+  border: var(--border-card);
+  border-radius: var(--radius-md);
+  box-shadow: var(--elevation-3);
+  padding: var(--space-4);
+  width: min(520px, 92vw);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.mission-dialog-list {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.mission-dialog-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-4);
+  min-height: 52px;
+  padding: var(--space-2) var(--space-4);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  border: 2px solid transparent;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-base);
+  cursor: pointer;
+  text-align: left;
+}
+
+.mission-dialog-item.selected {
+  background: var(--accent);
+  border-color: var(--accent-hover);
+  font-weight: var(--font-weight-semibold);
+}
+
+.mission-dialog-empty {
+  color: var(--text-muted);
+  text-align: center;
+  padding: var(--space-4);
 }
 </style>
