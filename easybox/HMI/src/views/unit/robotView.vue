@@ -179,13 +179,26 @@
           {{ $t('SCARICA PALLET') }}
         </button>
 
+        <button class="pure-u-1 button_pressed"
+          :class="[dataStored.cmdActiveMission==0? 'pure-button-disable' : 'pure-button-mission']"
+          @click="dataStored.cmdActiveMission==1?openDialog('tray'):''">
+          {{ $t('ESTRAI CASSETTO') }}
+        </button>
+
+        <button class="pure-u-1 button_pressed"
+          :class="[dataStored.cmdActiveMission==0? 'pure-button-disable' : 'pure-button-mission']"
+          @click="dataStored.cmdActiveMission==1?openDialog('trayRelease'):''">
+          {{ $t('RILASCIA CASSETTO') }}
+        </button>
+
         <!-- Dialog scelta elemento missione: nessuna preselezione, la conferma
              si attiva solo con una voce selezionata esplicitamente. -->
         <div v-if="dialog.type!=''" class="mission-dialog-overlay">
           <div class="mission-dialog">
             <h3 class="command-section-title">{{ $t(dialogTitle) }}</h3>
 
-            <div class="mission-dialog-list">
+            <!-- trayRelease: dialog di sola conferma, nessun elenco -->
+            <div class="mission-dialog-list" v-if="dialog.type!='trayRelease'">
               <div v-if="dialogItems.length==0" class="mission-dialog-empty">
                 {{ $t('robot.dialog.empty') }}
               </div>
@@ -193,8 +206,10 @@
                 class="mission-dialog-item"
                 :class="{ selected: dialog.selected!=null && dialog.selected.ID==item.ID }"
                 @click="dialog.selected=item">
-                <span>{{ (item.FAMILY || '').trim() }}</span>
+                <span v-if="dialog.type=='tray'">{{ $t('robot.dialog.tray') }} {{ item.FLOOR_MAG }}</span>
+                <span v-else>{{ (item.FAMILY || '').trim() }}</span>
                 <span v-if="dialog.type=='gripper'">{{ $t('robot.dialog.slot') }} {{ item.SUB_POS }}</span>
+                <span v-else-if="dialog.type=='tray'">{{ (item.DESCR || '').trim() }}</span>
                 <span v-else>{{ $t('robot.dialog.position') }} {{ item.MAG_POS }}</span>
               </button>
             </div>
@@ -202,8 +217,8 @@
             <div class="pure-g">
               <div class="pure-u-1-2">
                 <button style="width:100%" class="button_pressed"
-                  :class="[dialog.selected==null? 'pure-button-disable' : 'pure-button-mission']"
-                  @click="dialog.selected!=null?confirmDialog():''">
+                  :class="[!dialogConfirmEnabled? 'pure-button-disable' : 'pure-button-mission']"
+                  @click="dialogConfirmEnabled?confirmDialog():''">
                   {{ $t('robot.dialog.confirm') }}
                 </button>
               </div>
@@ -231,8 +246,9 @@ export default {
       //robotSpeed: ''
       grippersList: [],   // pinze a magazzino per il dialog CARICA PINZA
       palletsList: [],    // pallet per i dialog CARICA/SCARICA PALLET
+      traysList: [],      // cassetti a magazzino per il dialog ESTRAI CASSETTO
       dialog: {
-        type: '',         // '' | 'gripper' | 'palletLoad' | 'palletUnload'
+        type: '',         // '' | 'gripper' | 'palletLoad' | 'palletUnload' | 'tray' | 'trayRelease'
         selected: null    // riga selezionata; nessuna preselezione
       }
     }
@@ -405,6 +421,24 @@ export default {
           this.palletsList = [];
         });
     },
+    getTraysList() {
+      fetch(dataStored.server + 'api/conf/tray/show/all', { method: 'GET' })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Network response was not ok');
+          }
+          return response.json()
+        })
+        .then(trays => {
+          // solo cassetti a magazzino: il PLC accetta Tray_ID (FLOOR_MAG) 1..11
+          this.traysList = trays.filter(t => t.FLOOR_MAG >= 1 && t.FLOOR_MAG <= 11);
+        })
+        .catch(error => {
+          console.info("-------------")
+          console.info(error);
+          this.traysList = [];
+        });
+    },
     openDialog(type) {
       this.dialog.type = type;
       this.dialog.selected = null;   // mai preselezionato
@@ -416,7 +450,10 @@ export default {
     confirmDialog() {
       // ri-verifica del gating alla conferma: lo stato missione puo' essere
       // decaduto mentre il dialog era aperto
-      if (dataStored.cmdActiveMission != 1 || this.dialog.selected == null)
+      if (dataStored.cmdActiveMission != 1)
+        return;
+      // trayRelease e' a sola conferma, non richiede selezione
+      if (this.dialog.type != 'trayRelease' && this.dialog.selected == null)
         return;
       const sel = this.dialog.selected;
       switch (this.dialog.type) {
@@ -429,11 +466,18 @@ export default {
         case 'palletUnload':
           this.sendToRobot('14;3;' + sel.ID + ';' + sel.MAG_POS);
           break;
+        case 'tray':
+          this.sendToRobot('25;' + sel.FLOOR_MAG);
+          break;
+        case 'trayRelease':
+          this.sendToRobot(26);
+          break;
       }
       this.closeDialog();
       // ricarico gli elenchi dopo ogni comando inviato
       this.getGrippersList();
       this.getPalletsList();
+      this.getTraysList();
     }
   },
   computed: {
@@ -442,17 +486,29 @@ export default {
         case 'gripper':      return 'robot.dialog.chooseGripper';
         case 'palletLoad':   return 'robot.dialog.choosePalletLoad';
         case 'palletUnload': return 'robot.dialog.choosePalletUnload';
+        case 'tray':         return 'robot.dialog.chooseTray';
+        case 'trayRelease':  return 'robot.dialog.releaseTray';
       }
       return '';
     },
     dialogItems() {
-      return this.dialog.type == 'gripper' ? this.grippersList : this.palletsList;
+      switch (this.dialog.type) {
+        case 'gripper':     return this.grippersList;
+        case 'tray':        return this.traysList;
+        case 'trayRelease': return [];
+      }
+      return this.palletsList;
+    },
+    dialogConfirmEnabled() {
+      // trayRelease: conferma sempre attiva (nessuna selezione richiesta)
+      return this.dialog.type == 'trayRelease' || this.dialog.selected != null;
     }
   },
   mounted() {
     this.getRobotData();
     this.getGrippersList();
     this.getPalletsList();
+    this.getTraysList();
     dataStored.WS.socket.on('ROBOT/STATUS', payload => {
       this.dataRobot.STATUS = parseInt(payload);
       this.CMD_enabled();
