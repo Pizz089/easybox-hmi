@@ -22,20 +22,31 @@
         </h3>
         <h3 class="searchBar">
             <input type="text" placeholder="search" v-model="searchQuery" style="margin-left:40px;">
+            <select v-model="categoryFilter" class="cat-filter">
+                <option value="">{{$t('position.cat.all')}}</option>
+                <option v-for="opt in categoryOptions" :key="opt.id" :value="opt.id">
+                    {{ opt.label }}
+                </option>
+            </select>
         </h3>
-        <table class="pure-table pure-table-horizontal" style="margin-top: 30px;">
+        <!-- wrapper scroll dedicato: il thead sticky (regola globale in
+             custom-fix.css) si aggancia a questo contenitore, non alla pagina -->
+        <div class="postable-wrapper">
+        <table class="pure-table pure-table-horizontal">
             <thead>
-                <tr style="position: sticky; top: 0; background-color: #e0e0e0;;">
+                <tr>
                     <!--th>ID</th-->
-                    <th> 
-                        <img src="../../assets/lente.png" width="15px"> 
+                    <th class="th-sort" @click="setSort('category')">
+                        <img src="../../assets/lente.png" width="15px">
                         <br>
-                        {{$t('name')}} 
+                        {{$t('name')}}
+                        <span class="sort-ind" v-if="sortField=='category'">{{ sortDir==1?'▲':'▼' }}</span>
                     </th>
-                    <th>
-                        <img src="../../assets/lente.png" width="15px"> 
+                    <th class="th-sort" @click="setSort('SUB_POS')">
+                        <img src="../../assets/lente.png" width="15px">
                         <br>
                         {{$t('position.position')}}
+                        <span class="sort-ind" v-if="sortField=='SUB_POS'">{{ sortDir==1?'▲':'▼' }}</span>
                     </th>
                     <th></th>
                     <th style="text-align:right">{{$t('position.Pos')}} [mm]</th>
@@ -50,7 +61,11 @@
                 </tr>
             </thead>
             <tbody>
-                <template v-for="(dt,index) in datiTabFiltred" :key="dt.ID" >
+                <template v-for="group in viewGroups" :key="group.key">
+                    <tr v-if="group.label" class="cat-separator">
+                        <td colspan="9">{{ group.label }}</td>
+                    </tr>
+                <template v-for="(dt,index) in group.rows" :key="dt.ID" >
                     <tr :class="{'pure-table-odd':(index % 2==1)}">
                         <!--td>{{dt.ID}} </td-->
                         <!--td v-if="dt.MAG>0">{{dt.MAG}}.{{dt.MAG_POS}} </td>
@@ -155,9 +170,10 @@
                         </td>
                     </tr>
                 </template>
+                </template>
             </tbody>
         </table>
-        <br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+        </div>
       </div>
 </template>
 
@@ -171,7 +187,10 @@ export default {
             polling:false,
             editID:0,
             datiInEdit:{},
-            searchQuery:""
+            searchQuery:"",
+            categoryFilter:"",      // id categoria selezionata, ""=Tutte
+            sortField:"category",   // 'category' | 'SUB_POS'
+            sortDir:1               // 1=asc, -1=desc
         }
     },
     methods: {
@@ -203,6 +222,8 @@ export default {
                 ris = 'position.EXTRACT_TRAY' 
             if (parent.startsWith("MC"))
                 ris = 'position.MC'
+            if (parent.startsWith("WPALLET"))
+                ris = 'position.WPALLET'
             if (parent.startsWith("Pal"))
                 return this.$t('Pallet') 
                        +" "+ 
@@ -215,6 +236,36 @@ export default {
             if (parent.lastIndexOf("_")>0)
                 return this.$t(ris)+ " "+ parent.substring(parent.lastIndexOf("_")+1);
             return this.$t(ris)
+        },
+        // Macro-categoria per filtro/raggruppamento/ordinamento, derivata da
+        // PARENT (stessi prefissi di getDescription). id = chiave stabile e
+        // ordinabile (prefisso alfabetico = ordine di presentazione),
+        // label = testo per select e separatori. Cassetti e Pallet/Fixture
+        // sono categorie UNICHE: il dettaglio resta nella colonna nome.
+        getCategory(parent){
+            if (parent.startsWith("SHELF"))
+                return { id:'a_shelf',   label:this.$t('position.cat.shelf') };
+            if (parent.startsWith("EXTRACT_TRAY"))
+                return { id:'c_extract', label:this.$t('position.EXTRACT_TRAY').trim() };
+            if (parent.startsWith("TRAY"))
+                return { id:'b_tray',    label:this.$t('position.cat.trays') };
+            if (parent.startsWith("MC")){
+                let n = parent.lastIndexOf("_")>0 ? parent.substring(parent.lastIndexOf("_")+1) : '';
+                return { id:'d_mc_'+n.padStart(2,'0'), label:(this.$t('position.MC')+' '+n).trim() };
+            }
+            if (parent.startsWith("WPALLET"))
+                return { id:'e_wpallet', label:this.$t('position.cat.wpallet') };
+            if (parent.startsWith("Pal"))
+                return { id:'f_palfix',  label:this.$t('position.cat.palfix') };
+            return { id:'z_other', label:this.$t('position.cat.other') };
+        },
+        setSort(field){
+            if (this.sortField==field)
+                this.sortDir = -this.sortDir;
+            else{
+                this.sortField = field;
+                this.sortDir = 1;
+            }
         },
         updatePosition(id){
             if (this.editID >0){
@@ -335,6 +386,51 @@ export default {
         }
     },
     computed: {
+        // Opzioni del select categoria: solo categorie presenti nei dati.
+        categoryOptions(){
+            const seen = new Map();
+            for (const dt of this.datiTab){
+                const cat = this.getCategory(dt.PARENT.trim());
+                if (!seen.has(cat.id))
+                    seen.set(cat.id, cat);
+            }
+            return Array.from(seen.values()).sort((a,b)=>a.id.localeCompare(b.id));
+        },
+        // Vista a valle di datiTabFiltred (ricerca invariata): filtro
+        // categoria -> sort -> gruppi. SOLO filter/slice().sort(): le
+        // reference delle righe restano quelle di datiTab, obbligatorio
+        // per non rompere l'aliasing datiInEdit del flusso di salvataggio.
+        viewGroups(){
+            let rows = this.datiTabFiltred;
+            if (this.categoryFilter!="")
+                rows = rows.filter(dt => this.getCategory(dt.PARENT.trim()).id==this.categoryFilter);
+            const dir = this.sortDir;
+            rows = rows.slice().sort((a,b)=>{
+                const ca = this.getCategory(a.PARENT.trim()).id;
+                const cb = this.getCategory(b.PARENT.trim()).id;
+                if (this.sortField=='SUB_POS'){
+                    const d = (a.SUB_POS-b.SUB_POS)*dir;
+                    return d!=0 ? d : ca.localeCompare(cb);
+                }
+                const d = ca.localeCompare(cb)*dir;
+                return d!=0 ? d : (a.SUB_POS-b.SUB_POS);
+            });
+            // separatori di gruppo solo con filtro "Tutte" e ordinamento
+            // primario per categoria (per SUB_POS i gruppi non sono contigui)
+            if (this.categoryFilter!="" || this.sortField!='category')
+                return [{ key:'flat', label:null, rows:rows }];
+            const groups = [];
+            let cur = null;
+            for (const dt of rows){
+                const cat = this.getCategory(dt.PARENT.trim());
+                if (cur==null || cur.key!=cat.id){
+                    cur = { key:cat.id, label:cat.label, rows:[] };
+                    groups.push(cur);
+                }
+                cur.rows.push(dt);
+            }
+            return groups;
+        }
     },
     mounted(){
         this.getDataTable()
@@ -400,5 +496,41 @@ export default {
         background-repeat: no-repeat;
         background-size: 1.7em;
         background-position: left;
-    } 
+    }
+
+    /* contenitore di scroll: il thead sticky della regola globale
+       (custom-fix.css) si aggancia qui. max-height perche' il parent
+       non e' flex column (diversamente dal pattern prodtable). */
+    .postable-wrapper{
+        margin-top: var(--space-5);
+        overflow-y: auto;
+        max-height: calc(100vh - 240px);
+    }
+
+    .th-sort{
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .sort-ind{
+        font-size: 0.8em;
+    }
+
+    .cat-filter{
+        margin-left: var(--space-4);
+        min-height: 44px;   /* touch target */
+        padding: var(--space-2);
+        background: var(--bg-input);
+        color: var(--text-primary);
+        border: 1px solid var(--border-default);
+        border-radius: var(--radius-sm);
+        font-size: var(--font-size-base);
+    }
+
+    .cat-separator td{
+        background: var(--bg-surface-2);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
 </style>

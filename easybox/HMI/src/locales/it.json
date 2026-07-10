@@ -412,7 +412,16 @@
     "EXTRACT_TRAY": "Estrazione cassetto ",
     "TRAY": "Cassetto",
     "MC": "Macchina",
-    "approach": "Approccio"
+    "WPALLET": "Magazzino pallet",
+    "approach": "Approccio",
+    "cat": {
+      "all": "Tutte",
+      "shelf": "Magazzino pinze",
+      "trays": "Cassetti",
+      "wpallet": "Magazzino pallet",
+      "palfix": "Pallet/Fixture",
+      "other": "Altro"
+    }
   },
   "status": {
     "notDef": "Non Definito ",

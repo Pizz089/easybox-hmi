@@ -409,7 +409,16 @@
     "EXTRACT_TRAY": "Extraction tray",
     "TRAY": "Tray",
     "MC": "Machine",
-    "approach": "Approach"
+    "WPALLET": "Pallet shelf",
+    "approach": "Approach",
+    "cat": {
+      "all": "All",
+      "shelf": "Gripper shelf",
+      "trays": "Trays",
+      "wpallet": "Pallet shelf",
+      "palfix": "Pallet/Fixture",
+      "other": "Other"
+    }
   },
   "status": {
     "notDef": "Not Defined   ",
