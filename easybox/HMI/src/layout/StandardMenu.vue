@@ -9,26 +9,34 @@ import { dataStored } from '@/data'
 
 const { t } = useI18n()
 
+// Handler nominati (equivalente composition-API del pattern this.<nome>Handler
+// di robotView/units/productionTable, e4ab4e5): servono i riferimenti per
+// l'off specifico in onUnmounted.
+const plcAlarmRobotHandler = payload => {
+  dataStored.alert.title = 'PLC_Error'
+  dataStored.alert.desc = 'robot.alarm_' + payload
+  dataStored.alert.type = 'warning'
+}
+
+const plcAlarmGenericHandler = payload => {
+  dataStored.alert.title = 'GENERIC_ERROR'
+  dataStored.alert.desc = payload
+  dataStored.alert.type = 'warning'
+}
+
 onMounted(() => {
   if (dataStored.WS && dataStored.WS.socket) {
-    dataStored.WS.socket.on('PLC/ALARM/ROBOT', payload => {
-      dataStored.alert.title = 'PLC_Error'
-      dataStored.alert.desc = 'robot.alarm_' + payload
-      dataStored.alert.type = 'warning'
-    })
-
-    dataStored.WS.socket.on('PLC/ALARM/GENERIC', payload => {
-      dataStored.alert.title = 'GENERIC_ERROR'
-      dataStored.alert.desc = payload
-      dataStored.alert.type = 'warning'
-    })
+    dataStored.WS.socket.on('PLC/ALARM/ROBOT', plcAlarmRobotHandler)
+    dataStored.WS.socket.on('PLC/ALARM/GENERIC', plcAlarmGenericHandler)
   }
 })
 
 onUnmounted(() => {
   if (dataStored.WS && dataStored.WS.socket) {
-    // dataStored.WS.socket.off('PLC/ALARM/ROBOT')
-    // dataStored.WS.socket.off('PLC/ALARM/GENERIC')
+    // off SPECIFICO (evento + callback): un off nudo staccherebbe anche
+    // i listener di altri componenti sugli stessi eventi.
+    dataStored.WS.socket.off('PLC/ALARM/ROBOT', plcAlarmRobotHandler)
+    dataStored.WS.socket.off('PLC/ALARM/GENERIC', plcAlarmGenericHandler)
   }
 })
 </script>
