@@ -610,73 +610,87 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+/* DEROGA LIGHT-THEME (doc §3.4): l'intera view resta su palette chiara
+   deliberata (log tecnico denso). A canone: geometria, spacing token,
+   scala font (minimo --font-size-xs), touch 44 (deroga documentata:
+   toolbar tecnica, gated userLevel>=1, densita' voluta). */
 .diag-mqtt {
-  padding: 16px;
-  font-family: 'DM Mono', monospace, system-ui, sans-serif;
+  padding: var(--space-4);
+  /* Monospace di sistema esplicito: 'DM Mono' storico non era installato
+     ne' self-hostato (rendeva gia' il fallback generico). */
+  font-family: ui-monospace, 'Consolas', monospace;
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 32px);
+  height: calc(100vh - var(--space-6));
   box-sizing: border-box;
 }
 
 /* HEADER */
 .diag-header {
-  margin-bottom: 10px;
+  margin-bottom: var(--space-2);
   border-bottom: 1px solid #ddd;
-  padding-bottom: 8px;
+  padding-bottom: var(--space-2);
   flex-shrink: 0;
 }
-.diag-header h2 { margin: 0 0 6px 0; font-size: 18px; }
+.diag-header h2 { margin: 0 0 var(--space-2) 0; font-size: var(--font-size-md); }
 .diag-status {
-  display: flex; align-items: center; gap: 12px;
-  font-size: 12px; color: #555;
+  display: flex; align-items: center; gap: var(--space-2);
+  font-size: var(--font-size-xs); color: #555;
 }
-.st-dot { font-size: 14px; }
+.st-dot { font-size: var(--font-size-sm); }
 .st-on  { color: #00aa44; }
 .st-off { color: #c00; }
 .diag-stats {
-  margin-left: auto; display: flex; gap: 18px;
+  margin-left: auto; display: flex; gap: var(--space-4);
   color: #666;
 }
 .diag-stats strong { color: #222; }
 
 /* TOOLBAR */
 .diag-toolbar {
-  display: flex; flex-wrap: wrap; gap: 12px;
-  align-items: center; padding: 10px 12px;
+  display: flex; flex-wrap: wrap; gap: var(--space-2);
+  align-items: center; padding: var(--space-2) var(--space-4);
   background: #f4f4f4; border: 1px solid #ddd;
-  border-radius: 4px; margin-bottom: 8px;
+  border-radius: var(--radius-sm); margin-bottom: var(--space-2);
   flex-shrink: 0;
 }
 .tb-filters, .tb-controls {
-  display: flex; gap: 8px; align-items: center;
+  display: flex; gap: var(--space-2); align-items: center;
 }
-.tb-field { display: flex; flex-direction: column; gap: 2px; font-size: 10px; color: #666; }
+/* 2px: micro-aggiustamento label-campo (eccezione §2.1) */
+.tb-field { display: flex; flex-direction: column; gap: 2px; font-size: var(--font-size-xs); color: #666; }
 .tb-input {
-  font-family: inherit; font-size: 12px;
-  padding: 4px 8px; border: 1px solid #ccc; border-radius: 3px;
+  font-family: inherit; font-size: var(--font-size-xs);
+  padding: var(--space-2); border: 1px solid #ccc; border-radius: var(--radius-sm);
   background: white; min-width: 80px;
+  min-height: 44px; /* touch minimo (deroga 44, non 52: toolbar densa) */
 }
 .tb-input:focus { outline: 1px solid #0066cc; border-color: #0066cc; }
 .tb-btn {
-  font-family: inherit; font-size: 11px; font-weight: 600;
-  padding: 6px 12px; border: 1px solid #aaa; border-radius: 3px;
+  font-family: inherit; font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold);
+  padding: var(--space-2) var(--space-4); border: 1px solid #aaa; border-radius: var(--radius-sm);
   background: white; cursor: pointer; color: #333;
+  min-height: 44px; /* touch minimo (deroga 44) */
 }
 .tb-btn:hover:not(:disabled) { background: #eee; }
 .tb-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .tb-btn-pause      { border-color: #cc6600; color: #cc6600; }
 .tb-btn-resume     { border-color: #00aa44; color: #00aa44; }
-.tb-btn-clear-filter { border-color: #c00; color: #c00; font-size: 10px; padding: 4px 8px; }
-.tb-toggle { display: flex; align-items: center; gap: 4px; font-size: 11px; color: #555; cursor: pointer; }
+.tb-btn-clear-filter { border-color: #c00; color: #c00; padding: var(--space-2); }
+.tb-toggle {
+  display: flex; align-items: center; gap: var(--space-2);
+  font-size: var(--font-size-xs); color: #555; cursor: pointer;
+  min-height: 44px; /* area tap allargata sul toggle */
+}
 .tb-info {
-  margin-left: auto; font-size: 11px; color: #666;
+  margin-left: auto; font-size: var(--font-size-xs); color: #666;
 }
 
 /* BANNER */
 .diag-banner {
-  padding: 6px 12px; font-size: 12px; border-radius: 3px;
-  margin-bottom: 8px;
+  padding: var(--space-2) var(--space-4); font-size: var(--font-size-xs);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-2);
 }
 .diag-banner-pause { background: #fff5e0; border: 1px solid #cc6600; color: #663300; }
 .diag-banner-expand { background: #e6f4ff; border: 1px solid #0066cc; color: #003366; }
@@ -685,18 +699,21 @@ onBeforeUnmount(() => {
 .diag-table-wrap {
   position: relative; flex: 1;
   display: flex; flex-direction: column;
-  border: 1px solid #ddd; border-radius: 4px;
+  border: 1px solid #ddd; border-radius: var(--radius-sm);
   overflow: hidden; background: white;
 }
 .diag-table-head, .diag-row {
   display: grid;
   grid-template-columns: 120px 50px 80px 1.2fr 2fr;
-  gap: 8px; padding: 4px 10px; font-size: 12px;
+  gap: var(--space-2);
+  /* 4px verticale: densita' del log (eccezione §2.1 annotata) */
+  padding: 4px var(--space-2);
+  font-size: var(--font-size-xs);
   align-items: center;
 }
 .diag-table-head {
-  background: #efefef; font-weight: 600; color: #444;
-  text-transform: uppercase; font-size: 10px; letter-spacing: 0.1em;
+  background: #efefef; font-weight: var(--font-weight-semibold); color: #444;
+  text-transform: uppercase; font-size: var(--font-size-xs); letter-spacing: 0.1em;
   border-bottom: 1px solid #ccc; flex-shrink: 0;
 }
 .diag-table-body {
@@ -715,47 +732,50 @@ onBeforeUnmount(() => {
 .m-time { color: #888; font-variant-numeric: tabular-nums; }
 .m-dir.dir-IN  { color: #0066cc; font-weight: bold; }
 .m-dir.dir-OUT { color: #cc6600; font-weight: bold; }
-.m-src { color: #444; font-size: 11px; }
+.m-src { color: #444; font-size: var(--font-size-xs); }
 .m-topic   { color: #000; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .m-payload { color: #555; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .diag-row-detail {
   background: #f8fbff; border-bottom: 1px solid #ddd;
-  border-left: 3px solid #0066cc; padding: 10px 16px;
-  display: flex; flex-direction: column; gap: 6px;
-  font-size: 12px;
+  border-left: 3px solid #0066cc; padding: var(--space-2) var(--space-4);
+  display: flex; flex-direction: column; gap: var(--space-2);
+  font-size: var(--font-size-xs);
 }
-.dd-meta { display: flex; gap: 16px; flex-wrap: wrap; color: #555; }
+.dd-meta { display: flex; gap: var(--space-4); flex-wrap: wrap; color: #555; }
 .dd-topic { color: #333; }
 .dd-topic code, .dd-payload pre {
-  font-family: inherit; background: white; padding: 2px 6px;
-  border: 1px solid #ddd; border-radius: 2px;
+  /* 2px verticale: micro-aggiustamento inline-code (eccezione §2.1) */
+  font-family: inherit; background: white; padding: 2px var(--space-2);
+  border: 1px solid #ddd; border-radius: var(--radius-sm);
 }
 .dd-payload pre {
   display: block; max-height: 300px; overflow: auto;
-  margin: 4px 0 0 0; white-space: pre-wrap; word-break: break-all;
-  font-size: 11px;
+  margin: var(--space-2) 0 0 0; white-space: pre-wrap; word-break: break-all;
+  font-size: var(--font-size-xs);
 }
-.dd-actions { display: flex; gap: 6px; margin-top: 4px; }
+.dd-actions { display: flex; gap: var(--space-2); margin-top: var(--space-2); }
 .dd-btn {
-  font-family: inherit; font-size: 10px; padding: 4px 10px;
-  border: 1px solid #aaa; border-radius: 3px; background: white;
+  font-family: inherit; font-size: var(--font-size-xs); padding: var(--space-2) var(--space-4);
+  border: 1px solid #aaa; border-radius: var(--radius-sm); background: white;
   cursor: pointer;
+  min-height: 44px; /* touch minimo (deroga 44) */
 }
 .dd-btn:hover { background: #eee; }
 
 .diag-empty {
-  padding: 30px 20px; text-align: center;
-  color: #999; font-style: italic; font-size: 12px;
+  padding: var(--space-6) var(--space-5); text-align: center;
+  color: #999; font-style: italic; font-size: var(--font-size-xs);
 }
 
 /* GO TO BOTTOM FLOATING */
 .diag-goto-bottom {
-  position: absolute; bottom: 12px; right: 16px;
-  font-family: inherit; font-size: 11px; font-weight: 600;
-  padding: 8px 14px; border: 1px solid #0066cc; border-radius: 18px;
+  position: absolute; bottom: var(--space-2); right: var(--space-4);
+  font-family: inherit; font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold);
+  padding: var(--space-2) var(--space-4); border: 1px solid #0066cc; border-radius: var(--radius-pill);
   background: rgba(255, 255, 255, 0.95); color: #0066cc;
   cursor: pointer; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  min-height: 44px; /* touch minimo (deroga 44) */
 }
 .diag-goto-bottom:hover { background: #0066cc; color: white; }
 </style>
