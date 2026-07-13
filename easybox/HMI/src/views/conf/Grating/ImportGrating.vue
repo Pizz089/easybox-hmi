@@ -12,7 +12,7 @@ const el = ref()
 </script>
 
 <template>
-  <div class="pure-g layout-row" style="gap:12px; align-items:flex-start;"> 
+  <div class="pure-g layout-row">
 
     <div class="pure-u-1 pure-u-md-10-24" >
       <form class="pure-form pure-form-stacked" @submit.prevent>
@@ -38,7 +38,7 @@ const el = ref()
               </template>
             </select>
 
-            <button class="pure-u-1" style="margin-left:0px;margin-top:2px;padding:3px"
+            <button class="pure-button-primary pure-u-1 associate-btn"
               :disabled="grating.trayIndex == 0 || grating.NAME.trim().length <= 0 || gratingAssociated || !createNew"
               @click="setGratingAssociated()">
               <span>{{ $t('grating.associate') }}</span>
@@ -47,7 +47,7 @@ const el = ref()
         </fieldset>
       </form>
 
-      <form class="pure-form pure-form-stacked" style="margin-top:12px;" >
+      <form class="pure-form pure-form-stacked form-spaced" >
         <fieldset>
           <legend> {{$t('grating.sizes')}}</legend>
 
@@ -101,17 +101,17 @@ const el = ref()
             </div>
           </div>
 
-          <button class="pure-button pure-button-primary" type="button" @click="calculateGrid" :disabled="!canCalc" style="margin-top:12px">
+          <button class="pure-button pure-button-primary action-spaced" type="button" @click="calculateGrid" :disabled="!canCalc">
             {{ $t('grating.generate') }}
           </button>
-          <button class="pure-button" type="button" @click="resetAll" style="margin-left:8px;margin-top:12px">
+          <button class="btn-ghost action-spaced reset-btn" type="button" @click="resetAll">
             Reset
           </button>
         </fieldset>
       </form>
       
       <!----------------------------------->
-      <div class="pure-u-1" style="margin-top:8px;">
+      <div class="pure-u-1 save-row">
         <button class="pure-button pure-button-primary" @click="saveData()"
           >  <!-- :disabled="dataStored.userLevel < 0 || grating.SAFEX < minSafeX || grating.SAFEY < minSafeY || !gratingAssociated"-->
           Save
@@ -486,12 +486,14 @@ export default {
 </script>
 
 <style scoped>
+/* GR5: contenitori ritematizzati dark su pattern outlined §4.1
+   (erano riquadri chiari #fff/#fafafa/#fcfcfc su tema scuro). */
 .help-image {
-  margin-top: 0px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  padding: 8px;
-  background: #fff;
+  margin-top: 0;
+  border: var(--border-card);
+  border-radius: var(--radius-md);
+  padding: var(--space-2);
+  background: var(--bg-card);
 }
 .help-image img {
   max-width: 100%;
@@ -499,21 +501,22 @@ export default {
   display: block;
 }
 .help-image .caption {
-  color: #666;
-  font-size: 0.9rem;
-  margin-top: 6px;
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+  margin-top: var(--space-2);
 }
 
 .help {
-  color: #666;
+  color: var(--text-muted);
+  /* -6px: micro-aggiustamento ottico verso il campo sopra (eccezione §2.1) */
   margin-top: -6px;
 }
 
 .canvas-wrap {
-  border: 1px solid #ccc;
-  border-radius: 8px;
+  border: var(--border-card);
+  border-radius: var(--radius-md);
   overflow: hidden;
-  background: #fafafa;
+  background: var(--bg-card);
 }
 
 .preview {
@@ -523,17 +526,39 @@ export default {
 }
 
 .placeholder {
-  border: 1px dashed #bbb;
-  border-radius: 8px;
-  padding: 24px;
-  color: #666;
-  background: #fcfcfc;
+  border: 1px dashed var(--border-default);
+  border-radius: var(--radius-md);
+  padding: var(--space-5);
+  color: var(--text-muted);
+  background: var(--bg-card);
 }
 
 .stats {
-  margin-top: 12px;
-  background: #f4f4f4;
-  border-radius: 6px;
-  padding: 8px 10px;
+  margin-top: var(--space-2);
+  background: var(--bg-card);
+  border: var(--border-card);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-2);
+}
+
+/* Ex inline (GR2). */
+.layout-row {
+  gap: var(--space-4);
+  align-items: flex-start;
+}
+.associate-btn {
+  margin-top: var(--space-2);
+}
+.form-spaced {
+  margin-top: var(--space-4);
+}
+.action-spaced {
+  margin-top: var(--space-4);
+}
+.reset-btn {
+  margin-left: var(--space-2);
+}
+.save-row {
+  margin-top: var(--space-2);
 }
 </style>

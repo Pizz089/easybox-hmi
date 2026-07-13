@@ -63,7 +63,7 @@
                             </option>
                         </template>                  
                     </select>
-                    <button class="pure-u-1" style="margin-left:0px;margin-top:2px;padding:3px"
+                    <button class="pure-button-primary pure-u-1 associate-btn"
                         :disabled="grating.trayIndex==0 || grating.NAME.trim().length<=0 || gratingAssociated || !createNew"
                         @click="setGratingAssociated()" > <!-- updateGratingInTray-->
                         <span > <!-- v-if="!gratingAssociated"-->
@@ -143,10 +143,9 @@
                         @update="newValue => grating.SAFEY = newValue">
                     </numericField>
                 </div> 
-                <div class="pure-u-1" style="margin-top:20px">
-                    <button class="pure-button pure-button-primary" @click="saveData() && createModelFile()" 
-							:disabled="dataStored.userLevel<0 || grating.SAFEX<minSafeX || grating.SAFEY<minSafeY " 
-                            style="padding:20px"> 
+                <div class="pure-u-1 row-spaced">
+                    <button class="pure-button pure-button-primary" @click="saveData() && createModelFile()"
+							:disabled="dataStored.userLevel<0 || grating.SAFEX<minSafeX || grating.SAFEY<minSafeY ">
                         {{$t("Save") }} & {{$t("Create_model_file")}}
                     </button>
                     &nbsp;
@@ -163,10 +162,10 @@
                     <!--button class="pure-button pure-button-primary"  style="padding:20px">
                         <img src="../../../assets/pdf.png" width="15%"></img>
                     </button-->
-                    <button @click="createModelFile()">modello</button>
-                    <button @click="esportaDXF()" :disabled="listPz.length === 0">DXF</button>
+                    <button class="btn-ghost" @click="createModelFile()">modello</button>
+                    <button class="btn-ghost" @click="esportaDXF()" :disabled="listPz.length === 0">DXF</button>
                 </div>
-                <div class="pure-u-1" style="margin-top:20px">
+                <div class="pure-u-1 row-spaced">
                     <img
                         src="../../../assets/pdf.png" 
                         width="15%" 
@@ -209,6 +208,8 @@
       <!-- LAYOUT -->
       <div class="pure-u-11-24">
         <br><br>
+        <!-- GR3: margin-left 130px = posizionamento magico legato alla scena SVG
+             sottostante, lasciato deliberatamente (raddrizzarlo e' refactor layout) -->
         <div class="pure-u-1" style="margin-left:130px">
             <h5>
                 {{ n_row }} Righe x {{ n_cln }} Colonne => {{ n_row*n_cln }} pz 
@@ -342,6 +343,8 @@
             
         </div>
         <div class="pure-u-1"> 
+            <!-- GR3: margin-left 200px = posizionamento magico legato alla scena SVG,
+                 lasciato deliberatamente -->
             <div class="pure-u-1" style="margin-left:200px">
                 <img src="../../../assets/distribute.png" @click="distribute()" />      
             </div>
@@ -931,15 +934,19 @@ export default {
         font-weight: bolder;
     }
 	.error{
-		/*
-		border:3px dashed;
-		border-color:red;
-		*/
-		background-color:#fb2929c7
+		background-color: var(--color-danger-bg);
 	}
     .optionDeleted{
-        color:coral;
+        color: var(--color-warning);
         /*text-decoration: line-through;*/
+    }
+
+    /* Ex inline (GR2): spaziatura riga azioni + margine del bottone associa. */
+    .row-spaced{
+        margin-top: var(--space-5);
+    }
+    .associate-btn{
+        margin-top: var(--space-2);
     }
     .buttonDownload{
         background-image:url('../../../assets/download.png');

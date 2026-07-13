@@ -11,7 +11,7 @@
           &nbsp;
       </div>
 
-      <div class="pure-u-22-24">
+      <div class="pure-u-22-24 conf-card">
         <h2 v-if="!createNew">{{ $t('pallet.data')}} : {{ pallet.ID }}</h2>
         <h2 v-if="createNew"> {{ $t('pallet.createNew')}} </h2>
 
@@ -177,8 +177,5 @@ export default {
 
     #aligned-foo{
         width:300px;
-    }
-    .errore{
-        background-color:lightcoral;
     }
 </style>

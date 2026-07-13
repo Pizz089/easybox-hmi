@@ -722,7 +722,7 @@ export default {
 /* === TITOLO === */
 h2 {
   color: #f1f5f9 !important;
-  font-size: 1.5rem !important;
+  font-size: var(--font-size-lg) !important;
   font-weight: 600 !important;
   margin-bottom: 28px !important;
   letter-spacing: -0.01em !important;
@@ -749,9 +749,11 @@ h2 {
 }
 
 /* === FORM CONTROLS === */
+/* flex-start: valore vincente della vecchia regola duplicata in coda al file
+   (rimossa, GV4) — era lei a comandare la resa, non il vecchio center. */
 .gripper-form .pure-form-aligned .pure-control-group {
   display: flex !important;
-  align-items: center !important;
+  align-items: flex-start !important;
   margin-bottom: 16px !important;
   padding: 6px 0 !important;
 }
@@ -762,7 +764,7 @@ h2 {
   margin-right: 20px !important;
   text-align: right !important;
   color: #94a3b8 !important;
-  font-size: 0.875rem !important;
+  font-size: var(--font-size-sm) !important;
   font-weight: 500 !important;
 }
 
@@ -777,7 +779,7 @@ h2 {
   border: 1px solid rgba(71, 85, 105, 0.5) !important;
   border-radius: 8px !important;
   color: #f1f5f9 !important;
-  font-size: 0.9rem !important;
+  font-size: var(--font-size-sm) !important;
   transition: all 0.2s ease !important;
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2) !important;
 }
@@ -823,7 +825,7 @@ h2 {
 .gripper-form .unit {
   margin-left: 12px !important;
   color: #64748b !important;
-  font-size: 0.8rem !important;
+  font-size: var(--font-size-xs) !important;
   font-weight: 500 !important;
   min-width: 30px !important;
 }
@@ -835,15 +837,17 @@ h2 {
   gap: 6px !important;
 }
 
+/* Pattern "segmented toggle" ad-hoc — candidato a variante canonica futura
+   (annotato nel doc §3.4). GV2: touch 44px minimo, active su token accent. */
 .gripper-form .shelfPos {
-  height: 40px !important;
+  height: 44px !important;
   width: 48px !important;
   border: 1px solid rgba(71, 85, 105, 0.5) !important;
   border-radius: 6px !important;
   background: rgba(15, 23, 42, 0.8) !important;
   color: #94a3b8 !important;
   font-weight: 600 !important;
-  font-size: 0.85rem !important;
+  font-size: var(--font-size-sm) !important;
   cursor: pointer !important;
   transition: all 0.2s ease !important;
   margin-right: 0 !important;
@@ -861,9 +865,9 @@ h2 {
 }
 
 .gripper-form .shelfPos.active {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
-  border-color: #3b82f6 !important;
-  color: #ffffff !important;
+  background: var(--accent) !important;
+  border-color: var(--accent-active) !important;
+  color: var(--text-primary) !important;
   box-shadow: 0 0 16px rgba(59, 130, 246, 0.35) !important;
 }
 
@@ -956,10 +960,4 @@ h2 {
     width: 100% !important;
   }
 }
-.gripper-form 
-.pure-form-aligned 
-.pure-control-group {
-  align-items: flex-start !important;
-}
-
 </style>

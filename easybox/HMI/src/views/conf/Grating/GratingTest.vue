@@ -60,7 +60,7 @@
                         </template>                  
                     </select>
 
-                    <button class="pure-u-1" style="margin-left:0px;margin-top:2px;padding:3px"
+                    <button class="pure-button-primary pure-u-1 associate-btn"
                         :disabled="grating.trayIndex==0 || grating.NAME.trim().length<=0 || gratingAssociated || !createNew"
                         @click="setGratingAssociated()" > <!-- updateGratingInTray-->
                         <span > <!-- v-if="!gratingAssociated"-->
@@ -140,12 +140,11 @@
                     </numericField>
                 </div> 
                 <div class="pure-u-1">
-                    <button class="pure-button pure-button-primary" @click="saveData()" 
-							:disabled="dataStored.userLevel<0 || grating.SAFEX<minSafeX || grating.SAFEY<minSafeY || !gratingAssociated" 
-                            style="margin-top:10px" > 
+                    <button class="pure-button pure-button-primary save-btn" @click="saveData()"
+							:disabled="dataStored.userLevel<0 || grating.SAFEX<minSafeX || grating.SAFEY<minSafeY || !gratingAssociated" >
                         Save
                     </button>
-                </div> 
+                </div>
                 <div>
                     <label class="pure-u-1">{{$t('bordo di sicurezza x')}} [{{ length=0 }}..{{ length=50 }}]</label>
                     <numericField 
@@ -181,6 +180,8 @@
       <!-- LAYOUT -->
       <div class="pure-u-11-24">
         <br><br>
+        <!-- GR3: margin-left 130px = posizionamento magico legato alla scena SVG,
+             lasciato deliberatamente -->
         <div class="pure-u-1" style="margin-left:130px">
             <h5>
                 {{ n_row }} Righe x {{ n_cln+2 }} Colonne => {{ (n_row*n_cln)+2*n_row }} pz 
@@ -233,6 +234,8 @@
             </svg>
         </div>
         <div class="pure-u-1"> 
+            <!-- GR3: margin-left 200px = posizionamento magico legato alla scena SVG,
+                 lasciato deliberatamente -->
             <div class="pure-u-1" style="margin-left:200px">
                 <img src="../../../assets/distribute.png" @click="distribute()" />  
             </div>
@@ -666,14 +669,18 @@ export default {
         font-weight: bolder;
     }
 	.error{
-		/*
-		border:3px dashed;
-		border-color:red;
-		*/
-		background-color:#fb2929c7
+		background-color: var(--color-danger-bg);
 	}
     .optionDeleted{
-        color:coral;
+        color: var(--color-warning);
         /*text-decoration: line-through;*/
+    }
+
+    /* Ex inline (GR2). */
+    .associate-btn{
+        margin-top: var(--space-2);
+    }
+    .save-btn{
+        margin-top: var(--space-2);
     }
 </style>

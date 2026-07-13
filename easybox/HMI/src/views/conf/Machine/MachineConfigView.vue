@@ -137,7 +137,7 @@ onBeforeUnmount(() => {
   </div>
 
   <div class="pure-u-22-24">
-    <h1>{{ $t('machine.welcome') }}</h1>
+    <h1 class="view-title">{{ $t('machine.welcome') }}</h1>
 
     <div v-for="pos in MACHINE_POSITIONS" :key="pos.mc" class="command-section machine-card">
       <h3 class="command-section-title">
@@ -226,6 +226,10 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.view-title {
+  font-size: var(--font-size-xl);
+}
+
 .machine-card {
   max-width: 720px;
 }

@@ -8,7 +8,7 @@
 
 
 <template>   
-    <h2 style="color:grey;">&nbsp;LAYOUT {{ $t('TRAY')}} ID{{$route.params.trayID }} - {{$t('piano')}}{{$route.params.floorMag }}</h2>
+    <h2 class="layout-title">&nbsp;LAYOUT {{ $t('TRAY')}} ID{{$route.params.trayID }} - {{$t('piano')}}{{$route.params.floorMag }}</h2>
 	
     <div class="pure-u-1">
         <svg width="480" height="360" 
@@ -97,18 +97,18 @@
 
     <div class="pure-u-3-4" v-if="$route.params.modifyEnable==1">
         <div class="pure-u-1">
-            <button class="pure-button pure-u-1-2" @click="allRaugh()" style="padding:2px;margin:5px">Tutti grezzi </button>
-            <button class="pure-button pure-u-1-2" @click="allEmpty()" style="padding:2px;margin:5px">Tutti vuoti </button>
+            <button class="btn-ghost pure-u-1-2 bulk-btn" @click="allRaugh()">Tutti grezzi </button>
+            <button class="btn-ghost pure-u-1-2 bulk-btn" @click="allEmpty()">Tutti vuoti </button>
         </div>
         <div class="pure-u-1">
-            <button class="pure-button-primary pure-u-1-2" @click="saveAllData()" style="padding:2px;margin:15px 5px 5px">
+            <button class="pure-button-primary pure-u-1-2 save-btn" @click="saveAllData()">
                 Save!
                 <progress v-if="avanzamento>0" max="100" :value="avanzamento"> {{avanzamento}} </progress>
             </button>
         </div>
     </div>
     <div class="pure-u-1" v-if="$route.params.modifyEnable==0">
-        <h2 class="blink" style="margin-left:140px"> VIEW ONLY!! </h2>
+        <h2 class="blink"> VIEW ONLY!! </h2>
     </div>
 </template>
 
@@ -324,10 +324,16 @@
 
 
 <style scoped>
+    .layout-title {
+        color: var(--text-secondary);
+    }
+
+    /* LY4: warning lampeggiante (status, non azione -> --color-warning);
+       niente font-family locale, governa il token globale. */
     .blink {
         animation: blinker 1.5s linear infinite;
-        color: coral;
-        font-family: sans-serif;
+        color: var(--color-warning);
+        text-align: center;
     }
     @keyframes blinker {
         50% {
@@ -335,30 +341,12 @@
         }
     }
 
-/* Tooltip container */
-.tooltip {
-  position: relative;
-  display: inline-block;
-  /*border-bottom: 1px dotted black;  If you want dots under the hoverable text */
-}
-
-/* Tooltip text */
-.tooltip .tooltiptext {
-  visibility: hidden;
-  width: 120px;
-  background-color: black;
-  color: #fff;
-  text-align: center;
-  padding: 5px 0;
-  border-radius: 6px;
- 
-  /* Position the tooltip text - see examples below! */
-  position: absolute;
-  z-index: 1;
-}
-
-/* Show the tooltip text when you mouse over the tooltip container */
-.tooltip:hover .tooltiptext {
-  visibility: visible;
-}
+    /* Ex inline (LY2/LY3): solo spacing, l'estetica viene dalle varianti
+       canoniche (buttons.css). */
+    .bulk-btn {
+        margin: var(--space-2);
+    }
+    .save-btn {
+        margin: var(--space-4) var(--space-2) var(--space-2);
+    }
 </style>

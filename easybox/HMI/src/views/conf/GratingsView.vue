@@ -194,4 +194,13 @@ export default {
     .popUpOnLine .btn-ghost {
         margin-top: var(--space-2);
     }
+
+    /* Uniformato alle altre list view: 2px (non 1px --border-card), il popup
+       di conferma delete deve staccare piu' di un bordo card. */
+    .center {
+        margin: auto;
+        width: 20%;
+        border: 2px solid var(--color-critical);
+        padding: var(--space-6);
+    }
 </style>

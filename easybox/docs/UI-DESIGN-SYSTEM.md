@@ -196,6 +196,8 @@ Censimento Sistema B (sessione 2): `pure-button-primary` (39 usi, la classe bott
 
 **Deroga documentata — `tb-btn-*` diagnostica MQTT.** I mini-bottoni della toolbar diag (`.tb-btn`, `-pause`, `-resume`, `-clear-filter` in MqttDiag.vue) restano fuori dalle 6 varianti: la view è deliberatamente light-theme/utilitaria e fuori token dark. Se/quando la diag rientra nel tema (§8 step 5), mappano su Ghost (outline colorato) o Icon-only.
 
+**Candidato variante futura — Segmented toggle (`.shelfPos`, Gripper/Vice).** Gruppo di bottoni-toggle quadrati (~48×44) per la scelta della posizione a scaffale: selezione esclusiva, stato `.active` con fill `--accent` + bordo `--accent-active`. Non è una delle 6 varianti azione (è selezione, come il selectable list item qui sotto): se il pattern ricorre altrove, promuoverlo a variante canonica `btn-toggle` in buttons.css.
+
 **Settimo pattern — Selectable list item (`.mission-dialog-item`).** Introdotto dai dialog missione di robotView: `<button>` voce-elenco selezionabile a tap (min-height 52, `--bg-input`, radius-md; stato `.selected` = fill `--accent` + bordo `--accent-hover` + semibold). NON è una variante azione: è un pattern di selezione (nessuna preselezione, la conferma è un bottone separato). Va riusato tale e quale per futuri elenchi selezionabili touch, non sostituito con una delle 6 varianti.
 
 > Nota touch: 44px è il minimo iOS/Material per target tappabili. Sotto i 44px su touch panel diventa difficile centrare il dito. Se la toolbar lo consente, preferire 52px anche per icon-only.
@@ -226,6 +228,8 @@ Su view con molte card o tabelle (dashboard, diagnostica MQTT, produzione), il t
 - card "flat" (solo bg, no border) per elementi di secondo livello.
 
 Queste eccezioni vanno annotate nel documento quando emergono, non improvvisate.
+
+**Deroga documentata — card "glassmorphism" Gripper/Vice.** Le view `Gripper.vue` e `Vice.vue` usano per form e preview 3D un tema alternativo coerente e intenzionale (bg `rgba(30,41,59,.6)` + `backdrop-filter: blur`, radius 16px, palette slate `#0f172a/#1e293b/#3b82f6`, ~125 `!important` per file) che NON segue il pattern outlined §4.1 né i token. Decisione sessione conf (audit voce GV1): **deroga temporanea** — la ritematizzazione completa è una sessione dedicata futura. Nel frattempo sono stati comunque allineati: font-size → token scala, bottoni shelfPos → touch 44 + active su `--accent` (vedi §3.4 "segmented toggle").
 
 **Deroga documentata — tile unità dashboard (`units.vue` `.card`).** Le 4 tile cliccabili della dashboard restano su pattern **elevation** (`--bg-surface` + `--elevation-2`, senza bordo, hover `--elevation-3`): sono semanticamente affini alle status card §5 (portano lo stato unità sul wrapper immagine e devono "staccare" dal fondo, caso che §7 riserva alle ombre). Decisione sessione Dashboard, opzione (i) dell'audit.
 

@@ -14,7 +14,7 @@
           &nbsp;
       </div>
 
-      <div class="pure-u-22-24">
+      <div class="pure-u-22-24 conf-card">
         <h2 v-if="!createNew">{{ $t('tray.data')}} : {{ tray.ID }}</h2>
         <h2 v-if="createNew"> {{ $t('tray.createNew')}} </h2>
 
@@ -187,7 +187,8 @@
         </div>
       </div>
 
-      <br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+      <!-- FO3: ex 14 <br> spaziatori, sostituiti da margine token -->
+      <div class="bottom-spacer"></div>
 </template>
 
 <script>
@@ -348,7 +349,9 @@ export default {
     #aligned-foo{
         width:300px;
     }
-    .errore{
-        background-color:lightcoral;
+
+    /* FO3: spazio in coda per lo scroll su touch (ex <br> multipli). */
+    .bottom-spacer{
+        height: var(--space-8);
     }
 </style>
