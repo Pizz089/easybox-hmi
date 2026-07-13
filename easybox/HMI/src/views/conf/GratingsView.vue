@@ -10,21 +10,18 @@
 </script>
 
 <template>   
-      <div class="pure-u-1-24">
-          &nbsp;
-      </div>
-
-      <div class="pure-u-23-24 conf-card">
-           
-        <h3>{{$t('grating.welcome')}}
-          <button class="pure-button pure-button-primary" :class="{'pure-button-disabled':dataStored.userLevel<=1}" :id="locked" @click="createGrating()">
-            {{$t('grating.createNew')}}
-          </button>
-          &nbsp;
-          <button class="pure-button pure-button-primary" :class="{'pure-button-disabled':dataStored.userLevel<=1}" :id="locked" @click="importGrating()">
-            {{$t('grating.importNew')}}
-          </button>
-        </h3>
+      <div class="view-shell conf-card">
+        <div class="view-header">
+          <h3 class="view-title">{{$t('grating.welcome')}}</h3>
+          <div class="btn-group">
+            <button class="pure-button pure-button-primary" :class="{'pure-button-disabled':dataStored.userLevel<=1}" :id="locked" @click="createGrating()">
+              {{$t('grating.createNew')}}
+            </button>
+            <button class="pure-button pure-button-primary" :class="{'pure-button-disabled':dataStored.userLevel<=1}" :id="locked" @click="importGrating()">
+              {{$t('grating.importNew')}}
+            </button>
+          </div>
+        </div>
         <table class="pure-table pure-table-horizontal">
             <thead>
                 <tr>

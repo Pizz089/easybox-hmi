@@ -10,13 +10,9 @@
 </script>
 
 <template>   
-      <div class="pure-u-1-24">
-          &nbsp;
-      </div>
-
-      <div class="pure-u-22-24 conf-card">
-        <h2 v-if="!createNew">{{ $t('tray.data')}} : {{ tray.ID }}</h2>
-        <h2 v-if="createNew"> {{ $t('tray.createNew')}} </h2>
+      <div class="view-shell conf-card">
+        <h2 v-if="!createNew" class="view-title">{{ $t('tray.data')}} : {{ tray.ID }}</h2>
+        <h2 v-if="createNew" class="view-title"> {{ $t('tray.createNew')}} </h2>
 
         <div class="pure-form pure-form-aligned" >
             <!--fieldset-->

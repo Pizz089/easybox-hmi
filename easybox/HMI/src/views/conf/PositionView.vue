@@ -8,19 +8,16 @@
 </script>
 
 <template>   
-    &nbsp;
-      <div class="pure-u-23-24">
-        <h3>{{$t('position.welcome')}}
-            &nbsp;
-            <!--button class="pure-button pure-button-primary" @click="createposition()">
+      <div class="view-shell">
+        <div class="view-header">
+          <h3 class="view-title">{{$t('position.welcome')}}</h3>
+          <!--button class="pure-button pure-button-primary" @click="createposition()">
             {{$t('position.add_position')}}
           </button-->
-          &nbsp;
           <!--button class="pure-button pure-button-primary" @click="$router.push('/conf/positionOnPallet');">
             {{$t('position.PosOnPallet')}}
           </button-->
-        </h3>
-        <h3 class="searchBar">
+          <div class="searchBar">
             <input type="text" placeholder="search" v-model="searchQuery" class="search-input">
             <select v-model="categoryFilter" class="cat-filter">
                 <option value="">{{$t('position.cat.all')}}</option>
@@ -28,7 +25,8 @@
                     {{ opt.label }}
                 </option>
             </select>
-        </h3>
+          </div>
+        </div>
         <!-- wrapper scroll dedicato: il thead sticky (regola globale in
              custom-fix.css) si aggancia a questo contenitore, non alla pagina -->
         <div class="postable-wrapper">
@@ -500,7 +498,7 @@ export default {
        (custom-fix.css) si aggancia qui. max-height perche' il parent
        non e' flex column (diversamente dal pattern prodtable). */
     .postable-wrapper{
-        margin-top: var(--space-5);
+        /* margin-top rimosso: lo spazio lo da' il gap del .view-shell */
         overflow-y: auto;
         max-height: calc(100vh - 240px);
     }

@@ -8,17 +8,13 @@
 </script>
 
 <template>   
-      <div class="pure-u-1-24">
-          &nbsp;
-      </div>
-
-      <div class="pure-u-23-24 conf-card">
-            
-        <h3>{{$t('gripper.welcome')}}
+      <div class="view-shell conf-card">
+        <div class="view-header">
+          <h3 class="view-title">{{$t('gripper.welcome')}}</h3>
           <button class="pure-button pure-button-primary" :class="{'pure-button-disabled':dataStored.userLevel<=1}" :id="locked" @click="CreateGripper()" >
             {{$t('gripper.add_gripper')}}
           </button>
-        </h3>
+        </div>
 
         <table class="pure-table pure-table-horizontal">
             <thead>
@@ -62,22 +58,6 @@
                 </template>
             </tbody>
         </table>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
       </div>
 </template>
 

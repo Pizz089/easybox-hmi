@@ -8,16 +8,13 @@
 </script>
 
 <template>   
-    &nbsp;      
-    &nbsp;
-    
-      <div class="pure-u-23-24 conf-card">
-        <h3>
-            {{$t('tray.welcome')}}
+      <div class="view-shell conf-card">
+        <div class="view-header">
+            <h3 class="view-title">{{$t('tray.welcome')}}</h3>
             <button class="pure-button pure-button-primary" :class="{'pure-button-disabled':dataStored.userLevel<=1}" :id="locked" @click="createTray()">
                 {{$t('tray.add_Tray')}}
             </button>
-        </h3>
+        </div>
         <table class="pure-table pure-table-horizontal">
             <thead>
                 <tr>
@@ -92,7 +89,6 @@
                 </template>
             </tbody>
         </table>
-        <br><br><br><br><br><br><br><br>
       </div>
 </template>
 

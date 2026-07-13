@@ -7,13 +7,9 @@
 </script>
 
 <template>   
-      <div class="pure-u-1-24">
-          &nbsp;
-      </div>
-
-      <div class="pure-u-22-24 conf-card">
-        <h2 v-if="!createNew">{{ $t('fixture.data')}} : {{ fixture.ID }}</h2>
-        <h2 v-if="createNew"> {{ $t('fixture.create')}} </h2>
+      <div class="view-shell conf-card">
+        <h2 v-if="!createNew" class="view-title">{{ $t('fixture.data')}} : {{ fixture.ID }}</h2>
+        <h2 v-if="createNew" class="view-title"> {{ $t('fixture.create')}} </h2>
 
         <div class="pure-form pure-form-aligned" >
             <fieldset>

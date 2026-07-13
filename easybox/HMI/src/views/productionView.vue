@@ -4,9 +4,9 @@ import { dataStored } from '../data';
 </script>
 
 <template>
-    <div class="pure-u-1 production-view-root">
-        <div class="page-header">
-            <h2 class="page-title">{{ $t('production.welcome') }}</h2>
+    <div class="pure-u-1 production-view-root view-shell view-shell--fill">
+        <div class="view-header">
+            <h2 class="view-title">{{ $t('production.welcome') }}</h2>
             <button
                 type="button"
                 class="pure-button-primary btn-add-order"
@@ -47,29 +47,8 @@ export default {
 </script>
 
 <style scoped>
-.production-view-root {
-    display: flex;
-    flex-direction: column;
-    height: calc(100vh - 100px);
-    gap: var(--space-3);
-}
-
-.page-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: var(--space-5);
-    padding: 0 var(--space-3);
-}
-
-.page-title {
-    font-size: 24px;
-    font-weight: 700;
-    color: var(--text-primary);
-    margin: 0;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
+/* Shell dal globale .view-shell--fill (gap 12 -> 16, esce dalla blacklist);
+   header e titolo dai globali .view-header/.view-title. */
 
 /* Layout hook (opzione A audit-sistema-b): SOLO allineamento icona lucchetto,
    l'estetica viene dalla variante Primary canonica (buttons.css). */

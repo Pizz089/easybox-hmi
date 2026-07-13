@@ -8,16 +8,13 @@
 </script>
 
 <template>   
-      <div class="pure-u-1-24">
-          &nbsp;
-      </div>
-      
-      <div class="pure-u-23-24 conf-card">
-        <h3>{{$t('pallet.welcome')}}
+      <div class="view-shell conf-card">
+        <div class="view-header">
+          <h3 class="view-title">{{$t('pallet.welcome')}}</h3>
           <button class="pure-button pure-button-primary" :class="{'pure-button-disabled':dataStored.userLevel<=1}" :id="locked" @click="createPallet()">
             {{$t('pallet.add_Pallet')}}
           </button>
-        </h3>
+        </div>
         <table class="pure-table pure-table-horizontal">
             <thead>
                 <tr>

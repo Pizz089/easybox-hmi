@@ -7,13 +7,9 @@
 </script>
 
 <template>   
-      <div class="pure-u-1-24">
-          &nbsp;
-      </div>
-
-      <div class="pure-u-22-24 conf-card">
-        <h2 v-if="!createNew">{{ $t('pallet.data')}} : {{ pallet.ID }}</h2>
-        <h2 v-if="createNew"> {{ $t('pallet.createNew')}} </h2>
+      <div class="view-shell conf-card">
+        <h2 v-if="!createNew" class="view-title">{{ $t('pallet.data')}} : {{ pallet.ID }}</h2>
+        <h2 v-if="createNew" class="view-title"> {{ $t('pallet.createNew')}} </h2>
 
         <div class="pure-form pure-form-aligned" >
             <fieldset>
