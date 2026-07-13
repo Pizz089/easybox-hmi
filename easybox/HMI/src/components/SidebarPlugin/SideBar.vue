@@ -148,7 +148,7 @@ const filteredDiagItems = filterByLevel(diagItems);
      visiva (sidebar incassata sotto TopBar alzata). Da promuovere
      a token --bg-sidebar o --bg-surface-0-5 in un futuro sub-step
      di tokens consolidation. */
-  border-radius: 0 12px 12px 0;                  /* solo angoli destri, coerenti con TopBar */
+  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;  /* solo angoli destri, coerenti con TopBar */
   color: var(--text-primary);
   box-shadow: var(--elevation-2);
   overflow: hidden;
@@ -156,7 +156,6 @@ const filteredDiagItems = filterByLevel(diagItems);
   transition: width 0.25s ease-in-out;
   display: flex;
   flex-direction: column;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 .sb:not(.open) {
@@ -168,28 +167,28 @@ const filteredDiagItems = filterByLevel(diagItems);
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  gap: 20px;
-  padding: var(--space-3) 6px 0;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-2) 0;
   overflow-y: auto;
 }
 
 .section {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-2);
 }
 
 .section-title {
-  padding: 6px var(--space-3);
+  padding: var(--space-2) var(--space-4);
   margin: 0 0 var(--space-2) 0;
   background: var(--bg-input);
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 600;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
   text-transform: uppercase;
   text-align: center;
   color: var(--text-secondary);
-  letter-spacing: 0.08em;
+  letter-spacing: 0.05em;
 }
 
 ul {
@@ -207,12 +206,16 @@ a {
   text-decoration: none;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 9px 12px;
-  margin: 2px 8px;
-  border-radius: 10px;
-  font-size: 14px;
-  font-weight: 500;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  /* 2px verticale: micro-spaziatura tra voci (eccezione §2.1) */
+  margin: 2px var(--space-2);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  /* Touch 44 (deroga al 52 preferito, documentata §3.4): il menu completo
+     ha 17 voci, a 52px sforerebbe il viewport del pannello. */
+  min-height: 44px;
   transition: all 0.18s ease-out;
 }
 
@@ -247,7 +250,7 @@ a:focus {
 }
 .sb-nav::-webkit-scrollbar-thumb {
   background: var(--border-default);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
 }
 
 .sb:not(.open) .section-title,

@@ -611,7 +611,7 @@ h6 {
 .mission-dialog-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--bg-backdrop);
   z-index: 1000;
   display: flex;
   align-items: center;

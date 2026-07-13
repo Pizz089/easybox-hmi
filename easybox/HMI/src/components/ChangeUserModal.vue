@@ -162,7 +162,7 @@ onUnmounted(() => {
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--bg-backdrop);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -185,8 +185,8 @@ onUnmounted(() => {
 
 .modal-close {
   position: absolute;
-  top: var(--space-3);
-  right: var(--space-3);
+  top: var(--space-4);
+  right: var(--space-4);
   background: transparent;
   border: 0;
   cursor: pointer;
@@ -196,6 +196,8 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
+  min-width: 44px;  /* touch minimo */
+  min-height: 44px;
   transition: background var(--transition-fast), color var(--transition-fast);
 }
 
@@ -207,14 +209,14 @@ onUnmounted(() => {
 }
 
 .modal-title {
-  font-size: 24px;
-  font-weight: 700;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
   color: var(--text-primary);
   margin: 0 0 var(--space-2);
 }
 
 .modal-subtitle {
-  font-size: 14px;
+  font-size: var(--font-size-sm);
   color: var(--text-secondary);
   margin: 0 0 var(--space-5);
 }
@@ -222,18 +224,18 @@ onUnmounted(() => {
 .current-level {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
   background: var(--bg-input);
   border-radius: var(--radius-md);
   margin-bottom: var(--space-5);
-  font-size: 14px;
+  font-size: var(--font-size-sm);
   color: var(--text-secondary);
 }
 
 .current-level strong {
   color: var(--text-primary);
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
 }
 
 .level-icon {
@@ -250,18 +252,19 @@ onUnmounted(() => {
 }
 
 .form-group label {
-  font-size: 13px;
+  font-size: var(--font-size-sm);
   color: var(--text-secondary);
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
 }
 
 .form-group input {
   background: var(--bg-input);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  padding: 12px 16px;
+  padding: var(--space-2) var(--space-4);
+  min-height: 44px;  /* touch minimo */
   color: var(--text-primary);
-  font-size: 16px;
+  font-size: var(--font-size-base);
   transition: border-color var(--transition-fast);
 }
 
@@ -272,7 +275,7 @@ onUnmounted(() => {
 }
 
 .error-msg {
-  font-size: 13px;
+  font-size: var(--font-size-sm);
   color: var(--color-danger);
 }
 

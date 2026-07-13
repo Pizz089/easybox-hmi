@@ -27,6 +27,10 @@
   --border-card: 1px solid rgba(255, 255, 255, 0.22);
   --bg-card:     rgba(255, 255, 255, 0.08);
 
+  /* Backdrop overlay per modali/dialog (ChangeUserModal, mission-dialog):
+     unificato a 0.6 (era 0.5 modale utente / 0.6 dialog missione). */
+  --bg-backdrop: rgba(0, 0, 0, 0.6);
+
   --accent:         #4A9EFF;
   --accent-hover:   #6BAFFF;
   --accent-active:  #2E7FE0;

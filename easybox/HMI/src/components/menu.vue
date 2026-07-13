@@ -54,8 +54,9 @@ const toggleSidebar = () => {
   position: fixed;
   top: 50vh;
   transform: translateY(-50%);
-  width: 32px;
-  height: 32px;
+  /* 44x44: touch minimo (era 32, sotto soglia) */
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   background: var(--bg-surface);
   color: var(--text-primary);
@@ -64,18 +65,17 @@ const toggleSidebar = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
+  font-size: var(--font-size-md);
   line-height: 1;
   padding: 0;
   box-shadow: var(--elevation-2);
   transition:
     left 0.25s ease-in-out,
-    background var(--transition-fast),
-    border-color var(--transition-fast);
+    background var(--transition-fast);
 }
 
 .toggle-btn.open {
-  left: 204px;                                   /* 220 sidebar - 16 = half-in half-out */
+  left: 198px;                                   /* 220 sidebar - 22 = half-in half-out */
 }
 
 .toggle-btn.closed {
@@ -85,7 +85,6 @@ const toggleSidebar = () => {
 .toggle-btn:hover,
 .toggle-btn:focus-visible {
   background: var(--bg-surface-2);
-  border-color: var(--border-strong);
 }
 
 .toggle-btn:focus {
