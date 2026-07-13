@@ -172,7 +172,7 @@
     <div class="save-row">
       <button
         type="button"
-        class="btn-save"
+        class="pure-button-primary"
         @click="saveData"
         :disabled="PPindex<=0 || dataStored.createWorkOrder.quantity<=0"
       >
@@ -452,26 +452,6 @@ export default {
   padding: var(--space-3) 0 var(--space-5);
 }
 
-.btn-save {
-  background: var(--text-primary);
-  color: var(--bg-base);
-  border: 0;
-  border-radius: var(--radius-md);
-  padding: 14px 48px;
-  font-size: 15px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: filter var(--transition-fast), opacity var(--transition-fast);
-}
-
-.btn-save:hover:not(:disabled),
-.btn-save:focus-visible:not(:disabled) {
-  filter: brightness(0.92);
-  outline: none;
-}
-
-.btn-save:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+/* Save: variante Primary canonica (buttons.css), CSS ad-hoc .btn-save rimosso
+   (decisione audit-sistema-b). */
 </style>

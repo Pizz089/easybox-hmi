@@ -149,7 +149,7 @@ onUnmounted(() => {
             <span v-if="errorMsg" class="error-msg">{{ errorMsg }}</span>
           </div>
 
-          <button type="button" class="btn-primary" @click="submit">
+          <button type="button" class="pure-button-primary btn-primary" @click="submit">
             {{ t('changeUser.submit') }}
           </button>
         </div>
@@ -276,23 +276,10 @@ onUnmounted(() => {
   color: var(--color-danger);
 }
 
+/* Layout hook (opzione A audit-sistema-b): SOLO full-width nel modal,
+   l'estetica viene dalla variante Primary canonica (buttons.css). */
 .btn-primary {
   width: 100%;
-  background: var(--text-primary);
-  color: var(--bg-base);
-  border: 0;
-  border-radius: var(--radius-md);
-  padding: 14px 24px;
-  font-size: 16px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: filter var(--transition-fast);
-}
-
-.btn-primary:hover,
-.btn-primary:focus-visible {
-  filter: brightness(0.92);
-  outline: none;
 }
 
 @keyframes shake {

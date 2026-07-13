@@ -9,7 +9,7 @@ import { dataStored } from '../data';
             <h2 class="page-title">{{ $t('production.welcome') }}</h2>
             <button
                 type="button"
-                class="btn-add-order"
+                class="pure-button-primary btn-add-order"
                 :disabled="dataStored.userLevel == 0"
                 @click="navigateToWizard"
             >
@@ -71,30 +71,13 @@ export default {
     letter-spacing: 0.05em;
 }
 
+/* Layout hook (opzione A audit-sistema-b): SOLO allineamento icona lucchetto,
+   l'estetica viene dalla variante Primary canonica (buttons.css). */
 .btn-add-order {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: var(--space-2);
-    background: var(--text-primary);
-    color: var(--bg-base);
-    border: 0;
-    border-radius: var(--radius-md);
-    padding: 12px 24px;
-    font-size: 15px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: filter var(--transition-fast), opacity var(--transition-fast);
-}
-
-.btn-add-order:hover:not(:disabled),
-.btn-add-order:focus-visible:not(:disabled) {
-    filter: brightness(0.92);
-    outline: none;
-}
-
-.btn-add-order:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
 }
 
 .btn-lock-icon {

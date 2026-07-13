@@ -1,0 +1,150 @@
+/* ============ BUTTON VARIANTS — 6 varianti canoniche (doc §3) ============ */
+/* Sede unica delle varianti bottone del pannello (decisione audit-sistema-b).
+   Spostate qui da unit-views.css; import in main.js DOPO design-tokens.css
+   (token) e DOPO pure.css (l'alias .pure-button-primary ridefinisce una classe
+   PureCSS a parita' di specificita': vince chi viene dopo nella cascade).
+   Nomi legacy (.pure-button-micromission|mission|disable, .specialCMD)
+   mantenuti per minimizzare diff nei template. Rename semantico candidato
+   a step successivo. */
+
+/* --- 1. PRIMARY ------------------------------------------------------- */
+/* Alias: .pure-button-primary (Sistema B, 21 usi config/production) e'
+   ridefinito sullo stile canonico §3.1 invece di migrare i template.
+   Convergenza dei nomi a fine cantiere. */
+.pure-button-micromission,
+.pure-button-primary {
+    background: var(--accent);
+    color: var(--text-primary);
+    border: 0;
+    border-radius: var(--radius-md);
+    padding: var(--space-4) var(--space-5);
+    min-height: 52px;
+    font-weight: var(--font-weight-medium);
+    letter-spacing: 0.025em;
+    cursor: pointer;
+    transition: filter var(--transition-fast);
+}
+
+/* --- 2. WARNING / MISSION ---------------------------------------------- */
+.pure-button-mission {
+    background: var(--color-warning-button);
+    color: var(--color-warning-text);
+    border: 0;
+    border-radius: var(--radius-md);
+    padding: var(--space-4) var(--space-5);
+    min-height: 52px;
+    font-weight: var(--font-weight-medium);
+    letter-spacing: 0.025em;
+    cursor: pointer;
+    transition: filter var(--transition-fast);
+}
+
+/* background-image: none neutralizza il gradient scurente di pure.css
+   (.pure-button:hover/:focus, specificita' 0-2-0) sui bottoni che hanno
+   anche la classe base .pure-button nel template. */
+.pure-button-micromission:hover:not(:disabled),
+.pure-button-primary:hover:not(:disabled),
+.pure-button-primary:focus:not(:disabled),
+.pure-button-mission:hover:not(:disabled) {
+    background-image: none;
+    filter: brightness(1.12);
+}
+
+/* --- 3. CRITICAL (.specialCMD) ------------------------------------------ */
+/* Pill rounded per RESET/HOLD/START/RESTART (macro action critica/anomalia/
+   manutenzione, non flusso normale).
+   UI-7.5: --color-critical (rosso urgente saturato, distinto da --color-danger
+   usato per status alarm). font-weight + letter-spacing rinforzano urgency.
+   Dopo primary nella cascade: vince su .pure-button-micromission. */
+.specialCMD {
+    border-radius: var(--radius-pill);
+    background: var(--color-critical);
+    color: var(--text-primary);
+    font-weight: var(--font-weight-bold);
+    letter-spacing: 0.05em;
+}
+
+.specialCMD:hover:not(:disabled) {
+    background: var(--color-critical-hover);
+}
+
+/* --- 5. GHOST ------------------------------------------------------------ */
+/* Azione minore/secondaria, no fill. Base comune §3.1 per
+   radius/min-height/padding/font; hover su bg/border/color (non filter,
+   che sarebbe inerte: l'hover non cambia luminosita' ma sfondo/bordo). */
+.btn-ghost {
+    background: transparent;
+    border: 1px solid var(--border-default);
+    color: var(--text-secondary);
+    border-radius: var(--radius-md);
+    min-height: 52px;
+    padding: var(--space-4) var(--space-5);
+    font-weight: var(--font-weight-medium);
+    letter-spacing: 0.025em;
+    cursor: pointer;
+    transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.btn-ghost:hover:not(:disabled) {
+    background: var(--bg-surface);
+    border-color: var(--border-strong);
+    color: var(--text-primary);
+}
+
+/* --- 6. ICON-ONLY ---------------------------------------------------------- */
+/* Toolbar dense. Deroga a min-height 52 -> quadrato 44x44 (touch). */
+.btn-icon {
+    background: transparent;
+    border: 0;
+    color: var(--text-secondary);
+    min-height: 44px;
+    min-width: 44px;
+    border-radius: var(--radius-sm);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.btn-icon:hover:not(:disabled) {
+    background: var(--bg-surface-2);
+    color: var(--text-primary);
+}
+
+/* --- 4. DISABLED (ultimo nella cascade) ------------------------------------ */
+/* Definizione UNIFICATA (decisione audit-sistema-b): doppia grafia
+   .pure-button-disable (Sistema A, ternario) / .pure-button-disabled
+   (Sistema B, additiva su primary). Filosofia A "subdued ma leggibile"
+   (UI-7.5: opacity 0.7 + text-secondary, l'operatore deve leggere quali
+   comandi non sono disponibili) + box-model base §3.1 (il ternario A mette
+   la classe DA SOLA: senza base il bottone disabilitato perdeva
+   radius/min-height/padding) + pointer-events none (blocco click uniforme,
+   prima solo B). ULTIMA nella cascade: vince sulle varianti nelle combo
+   Sistema B (primary + disabled sullo stesso bottone). */
+.pure-button-disable,
+.pure-button-disabled,
+.pure-button-micromission:disabled,
+.pure-button-primary:disabled,
+.pure-button-mission:disabled {
+    background: var(--bg-input);
+    background-image: none;
+    color: var(--text-secondary);
+    opacity: 0.7;
+    border: 0;
+    border-radius: var(--radius-md);
+    padding: var(--space-4) var(--space-5);
+    min-height: 52px;
+    font-weight: var(--font-weight-medium);
+    letter-spacing: 0.025em;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+/* Eccezione forma: "pill solo per critical" (§3.1) vale anche da disabilitato —
+   senza questa regola il radius-md del blocco disabled (0-2-0 via :disabled)
+   vincerebbe su .specialCMD (0-1-0) e il bottone cambierebbe forma con lo stato. */
+.specialCMD:disabled,
+.specialCMD.pure-button-disable {
+    border-radius: var(--radius-pill);
+}

@@ -33,7 +33,7 @@
                 
                 <span v-if="fixture.POS_PLANT>0">
                     <h4>Position on pallet #{{ fixture.POS_PLANT }}
-                        &nbsp; <button @click="resetData()" class="pure-button pure-button-secondary"> reset position </button>
+                        &nbsp; <button @click="resetData()" class="btn-ghost"> reset position </button>
                     </h4> 
                     <div class="pure-control-group">
                         <label for="aligned-foo">X</label>

@@ -7,7 +7,7 @@
     v-click-outside="closeDropDown"
   >
     <a
-      class="dropdown-toggle btn-rotate"
+      class="dropdown-toggle"
       :class="titleClasses"
       data-toggle="dropdown"
     >

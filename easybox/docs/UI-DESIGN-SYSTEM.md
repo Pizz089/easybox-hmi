@@ -108,6 +108,8 @@ Da correggere durante il refactor delle unit views:
 
 Tutti i bottoni del pannello devono ricondursi a una di queste 6 varianti. Niente stili bottone ad-hoc nelle singole view.
 
+> **Sede unica: `assets/css/buttons.css`** (dalla sessione post-audit-sistema-b). Le varianti NON vivono più in `unit-views.css` né nei singoli `.vue`. Import in `main.js` dopo `design-tokens.css` (token) e dopo `pure.css` (necessario: l'alias `.pure-button-primary` ridefinisce una classe PureCSS a parità di specificità).
+
 > I nomi legacy (`.pure-button-micromission`, `.pure-button-mission`, `.pure-button-disable`, `.specialCMD`) restano per non rompere i template, ma il documento li mappa a ruoli semantici chiari. Rename semantico = candidato a step successivo separato.
 
 ### 3.1 Base comune a tutti i bottoni azione
@@ -127,16 +129,20 @@ Hover comune (dove non sovrascritto): `filter: brightness(1.12)`.
 
 ### 3.2 Le 6 varianti
 
-| # | Variante | Classe legacy | Ruolo | Fill | Testo |
+| # | Variante | Classi (buttons.css) | Ruolo | Fill | Testo |
 |---|---|---|---|---|---|
-| 1 | **Primary** | `.pure-button-micromission` | azione di flusso normale (comando standard) | `--accent` | `--text-primary` |
+| 1 | **Primary** | `.pure-button-micromission`, `.pure-button-primary` (alias) | azione di flusso normale (comando standard) | `--accent` | `--text-primary` |
 | 2 | **Warning / Mission** | `.pure-button-mission` | azione che avvia missione / attenzione | `--color-warning-button` (#D4A017 amber desaturato) | `--color-warning-text` |
 | 3 | **Critical** | `.specialCMD` | macro action critica (RESET/HOLD/START/RESTART, conferme delete) | `--color-critical` (#E63946) | `--text-primary` |
-| 4 | **Disabled** | `.pure-button-disable` / `:disabled` | comando non disponibile | `--bg-input`, opacity 0.7 | `--text-secondary` |
-| 5 | **Ghost** *(NUOVO)* | da definire | azione minore / secondaria, no fill | trasparente + `--border-default` | `--text-secondary` |
-| 6 | **Icon-only** *(NUOVO)* | da definire | toolbar dense, azioni compatte | trasparente, hover `--bg-surface-2` | icona, `--text-secondary` |
+| 4 | **Disabled** | `.pure-button-disable`, `.pure-button-disabled` (unificate) / `:disabled` | comando non disponibile | `--bg-input`, opacity 0.7 | `--text-secondary` |
+| 5 | **Ghost** | `.btn-ghost` | azione minore / secondaria, no fill | trasparente + `--border-default` | `--text-secondary` |
+| 6 | **Icon-only** | `.btn-icon` | toolbar dense, azioni compatte | trasparente, hover `--bg-surface-2` | icona, `--text-secondary` |
 
-### 3.3 Specifiche varianti nuove (proposta da validare)
+Note di dettaglio (post-audit-sistema-b):
+- **Primary alias**: `.pure-button-primary` (ex PureCSS #0078e7) è ridefinito sullo stile canonico — i 21 usi nei template config/production NON sono stati migrati. **Convergenza dei nomi a fine cantiere** (un solo nome Primary quando si farà il rename semantico).
+- **Disabled unificato**: definizione unica a doppio selettore, filosofia "subdued ma leggibile" (opacity 0.7 + `--text-secondary`) **+ box-model base §3.1 incluso** (radius/min-height 52/padding token: la classe compare da sola nei ternari delle unit view e senza base perdeva la forma) **+ `pointer-events: none`**. Ultima nella cascade di buttons.css: vince sulle combo `primary + disabled` del codice config. Eccezione: `.specialCMD` disabilitato conserva il radius pill ("pill solo per critical" vale anche da spento).
+
+### 3.3 Specifiche varianti Ghost / Icon-only (implementate in buttons.css)
 
 **Ghost** — per azioni che non devono competere visivamente con le primary (es. "Annulla", filtri, toggle minori):
 ```css
@@ -176,17 +182,19 @@ Hover comune (dove non sovrascritto): `filter: brightness(1.12)`.
 
 ### 3.4 Sistema B — bottoni fuori dalle unit view (mappato in audit sessione 2)
 
-L'audit ha rivelato che il pannello ha DUE sistemi di bottoni paralleli. Il §3.2 descrive solo il **Sistema A** (le 4 classi unit-view: micromission/mission/specialCMD/disable), usato esclusivamente dalle 4 unit view e già a norma. Tutto il resto del pannello (config, production, diagnostica, componenti) usa il **Sistema B**, basato sulle classi PureCSS + classi ad-hoc per-view, NON ancora ricondotto alle 6 varianti canoniche.
+L'audit ha rivelato che il pannello aveva DUE sistemi di bottoni paralleli: il **Sistema A** (le 4 classi unit-view: micromission/mission/specialCMD/disable, già a norma) e il **Sistema B** (resto del pannello: classi PureCSS + classi ad-hoc per-view). Dalla sessione post-audit i due sistemi sono riconciliati via alias in buttons.css (vedi sotto); restano fuori solo le deroghe documentate in coda a questa sezione.
 
 Censimento Sistema B (sessione 2): `pure-button-primary` (39 usi, la classe bottone più usata in assoluto), `pure-button-disabled` (13), `pure-button-secondary` (2), `pure-button-group` (16, è wrapper layout non variante), ~25 classi `btn-*` ad-hoc (btn-save, btn-add-order, btn-primary, btn-resume, btn-pause, btn-lock-icon, btn-clear-filter, btn-round, btn-rotate, btn-outline), ~140 tag `<button>` totali, e un componente condiviso `Button.vue` da ispezionare. Nessuna libreria UI esterna (no el-button).
 
-**Tre buchi doc-vs-codice da risolvere in sessione dedicata config/production (NON nelle unit view):**
+**Tre buchi doc-vs-codice — RISOLTI (sessione post-audit, dettagli in `audit-sistema-b.md`):**
 
-1. **Doppio "Primary".** Il doc dice Primary = `.pure-button-micromission` (Sistema A), ma il resto del pannello usa `pure-button-primary` (Sistema B, PureCSS) con 39 occorrenze. Sono due "primary" visivamente diversi. DA DECIDERE: quale diventa il canonico per config/production, e se riconciliare i due sistemi sotto un'unica variante Primary o tenerli distinti per dominio (unit view vs gestione).
-2. **Doppia grafia disabled.** `.pure-button-disable` (Sistema A, 8 usi) vs `pure-button-disabled` (Sistema B/PureCSS, 13 usi). DA UNIFICARE sotto un'unica variante Disabled.
-3. **secondary → ghost.** `pure-button-secondary` (2 usi) è il candidato naturale a diventare la variante Ghost del doc. DA CONFERMARE in fase di migrazione Sistema B.
+1. **Doppio "Primary" → alias.** ✅ Il Primary canonico è lo stile §3.1 tokenizzato; `.pure-button-primary` è ridefinito in buttons.css come alias sullo stesso stile (niente migrazione dei 21 template attivi). Rimossi anche gli override gradient `!important` locali di Gripper.vue/Vice.vue e il "quarto primary" bianco invertito (`btn-add-order`/`btn-primary`/`btn-save` → migrati alla canonica; restano solo layout hook scoped annotati: flex+gap per l'icona in productionView, width:100% nel ChangeUserModal).
+2. **Doppia grafia disabled → unificata.** ✅ Definizione unica a doppio selettore in buttons.css (vedi note §3.2). Deroga residua: la barra comandi (`ComandsRows.vue`) ha una sua definizione disabled scoped che diverge (opacity 0.5, `--text-disabled`, copre anche `[disabled]` via attributo) — da riconciliare nel refactor Dashboard (§8 step 3).
+3. **secondary → ghost.** ✅ `pure-button-secondary` era una classe FANTASMA (mai definita in nessun CSS); l'unico uso attivo (FixtureOnPallet) è migrato a `.btn-ghost`.
 
-Finché questi non sono decisi, il Sistema B resta com'è. Le sessioni che toccano config/production/diagnostica li affrontano lì.
+**Deroga documentata — `tb-btn-*` diagnostica MQTT.** I mini-bottoni della toolbar diag (`.tb-btn`, `-pause`, `-resume`, `-clear-filter` in MqttDiag.vue) restano fuori dalle 6 varianti: la view è deliberatamente light-theme/utilitaria e fuori token dark. Se/quando la diag rientra nel tema (§8 step 5), mappano su Ghost (outline colorato) o Icon-only.
+
+**Settimo pattern — Selectable list item (`.mission-dialog-item`).** Introdotto dai dialog missione di robotView: `<button>` voce-elenco selezionabile a tap (min-height 52, `--bg-input`, radius-md; stato `.selected` = fill `--accent` + bordo `--accent-hover` + semibold). NON è una variante azione: è un pattern di selezione (nessuna preselezione, la conferma è un bottone separato). Va riusato tale e quale per futuri elenchi selezionabili touch, non sostituito con una delle 6 varianti.
 
 > Nota touch: 44px è il minimo iOS/Material per target tappabili. Sotto i 44px su touch panel diventa difficile centrare il dito. Se la toolbar lo consente, preferire 52px anche per icon-only.
 

@@ -619,28 +619,8 @@ h2 {
   border-top: 1px solid rgba(255, 255, 255, 0.06) !important;
 }
 
-.vice-form .pure-button-primary {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
-  color: #ffffff !important;
-  border: none !important;
-  padding: 12px 28px !important;
-  border-radius: 8px !important;
-  font-size: 0.95rem !important;
-  font-weight: 600 !important;
-  cursor: pointer !important;
-  transition: all 0.2s ease !important;
-  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.35) !important;
-  letter-spacing: 0.01em !important;
-}
-
-.vice-form .pure-button-primary:hover {
-  transform: translateY(-2px) !important;
-  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.45) !important;
-}
-
-.vice-form .pure-button-primary:active {
-  transform: translateY(0) !important;
-}
+/* Save: variante Primary canonica (buttons.css), override gradient rimosso
+   (decisione audit-sistema-b). */
 
 /* === 3D PREVIEW CARD === */
 .vice-preview {
