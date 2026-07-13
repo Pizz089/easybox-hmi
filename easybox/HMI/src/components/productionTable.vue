@@ -145,12 +145,14 @@ export default {
     },
     mounted(){
         this.getDataTable();
-        dataStored.WS.socket.on('PRODUCTION/CHANGED', ()=>{
+        this.productionChangedHandler = ()=>{
             this.getDataTable();
-        });
+        };
+        dataStored.WS.socket.on('PRODUCTION/CHANGED', this.productionChangedHandler);
     },
     unmounted(){
-       //dataStored.WS.socket.off('PRODUCTION/CHANGED');
+        // off SPECIFICO (evento + callback), stesso pattern di robotView (e4ab4e5).
+        dataStored.WS.socket.off('PRODUCTION/CHANGED', this.productionChangedHandler);
     }
 }
 </script>

@@ -252,41 +252,47 @@ export default {
     mounted() {
         this.getStatusList()
 
-        dataStored.WS.socket.on("ROBOT/STATUS", payload => {
+        this.robotStatusHandler = payload => {
             this.robot_status = parseInt(payload.toString());
             this.robot_desc = this.getStatusDesc("robot", this.robot_status);
             //dataStored.alert.title= "ROBOT in modalita "+this.robot_status
             //dataStored.alert.desc= this.robot_desc
-        });
-        dataStored.WS.socket.on("BOX/STATUS", payload => {
+        };
+        dataStored.WS.socket.on("ROBOT/STATUS", this.robotStatusHandler);
+        this.boxStatusHandler = payload => {
             this.smallBox_status = parseInt(payload.toString());
             this.smallBox_desc = this.getStatusDesc("smallbox", this.smallBox_status);
-        });
+        };
+        dataStored.WS.socket.on("BOX/STATUS", this.boxStatusHandler);
         //dataStored.WS.socket.on("BOX/EXTRACT", payload =>{
         //    this.smallBox_desc = "Extract Tray:"+parseInt(payload.toString());
         //});
-        dataStored.WS.socket.on("MC1/STATUS", payload => {
+        this.mc1StatusHandler = payload => {
             this.mc1_status = parseInt(payload.toString());
             this.cnc1_desc = this.getStatusDesc("cnc1", this.mc1_status);
-        });
-        dataStored.WS.socket.on("MC2/STATUS", payload => {
+        };
+        dataStored.WS.socket.on("MC1/STATUS", this.mc1StatusHandler);
+        this.mc2StatusHandler = payload => {
             this.mc2_status = parseInt(payload.toString());
             this.cnc2_desc = this.getStatusDesc("cnc2", this.mc2_status);
-        });
+        };
+        dataStored.WS.socket.on("MC2/STATUS", this.mc2StatusHandler);
 
-        dataStored.WS.socket.on("ROBOT/DESCR", payload => {
+        this.robotDescrHandler = payload => {
             //this.getStatusList();
             this.robotAlarm = payload;
-        });
+        };
+        dataStored.WS.socket.on("ROBOT/DESCR", this.robotDescrHandler);
     },
     unmounted() {
-        //dataStored.WS.socket.off('ROBOT/STATUS');
-        //dataStored.WS.socket.off('BOX/STATUS');
-        ////dataStored.WS.socket.off('BOX/EXTRACT');
-        //dataStored.WS.socket.off('MC1/STATUS');
-        //dataStored.WS.socket.off('MC2/STATUS');
-
-        //dataStored.WS.socket.off("ROBOT/DESCR");
+        // off SPECIFICO (evento + callback), stesso pattern di robotView
+        // (e4ab4e5): un off nudo staccherebbe anche i listener di altri
+        // componenti sugli stessi eventi.
+        dataStored.WS.socket.off("ROBOT/STATUS", this.robotStatusHandler);
+        dataStored.WS.socket.off("BOX/STATUS", this.boxStatusHandler);
+        dataStored.WS.socket.off("MC1/STATUS", this.mc1StatusHandler);
+        dataStored.WS.socket.off("MC2/STATUS", this.mc2StatusHandler);
+        dataStored.WS.socket.off("ROBOT/DESCR", this.robotDescrHandler);
     }
 }
 </script>
