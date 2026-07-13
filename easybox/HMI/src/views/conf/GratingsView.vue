@@ -14,7 +14,7 @@
           &nbsp;
       </div>
 
-      <div class="pure-u-23-24">
+      <div class="pure-u-23-24 conf-card">
            
         <h3>{{$t('grating.welcome')}}
           <button class="pure-button pure-button-primary" :class="{'pure-button-disabled':dataStored.userLevel<=1}" :id="locked" @click="createGrating()">
@@ -25,7 +25,7 @@
             {{$t('grating.importNew')}}
           </button>
         </h3>
-        <table class="pure-table pure-table-horizontal" style="margin-top: 30px;">
+        <table class="pure-table pure-table-horizontal">
             <thead>
                 <tr>
                     <th>{{$t('grating.name')}}</th>
@@ -65,10 +65,10 @@
                                 <h3>{{ $t('tray.sure') }}</h3>
                                 <h4>{{ $t('grating.delete') }}</h4>
                                 <span class="pure-g">
-                                    <button class="pure-button button-error pure-u-1" @click="deleteGrating(dt.ID)">
+                                    <button class="pure-button-micromission specialCMD pure-u-1" @click="deleteGrating(dt.ID)">
                                         DELETE
                                     </button>
-                                    <button class="pure-button butto-secondary pure-u-1" @click="showPopUp=0" style="margin-top:9px">
+                                    <button class="btn-ghost pure-u-1" @click="showPopUp=0">
                                         EXIT
                                     </button>
                                 </span>
@@ -191,10 +191,7 @@ export default {
     .pure-table{
         width: inherit;
     }
-    .button-error {
-        background: rgb(202, 60, 60);
-        color: white;
-        border-radius: 4px;
-        text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+    .popUpOnLine .btn-ghost {
+        margin-top: var(--space-2);
     }
 </style>

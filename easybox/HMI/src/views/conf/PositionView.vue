@@ -21,7 +21,7 @@
           </button-->
         </h3>
         <h3 class="searchBar">
-            <input type="text" placeholder="search" v-model="searchQuery" style="margin-left:40px;">
+            <input type="text" placeholder="search" v-model="searchQuery" class="search-input">
             <select v-model="categoryFilter" class="cat-filter">
                 <option value="">{{$t('position.cat.all')}}</option>
                 <option v-for="opt in categoryOptions" :key="opt.id" :value="opt.id">
@@ -87,9 +87,9 @@
                                 <span>{{getFormat(dt.Z, dt.ID==editID)}} </span>
                             </span>
                             <span v-if="dt.ID==editID && dataStored.userLevel>=1"> 
-                                <input type="number" step="0.01" v-model="datiInEdit.X" style="width:90px;text-align:right" /><br>
-                                <input type="number" step="0.01" v-model="datiInEdit.Y" style="width:90px;text-align:right" /><br>
-                                <input type="number" step="0.01" v-model="datiInEdit.Z" style="width:90px;text-align:right" />
+                                <input type="number" step="0.01" v-model="datiInEdit.X" class="pos-input" /><br>
+                                <input type="number" step="0.01" v-model="datiInEdit.Y" class="pos-input" /><br>
+                                <input type="number" step="0.01" v-model="datiInEdit.Z" class="pos-input" />
                             </span>
                             <br>
                         </td>
@@ -100,9 +100,9 @@
                                 <span>{{getFormat(dt.Z_CORR, dt.ID==editID)}}</span>
                             </span>
                             <span v-if="dt.ID==editID"> 
-                                <input type="number" step="0.01" v-model="datiInEdit.X_CORR" style="width:90px;text-align:right" /><br>
-                                <input type="number" step="0.01" v-model="datiInEdit.Y_CORR" style="width:90px;text-align:right" /><br>
-                                <input type="number" step="0.01" v-model="datiInEdit.Z_CORR" style="width:90px;text-align:right" />
+                                <input type="number" step="0.01" v-model="datiInEdit.X_CORR" class="pos-input" /><br>
+                                <input type="number" step="0.01" v-model="datiInEdit.Y_CORR" class="pos-input" /><br>
+                                <input type="number" step="0.01" v-model="datiInEdit.Z_CORR" class="pos-input" />
                             </span>
                         </td>
                         
@@ -113,9 +113,9 @@
                                 <span>{{getFormat(dt.Z_ROT, dt.ID==editID)}}</span>
                             </span>
                             <span v-if="dt.ID==editID && dataStored.userLevel>=1"> 
-                                <input type="number" step="0.01" v-model="datiInEdit.X_ROT" style="width:90px;text-align:right" /><br>
-                                <input type="number" step="0.01" v-model="datiInEdit.Y_ROT" style="width:90px;text-align:right" /><br>
-                                <input type="number" step="0.01" v-model="datiInEdit.Z_ROT" style="width:90px;text-align:right" />
+                                <input type="number" step="0.01" v-model="datiInEdit.X_ROT" class="pos-input" /><br>
+                                <input type="number" step="0.01" v-model="datiInEdit.Y_ROT" class="pos-input" /><br>
+                                <input type="number" step="0.01" v-model="datiInEdit.Z_ROT" class="pos-input" />
                             </span>
                             <br>
                         </td>
@@ -126,9 +126,9 @@
                                 <span>{{getFormat(dt.Z_ROT_CORR)}}</span>
                             </span>
                             <span v-if="dt.ID==editID"> 
-                                <input type="number" step="0.01" v-model="datiInEdit.X_ROT_CORR" style="width:90px;text-align:right" /><br>
-                                <input type="number" step="0.01" v-model="datiInEdit.Y_ROT_CORR" style="width:90px;text-align:right" /><br>
-                                <input type="number" step="0.01" v-model="datiInEdit.Z_ROT_CORR" style="width:90px;text-align:right" />
+                                <input type="number" step="0.01" v-model="datiInEdit.X_ROT_CORR" class="pos-input" /><br>
+                                <input type="number" step="0.01" v-model="datiInEdit.Y_ROT_CORR" class="pos-input" /><br>
+                                <input type="number" step="0.01" v-model="datiInEdit.Z_ROT_CORR" class="pos-input" />
                             </span>
                         </td>
 
@@ -139,9 +139,9 @@
                                 <span>{{getFormat(dt.APPROACH_Z)}}</span>
                             </span>
                             <span v-if="dt.ID==editID"> 
-                                <input type="number" step="0.001" v-model="datiInEdit.APPROACH_X" style="width:90px;text-align:right" /><br>
-                                <input type="number" step="0.001" v-model="datiInEdit.APPROACH_Y" style="width:90px;text-align:right" /><br>
-                                <input type="number" step="0.001" v-model="datiInEdit.APPROACH_Z" style="width:90px;text-align:right" />
+                                <input type="number" step="0.001" v-model="datiInEdit.APPROACH_X" class="pos-input" /><br>
+                                <input type="number" step="0.001" v-model="datiInEdit.APPROACH_Y" class="pos-input" /><br>
+                                <input type="number" step="0.001" v-model="datiInEdit.APPROACH_Z" class="pos-input" />
                             </span>
                         </td>
                         
@@ -159,10 +159,10 @@
                                 <h3>{{ $t('position.sure') }}</h3>
                                 <!--h4>{{ $t('position.delete') }}</h4-->
                                 <span class="pure-g">
-                                    <button class="pure-button button-error pure-u-1" @click="deleteposition(dt.ID)">
+                                    <button class="pure-button-micromission specialCMD pure-u-1" @click="deleteposition(dt.ID)">
                                         DELETE
                                     </button>
-                                    <button class="pure-button button-secondary pure-u-1" @click="showPopUp=0" style="margin-top:9px">
+                                    <button class="btn-ghost pure-u-1" @click="showPopUp=0">
                                         EXIT
                                     </button>
                                 </span>
@@ -459,37 +459,35 @@ export default {
         width: inherit;
     }
 
-    .button-error {
-        background: rgb(202, 60, 60);
-        color: white;
-        border-radius: 4px;
-        text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
-    }
-
     .popUpOnLine{
         background-image: url(/src/assets/up_red.png);
         background-repeat: no-repeat;
         background-position-x: 34%;
     }
-    
+
+    .popUpOnLine .btn-ghost {
+        margin-top: var(--space-2);
+    }
+
+    /* 2px (non 1px --border-card): il popup di conferma delete deve
+       staccare piu' di un bordo card. */
     .center {
         margin: auto;
         width: 20%;
-        border: 3px solid #ef000082;
-        /*background-color: #ef000036;*/
-        padding: 40px;
+        border: 2px solid var(--color-critical);
+        padding: var(--space-6);
     }
 
     .locked4OP{
         background-image:url('/src/assets/chiaveIng.svg');
-        
+
         background-repeat: no-repeat;
         background-size: 1.7em;
         /*background-position: left;*/
         background-position-x: 100%;
         background-position-y: 100%;
-        background-color: lightyellow;
-    } 
+        background-color: var(--color-warning-bg);
+    }
 
     .searchBar{
         background-image:url('/src/assets/lente.png');
@@ -513,7 +511,18 @@ export default {
     }
 
     .sort-ind{
-        font-size: 0.8em;
+        font-size: var(--font-size-xs);
+    }
+
+    /* Ex inline (PV5/PV6): spazio per l'icona lente del searchBar
+       + geometria colonna degli input numerici in edit. */
+    .search-input{
+        margin-left: var(--space-6);
+    }
+
+    .pos-input{
+        width: 90px;
+        text-align: right;
     }
 
     .cat-filter{

@@ -11,14 +11,14 @@
     &nbsp;      
     &nbsp;
     
-      <div class="pure-u-23-24">
+      <div class="pure-u-23-24 conf-card">
         <h3>
             {{$t('tray.welcome')}}
             <button class="pure-button pure-button-primary" :class="{'pure-button-disabled':dataStored.userLevel<=1}" :id="locked" @click="createTray()">
                 {{$t('tray.add_Tray')}}
             </button>
         </h3>
-        <table class="pure-table pure-table-horizontal" style="margin-top: 30px;">
+        <table class="pure-table pure-table-horizontal">
             <thead>
                 <tr>
                     <!--th>ID</th-->
@@ -79,10 +79,10 @@
                                 <h3>{{ $t('tray.sure') }}</h3>
                                 <h4>{{ $t('tray.delete') }}</h4>
                                 <span class="pure-g">
-                                    <button class="pure-button button-error pure-u-1" @click="deleteTray(dt.ID)">
+                                    <button class="pure-button-micromission specialCMD pure-u-1" @click="deleteTray(dt.ID)">
                                         DELETE
                                     </button>
-                                    <button class="pure-button butto-secondary pure-u-1" @click="showPopUp=0" style="margin-top:9px">
+                                    <button class="btn-ghost pure-u-1" @click="showPopUp=0">
                                         EXIT
                                     </button>
                                 </span>
@@ -250,12 +250,11 @@ export default {
 
     .extractedRow {
         border: dashed 4px;
-        border-color: blue;
+        border-color: var(--accent);
     }
     .extractReq{
         border: dashed 2px;
-        border-color: ligthblue;
-
+        border-color: var(--color-info);
     }
 
     .extract{
@@ -295,27 +294,25 @@ export default {
         }
     }
     
-    .button-error {
-        background: rgb(202, 60, 60);
-        color: white;
-        border-radius: 4px;
-        text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
-    }
-
     .popUpOnLine{
         background-image: url(/src/assets/up_red.png);
         background-repeat: no-repeat;
         background-position-x: 14.6em;
     }
-    
+
+    .popUpOnLine .btn-ghost {
+        margin-top: var(--space-2);
+    }
+
+    /* 2px (non 1px --border-card): il popup di conferma delete deve
+       staccare piu' di un bordo card. */
     .center {
         margin: auto;
         width: 20%;
-        border: 3px solid #ef000082;
-        /*background-color: #ef000036;*/
-        padding: 40px;
+        border: 2px solid var(--color-critical);
+        padding: var(--space-6);
     }
-    
+
 </style>
 
 <style scoped>
@@ -326,56 +323,41 @@ export default {
         background-position-x: 100%;
         background-position-y: 100%;
     } 
+    /* Badge status (grafia lowercase): semantica allineata a productionTable.
+       Nota: il td che li usava (getClassFromStatusDesc) e' oggi commentato
+       nel template — classi tokenizzate ma di fatto inattive. */
     .paused {
-        color: gray;
-        background-color: lightblue;
-        opacity: 90%;
-        color: black;
-        border-radius: 20px;
-        /* background-image: url(/src/assets/pause.png);
-            background-repeat: no-repeat;
-            background-size: 50px;
-            background-position-x: 0%;
-            background-color:lightgray;*/
+        color: var(--text-muted);
+        border-radius: var(--radius-lg);
     }
 
     .finished {
-        background-color: #080866;
-        /*#ff0000ab;*/
-        opacity: 90%;
-        color: white;
-        border-radius: 12px;
+        background-color: var(--bg-surface-2);
+        color: var(--text-secondary);
+        border-radius: var(--radius-lg);
     }
 
     .stop {
-        background-color: #eb2c2c;
-        opacity: 90%;
-        color: black;
-        border-radius: 12px;
-        /* background-image: url('../assets/stop.png');
-            background-repeat: no-repeat;
-            */
+        background-color: var(--color-danger-bg);
+        color: var(--color-danger);
+        border-radius: var(--radius-lg);
     }
 
     .abort {
-        background-color: #ff0000ab;
-        opacity: 90%;
-        color: white;
-        border-radius: 12px;
+        background-color: var(--color-danger-bg);
+        color: var(--color-danger);
+        border-radius: var(--radius-lg);
     }
 
     .working {
-        background-color: lightblue;
-        opacity: 90%;
-        color: black;
-        border-radius: 12px;
+        background-color: var(--color-success-bg);
+        color: var(--color-success);
+        border-radius: var(--radius-lg);
     }
 
     .raw {
-        background-color: green;
-        /*lime;*/
-        opacity: 90%;
-        color: white;
-        border-radius: 12px;
+        background-color: var(--color-info-bg);
+        color: var(--color-info);
+        border-radius: var(--radius-lg);
     }
 </style>

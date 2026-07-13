@@ -9,7 +9,7 @@
     <div class="pure-u-1-24">
           &nbsp;
       </div>
-    <div class="pure-u-22-24" >
+    <div class="pure-u-22-24 conf-card" >
       <h3> Tipo pezzi
           <button class="pure-button pure-button-primary" 
                   :class="{'pure-button-disabled':dataStored.userLevel<=1}" 
@@ -18,7 +18,7 @@
             {{$t('piece.createNew')}}
           </button>
       </h3>
-      <table class="pure-table pure-table-horizontal" style="margin-top: 30px;">
+      <table class="pure-table pure-table-horizontal">
           <thead>
               <tr>
                   <th>{{$t('piece.prisma')}}</th>
@@ -61,10 +61,10 @@
                             <h3>{{ $t('pallet.sure') }}</h3>
                             <!--h4>{{ $t('pallet.delete') }}</h4-->
                             <span class="pure-g">
-                                <button class="pure-button button-error pure-u-1" @click="deletePiece(p.ID)">
+                                <button class="pure-button-micromission specialCMD pure-u-1" @click="deletePiece(p.ID)">
                                     DELETE
                                 </button>
-                                <button class="pure-button butto-secondary pure-u-1" @click="showPopUp=0" style="margin-top:9px">
+                                <button class="btn-ghost pure-u-1" @click="showPopUp=0">
                                     EXIT
                                 </button>
                             </span>
@@ -164,39 +164,43 @@ export default {
 }
   </script>
 
-<style>
-/* CARDS */
+<style scoped>
+/* CARDS — blocco legacy della versione a card (PartsView_cards): il template
+   attuale (tabella) non usa queste classi. Era NON scoped e faceva leak
+   globale su .card/.container della dashboard (LV7): ora scoped + token. */
 .errore{
-    background-color:#ff000070;
+    background-color: var(--color-danger-bg);
 }
 .normal{
-    background-color: white;
+    background-color: var(--bg-surface);
 }
 
 .card {
-  box-shadow: 0 4px 8px 0 rgba(0,0,0,1.2);
+  box-shadow: var(--elevation-2);
   transition: 0.6s;
-  padding-top: 24px;
-  margin-top: 11px;
-  margin-left: 8px;
-  margin-right: 8px;
-  place-items: center;    
+  padding-top: var(--space-5);
+  margin-top: var(--space-2);
+  margin-left: var(--space-2);
+  margin-right: var(--space-2);
+  place-items: center;
   display:grid;
 }
 
 .card img{
-    border-radius: 22px;
-    background-color: #30644330;
+    border-radius: var(--radius-lg);
+    background-color: var(--color-success-bg);
+    /* 2px: micro-aggiustamento ottico (eccezione §2.1) */
     padding: 2px;
 }
 
 
 .card:hover {
-  box-shadow: 0 8px 16px 0 rgba(0,0,0,0.2);
+  box-shadow: var(--elevation-3);
 }
 
 .container {
-  padding: 2px 16px;
+  /* 2px verticale: micro-aggiustamento ottico (eccezione §2.1) */
+  padding: 2px var(--space-4);
 }
 
 .center {
@@ -213,24 +217,22 @@ export default {
         width: inherit;
     }
 
-    .button-error {
-        background: rgb(202, 60, 60);
-        color: white;
-        border-radius: 4px;
-        text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
-    }
-
     .popUpOnLine{
         /*background-image: url(/src/assets/up_red.png);*/
         background-repeat: no-repeat;
         background-position-x: 14.6em;
     }
-    
+
+    .popUpOnLine .btn-ghost {
+        margin-top: var(--space-2);
+    }
+
+    /* 2px (non 1px --border-card): il popup di conferma delete deve
+       staccare piu' di un bordo card. */
     .center {
         margin: auto;
         width: 20%;
-        border: 3px solid #ef000082;
-        /*background-color: #ef000036;*/
-        padding: 40px;
+        border: 2px solid var(--color-critical);
+        padding: var(--space-6);
     }
 </style>

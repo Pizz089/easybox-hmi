@@ -258,6 +258,18 @@ main.content:has(table.pure-table.pure-table-horizontal) td.WORKING:not(.table-d
 }
 
 
+/* ============ E. Conf views ============ */
+/* Card outlined §4.1 per i container delle view di configurazione
+   (list view + form). Solo visuale: niente display, per non rompere
+   il grid PureCSS inline-block dei pure-u-* su cui viene applicata. */
+.conf-card {
+  background: var(--bg-card);
+  border: var(--border-card);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+}
+
+
 /* ============ D. Hide scrollbars (HMI touch) ============ */
 
 html,

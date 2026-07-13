@@ -12,7 +12,7 @@
           &nbsp;
       </div>
 
-      <div class="pure-u-23-24">
+      <div class="pure-u-23-24 conf-card">
             
         <h3>{{$t('gripper.welcome')}}
           <button class="pure-button pure-button-primary" :class="{'pure-button-disabled':dataStored.userLevel<=1}" :id="locked" @click="CreateGripper()" >
@@ -20,7 +20,7 @@
           </button>
         </h3>
 
-        <table class="pure-table pure-table-horizontal" style="margin-top: 30px;">
+        <table class="pure-table pure-table-horizontal">
             <thead>
                 <tr>
                     <!--th>{{$t('gripper.name')}}</th-->
@@ -39,15 +39,15 @@
                         <td v-if="dt.SUB_POS==0"  >
                             {{dt.FAMILY.trim()}} 
                         </td>
-                        <td v-if="dt.SUB_POS==1" style="border-bottom:0px">
-                            {{dt.FAMILY.trim()}} 
+                        <td v-if="dt.SUB_POS==1" class="cell-joined-top">
+                            {{dt.FAMILY.trim()}}
                         </td>
-                        <td v-if="dt.SUB_POS>1" style="border-top:0px">
+                        <td v-if="dt.SUB_POS>1" class="cell-joined-bottom">
                             &nbsp;
                         </td>
-                        <td style="max-width:20%">{{dt.DESCR.trim()}}</td>
+                        <td class="cell-descr">{{dt.DESCR.trim()}}</td>
                         <td>{{ $t(dt.STATUS_DESC.trim()) }}</td>
-                        <td v-html="calculatePos(index)" style="max-width: 30px;"> </td>
+                        <td v-html="calculatePos(index)" class="cell-pos"> </td>
                         <td>  
                             <buttonsCMD  :reference="createLink( dt.ID )" 
                                        :index="toStr(dt.ID)"
@@ -210,5 +210,20 @@ export default {
     }
     .pure-table{
         width: inherit;
+    }
+
+    /* Ex inline style (LV9): celle FAMILY unite tra righe SUB_POS
+       (bordo soppresso per simulare il rowspan) + larghezze colonna. */
+    .cell-joined-top {
+        border-bottom: 0;
+    }
+    .cell-joined-bottom {
+        border-top: 0;
+    }
+    .cell-descr {
+        max-width: 20%;
+    }
+    .cell-pos {
+        max-width: 30px;
     }
 </style>

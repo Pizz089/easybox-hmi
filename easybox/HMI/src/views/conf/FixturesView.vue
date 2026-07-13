@@ -12,7 +12,7 @@
           &nbsp;
       </div>
       
-      <div class="pure-u-23-24">
+      <div class="pure-u-23-24 conf-card">
         <h3>{{$t('fixture.welcome')}}
             &nbsp;
             <button class="pure-button pure-button-primary" :class="{'pure-button-disabled':dataStored.userLevel<=1}" :id="locked" @click="createfixture()">
@@ -23,7 +23,7 @@
             {{$t('fixture.PosOnPallet')}}
           </button-->
         </h3>
-        <table class="pure-table pure-table-horizontal" style="margin-top: 30px;">
+        <table class="pure-table pure-table-horizontal">
             <thead>
                 <tr>
                     <!--th>ID</th-->
@@ -65,10 +65,10 @@
                                 <h3>{{ $t('fixture.sure') }}</h3>
                                 <!--h4>{{ $t('fixture.delete') }}</h4-->
                                 <span class="pure-g">
-                                    <button class="pure-button button-error pure-u-1" @click="deletefixture(dt.ID)">
+                                    <button class="pure-button-micromission specialCMD pure-u-1" @click="deletefixture(dt.ID)">
                                         DELETE
                                     </button>
-                                    <button class="pure-button butto-secondary pure-u-1" @click="showPopUp=0" style="margin-top:9px">
+                                    <button class="btn-ghost pure-u-1" @click="showPopUp=0">
                                         EXIT
                                     </button>
                                 </span>
@@ -175,72 +175,58 @@ export default {
         width: inherit;
     }
 
-    .button-error {
-        background: rgb(202, 60, 60);
-        color: white;
-        border-radius: 4px;
-        text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
-    }
-
     .popUpOnLine{
         background-image: url(/src/assets/up_red.png);
         background-repeat: no-repeat;
         background-position-x: 14.6em;
     }
-    
+
+    .popUpOnLine .btn-ghost {
+        margin-top: var(--space-2);
+    }
+
+    /* 2px (non 1px --border-card): il popup di conferma delete deve
+       staccare piu' di un bordo card. */
     .center {
         margin: auto;
         width: 20%;
-        border: 3px solid #ef000082;
-        /*background-color: #ef000036;*/
-        padding: 40px;
+        border: 2px solid var(--color-critical);
+        padding: var(--space-6);
     }
-    
+
+    /* Badge status: semantica allineata a productionTable (dashboard). */
     .PAUSED {
-        color: gray;
-        background-color: lightblue;
-        opacity: 90%;
-        color: black;
-        border-radius: 20px;
+        color: var(--text-muted);
+        border-radius: var(--radius-lg);
     }
 
     .FINISHED {
-        background-color: #080866;
-        /*#ff0000ab;*/
-        opacity: 90%;
-        color: white;
-        border-radius: 12px;
+        background-color: var(--bg-surface-2);
+        color: var(--text-secondary);
+        border-radius: var(--radius-lg);
     }
 
     .STOP {
-        background-color: #eb2c2c;
-        opacity: 90%;
-        color: black;
-        border-radius: 12px;
-        /* background-image: url('../assets/stop.png');
-            background-repeat: no-repeat;
-            */
+        background-color: var(--color-danger-bg);
+        color: var(--color-danger);
+        border-radius: var(--radius-lg);
     }
 
     .ABORT {
-        background-color: #ff0000ab;
-        opacity: 90%;
-        color: white;
-        border-radius: 12px;
+        background-color: var(--color-danger-bg);
+        color: var(--color-danger);
+        border-radius: var(--radius-lg);
     }
 
     .WORKING {
-        background-color: lightblue;
-        opacity: 90%;
-        color: black;
-        border-radius: 12px;
+        background-color: var(--color-success-bg);
+        color: var(--color-success);
+        border-radius: var(--radius-lg);
     }
 
     .EMPTY {
-        background-color: green;
-        /*lime;*/
-        opacity: 90%;
-        color: white;
-        border-radius: 12px;
+        background-color: var(--color-info-bg);
+        color: var(--color-info);
+        border-radius: var(--radius-lg);
     }
 </style>
