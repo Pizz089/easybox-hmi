@@ -95,7 +95,19 @@ Da correggere durante il refactor delle unit views:
 - `unit-views.css` `.command-subsection-title`: `margin: var(--space-3) 0 0` → `var(--space-4) 0 0`.
 - `unit-views.css` bottoni: `padding: 14px 24px` → **token, non px**. Target proposto: `padding: var(--space-4) var(--space-5)` (16/24) oppure `var(--space-3-deprecato)`... no → usare 16/24. Da validare che il touch target 52px regga con padding 16.
 
-### 2.3 Regole spacing per contenitori
+### 2.3 Shell di pagina (audit matriciale 2026-07, sede: `layout-shell.css`)
+
+Ogni view usa il guscio standard:
+
+- **Wrapper**: `.view-shell` (flex column, `gap: --space-4`); variante `.view-shell--fill` per le view kiosk full-height (scroll interno, `calc(100vh - 100px)`).
+- **Larghezza contenuto**: piena del `.content` (che dà già `padding: 80px --space-5 --space-4`); l'eventuale limite si mette come `max-width` sulla card (es. `.machine-card`), non con colonne-spacer.
+- **Titolo**: sempre `.view-title` (`--font-size-xl`, semibold, `margin: 0` — lo spazio sotto lo dà il gap del shell); il tag (h1..h3) è libero. Titolo + azioni sulla stessa riga = `.view-header`.
+- **Gruppi bottoni**: `.btn-group` (flex, `gap: --space-4`, wrap) + varianti `--end`/`--center`.
+- **VIETATI nel guscio**: colonne spacer `pure-u-1-24`, `&nbsp;` e `<br>` come spaziatori.
+
+**Deroghe shell**: Dashboard senza titolo (è il pannello di default kiosk); MqttDiag guscio denso proprio (vedi deroga light §3.4); Gripper/Vice fino alla ritematizzazione glassmorphism (§4.2); TestView escluso (playground di sviluppo); i `margin-left` della scena SVG di Grating (deroga GR3); le griglie comando frazionali delle unit view (`pure-u-1-2/1-3/1-5`) restano — si uniforma solo il gap.
+
+### 2.4 Regole spacing per contenitori
 
 - Padding interno card: `--space-4` (16px) standard, `--space-5` (24px) per card primarie ariose.
 - Gap tra elementi in colonna: `--space-2` (8px) denso, `--space-4` (16px) standard.

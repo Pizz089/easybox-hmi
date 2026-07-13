@@ -132,11 +132,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="pure-u-1-24">
-    &nbsp;
-  </div>
-
-  <div class="pure-u-22-24">
+  <div class="view-shell">
     <h1 class="view-title">{{ $t('machine.welcome') }}</h1>
 
     <div v-for="pos in MACHINE_POSITIONS" :key="pos.mc" class="command-section machine-card">
@@ -211,7 +207,7 @@ onBeforeUnmount(() => {
               to: brandLabel(selId(pos)),
             }) }}
           </h4>
-          <span class="confirm-actions">
+          <span class="btn-group">
             <button class="pure-button-micromission specialCMD" @click="sendBrand(pos)">
               {{ $t('machine.apply') }}
             </button>
@@ -226,12 +222,11 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.view-title {
-  font-size: var(--font-size-xl);
-}
-
 .machine-card {
   max-width: 720px;
+  /* il gap verticale lo da' il .view-shell (doc §4.3: parent flex con gap
+     -> via il margin-top ereditato da .command-section) */
+  margin-top: 0;
 }
 
 .banner {
@@ -326,8 +321,4 @@ onBeforeUnmount(() => {
   color: var(--text-secondary);
 }
 
-.confirm-actions {
-  display: flex;
-  gap: var(--space-4);
-}
 </style>

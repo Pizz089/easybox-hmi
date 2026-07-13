@@ -9,7 +9,7 @@
 <template>
   <workOrderStep />
 
-  <div class="last-data-page">
+  <div class="last-data-page view-shell">
 
     <!-- ===== SETUP CARD: Quantita' + Part Program ===== -->
     <section class="setup-card">
@@ -169,7 +169,7 @@
     </section>
 
     <!-- ===== SAVE ===== -->
-    <div class="save-row">
+    <div class="save-row btn-group btn-group--center">
       <button
         type="button"
         class="pure-button-primary"
@@ -249,13 +249,11 @@ export default {
   </script>
 
 <style scoped>
+/* colonna/gap dal .view-shell globale (gap 24 -> 16, standard shell) */
 .last-data-page {
   max-width: 1000px;
   margin: 0 auto;
   padding: 0 var(--space-4);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-5);
 }
 
 /* ============ Setup card ============ */
@@ -446,9 +444,8 @@ export default {
 }
 
 /* ============ Save button ============ */
+/* flex/centratura dal .btn-group--center globale */
 .save-row {
-  display: flex;
-  justify-content: center;
   padding: var(--space-3) 0 var(--space-5);
 }
 

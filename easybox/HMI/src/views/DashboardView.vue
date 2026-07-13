@@ -8,7 +8,7 @@ import prodtable from '../components/productionTable.vue'
 </script>
 
 <template>
-    <div class="pure-u-1 dashboard-view-root">
+    <div class="pure-u-1 dashboard-view-root view-shell view-shell--fill">
         <div>
             <unitsList></unitsList>
         </div>
@@ -19,14 +19,8 @@ import prodtable from '../components/productionTable.vue'
 </template>
 
 <style scoped>
-.dashboard-view-root {
-    display: flex;
-    flex-direction: column;
-    /* 100px = offset strutturale (topbar fissa 64px + margini content),
-       non estetica: resta in px, nessun token adatto. */
-    height: calc(100vh - 100px);
-    gap: var(--space-4);
-}
+/* Shell interamente dal globale .view-shell--fill (identico px-per-px al
+   vecchio scoped: flex column + gap space-4 + calc(100vh - 100px)). */
 
 .dashboard-prodtable-wrap {
     flex: 1;

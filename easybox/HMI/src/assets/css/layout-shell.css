@@ -1,0 +1,54 @@
+/* layout-shell.css
+ * Shell di pagina standard (doc §2 "Shell di pagina", audit matriciale 2026-07).
+ * Regole del guscio comuni a tutte le view: colonna a gap standard, titolo
+ * unico, riga titolo+azioni, gruppi bottoni. Vietati nel guscio: spacer
+ * pure-u-1-24, &nbsp; e <br> come spaziatori. Import in main.js dopo
+ * buttons.css.
+ */
+
+/* Wrapper di pagina: larghezza piena del .content (che da' gia' il padding
+   80/24/16), sezioni in colonna con gap standard. */
+.view-shell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* Variante kiosk full-height (dashboard, production): scroll interno.
+   100px = 64 topbar + 16 respiro + 20 margine (valore gia' in produzione). */
+.view-shell--fill {
+  height: calc(100vh - 100px);
+  min-height: 0;
+}
+
+/* Titolo di pagina unico (tag h1..h3 libero). Il margine sotto lo da'
+   il gap del .view-shell, non il titolo. */
+.view-title {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  margin: 0;
+}
+
+/* Riga titolo + azioni (sostituisce il pattern "bottone dentro l'h3"). */
+.view-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+/* Gruppo bottoni orizzontale. */
+.btn-group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.btn-group--end {
+  justify-content: flex-end;
+}
+
+.btn-group--center {
+  justify-content: center;
+}
