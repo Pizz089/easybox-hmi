@@ -49,6 +49,15 @@
   "scarica modello": "Scarica modello",
   "Create_model_file":"crea modello file",
   "Save":"Salva",
+  "Posizione": "Posizione",
+  "Magazzino": "Magazzino",
+  "Grigliato": "Grigliato",
+  "bordo di sicurezza x": "Bordo di sicurezza X",
+  "bordo di sicurezza y": "Bordo di sicurezza Y",
+  "Modello creato e disponibile nella cartella predefinita del pannello": "Modello creato e disponibile nella cartella predefinita del pannello",
+  "common": {
+    "cancel": "Annulla"
+  },
   "fixture": {
     "welcome": "Elenco attrezzature",
     "data": "Dati attrezzatura",
@@ -71,7 +80,9 @@
     "posizione": "Posizione",
     "sure": "sei sicuro?",
     "delete": "cancello?",
-    "PosOnPallet": "Posiziona su pallet"
+    "PosOnPallet": "Posiziona su pallet",
+    "posMag": "Posizione a magazzino",
+    "posPlant": "Posizione in impianto"
   },
   "gripper": {
     "welcome": "Elenco Pinze disponibili",
@@ -212,7 +223,8 @@
     "Z_place": "Altezza per rilascio",
     "Forma": "Forma",
     "PRISMATICO": "Prismatica",
-    "CILINDRICO": "Cilindrica"
+    "CILINDRICO": "Cilindrica",
+    "onlyFor": "Solo per"
   },
   "production": {
     "welcome": "Tabella della produzione",
@@ -338,6 +350,9 @@
       "remote": "In remoto",
       "auto": "Pronta",
       "off": "SPENTA"
+    },
+    "box": {
+      "off": "SPENTO"
     }
   },
   "machine": {
@@ -367,7 +382,8 @@
     "comands": "Comandi",
     "createNew": "Crea nuovo cassetto",
     "sure": "sei sicuro?",
-    "delete": "cancello?"
+    "delete": "cancello?",
+    "data": "Dati morsa"
   },
   "pallet": {
     "welcome": "Elenco pallet",
@@ -414,6 +430,7 @@
     "MC": "Macchina",
     "WPALLET": "Magazzino pallet",
     "approach": "Approccio",
+    "sure": "sei sicuro?",
     "cat": {
       "all": "Tutte",
       "shelf": "Magazzino pinze",
@@ -435,6 +452,7 @@
     "auto": "In automatico",
     "manual": "In manuale   ",
     "local": "In Locale",
+    "remote": "In remoto",
     "alarm": "In allarme   "
   },
   "save_ok": "Salvataggio eseguito!",

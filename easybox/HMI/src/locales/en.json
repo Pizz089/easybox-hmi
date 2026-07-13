@@ -49,6 +49,15 @@
   "scarica modello": "Download model",
   "Create_model_file":"create model file",
   "Save":"Save",
+  "Posizione": "Position",
+  "Magazzino": "Storage",
+  "Grigliato": "Grating",
+  "bordo di sicurezza x": "Safety margin X",
+  "bordo di sicurezza y": "Safety margin Y",
+  "Modello creato e disponibile nella cartella predefinita del pannello": "Model created and available in the panel default folder",
+  "common": {
+    "cancel": "Cancel"
+  },
   "fixture": {
     "welcome": "Fixtures list",
     "data": "Fixture's data",
@@ -71,7 +80,9 @@
     "posizione": "Position",
     "sure": "Are you sure?",
     "delete": "delete?",
-    "PosOnPallet": "Place on pallet"
+    "PosOnPallet": "Place on pallet",
+    "posMag": "Storage position",
+    "posPlant": "Plant position"
   },
   "gripper": {
     "welcome": "Grippers list",
@@ -212,7 +223,8 @@
     "Z_place": "Height for release",
     "Forma": "Shape",
     "PRISMATICO": "Prismatic",
-    "CILINDRICO": "Cylindrical"
+    "CILINDRICO": "Cylindrical",
+    "onlyFor": "Only for"
   },
   "production": {
     "welcome": "Production Table",
@@ -252,6 +264,7 @@
     "alarm_10": "Prelievo: posizione non definita",
     "alarm_11": "Prelievo: pinza non agganciata",
     "alarm_12": "Prelievo: pinza non sganciata",
+    "alarm_14": "Part still present in gripper?",
     "alarm_16": "Pinza assente!",
     "alarm_17": "Pinza gia presente!",
     "alarm_18": "Pinza non vuota",
@@ -325,7 +338,8 @@
       "manual": "Manual",
       "remote": "Remote",
       "local": "Local mode",
-      "auto": "Ready"
+      "auto": "Ready",
+      "off": "OFF"
     },
     "cnc2": {
       "working": "Working part",
@@ -334,7 +348,11 @@
       "manual": "Manual",
       "local": "Local mode",
       "remote": "Remote",
-      "auto": "Ready"
+      "auto": "Ready",
+      "off": "OFF"
+    },
+    "box": {
+      "off": "POWER OFF"
     }
   },
   "machine": {
@@ -364,7 +382,8 @@
     "comands": "Comands",
     "createNew": "Create new vice's type",
     "sure": "Are you sure?",
-    "delete": "Delete?"
+    "delete": "Delete?",
+    "data": "Vice data"
   },
   "pallet": {
     "welcome": "Pallet list",
@@ -411,6 +430,7 @@
     "MC": "Machine",
     "WPALLET": "Pallet shelf",
     "approach": "Approach",
+    "sure": "Are you sure?",
     "cat": {
       "all": "All",
       "shelf": "Gripper shelf",
