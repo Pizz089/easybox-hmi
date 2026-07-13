@@ -22,6 +22,10 @@
   "CHIUDI PINZA": "Chiudi pinza",
   "CARICA PINZA": "Carica pinza",
   "SCARICA PINZA": "Scarica pinza",
+  "CARICA PALLET": "Carica pallet",
+  "SCARICA PALLET": "Scarica pallet",
+  "ESTRAI CASSETTO": "Estrai cassetto",
+  "RILASCIA CASSETTO": "Rilascia cassetto",
   "Comandi": "Comandi",
   "HOME": "Posizione di home",
   "MAINTENANCE": "Posizione per la manutenzione",
@@ -225,6 +229,19 @@
     "noOrderYet": "Nessun ordine al momento"
   },
   "robot": {
+    "dialog": {
+      "chooseGripper": "Quale pinza caricare?",
+      "choosePalletLoad": "Quale pallet caricare?",
+      "choosePalletUnload": "Quale pallet scaricare?",
+      "chooseTray": "Quale cassetto estrarre?",
+      "releaseTray": "Rilasciare il cassetto estratto?",
+      "tray": "Cassetto",
+      "confirm": "Conferma",
+      "cancel": "Annulla",
+      "empty": "Nessun elemento disponibile",
+      "slot": "Slot",
+      "position": "Posizione"
+    },
     "MODE_LOCAL_REMOTE": "AUTOMAZIONE IN MANUALE/AUTOMATICO",
     "alarm_1": "Orientamento non definito",
     "alarm_2": "Tipo approccio non definito",
@@ -395,7 +412,16 @@
     "EXTRACT_TRAY": "Estrazione cassetto ",
     "TRAY": "Cassetto",
     "MC": "Macchina",
-    "approach": "Approccio"
+    "WPALLET": "Magazzino pallet",
+    "approach": "Approccio",
+    "cat": {
+      "all": "Tutte",
+      "shelf": "Magazzino pinze",
+      "trays": "Cassetti",
+      "wpallet": "Magazzino pallet",
+      "palfix": "Pallet/Fixture",
+      "other": "Altro"
+    }
   },
   "status": {
     "notDef": "Non Definito ",

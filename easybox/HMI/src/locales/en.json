@@ -22,6 +22,10 @@
   "CHIUDI PINZA": "Close Gripper",
   "CARICA PINZA": "LOAD Gripper",
   "SCARICA PINZA": "UNLOAD Gripper",
+  "CARICA PALLET": "LOAD Pallet",
+  "SCARICA PALLET": "UNLOAD Pallet",
+  "ESTRAI CASSETTO": "EXTRACT Tray",
+  "RILASCIA CASSETTO": "RELEASE Tray",
   "Comandi": "Comands",
   "HOME": "Home position",
   "MAINTENANCE": "Maintenance position",
@@ -225,6 +229,19 @@
     "noOrderYet": "No order yet"
   },
   "robot": {
+    "dialog": {
+      "chooseGripper": "Which gripper to load?",
+      "choosePalletLoad": "Which pallet to load?",
+      "choosePalletUnload": "Which pallet to unload?",
+      "chooseTray": "Which tray to extract?",
+      "releaseTray": "Release the extracted tray?",
+      "tray": "Tray",
+      "confirm": "Confirm",
+      "cancel": "Cancel",
+      "empty": "No items available",
+      "slot": "Slot",
+      "position": "Position"
+    },
     "MODE_LOCAL_REMOTE": "MODE LOCAL/REMOTE",
     "alarm_1": "Orientamento non definito",
     "alarm_2": "Tipo approccio non definito",
@@ -392,7 +409,16 @@
     "EXTRACT_TRAY": "Extraction tray",
     "TRAY": "Tray",
     "MC": "Machine",
-    "approach": "Approach"
+    "WPALLET": "Pallet shelf",
+    "approach": "Approach",
+    "cat": {
+      "all": "All",
+      "shelf": "Gripper shelf",
+      "trays": "Trays",
+      "wpallet": "Pallet shelf",
+      "palfix": "Pallet/Fixture",
+      "other": "Other"
+    }
   },
   "status": {
     "notDef": "Not Defined   ",
