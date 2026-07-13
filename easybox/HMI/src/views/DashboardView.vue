@@ -22,8 +22,10 @@ import prodtable from '../components/productionTable.vue'
 .dashboard-view-root {
     display: flex;
     flex-direction: column;
+    /* 100px = offset strutturale (topbar fissa 64px + margini content),
+       non estetica: resta in px, nessun token adatto. */
     height: calc(100vh - 100px);
-    gap: var(--space-3);
+    gap: var(--space-4);
 }
 
 .dashboard-prodtable-wrap {

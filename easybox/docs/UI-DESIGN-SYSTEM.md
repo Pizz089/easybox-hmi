@@ -192,6 +192,8 @@ Censimento Sistema B (sessione 2): `pure-button-primary` (39 usi, la classe bott
 2. **Doppia grafia disabled → unificata.** ✅ Definizione unica a doppio selettore in buttons.css (vedi note §3.2). Deroga residua: la barra comandi (`ComandsRows.vue`) ha una sua definizione disabled scoped che diverge (opacity 0.5, `--text-disabled`, copre anche `[disabled]` via attributo) — da riconciliare nel refactor Dashboard (§8 step 3).
 3. **secondary → ghost.** ✅ `pure-button-secondary` era una classe FANTASMA (mai definita in nessun CSS); l'unico uso attivo (FixtureOnPallet) è migrato a `.btn-ghost`.
 
+**Deroga documentata — palette ComandsRows (dashboard).** La barra comandi della tabella ordini (`ComandsRows.vue`) usa icon-button quadrati con fill semantico per-tipo (play = `--color-success`, stop = bianco/`--text-primary`, del = `--color-danger`, icona via `currentColor`): pattern UI-2 approvato, NON riconducibile a Ghost/Icon-only senza perdere la semantica colore. Restano scoped anche: disabled con copertura `[disabled]` via attributo + `transform: none` (valori colore/opacity allineati alla canonica dalla sessione Dashboard), e **touch target 48×48** — deroga: sotto il 52 preferito ma sopra il minimo 44, perché a 52 le righe della tabella ordini perdono densità.
+
 **Deroga documentata — `tb-btn-*` diagnostica MQTT.** I mini-bottoni della toolbar diag (`.tb-btn`, `-pause`, `-resume`, `-clear-filter` in MqttDiag.vue) restano fuori dalle 6 varianti: la view è deliberatamente light-theme/utilitaria e fuori token dark. Se/quando la diag rientra nel tema (§8 step 5), mappano su Ghost (outline colorato) o Icon-only.
 
 **Settimo pattern — Selectable list item (`.mission-dialog-item`).** Introdotto dai dialog missione di robotView: `<button>` voce-elenco selezionabile a tap (min-height 52, `--bg-input`, radius-md; stato `.selected` = fill `--accent` + bordo `--accent-hover` + semibold). NON è una variante azione: è un pattern di selezione (nessuna preselezione, la conferma è un bottone separato). Va riusato tale e quale per futuri elenchi selezionabili touch, non sostituito con una delle 6 varianti.
@@ -224,6 +226,8 @@ Su view con molte card o tabelle (dashboard, diagnostica MQTT, produzione), il t
 - card "flat" (solo bg, no border) per elementi di secondo livello.
 
 Queste eccezioni vanno annotate nel documento quando emergono, non improvvisate.
+
+**Deroga documentata — tile unità dashboard (`units.vue` `.card`).** Le 4 tile cliccabili della dashboard restano su pattern **elevation** (`--bg-surface` + `--elevation-2`, senza bordo, hover `--elevation-3`): sono semanticamente affini alle status card §5 (portano lo stato unità sul wrapper immagine e devono "staccare" dal fondo, caso che §7 riserva alle ombre). Decisione sessione Dashboard, opzione (i) dell'audit.
 
 ### 4.3 Spacing tra card — nota tecnica ereditata
 

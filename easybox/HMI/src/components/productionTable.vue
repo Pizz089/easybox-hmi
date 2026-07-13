@@ -34,14 +34,14 @@
                         <td :class="{'td_odd':index%2==1}"
                             style="width: 20%;margin: 0 auto;">
                             {{ o.STATUS_DESC }}
-                            <hr width="30%" style="margin-left:0px">
+                            <hr class="status-divider">
                             [ {{ o.PP }} ]
                         </td>
                         <!--td>{{ o.GRIPPER }}</td-->
 
                         <td :class="{'td_odd':index%2==1}">
                             {{ o.PRODUCTED }} / {{ o.QUANTITY }}<br>
-                            <progress :value="o.PRODUCTED" :max="o.QUANTITY" style="width:80px"> {{ o.PRODUCTED }} </progress>
+                            <progress :value="o.PRODUCTED" :max="o.QUANTITY" class="prod-progress"> {{ o.PRODUCTED }} </progress>
                         </td>
                         <td :class="{'td_odd':index%2==1}">
                             <orderCMD
@@ -63,10 +63,10 @@
                                 <!--h4>{{ $t('fixture.delete') }}</h4-->
                                 <span class="pure-g">
                                     <span class="pure-u-1-3">&nbsp;</span>
-                                    <button class="pure-button button-error pure-u-1-3" style="background-color:coral" @click="deleteOrder(o.ID)">
+                                    <button class="pure-button-micromission specialCMD pure-u-1-3" @click="deleteOrder(o.ID)">
                                         DELETE
                                     </button>
-                                    <button class="pure-button butto-secondary pure-u-1" @click="showPopUp=0" style="margin-top:9px">
+                                    <button class="btn-ghost pure-u-1" @click="showPopUp=0">
                                         EXIT
                                     </button>
                                 </span>
@@ -157,15 +157,33 @@ export default {
 
 <style scoped>
 /* ============ WRAPPER ============ */
+/* E2: pattern outlined §4.1 (era bg-surface-2 + radius-lg senza bordo).
+   padding verticale 0 (non --space-4): il thead sticky aggancia il bordo
+   superiore del contenitore scroll — un padding-top mostrerebbe le righe
+   che scorrono sopra l'header. */
 .prodtable-wrapper {
-    background: var(--bg-surface-2);
-    border-radius: var(--radius-lg);
-    padding: 0 var(--space-3);
+    background: var(--bg-card);
+    border: var(--border-card);
+    border-radius: var(--radius-md);
+    padding: 0 var(--space-4);
     margin-top: var(--space-4);
     flex: 1;
     min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
+}
+
+
+/* ============ EX INLINE (A12) ============ */
+/* hr sotto STATUS_DESC: separatore corto allineato a sinistra. */
+.status-divider {
+    width: 30%;
+    margin-left: 0;
+}
+
+/* 80px: geometria barra avanzamento in cella (non spacing). */
+.prod-progress {
+    width: 80px;
 }
 
 
@@ -189,7 +207,7 @@ td.table-divisor.FINISHED + td,
 td.table-divisor.finished + td {
     font-weight: var(--font-weight-semibold);
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.05em;
 }
 
 /* WORKING = lavorazione attiva = success/verde */
@@ -264,35 +282,12 @@ progress::-moz-progress-bar {
 
 .popUpOnLine h3 {
     color: var(--text-primary);
-    margin-bottom: var(--space-3);
+    margin-bottom: var(--space-4);
 }
 
-/* Override inline style="background-color:coral" su bottone DELETE */
-.popUpOnLine button.button-error {
-    background: var(--color-danger) !important;
-    color: var(--text-primary);
-    border: 0;
-    border-radius: var(--radius-md);
-    font-weight: var(--font-weight-semibold);
-    padding: var(--space-2) var(--space-4);
-}
-
-.popUpOnLine button.button-error:hover {
-    background: var(--color-danger-bg) !important;
-    color: var(--color-danger);
-}
-
-/* Bottone EXIT (class typo 'butto-secondary' non matcha niente, stiliziamo
-   come secondary tramite :not(.button-error) sui bottoni del popup) */
-.popUpOnLine button:not(.button-error) {
-    background: var(--bg-input);
-    color: var(--text-primary);
-    border-radius: var(--radius-md);
-    padding: var(--space-2) var(--space-4);
-}
-
-.popUpOnLine button:not(.button-error):hover {
-    background: var(--bg-surface-2);
-    border-color: var(--border-strong);
+/* B1/B2: bottoni popup su varianti canoniche (Critical per DELETE = conferma
+   delete §3.2, Ghost per EXIT). Qui resta solo lo spacing tra i due. */
+.popUpOnLine .btn-ghost {
+    margin-top: var(--space-2);
 }
 </style>

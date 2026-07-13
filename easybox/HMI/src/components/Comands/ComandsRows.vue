@@ -197,6 +197,8 @@
 
 
 /* ============ BUTTONS (48x48 touch target HMI) ============ */
+/* Deroga touch annotata (doc §3.4): 48px, sotto il 52 preferito ma sopra il
+   minimo 44 — a 52 le righe della tabella ordini perdono densita'. */
 .pure-button-group .pure-button {
     width: 48px;
     height: 48px;
@@ -230,6 +232,11 @@
 
 
 /* ============ DISABLED ============ */
+/* B3 (riconciliazione doc §3.4): valori allineati alla variante Disabled
+   canonica (buttons.css: text-secondary + opacity 0.7, "subdued ma
+   leggibile"). Restano locali: la copertura [disabled] via attributo
+   (i bottoni della barra disabilitano con :disabled, non con la classe)
+   e transform:none (neutralizza lo scale di .button_pressed:active). */
 .pure-button[disabled],
 .pure-button[disabled]:hover,
 .pure-button[disabled]:active,
@@ -237,8 +244,8 @@
 .pure-button-disabled:hover,
 .pure-button-disabled:active {
     background: var(--bg-input) !important;
-    color: var(--text-disabled) !important;
-    opacity: 0.5;
+    color: var(--text-secondary) !important;
+    opacity: 0.7;
     cursor: not-allowed;
     transform: none !important;
 }

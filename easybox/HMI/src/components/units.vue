@@ -76,7 +76,7 @@ import { dataStored } from '../data.js'
             <div class="img-wrapper" :class="getStatus(robot_status)">
                 <img src="../assets/robot.png" alt="robot" class="pure-robot">
             </div>
-            <div class="container" style="padding-bottom: 0px;">
+            <div class="container pad-flush-bottom">
                 <h4><b>{{ $t(robot_desc) }}</b></h4>
                 <h6 v-if="robot_status == 99 && robotAlarm > 0">Alarm: {{ $t('robot.alarm_' + robotAlarm) }}</h6>
                 <h6 v-if="robot_status != 99 && robotAlarm.length > 2">{{ robotAlarm }}</h6>
@@ -93,7 +93,7 @@ import { dataStored } from '../data.js'
             <div class="img-wrapper" :class="getStatus(smallBox_status)">
                 <img src="../assets/smallbox.png" alt="smallbox" class="pure-smallbox">
             </div>
-            <div class="container" style="padding: 0px;padding-bottom: 0px;">
+            <div class="container pad-none">
                 <h4><b>{{ $t(smallBox_desc) }}</b></h4>
                 <h6><b>&nbsp;</b><br></h6>
             </div>
@@ -294,6 +294,9 @@ export default {
 
 <style scoped>
 /* ============ CARD ============ */
+/* Deroga al pattern outlined §4.1 (annotata nel doc): le tile unita' sono
+   semanticamente affini alle status card §5 — devono "staccare" dal fondo,
+   quindi elevation + bg-surface senza bordo (§7 consente ombra per questi casi). */
 .card {
     background: var(--bg-surface);
     border: 0;
@@ -303,8 +306,8 @@ export default {
         box-shadow var(--transition-base),
         transform var(--transition-fast);
 
-    padding: var(--space-5) var(--space-3) var(--space-3);
-    margin: var(--space-3) var(--space-2) 0;
+    padding: var(--space-5) var(--space-4) var(--space-4);
+    margin: var(--space-4) var(--space-2) 0;
 
     display: grid;
     place-items: center;
@@ -315,7 +318,9 @@ export default {
 }
 
 .card img {
-    border-radius: 22px;
+    border-radius: var(--radius-lg);
+    /* 2px: micro-aggiustamento ottico dell'immagine nel wrapper colorato
+       (eccezione consentita §2.1, non spacing strutturale). */
     padding: 2px;
 }
 
@@ -364,7 +369,16 @@ export default {
 
 /* ============ TIPOGRAFIA ============ */
 .container {
-    padding: var(--space-1) var(--space-4);
+    padding: var(--space-2) var(--space-4);
+}
+
+/* A9: ex inline style dei template (padding-bottom:0 / padding:0). */
+.container.pad-flush-bottom {
+    padding-bottom: 0;
+}
+
+.container.pad-none {
+    padding: 0;
 }
 
 .card h4 {
@@ -372,8 +386,8 @@ export default {
     font-size: var(--font-size-md);
     font-weight: var(--font-weight-semibold);
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin: var(--space-2) 0 var(--space-1);
+    letter-spacing: 0.05em;
+    margin: var(--space-2) 0 var(--space-2);
 }
 
 .card h6 {
@@ -395,7 +409,7 @@ export default {
     justify-content: center;
     width: 100px;
     height: 90px;
-    border-radius: 13px !important;
+    border-radius: var(--radius-lg);
     margin: 0 auto var(--space-2);
     overflow: hidden;
 }
@@ -407,8 +421,8 @@ export default {
     height: 90px;
     object-fit: contain;
     display: block;
-    margin: var(--space-2) auto var(--space-1);
-    border-radius: 13px;
+    margin: var(--space-2) auto var(--space-2);
+    border-radius: var(--radius-lg);
 }
 
 .pure-smallbox {
