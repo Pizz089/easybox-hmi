@@ -265,10 +265,10 @@
     color: var(--bg-base);
 }
 
-/* del -> rosso saturato, icona bianca */
+/* del -> rosso saturato, icona scura come play/stop (audit WCAG: 2.37 -> 7.17) */
 .pure-button-group .pure-button.del {
     background: var(--color-danger);
-    color: var(--text-primary);
+    color: var(--bg-base);
 }
 
 

@@ -291,5 +291,8 @@ progress::-moz-progress-bar {
    delete §3.2, Ghost per EXIT). Qui resta solo lo spacing tra i due. */
 .popUpOnLine .btn-ghost {
     margin-top: var(--space-2);
+    /* border-strong: il popup sta su bg-surface-2, dove border-default
+       fa solo 2.10:1 (audit WCAG) -> 3.15. */
+    border-color: var(--border-strong);
 }
 </style>

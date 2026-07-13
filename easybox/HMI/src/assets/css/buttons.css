@@ -14,7 +14,9 @@
 .pure-button-micromission,
 .pure-button-primary {
     background: var(--accent);
-    color: var(--text-primary);
+    /* testo scuro su accent (audit WCAG): 2.36 -> 7.20; --accent NON si
+       scurisce, le combo bordo/selected che lo usano passano gia'. */
+    color: var(--bg-base);
     border: 0;
     border-radius: var(--radius-md);
     padding: var(--space-4) var(--space-5);
@@ -130,7 +132,9 @@
     background: var(--bg-input);
     background-image: none;
     color: var(--text-secondary);
-    opacity: 0.7;
+    /* 0.7 -> 0.8 (audit WCAG): contrasto effettivo 4.08 -> 4.64,
+       resta "subdued ma leggibile". */
+    opacity: 0.8;
     border: 0;
     border-radius: var(--radius-md);
     padding: var(--space-4) var(--space-5);

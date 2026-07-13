@@ -674,7 +674,7 @@ onBeforeUnmount(() => {
 }
 .tb-btn:hover:not(:disabled) { background: #eee; }
 .tb-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.tb-btn-pause      { border-color: #cc6600; color: #cc6600; }
+.tb-btn-pause      { border-color: #B35C00; color: #B35C00; } /* era #cc6600, WCAG 3.84 -> 4.72 */
 .tb-btn-resume     { border-color: #00aa44; color: #00aa44; }
 .tb-btn-clear-filter { border-color: #c00; color: #c00; padding: var(--space-2); }
 .tb-toggle {
@@ -729,9 +729,10 @@ onBeforeUnmount(() => {
 .diag-row.row-error { background: #ffe6e6; border-left: 3px solid #c00; }
 .diag-row.row-error.row-expanded { background: #ffcccc; }
 
-.m-time { color: #888; font-variant-numeric: tabular-nums; }
+/* #6F6F6F (era #888, audit WCAG 3.40 -> 4.81 su #fafafa) */
+.m-time { color: #6F6F6F; font-variant-numeric: tabular-nums; }
 .m-dir.dir-IN  { color: #0066cc; font-weight: bold; }
-.m-dir.dir-OUT { color: #cc6600; font-weight: bold; }
+.m-dir.dir-OUT { color: #B35C00; font-weight: bold; } /* era #cc6600, WCAG 3.84 -> 4.72 */
 .m-src { color: #444; font-size: var(--font-size-xs); }
 .m-topic   { color: #000; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .m-payload { color: #555; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

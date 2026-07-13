@@ -269,6 +269,8 @@ Le status card (`.status-card` + modifier `.normal/.auto/.manual/.working/.alarm
 
 Regola chiave già consolidata: **`--color-warning`** (#FBBF24 saturato) per **status/badge**; **`--color-warning-button`** (#D4A017 desaturato) per **azioni**. **`--color-danger`** per **status alarm**; **`--color-critical`** per **azioni critiche operatore**. Non confondere status e azione.
 
+**Regola bordi input (audit WCAG 2026-07):** i campi form (`input`, `select`) su `--bg-input` usano **`--border-strong`** (4.31:1). Né `--border-subtle` (1.77:1) né `--border-default` (2.88:1) raggiungono il 3:1 richiesto per i componenti UI su quel fondo — `subtle`/`default` restano per separatori decorativi e per bordi su fondi più scuri (`--bg-base`: default fa 4.62:1, ok per ghost).
+
 ---
 
 ## 7. Radius / Elevation / Transition — riferimento

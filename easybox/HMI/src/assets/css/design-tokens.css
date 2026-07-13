@@ -11,10 +11,13 @@
   --bg-surface-2:   #3A4A60;
   --bg-input:       #2A3548;
 
+  /* Scala testo rivista post-audit WCAG (2026-07-13): secondary e muted
+     alzati per contrasto (FINISHED 4.75:1, muted su bg-input 4.64:1);
+     disabled riallineato all'ex muted (token oggi orfano, tenuto in scala). */
   --text-primary:   #E8EEF7;
-  --text-secondary: #A4B0C2;
-  --text-muted:     #6B7889;
-  --text-disabled:  #4A5468;
+  --text-secondary: #B2BDCE;
+  --text-muted:     #92A0B2;
+  --text-disabled:  #6B7889;
 
   --border-subtle:  #4A5A75;
   --border-default: #6B7B95;
@@ -24,7 +27,9 @@
      sopra --bg-base scuro per outlined card con leggero lightening senza
      hardcoding HEX. Valori di partenza conservativi — affinare
      post-verifica visuale se necessario. */
-  --border-card: 1px solid rgba(255, 255, 255, 0.22);
+  /* alpha 0.22 -> 0.35 (audit WCAG): il bordo card era il principale
+     tono-su-tono percepito (2.42:1); a 0.35 fa 3.79:1 su bg-base. */
+  --border-card: 1px solid rgba(255, 255, 255, 0.35);
   --bg-card:     rgba(255, 255, 255, 0.08);
 
   /* Backdrop overlay per modali/dialog (ChangeUserModal, mission-dialog):
@@ -42,7 +47,8 @@
   --color-success-bg: #1A3A2A;
   --color-warning-bg: #3A2F1A;
   --color-danger-bg:  #3A1F1F;
-  --color-info-bg:    #1A3D5C;
+  /* info-bg scurito (audit WCAG): badge RAW/EMPTY info-su-info-bg 4.43 -> 5.41 */
+  --color-info-bg:    #142F47;
 
   /* Warning button-specific (UI-7.6): amber desaturato per CTA mission
      (.pure-button-mission). Distinto da --color-warning (#FBBF24 saturato)
@@ -50,13 +56,16 @@
      dashboard manual mode). Pattern asimmetrico vs success/danger/info
      giustificato dall'uso ambivalente di warning (status + action). */
   --color-warning-button: #D4A017;
-  --color-warning-text:   var(--text-primary);
+  /* testo scuro su amber (audit WCAG): 2.04 -> 8.35 */
+  --color-warning-text:   var(--bg-base);
 
   /* Critical: per CTA macro action (RESET/HOLD/START/RESTART, delete confirms).
      Distinto da --color-danger (status alarm "errore corrente") - questo e'
      azione operatore "presta attenzione". Rosso urgente classico (semaforo). */
-  --color-critical:       #E63946;
-  --color-critical-hover: #C92434;
+  /* Rosso approfondito (audit WCAG): l'ex hover promosso a fill,
+     text-primary sopra fa 4.76 (era 3.57 su #E63946). */
+  --color-critical:       #C92434;
+  --color-critical-hover: #A81C2A;
 
   /* ---------- Spacing tokens (multipli di 4) ---------- */
   --space-1: 4px;

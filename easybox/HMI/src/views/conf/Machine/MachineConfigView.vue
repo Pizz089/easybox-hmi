@@ -292,7 +292,8 @@ onBeforeUnmount(() => {
 .brand-select {
   background: var(--bg-input);
   color: var(--text-primary);
-  border: 1px solid var(--border-default);
+  /* border-strong sugli input (audit WCAG: default su bg-input 2.88 -> 4.31) */
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
   padding: var(--space-2) var(--space-4);
   min-height: 44px; /* touch target minimo */

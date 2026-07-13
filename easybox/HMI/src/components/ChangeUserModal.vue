@@ -259,7 +259,8 @@ onUnmounted(() => {
 
 .form-group input {
   background: var(--bg-input);
-  border: 1px solid var(--border-subtle);
+  /* border-strong sugli input (audit WCAG: subtle su bg-input 1.77 -> 4.31) */
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-md);
   padding: var(--space-2) var(--space-4);
   min-height: 44px;  /* touch minimo */

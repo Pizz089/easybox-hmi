@@ -531,7 +531,8 @@ export default {
         padding: var(--space-2);
         background: var(--bg-input);
         color: var(--text-primary);
-        border: 1px solid var(--border-default);
+        /* border-strong sugli input (audit WCAG: default su bg-input 2.88 -> 4.31) */
+        border: 1px solid var(--border-strong);
         border-radius: var(--radius-sm);
         font-size: var(--font-size-base);
     }
