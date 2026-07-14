@@ -60,18 +60,22 @@
           <input type="range" class="speed-slider"
             min="10" max="100" step="10"
             :value="sliderSpeed"
-            @change="updateSpeed(parseInt($event.target.value))" />
-          <span class="speed-value">{{ dataStored.robotSpeed }}%</span>
+            :disabled="!speedEnabled"
+            @change="onSliderChange($event)" />
         </div>
-        <!-- R2: input manuale per il valore fine (1..100 intero, l'1% da
-             commissioning resta raggiungibile): invia su Enter/blur. -->
+        <!-- R2-2: display e input UNIFICATI — fuori editing mostra l'eco
+             PLC (mai 0: minimo 1), al focus si edita, Enter/blur -> clamp
+             1..100 -> invio -> torna all'eco. -->
         <div class="speed-control">
           <input type="number" class="speed-manual" inputmode="numeric"
             min="1" max="100" step="1"
-            v-model="speedManual"
-            :placeholder="dataStored.robotSpeed + '%'"
-            @keyup.enter="applyManualSpeed"
+            :value="speedEditing ? speedManual : displaySpeed"
+            :disabled="!speedEnabled"
+            @focus="startSpeedEdit"
+            @input="speedManual = $event.target.value"
+            @keyup.enter="$event.target.blur()"
             @blur="applyManualSpeed" />
+          <span class="speed-unit">%</span>
         </div>
       </div>
 
@@ -318,8 +322,11 @@ export default {
       swapTimer: null,
       swapSelecting: false,
       swapTargetId: null,
-      // R2: campo dell'input manuale velocita' (svuotato dopo l'invio)
-      speedManual: ''
+      // R2-2: editing dell'input velocita' — col flag attivo l'eco PLC non
+      // sovrascrive mentre si digita, e l'Enter (che fa blur) non produce
+      // un secondo invio.
+      speedManual: '',
+      speedEditing: false
     }
   },
   methods: {
@@ -448,14 +455,30 @@ export default {
       //dataStored.robotSpeed = val;
       this.sendToRobot("100;"+val)
     },
-    // R2: input manuale — intero con clamp 1..100, invio su Enter/blur.
-    // Dopo l'invio il campo si svuota: l'Enter non provoca un secondo
-    // invio al blur successivo (campo vuoto -> NaN -> return).
+    // R2-2: slider con snap-back — la posizione e' SEMPRE l'eco PLC: il
+    // DOM viene riportato subito a sliderSpeed, se il comando produce eco
+    // (CHANGESPEED) lo slider si sposta, altrimenti resta dov'era.
+    onSliderChange(e){
+      const v = parseInt(e.target.value);
+      e.target.value = this.sliderSpeed;
+      this.updateSpeed(v);
+    },
+    // R2-2: entra in editing precompilando col valore corrente.
+    startSpeedEdit(){
+      this.speedEditing = true;
+      this.speedManual = String(this.displaySpeed);
+    },
+    // R2-2: unico punto di invio (l'Enter fa blur -> passa da qui una
+    // volta sola). Clamp intero 1..100; invio solo se diverso dall'eco
+    // corrente (un focus+blur accidentale non rimanda il comando).
     applyManualSpeed(){
+      if (!this.speedEditing) return;
+      this.speedEditing = false;
       const v = parseInt(this.speedManual);
-      if (isNaN(v)) { this.speedManual = ''; return; }
-      const clamped = Math.min(100, Math.max(1, v));
       this.speedManual = '';
+      if (isNaN(v)) return;
+      const clamped = Math.min(100, Math.max(1, v));
+      if (clamped == this.displaySpeed) return;
       this.updateSpeed(clamped);
     },
     CMD_enabled(){
@@ -762,10 +785,24 @@ export default {
     },
     // R2: posizione slider = eco PLC agganciato alla scala 10..100 dello
     // slider (l'1% fine impostato da input manuale mostra il numero esatto
-    // nella label %, lo slider si ferma al minimo della sua scala).
+    // nell'input, lo slider si ferma al minimo della sua scala).
     sliderSpeed() {
       const v = parseInt(dataStored.robotSpeed) || 10;
       return Math.min(100, Math.max(10, v));
+    },
+    // R2-2: valore mostrato dall'input fuori editing — eco PLC clampato a
+    // minimo 1 (MAI 0%: a freddo mostra 1).
+    displaySpeed() {
+      const v = parseInt(dataStored.robotSpeed) || 1;
+      return Math.min(100, Math.max(1, v));
+    },
+    // R2-2 (punto 4): il gating reale del comando 100 vive nel PLC (non
+    // determinabile dal materiale: backend passthrough, segmenti storici
+    // senza gating) -> fallback ratificato: modificabile solo con stato
+    // robot NOTO (STATUS definito e non "Sconosciuto").
+    speedEnabled() {
+      const s = this.dataRobot.STATUS;
+      return s != undefined && s != dataStored.status_notDef;
     },
     dialogTitle() {
       switch (this.dialog.type) {
@@ -918,12 +955,21 @@ h6 {
   height: 28px;
 }
 
-.speed-value {
-  color: var(--text-primary);
+/* R2-2: unita' statica accanto all'input unificato */
+.speed-unit {
+  color: var(--text-secondary);
   font-size: var(--font-size-md);
-  font-weight: var(--font-weight-semibold);
-  min-width: 3.5em;
-  text-align: right;
+}
+
+/* R2-2: disabled a canone ("subdued ma leggibile", come buttons.css) */
+.speed-slider:disabled,
+.speed-manual:disabled {
+  opacity: 0.8;
+  cursor: not-allowed;
+}
+
+.speed-slider:disabled {
+  accent-color: var(--text-muted);
 }
 
 /* input manuale canonico dark (regola F10: --border-strong su bg-input) */
