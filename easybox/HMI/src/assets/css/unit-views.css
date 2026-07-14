@@ -63,6 +63,14 @@
     align-items: flex-start;
 }
 
+/* R2-1: le colonne riempiono tutta la larghezza del .content — le
+   larghezze storiche pure-u-10-24 (41.66%) lasciavano spazio morto a
+   destra. flex:1 + width:auto neutralizza il width % di PureCSS. */
+.unit-columns > div {
+    flex: 1;
+    width: auto;
+}
+
 
 /* ============ ANIMATIONS ============ */
 /* @keyframes globale: allineato a units.vue UI-3.3 (pulse su accent-hover). */
