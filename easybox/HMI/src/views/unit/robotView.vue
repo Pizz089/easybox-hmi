@@ -40,7 +40,7 @@
       </div>
 
       
-      <div class="pure-control-group">
+      <div class="pure-control-group speed-group">
         <label class="section-label" for="aligned-foo">ROBOT SPEED: </label>
         <!--numericField 
             name="speed" 
@@ -840,9 +840,27 @@ h6 {
   gap: var(--space-2);
 }
 
+/* R1: colonne flex + bottoni che riempiono la riga -> i tre bottoni hanno
+   SEMPRE la stessa altezza (se un testo va a capo, crescono tutti insieme)
+   col testo centrato verticalmente. */
 .dest-grid > div {
   flex: 1;
   width: auto;
+  display: flex;
+}
+
+.dest-grid button {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 52px;
+}
+
+/* R1: la label ROBOT SPEED staccata dalla card di stato sopra con lo
+   stesso passo del resto della colonna. */
+.speed-group {
+  margin-top: var(--space-4);
 }
 
 /* Speed selector: 5 bottoni preset 1/10/20/50/100%. Base scura distinguibile
@@ -853,7 +871,8 @@ h6 {
   border: 2px solid transparent;
   border-radius: var(--radius-md);
   padding: var(--space-2);
-  margin-top: var(--space-3);
+  /* R1: via il margine ad hoc space-3 (blacklist) */
+  margin-top: var(--space-2);
   max-width: 62px;
   cursor: pointer;
   transition: filter var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast);
