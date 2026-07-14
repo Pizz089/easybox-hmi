@@ -249,6 +249,7 @@
       "releaseTray": "Rilasciare il cassetto estratto?",
       "unloadGripper": "Scaricare la pinza a bordo?",
       "unloadAndSwap": "Deposita e cambia",
+      "chooseSwapGripper": "Quale pinza caricare dopo il deposito?",
       "stateChanged": "Stato cambiato: comando annullato",
       "tray": "Cassetto",
       "confirm": "Conferma",

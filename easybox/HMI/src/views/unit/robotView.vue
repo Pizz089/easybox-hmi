@@ -242,12 +242,14 @@
               (ID {{ dataGripper[0].ID }})
             </div>
 
-            <!-- M3: "Deposita e cambia" — invia il 12 e, quando arrivano
-                 pinza scesa (UPDATEGRIPPER) e rientro in HOLD, apre
-                 AUTOMATICAMENTE il dialog di carico: l'11 lo conferma
-                 sempre l'operatore, mai auto-invio. -->
+            <!-- M4: "Deposita e cambia" a selezione ANTICIPATA — apre prima
+                 la scelta della pinza target (modalita' swap del dialog di
+                 carico); la conferma li' registra il target, invia il 12 e,
+                 a deposito confermato (pinza scesa + HOLD), riapre il dialog
+                 di carico col target preselezionato. L'11 lo conferma sempre
+                 l'operatore, mai auto-invio. -->
             <button class="pure-u-1 button_pressed pure-button-mission"
-              @click="confirmUnload(true)">
+              @click="startSwapSelection()">
               {{ $t('robot.dialog.unloadAndSwap') }}
             </button>
 
@@ -294,10 +296,15 @@ export default {
       // 2000 richiesta rilascio). A freddo: null/false -> ramo estrazione.
       extractedTray: null,
       trayBusy: false,
-      // M3: swap pinza — dopo "Deposita e cambia" (12 inviato) si attende
-      // la conferma pinza scesa per aprire il dialog di carico.
+      // M3/M4: swap pinza a selezione ANTICIPATA — "Deposita e cambia" apre
+      // prima il dialog di selezione in modalita' swap (swapSelecting); la
+      // conferma registra swapTargetId, invia il 12 e arma swapPending; a
+      // deposito confermato il dialog di carico riapre col target
+      // preselezionato (l'11 parte SOLO dalla conferma dell'operatore).
       swapPending: false,
-      swapTimer: null
+      swapTimer: null,
+      swapSelecting: false,
+      swapTargetId: null
     }
   },
   methods: {
@@ -439,7 +446,8 @@ export default {
       dataStored.cmdActivePallet  = inHold && gripperOnBoard;   // CARICA/SCARICA PALLET
     },
     getGrippersList() {
-      fetch(dataStored.server + 'api/conf/gripper/show/all', { method: 'GET' })
+      // M4: ritorna la promise (additivo) per la preselezione post-deposito
+      return fetch(dataStored.server + 'api/conf/gripper/show/all', { method: 'GET' })
         .then(response => {
           if (!response.ok) {
             throw new Error('Network response was not ok');
@@ -526,9 +534,19 @@ export default {
     // STESSA fonte di verita' del bottone (segnali primari freschi, non i
     // flag dataStored stantii): se lo stato e' cambiato mentre il dialog
     // era aperto, chiudi con messaggio e NON inviare.
+    // M4: "Deposita e cambia" apre PRIMA la selezione della pinza target
+    // (stesso dialog/lista del carico — pinze a magazzino, esclusa quella
+    // a bordo — in modalita' swap). Nessuna condizione propria: i re-check
+    // stanno nelle conferme.
+    startSwapSelection() {
+      this.unloadOpen = false;
+      this.swapSelecting = true;
+      this.openDialog('gripper');
+    },
     confirmUnload(withSwap = false) {
       if (!this.gripperBranchEnabled || !this.gripperOnBoardNow()) {
         this.unloadOpen = false;
+        this.swapTargetId = null;   // M4: niente target orfano su stato cambiato
         dataStored.alert.title = this.$t('WARNING');
         dataStored.alert.desc = 'robot.dialog.stateChanged';
         dataStored.alert.type = 'warning';
@@ -546,7 +564,10 @@ export default {
       if (withSwap) {
         this.swapPending = true;
         clearTimeout(this.swapTimer);
-        this.swapTimer = setTimeout(() => { this.swapPending = false; }, 90000);
+        this.swapTimer = setTimeout(() => {
+          this.swapPending = false;
+          this.swapTargetId = null;   // M4 (punto 4): azzera anche il target
+        }, 90000);
       }
     },
     // M3: sblocco dello swap. Condizioni (in qualunque ordine arrivino:
@@ -560,12 +581,26 @@ export default {
       if (this.dataRobot.STATUS != dataStored.status_hold) return;       // attende il rientro in HOLD
       this.swapPending = false;
       clearTimeout(this.swapTimer);
-      if (this.dialog.type != '' || this.unloadOpen) return;             // operatore ha preso il controllo
+      const targetId = this.swapTargetId;
+      this.swapTargetId = null;
+      if (this.dialog.type != '' || this.unloadOpen) return;             // operatore ha preso il controllo (ritiro)
+      // M4: riapre il dialog di carico con il target PRESELEZIONATO nella
+      // lista FRESCA (il deposito appena concluso rimette a magazzino la
+      // pinza scesa). Se il target non c'e' piu': nessuna preselezione,
+      // l'operatore risceglie. L'11 parte SOLO dalla conferma.
       this.openDialog('gripper');
+      this.getGrippersList().then(() => {
+        if (this.dialog.type != 'gripper') return;   // chiuso nel frattempo
+        const target = this.grippersList.find(g => g.ID == targetId);
+        if (target) this.dialog.selected = target;
+      });
     },
     closeDialog() {
       this.dialog.type = '';
       this.dialog.selected = null;
+      // M4: la chiusura (anche annulla/stato cambiato) esce sempre dalla
+      // modalita' swap; no-op nel percorso normale.
+      this.swapSelecting = false;
     },
     confirmDialog() {
       // ri-verifica del gating alla conferma (per tipo di missione): lo stato
@@ -573,10 +608,13 @@ export default {
       let missionEnabled;
       switch (this.dialog.type) {
         case 'gripper':
-          // M2 micro-fix autorizzato: stessa fonte di verita' del bottone
-          // (segnali primari), non il flag dataStored stantio. Ramo carico
-          // valido solo se abilitato E ancora senza pinza a bordo.
-          missionEnabled = (this.gripperBranchEnabled && !this.gripperOnBoardNow());
+          // M2 micro-fix: stessa fonte di verita' del bottone (segnali
+          // primari). M4: in modalita' swap la selezione precede lo
+          // SCARICO, quindi le condizioni valide sono quelle dello scarico
+          // (pinza ancora a bordo), non quelle del carico.
+          missionEnabled = this.swapSelecting
+            ? (this.gripperBranchEnabled && this.gripperOnBoardNow())
+            : (this.gripperBranchEnabled && !this.gripperOnBoardNow());
           break;
         case 'palletLoad':
         case 'palletUnload':
@@ -608,6 +646,15 @@ export default {
       const sel = this.dialog.selected;
       switch (this.dialog.type) {
         case 'gripper':
+          if (this.swapSelecting) {
+            // M4: selezione ANTICIPATA dello swap — NON invia l'11:
+            // registra il target, chiude e avvia il deposito (12) con
+            // l'attesa armata (confirmUnload fa anche il re-check scarico).
+            this.swapTargetId = sel.ID;
+            this.closeDialog();
+            this.confirmUnload(true);
+            return;
+          }
           this.sendToRobot('11;' + sel.ID);
           break;
         case 'palletLoad':
@@ -661,7 +708,11 @@ export default {
     },
     dialogTitle() {
       switch (this.dialog.type) {
-        case 'gripper':      return 'robot.dialog.chooseGripper';
+        // M4: in modalita' swap il titolo dichiara che la selezione precede
+        // il deposito (il carico partira' solo dopo, su conferma).
+        case 'gripper':      return this.swapSelecting
+                                    ? 'robot.dialog.chooseSwapGripper'
+                                    : 'robot.dialog.chooseGripper';
         case 'palletLoad':   return 'robot.dialog.choosePalletLoad';
         case 'palletUnload': return 'robot.dialog.choosePalletUnload';
         case 'tray':         return 'robot.dialog.chooseTray';
@@ -726,8 +777,10 @@ export default {
     // staccherebbe anche i listener di altri componenti (es. units.vue).
     dataStored.WS.socket.off('ROBOT/STATUS', this.statusHandler);
     dataStored.WS.socket.off('BOX/STATUS', this.boxStatusHandler);
-    // M3: niente timer orfani (lo swap muore con la view)
+    // M3/M4: niente timer orfani, lo swap muore con la view (punto 4)
     clearTimeout(this.swapTimer);
+    this.swapPending = false;
+    this.swapTargetId = null;
     //dataStored.WS.socket.off('ROBOT/DESCR');
     //dataStored.WS.socket.off('ROBOT/UPDATEGRIPPER');
   }
