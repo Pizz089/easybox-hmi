@@ -18,6 +18,7 @@
             {{$t('fixture.PosOnPallet')}}
           </button-->
         </div>
+        <div class="table-scroll">
         <table class="pure-table pure-table-horizontal">
             <thead>
                 <tr>
@@ -73,6 +74,7 @@
                 </template>
             </tbody>
         </table>
+        </div>
       </div>
 </template>
 

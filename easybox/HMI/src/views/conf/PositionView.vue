@@ -453,8 +453,13 @@ export default {
             text-align: center;
         }
     }
-    .pure-table{
-        width: inherit;
+    /* K-FIX2: zebra righe come productionTable (righe dispari --bg-input).
+       La classe pure-table-odd e' gia' bindata sulle righe ma il suo bg era
+       sovrascritto dal td bg-base !important globale di custom-fix; questa
+       regola piu' specifica lo ripristina. :not(.locked4OP) preserva
+       l'evidenziazione warning delle celle bloccate per l'operatore. */
+    .postable-wrapper tr.pure-table-odd td:not(.locked4OP){
+        background: var(--bg-input) !important;
     }
 
     .popUpOnLine{
@@ -530,8 +535,12 @@ export default {
         font-size: var(--font-size-base);
     }
 
+    /* K-FIX2: larghezza fluida (segue il resize), min-width per i numeri
+       a 2 decimali, cap per non allargare la colonna. */
     .pos-input{
-        width: 90px;
+        width: 100%;
+        min-width: 80px;
+        max-width: 120px;
         text-align: right;
     }
 
