@@ -2,6 +2,7 @@
     //import { RouterLink, RouterView } from 'vue-router'
     import { dataStored } from '../../data.js'
     import orderCMD from '../../components/Comands/ComandsRows.vue';
+    import CubeIcon3D from '../../components/CubeIcon3D.vue';
 
 </script>
 
@@ -35,8 +36,9 @@
             <template v-for="(p) in pieces" :key="p.ID" >
                 <tr v-if="p.ID>0" :class="{'pure-table-odd':(p.ID % 2==1)}">
                   <td>
-                      <img v-if="p.PRISMA" src="../../assets/cube2.png" alt="prisma" width="65px;">
-                      <img v-if="!p.PRISMA" src="../../assets/cylinder.png" alt="cylinder" >
+                      <!-- feat(parts-images): anteprima proporzionale a token dark,
+                           stesso generatore del wizard produzione (audit J, opz. A) -->
+                      <CubeIcon3D :w="p.X" :d="p.Y" :h="p.Z" :prisma="p.PRISMA" :size="56" />
                     </td>
                     <td>{{p.FAMILY}}</td>
                     <td>{{p.DESCR}}</td>

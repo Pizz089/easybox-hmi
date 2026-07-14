@@ -7,6 +7,8 @@ const props = defineProps({
   h: { type: [Number, String], default: 1 },     // altezza (Z)
   prisma: { type: Boolean, default: true },      // true=cubo, false=cilindro
   bgMode: { type: Boolean, default: false },     // true=watermark background della card
+  size: { type: Number, default: 80 },           // lato icona in px (solo modalita' icona;
+                                                 // bg-mode resta 100% della card)
 })
 
 // Normalizza al max dim per fit nel viewBox 80x80.
@@ -86,6 +88,7 @@ const cylinder = computed(() => {
   <svg
     viewBox="0 0 80 80"
     :class="['cube-icon', { 'bg-mode': bgMode }]"
+    :style="{ '--icon-size': size + 'px' }"
     preserveAspectRatio="xMidYMid meet"
     aria-hidden="true"
   >
@@ -125,8 +128,9 @@ const cylinder = computed(() => {
 
 <style scoped>
 .cube-icon {
-  width: 80px;
-  height: 80px;
+  /* dalla prop size (default 80); bg-mode sotto la sovrascrive con 100% */
+  width: var(--icon-size, 80px);
+  height: var(--icon-size, 80px);
   display: block;
 }
 
