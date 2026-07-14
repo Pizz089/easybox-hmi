@@ -56,17 +56,15 @@
              ai vecchi segmenti: "100;<val>", nessun gating come prima)
              parte SOLO al rilascio (change, mai input: niente flood).
              Il valore mostrato e' l'eco del PLC (ROBOT/CHANGESPEED). -->
+        <!-- R2-2: display e input UNIFICATI, tutto su una riga: slider +
+             input numerico (fuori editing mostra l'eco PLC, mai 0; al focus
+             si edita, Enter/blur -> clamp 1..100 -> invio -> eco) + %. -->
         <div class="speed-control">
           <input type="range" class="speed-slider"
             min="10" max="100" step="10"
             :value="sliderSpeed"
             :disabled="!speedEnabled"
             @change="onSliderChange($event)" />
-        </div>
-        <!-- R2-2: display e input UNIFICATI — fuori editing mostra l'eco
-             PLC (mai 0: minimo 1), al focus si edita, Enter/blur -> clamp
-             1..100 -> invio -> torna all'eco. -->
-        <div class="speed-control">
           <input type="number" class="speed-manual" inputmode="numeric"
             min="1" max="100" step="1"
             :value="speedEditing ? speedManual : displaySpeed"
