@@ -148,16 +148,15 @@
       <section class="command-section">
         <h3 class="section-label">{{ $t('robot.section.mission') }}</h3>
 
+        <!-- M: bottone unico a label FISSA (pattern anti-race: bottone neutro
+             + dialog esplicito). NON invia mai direttamente: apre il dialog
+             del ramo valido — carico (11) se nessuna pinza a bordo, NUOVA
+             conferma scarico (12) se pinza a bordo. Gating = il flag del
+             ramo che aprirebbe. -->
         <button class="pure-u-1 button_pressed"
-          :class="[dataStored.cmdActiveMission==0? 'pure-button-disable' : 'pure-button-mission']"
-          @click="dataStored.cmdActiveMission==1?sendToRobot(12):''">
-          {{ $t('SCARICA PINZA') }}
-        </button>
-
-        <button class="pure-u-1 button_pressed"
-          :class="[dataStored.cmdActiveLoad==0? 'pure-button-disable' : 'pure-button-mission']"
-          @click="dataStored.cmdActiveLoad==1?openDialog('gripper'):''">
-          {{ $t('CARICA PINZA') }}
+          :class="[(dataStored.cmdActiveLoad==1 || dataStored.cmdActiveMission==1)? 'pure-button-mission' : 'pure-button-disable']"
+          @click="(dataStored.cmdActiveLoad==1 || dataStored.cmdActiveMission==1)?openGripperMission():''">
+          {{ $t('robot.mission.gripper') }}
         </button>
 
         <button class="pure-u-1 button_pressed"
@@ -223,6 +222,35 @@
             </div>
           </div>
         </div>
+
+        <!-- M: NUOVO dialog conferma SCARICO pinza (cmd 12) — prima partiva a
+             tap singolo. Blocco separato: i 5 dialog esistenti sopra restano
+             intatti. Mostra ESPLICITAMENTE quale pinza verra' scaricata. -->
+        <div v-if="unloadOpen" class="mission-dialog-overlay">
+          <div class="mission-dialog">
+            <h3 class="command-section-title">{{ $t('robot.dialog.unloadGripper') }}</h3>
+
+            <div class="unload-info" v-if="dataGripper && dataGripper[0]">
+              {{ (dataGripper[0].FAMILY || '').trim() }}
+              {{ (dataGripper[0].DESCR || '').trim() }}
+              (ID {{ dataGripper[0].ID }})
+            </div>
+
+            <div class="pure-g">
+              <div class="pure-u-1-2">
+                <button style="width:100%" class="button_pressed pure-button-mission"
+                  @click="confirmUnload()">
+                  {{ $t('robot.dialog.confirm') }}
+                </button>
+              </div>
+              <div class="pure-u-1-2">
+                <button style="width:100%" class="btn-ghost" @click="unloadOpen=false">
+                  {{ $t('robot.dialog.cancel') }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
     </div>
 
@@ -243,7 +271,8 @@ export default {
       dialog: {
         type: '',         // '' | 'gripper' | 'palletLoad' | 'palletUnload' | 'tray' | 'trayRelease'
         selected: null    // riga selezionata; nessuna preselezione
-      }
+      },
+      unloadOpen: false   // M: dialog conferma scarico pinza (blocco separato)
     }
   },
   methods: {
@@ -440,6 +469,41 @@ export default {
     openDialog(type) {
       this.dialog.type = type;
       this.dialog.selected = null;   // mai preselezionato
+    },
+    // M: stato discriminante letto fresco (stessa espressione di
+    // Mission_enabled), per apertura e re-check alla conferma.
+    gripperOnBoardNow() {
+      return !!(this.dataGripper && this.dataGripper[0] &&
+                this.dataGripper[0].ID != null);
+    },
+    // M: dispatcher del bottone unico "Gestione pinza". Label fissa,
+    // nessun invio diretto: apre il dialog del ramo valido.
+    openGripperMission() {
+      if (this.gripperOnBoardNow()) {
+        if (dataStored.cmdActiveMission == 1)
+          this.unloadOpen = true;
+      } else {
+        if (dataStored.cmdActiveLoad == 1)
+          this.openDialog('gripper');
+      }
+    },
+    // M: conferma scarico (cmd 12) con re-check del discriminante: se lo
+    // stato e' cambiato mentre il dialog era aperto, chiudi con messaggio
+    // e NON inviare.
+    confirmUnload() {
+      if (dataStored.cmdActiveMission != 1 || !this.gripperOnBoardNow()) {
+        this.unloadOpen = false;
+        dataStored.alert.title = this.$t('WARNING');
+        dataStored.alert.desc = 'robot.dialog.stateChanged';
+        dataStored.alert.type = 'warning';
+        return;
+      }
+      this.unloadOpen = false;
+      this.sendToRobot(12);
+      // ricarico gli elenchi come confirmDialog()
+      this.getGrippersList();
+      this.getPalletsList();
+      this.getTraysList();
     },
     closeDialog() {
       this.dialog.type = '';
@@ -669,5 +733,13 @@ h6 {
   color: var(--text-muted);
   text-align: center;
   padding: var(--space-4);
+}
+
+/* M: riga info del dialog scarico pinza (quale pinza verra' scaricata) */
+.unload-info {
+  color: var(--text-primary);
+  font-size: var(--font-size-md);
+  text-align: center;
+  padding: var(--space-2) 0;
 }
 </style>

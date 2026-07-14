@@ -247,6 +247,8 @@
       "choosePalletUnload": "Quale pallet scaricare?",
       "chooseTray": "Quale cassetto estrarre?",
       "releaseTray": "Rilasciare il cassetto estratto?",
+      "unloadGripper": "Scaricare la pinza a bordo?",
+      "stateChanged": "Stato cambiato: comando annullato",
       "tray": "Cassetto",
       "confirm": "Conferma",
       "cancel": "Annulla",
@@ -301,6 +303,9 @@
       "movement": "Movimenti",
       "destination": "Punti di destinazione",
       "mission": "Missioni"
+    },
+    "mission": {
+      "gripper": "Gestione pinza"
     }
   },
   "unit": {

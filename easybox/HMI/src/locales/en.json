@@ -247,6 +247,8 @@
       "choosePalletUnload": "Which pallet to unload?",
       "chooseTray": "Which tray to extract?",
       "releaseTray": "Release the extracted tray?",
+      "unloadGripper": "Unload the on-board gripper?",
+      "stateChanged": "State changed: command cancelled",
       "tray": "Tray",
       "confirm": "Confirm",
       "cancel": "Cancel",
@@ -301,6 +303,9 @@
       "movement": "Movements",
       "destination": "Destinations",
       "mission": "Missions"
+    },
+    "mission": {
+      "gripper": "Gripper handling"
     }
   },
   "unit": {
