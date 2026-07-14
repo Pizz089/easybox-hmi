@@ -52,13 +52,27 @@
             :model-value="robotSpeed"
             @update="newVal => updateSpeed(newVal)">
         </numericField-->
-        <span class="pure-u-1">
-          <button class="pure-u-1-5 speed-button button_pressed" @click="updateSpeed(1)"   :class="{ active: dataStored.robotSpeed <= 1 }"> 1% </button>
-          <button class="pure-u-1-5 speed-button button_pressed" @click="updateSpeed(10)"  :class="{ active: dataStored.robotSpeed == 10 }"> 10% </button>
-          <button class="pure-u-1-5 speed-button button_pressed" @click="updateSpeed(20)"  :class="{ active: dataStored.robotSpeed == 20 }"> 20% </button>
-          <button class="pure-u-1-5 speed-button button_pressed" @click="updateSpeed(50)"  :class="{ active: dataStored.robotSpeed == 50 }"> 50% </button>
-          <button class="pure-u-1-5 speed-button button_pressed" @click="updateSpeed(100)" :class="{ active: dataStored.robotSpeed == 100 }"> 100% </button>
-        </span>
+        <!-- R2: slider 10..100 step 10 — il comando (updateSpeed, identico
+             ai vecchi segmenti: "100;<val>", nessun gating come prima)
+             parte SOLO al rilascio (change, mai input: niente flood).
+             Il valore mostrato e' l'eco del PLC (ROBOT/CHANGESPEED). -->
+        <div class="speed-control">
+          <input type="range" class="speed-slider"
+            min="10" max="100" step="10"
+            :value="sliderSpeed"
+            @change="updateSpeed(parseInt($event.target.value))" />
+          <span class="speed-value">{{ dataStored.robotSpeed }}%</span>
+        </div>
+        <!-- R2: input manuale per il valore fine (1..100 intero, l'1% da
+             commissioning resta raggiungibile): invia su Enter/blur. -->
+        <div class="speed-control">
+          <input type="number" class="speed-manual" inputmode="numeric"
+            min="1" max="100" step="1"
+            v-model="speedManual"
+            :placeholder="dataStored.robotSpeed + '%'"
+            @keyup.enter="applyManualSpeed"
+            @blur="applyManualSpeed" />
+        </div>
       </div>
 
     </div>
@@ -303,7 +317,9 @@ export default {
       swapPending: false,
       swapTimer: null,
       swapSelecting: false,
-      swapTargetId: null
+      swapTargetId: null,
+      // R2: campo dell'input manuale velocita' (svuotato dopo l'invio)
+      speedManual: ''
     }
   },
   methods: {
@@ -431,6 +447,16 @@ export default {
     updateSpeed(val){
       //dataStored.robotSpeed = val;
       this.sendToRobot("100;"+val)
+    },
+    // R2: input manuale — intero con clamp 1..100, invio su Enter/blur.
+    // Dopo l'invio il campo si svuota: l'Enter non provoca un secondo
+    // invio al blur successivo (campo vuoto -> NaN -> return).
+    applyManualSpeed(){
+      const v = parseInt(this.speedManual);
+      if (isNaN(v)) { this.speedManual = ''; return; }
+      const clamped = Math.min(100, Math.max(1, v));
+      this.speedManual = '';
+      this.updateSpeed(clamped);
     },
     CMD_enabled(){
       dataStored.cmdActive = (this.dataRobot.STATUS == dataStored.status_hold);
@@ -734,6 +760,13 @@ export default {
       const inHold = this.dataRobot.STATUS == dataStored.status_hold;
       return inHold && this.gripperOnBoardNow();
     },
+    // R2: posizione slider = eco PLC agganciato alla scala 10..100 dello
+    // slider (l'1% fine impostato da input manuale mostra il numero esatto
+    // nella label %, lo slider si ferma al minimo della sua scala).
+    sliderSpeed() {
+      const v = parseInt(dataStored.robotSpeed) || 10;
+      return Math.min(100, Math.max(10, v));
+    },
     dialogTitle() {
       switch (this.dialog.type) {
         // M4: in modalita' swap il titolo dichiara che la selezione precede
@@ -863,29 +896,47 @@ h6 {
   margin-top: var(--space-4);
 }
 
-/* Speed selector: 5 bottoni preset 1/10/20/50/100%. Base scura distinguibile
-   da action buttons; selezionato evidenziato via .active (accent solido). */
-.speed-button {
+/* R2: speed = slider (comando al rilascio) + input manuale fine + eco %.
+   I vecchi 5 segmenti .speed-button sono stati rimossi. */
+.speed-control {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.speed-slider {
+  flex: 1;
+  min-height: 44px;              /* area touch generosa */
+  accent-color: var(--accent);   /* track/thumb su accent (nativo) */
+  cursor: pointer;
+}
+
+/* thumb generoso per il touch (Chrome kiosk) */
+.speed-slider::-webkit-slider-thumb {
+  width: 28px;
+  height: 28px;
+}
+
+.speed-value {
+  color: var(--text-primary);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  min-width: 3.5em;
+  text-align: right;
+}
+
+/* input manuale canonico dark (regola F10: --border-strong su bg-input) */
+.speed-manual {
+  width: 110px;
+  min-height: 44px;
+  padding: var(--space-2);
   background: var(--bg-input);
   color: var(--text-primary);
-  border: 2px solid transparent;
-  border-radius: var(--radius-md);
-  padding: var(--space-2);
-  /* R1: via il margine ad hoc space-3 (blacklist) */
-  margin-top: var(--space-2);
-  max-width: 62px;
-  cursor: pointer;
-  transition: filter var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast);
-}
-
-.speed-button:hover:not(.active) {
-  filter: brightness(1.15);
-}
-
-.speed-button.active {
-  background: var(--accent);
-  border-color: var(--accent-hover);
-  font-weight: var(--font-weight-semibold);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-base);
+  text-align: right;
 }
 
 /* Dialog scelta pinza/pallet per missioni (CARD 3). Overlay a schermo pieno
