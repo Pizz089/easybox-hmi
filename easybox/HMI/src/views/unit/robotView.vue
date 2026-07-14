@@ -972,7 +972,7 @@ h6 {
 
 /* input manuale canonico dark (regola F10: --border-strong su bg-input) */
 .speed-manual {
-  width: 110px;
+  width: 55px;
   min-height: 44px;
   padding: var(--space-2);
   background: var(--bg-input);
