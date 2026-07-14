@@ -19,13 +19,20 @@
           </button-->
           <div class="searchBar">
             <input type="text" placeholder="search" v-model="searchQuery" class="search-input">
-            <select v-model="categoryFilter" class="cat-filter">
-                <option value="">{{$t('position.cat.all')}}</option>
-                <option v-for="opt in categoryOptions" :key="opt.id" :value="opt.id">
-                    {{ opt.label }}
-                </option>
-            </select>
           </div>
+        </div>
+
+        <!-- Tab per categoria (pattern .tab-bar, doc §2.3): stesso stato del
+             vecchio select (categoryFilter, ""=Tutte), stessi categoryOptions -->
+        <div class="tab-bar">
+          <button class="tab" :class="{ active: categoryFilter=='' }" @click="categoryFilter=''">
+            {{$t('position.cat.all')}}
+          </button>
+          <button v-for="opt in categoryOptions" :key="opt.id"
+            class="tab" :class="{ active: categoryFilter==opt.id }"
+            @click="categoryFilter=opt.id">
+            {{ opt.label }}
+          </button>
         </div>
         <!-- zona tabella condivisa (.conf-card .table-scroll, custom-fix):
              pattern FILL, il thead sticky si aggancia qui -->
@@ -60,9 +67,6 @@
             </thead>
             <tbody>
                 <template v-for="group in viewGroups" :key="group.key">
-                    <tr v-if="group.label" class="cat-separator">
-                        <td colspan="9">{{ group.label }}</td>
-                    </tr>
                 <template v-for="(dt,index) in group.rows" :key="dt.ID" >
                     <tr :class="{'pure-table-odd':(index % 2==1)}">
                         <!--td>{{dt.ID}} </td-->
@@ -413,21 +417,10 @@ export default {
                 const d = ca.localeCompare(cb)*dir;
                 return d!=0 ? d : (a.SUB_POS-b.SUB_POS);
             });
-            // separatori di gruppo solo con filtro "Tutte" e ordinamento
-            // primario per categoria (per SUB_POS i gruppi non sono contigui)
-            if (this.categoryFilter!="" || this.sortField!='category')
-                return [{ key:'flat', label:null, rows:rows }];
-            const groups = [];
-            let cur = null;
-            for (const dt of rows){
-                const cat = this.getCategory(dt.PARENT.trim());
-                if (cur==null || cur.key!=cat.id){
-                    cur = { key:cat.id, label:cat.label, rows:[] };
-                    groups.push(cur);
-                }
-                cur.rows.push(dt);
-            }
-            return groups;
+            // Tab per categoria (feat positions-tabs, D3): niente piu'
+            // righe-label di gruppo in tabella; l'ordinamento per categoria
+            // nel tab "Tutte" resta invariato (sort qui sopra).
+            return [{ key:'flat', label:null, rows:rows }];
         }
     },
     mounted(){
@@ -521,8 +514,7 @@ export default {
         font-size: var(--font-size-xs);
     }
 
-    /* Input canonico dark (regola F10: --border-strong sugli input),
-       allineato al select .cat-filter. */
+    /* Input canonico dark (regola F10: --border-strong sugli input). */
     .search-input{
         background: var(--bg-input);
         color: var(--text-primary);
@@ -546,21 +538,6 @@ export default {
         text-align: right;
     }
 
-    .cat-filter{
-        min-height: 44px;   /* touch target; lo spacing lo da' il gap del .searchBar */
-        padding: var(--space-2);
-        background: var(--bg-input);
-        color: var(--text-primary);
-        /* border-strong sugli input (audit WCAG: default su bg-input 2.88 -> 4.31) */
-        border: 1px solid var(--border-strong);
-        border-radius: var(--radius-sm);
-        font-size: var(--font-size-base);
-    }
-
-    .cat-separator td{
-        background: var(--bg-surface-2);
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
+    /* .cat-filter e .cat-separator rimossi (feat positions-tabs): il select
+       e le righe-label di gruppo sono sostituiti dalle tab .tab-bar. */
 </style>

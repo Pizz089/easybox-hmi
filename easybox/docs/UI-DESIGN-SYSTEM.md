@@ -104,6 +104,7 @@ Ogni view usa il guscio standard:
 - **Titolo**: sempre `.view-title` (`--font-size-xl`, semibold, `margin: 0` — lo spazio sotto lo dà il gap del shell); il tag (h1..h3) è libero. Titolo + azioni sulla stessa riga = `.view-header`.
 - **Gruppi bottoni**: `.btn-group` (flex, `gap: --space-4`, wrap) + varianti `--end`/`--center`.
 - **Etichette di sezione dentro le card**: `.section-label` (`--font-size-sm`, semibold, uppercase, 0.05em, `--text-muted`; `margin-top: --space-4` quando segue contenuto, 0 se apre la card) — usata dalle unit view per i gruppi comandi.
+- **Tab di navigazione**: `.tab-bar` + `.tab` (`.active` con underline `--accent` + semibold) — pattern per filtri/viste alternative sopra un contenuto (es. categorie in Posizioni). Squadrate perché sono navigazione, non azione (niente pill) né selezione a fill (niente segmented ROBOT SPEED); touch 52; riga dedicata dentro la card, sotto la `.view-header`.
 - **VIETATI nel guscio**: colonne spacer `pure-u-1-24`, `&nbsp;` e `<br>` come spaziatori.
 
 **Deroghe shell**: Dashboard senza titolo (è il pannello di default kiosk); MqttDiag guscio denso proprio (vedi deroga light §3.4); Gripper/Vice fino alla ritematizzazione glassmorphism (§4.2); TestView escluso (playground di sviluppo); i `margin-left` della scena SVG di Grating (deroga GR3); le griglie comando frazionali delle unit view (`pure-u-1-2/1-3/1-5`) restano — si uniforma solo il gap.

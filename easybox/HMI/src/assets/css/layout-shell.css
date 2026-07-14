@@ -54,6 +54,39 @@
   margin-top: 0;
 }
 
+/* Tab di NAVIGAZIONE (doc §2.3): filtri/viste alternative sopra un
+   contenuto. Squadrate con indicatore underline accent — le tab non sono
+   azioni (niente pill) ne' selettori segmented (niente fill). Touch 52. */
+.tab-bar {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--border-default);
+}
+
+.tab {
+  background: transparent;
+  border: 0;
+  border-bottom: 3px solid transparent;   /* indicatore */
+  border-radius: 0;
+  min-height: 52px;
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.tab:hover {
+  color: var(--text-primary);
+}
+
+.tab.active {
+  color: var(--text-primary);
+  font-weight: var(--font-weight-semibold);
+  border-bottom-color: var(--accent);
+}
+
 /* Gruppo bottoni orizzontale. */
 .btn-group {
   display: flex;
