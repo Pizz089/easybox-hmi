@@ -246,15 +246,23 @@ export default {
                 return { id:'c_extract', label:this.$t('position.EXTRACT_TRAY').trim() };
             if (parent.startsWith("TRAY"))
                 return { id:'b_tray',    label:this.$t('position.cat.trays') };
-            if (parent.startsWith("MC")){
-                let n = parent.lastIndexOf("_")>0 ? parent.substring(parent.lastIndexOf("_")+1) : '';
-                return { id:'d_mc_'+n.padStart(2,'0'), label:(this.$t('position.MC')+' '+n).trim() };
-            }
+            if (parent.startsWith("MC"))
+                // N-3: tab unica per tutte le macchine (posizione alfabetica
+                // d_ invariata); il numero macchina resta visibile nel nome
+                // riga ("Macchina N" da getDescription) e guida il sort.
+                return { id:'d_mc', label:this.$t('menu.machines') };
             if (parent.startsWith("WPALLET"))
                 return { id:'e_wpallet', label:this.$t('position.cat.wpallet') };
             if (parent.startsWith("Pal"))
                 return { id:'f_palfix',  label:this.$t('position.cat.palfix') };
             return { id:'z_other', label:this.$t('position.cat.other') };
+        },
+        // N-3: numero macchina dal PARENT (MC*_N), per il sort primario
+        // dentro la tab Macchine. Stesso parsing del vecchio ramo categoria.
+        getMcNumber(parent){
+            const i = parent.lastIndexOf("_");
+            const n = i>0 ? parseInt(parent.substring(i+1)) : NaN;
+            return isNaN(n) ? 0 : n;
         },
         setSort(field){
             if (this.sortField==field)
@@ -413,7 +421,17 @@ export default {
             let rows = this.datiTabFiltred
                 .filter(dt => this.getCategory(dt.PARENT.trim()).id==this.categoryFilter);
             const dir = this.sortDir;
-            rows = rows.slice().sort((a,b)=> (a.SUB_POS-b.SUB_POS)*dir);
+            rows = rows.slice().sort((a,b)=>{
+                // N-3: nella tab Macchine il primario e' il numero macchina
+                // (fisso asc: le righe delle macchine non si interlacciano
+                // nemmeno invertendo la direzione), secondario SUB_POS.
+                // Nelle altre categorie resta SUB_POS puro.
+                if (this.categoryFilter=='d_mc'){
+                    const dm = this.getMcNumber(a.PARENT.trim()) - this.getMcNumber(b.PARENT.trim());
+                    if (dm!=0) return dm;
+                }
+                return (a.SUB_POS-b.SUB_POS)*dir;
+            });
             return [{ key:'flat', label:null, rows:rows }];
         }
     },
