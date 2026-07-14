@@ -150,12 +150,12 @@
 
         <!-- M: bottone unico a label FISSA (pattern anti-race: bottone neutro
              + dialog esplicito). NON invia mai direttamente: apre il dialog
-             del ramo valido — carico (11) se nessuna pinza a bordo, NUOVA
-             conferma scarico (12) se pinza a bordo. Gating = il flag del
-             ramo che aprirebbe. -->
+             del ramo valido — carico (11) se nessuna pinza a bordo, conferma
+             scarico (12) se pinza a bordo. Gate = gripperBranchEnabled
+             (computed, unica fonte di verita' per classe e click). -->
         <button class="pure-u-1 button_pressed"
-          :class="[(dataStored.cmdActiveLoad==1 || dataStored.cmdActiveMission==1)? 'pure-button-mission' : 'pure-button-disable']"
-          @click="(dataStored.cmdActiveLoad==1 || dataStored.cmdActiveMission==1)?openGripperMission():''">
+          :class="[gripperBranchEnabled? 'pure-button-mission' : 'pure-button-disable']"
+          @click="gripperBranchEnabled?openGripperMission():''">
           {{ $t('robot.mission.gripper') }}
         </button>
 
@@ -476,22 +476,22 @@ export default {
       return !!(this.dataGripper && this.dataGripper[0] &&
                 this.dataGripper[0].ID != null);
     },
-    // M: dispatcher del bottone unico "Gestione pinza". Label fissa,
-    // nessun invio diretto: apre il dialog del ramo valido.
+    // M-fix: dispatcher del bottone unico "Gestione pinza". NESSUNA
+    // condizione propria: il gate e' solo gripperBranchEnabled (stessa
+    // fonte del :class del bottone) -> bottone attivo => il tap apre
+    // sempre il dialog del ramo corrente. Nessun tap muto per costruzione.
     openGripperMission() {
-      if (this.gripperOnBoardNow()) {
-        if (dataStored.cmdActiveMission == 1)
-          this.unloadOpen = true;
-      } else {
-        if (dataStored.cmdActiveLoad == 1)
-          this.openDialog('gripper');
-      }
+      if (this.gripperOnBoardNow())
+        this.unloadOpen = true;
+      else
+        this.openDialog('gripper');
     },
-    // M: conferma scarico (cmd 12) con re-check del discriminante: se lo
-    // stato e' cambiato mentre il dialog era aperto, chiudi con messaggio
-    // e NON inviare.
+    // M: conferma scarico (cmd 12) con re-check del discriminante sulla
+    // STESSA fonte di verita' del bottone (segnali primari freschi, non i
+    // flag dataStored stantii): se lo stato e' cambiato mentre il dialog
+    // era aperto, chiudi con messaggio e NON inviare.
     confirmUnload() {
-      if (dataStored.cmdActiveMission != 1 || !this.gripperOnBoardNow()) {
+      if (!this.gripperBranchEnabled || !this.gripperOnBoardNow()) {
         this.unloadOpen = false;
         dataStored.alert.title = this.$t('WARNING');
         dataStored.alert.desc = 'robot.dialog.stateChanged';
@@ -555,6 +555,17 @@ export default {
     }
   },
   computed: {
+    // M-fix: UNICA fonte di verita' del bottone "Gestione pinza", reattiva
+    // sui segnali PRIMARI (dataRobot.STATUS + dataGripper) — non sui flag
+    // dataStored, che vengono ricalcolati solo sugli eventi ROBOT/STATUS e
+    // restavano stantii dopo un UPDATEGRIPPER (tap muto dello smoke test).
+    // Ramo scarico: inHold && onBoard; ramo carico: inHold && !onBoard —
+    // col ramo scelto da onBoard stesso, il gate netto si riduce a inHold.
+    gripperBranchEnabled() {
+      const inHold = this.dataRobot.STATUS == dataStored.status_hold;
+      const onBoard = this.gripperOnBoardNow();
+      return onBoard ? (inHold && onBoard) : (inHold && !onBoard);
+    },
     dialogTitle() {
       switch (this.dialog.type) {
         case 'gripper':      return 'robot.dialog.chooseGripper';
