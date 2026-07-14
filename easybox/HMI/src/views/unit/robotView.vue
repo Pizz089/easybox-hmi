@@ -242,6 +242,15 @@
               (ID {{ dataGripper[0].ID }})
             </div>
 
+            <!-- M3: "Deposita e cambia" — invia il 12 e, quando arrivano
+                 pinza scesa (UPDATEGRIPPER) e rientro in HOLD, apre
+                 AUTOMATICAMENTE il dialog di carico: l'11 lo conferma
+                 sempre l'operatore, mai auto-invio. -->
+            <button class="pure-u-1 button_pressed pure-button-mission"
+              @click="confirmUnload(true)">
+              {{ $t('robot.dialog.unloadAndSwap') }}
+            </button>
+
             <div class="pure-g">
               <div class="pure-u-1-2">
                 <button style="width:100%" class="button_pressed pure-button-mission"
@@ -284,7 +293,11 @@ export default {
       // trayBusy = manovra in corso (EXTRACT 1000 richiesta estrazione /
       // 2000 richiesta rilascio). A freddo: null/false -> ramo estrazione.
       extractedTray: null,
-      trayBusy: false
+      trayBusy: false,
+      // M3: swap pinza — dopo "Deposita e cambia" (12 inviato) si attende
+      // la conferma pinza scesa per aprire il dialog di carico.
+      swapPending: false,
+      swapTimer: null
     }
   },
   methods: {
@@ -513,7 +526,7 @@ export default {
     // STESSA fonte di verita' del bottone (segnali primari freschi, non i
     // flag dataStored stantii): se lo stato e' cambiato mentre il dialog
     // era aperto, chiudi con messaggio e NON inviare.
-    confirmUnload() {
+    confirmUnload(withSwap = false) {
       if (!this.gripperBranchEnabled || !this.gripperOnBoardNow()) {
         this.unloadOpen = false;
         dataStored.alert.title = this.$t('WARNING');
@@ -527,6 +540,28 @@ export default {
       this.getGrippersList();
       this.getPalletsList();
       this.getTraysList();
+      // M3: "Deposita e cambia" — arma l'attesa della conferma pinza scesa.
+      // 90s: la missione di deposito e' fisica; oltre, annullamento
+      // SILENZIOSO (l'operatore rifa' il giro a mano dal bottone).
+      if (withSwap) {
+        this.swapPending = true;
+        clearTimeout(this.swapTimer);
+        this.swapTimer = setTimeout(() => { this.swapPending = false; }, 90000);
+      }
+    },
+    // M3: sblocco dello swap. Condizioni (in qualunque ordine arrivino:
+    // UPDATEGRIPPER puo' precedere il rientro in HOLD): pinza scesa +
+    // robot in HOLD + nessun altro dialog aperto (se l'operatore ha gia'
+    // aperto altro, lo swap si annulla in silenzio). SOLO apertura del
+    // dialog di carico: l'11 parte solo dalla conferma dell'operatore.
+    checkSwapPending() {
+      if (!this.swapPending) return;
+      if (this.gripperOnBoardNow()) return;                              // pinza ancora a bordo
+      if (this.dataRobot.STATUS != dataStored.status_hold) return;       // attende il rientro in HOLD
+      this.swapPending = false;
+      clearTimeout(this.swapTimer);
+      if (this.dialog.type != '' || this.unloadOpen) return;             // operatore ha preso il controllo
+      this.openDialog('gripper');
     },
     closeDialog() {
       this.dialog.type = '';
@@ -594,6 +629,13 @@ export default {
       this.getPalletsList();
       this.getTraysList();
     }
+  },
+  watch: {
+    // M3: lo swap si sblocca su pinza-scesa E rientro in HOLD, in qualunque
+    // ordine arrivino i due eventi (dataGripper cambia su UPDATEGRIPPER via
+    // getRobotData, STATUS via statusHandler).
+    dataGripper() { this.checkSwapPending(); },
+    'dataRobot.STATUS'() { this.checkSwapPending(); }
   },
   computed: {
     // M-fix: UNICA fonte di verita' del bottone "Gestione pinza", reattiva
@@ -684,6 +726,8 @@ export default {
     // staccherebbe anche i listener di altri componenti (es. units.vue).
     dataStored.WS.socket.off('ROBOT/STATUS', this.statusHandler);
     dataStored.WS.socket.off('BOX/STATUS', this.boxStatusHandler);
+    // M3: niente timer orfani (lo swap muore con la view)
+    clearTimeout(this.swapTimer);
     //dataStored.WS.socket.off('ROBOT/DESCR');
     //dataStored.WS.socket.off('ROBOT/UPDATEGRIPPER');
   }

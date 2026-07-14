@@ -248,6 +248,7 @@
       "chooseTray": "Which tray to extract?",
       "releaseTray": "Release the extracted tray?",
       "unloadGripper": "Unload the on-board gripper?",
+      "unloadAndSwap": "Unload and swap",
       "stateChanged": "State changed: command cancelled",
       "tray": "Tray",
       "confirm": "Confirm",
