@@ -308,7 +308,8 @@
     },
     "mission": {
       "gripper": "Gestione pinza",
-      "tray": "Gestione cassetto"
+      "tray": "Gestione cassetto",
+      "pallet": "Gestione pallet"
     }
   },
   "unit": {

@@ -159,16 +159,15 @@
           {{ $t('robot.mission.gripper') }}
         </button>
 
+        <!-- M-PALLET(B): bottone unico a label FISSA. NON invia mai
+             direttamente: apre palletLoad (13) se la pinza pallet e' VUOTA
+             (STATUS==status_empty, stessa discriminazione di PalletsView) o
+             palletUnload (14) se c'e' un oggetto in pinza.
+             Gate = palletBranchEnabled (unica fonte per classe e click). -->
         <button class="pure-u-1 button_pressed"
-          :class="[dataStored.cmdActivePallet==0? 'pure-button-disable' : 'pure-button-mission']"
-          @click="dataStored.cmdActivePallet==1?openDialog('palletLoad'):''">
-          {{ $t('CARICA PALLET') }}
-        </button>
-
-        <button class="pure-u-1 button_pressed"
-          :class="[dataStored.cmdActivePallet==0? 'pure-button-disable' : 'pure-button-mission']"
-          @click="dataStored.cmdActivePallet==1?openDialog('palletUnload'):''">
-          {{ $t('SCARICA PALLET') }}
+          :class="[palletBranchEnabled? 'pure-button-mission' : 'pure-button-disable']"
+          @click="palletBranchEnabled?openPalletMission():''">
+          {{ $t('robot.mission.pallet') }}
         </button>
 
         <!-- M2: bottone unico a label FISSA per i cassetti. NON invia mai
@@ -512,6 +511,14 @@ export default {
       return !!(this.dataGripper && this.dataGripper[0] &&
                 this.dataGripper[0].ID != null);
     },
+    // M-PALLET(B): discriminatore del ramo pallet — pinza pallet VUOTA.
+    // Stessa logica IDENTICA di PalletsView (dataGripper.STATUS==2, dove
+    // 2 = dataStored.status_empty); ogni altro STATUS (raw/finished/...)
+    // = oggetto in pinza.
+    palletGripperEmptyNow() {
+      return this.gripperOnBoardNow() &&
+             this.dataGripper[0].STATUS == dataStored.status_empty;
+    },
     // M-fix: dispatcher del bottone unico "Gestione pinza". NESSUNA
     // condizione propria: il gate e' solo gripperBranchEnabled (stessa
     // fonte del :class del bottone) -> bottone attivo => il tap apre
@@ -529,6 +536,14 @@ export default {
         this.openDialog('trayRelease');
       else
         this.openDialog('tray');
+    },
+    // M-PALLET(B): dispatcher del bottone unico "Gestione pallet".
+    // Nessuna condizione propria (gate = palletBranchEnabled).
+    openPalletMission() {
+      if (this.palletGripperEmptyNow())
+        this.openDialog('palletLoad');
+      else
+        this.openDialog('palletUnload');
     },
     // M: conferma scarico (cmd 12) con re-check del discriminante sulla
     // STESSA fonte di verita' del bottone (segnali primari freschi, non i
@@ -617,8 +632,13 @@ export default {
             : (this.gripperBranchEnabled && !this.gripperOnBoardNow());
           break;
         case 'palletLoad':
+          // M-PALLET(B) re-check: fonte fresca + discriminatore del ramo
+          // (carico valido solo se la pinza pallet e' ancora vuota)
+          missionEnabled = (this.palletBranchEnabled && this.palletGripperEmptyNow());
+          break;
         case 'palletUnload':
-          missionEnabled = dataStored.cmdActivePallet;
+          // (scarico valido solo se c'e' ancora un oggetto in pinza)
+          missionEnabled = (this.palletBranchEnabled && !this.palletGripperEmptyNow());
           break;
         case 'tray':
           // M2 re-check EXTRACT (punto 8): ancora nessun estratto/manovra
@@ -705,6 +725,14 @@ export default {
       if (!inHold || !this.gripperOnBoardNow()) return false;
       if (this.trayBusy) return false;
       return true;
+    },
+    // M-PALLET(B): unica fonte di verita' del bottone "Gestione pallet".
+    // Gating storico di cmdActivePallet (inHold && gripperOnBoard, da
+    // Mission_enabled) valutato fresco sui segnali primari; il ramo 13/14
+    // e' scelto da palletGripperEmptyNow.
+    palletBranchEnabled() {
+      const inHold = this.dataRobot.STATUS == dataStored.status_hold;
+      return inHold && this.gripperOnBoardNow();
     },
     dialogTitle() {
       switch (this.dialog.type) {
