@@ -12,15 +12,12 @@
 </script>
 
 <template>   
-      &nbsp;
-      <div class="pure-u-21-24">
-        <!--div class="pure-u-1-2" style="background-color: lightcoral;">merda</div>
-        <div class="pure-u-1-2" style="background-color: lightblue;">merdone</div>
-      </div-->
+      <div class="view-shell">
+        <h2 v-if="!createNew" class="view-title">{{ $t('grating.data')}}  {{ $route.params.grating_ID }}</h2>
+        <h2 v-if="createNew" class="view-title"> {{ $t('grating.createNew')}} </h2>
 
+      <div class="pure-g grating-row">
       <div class="pure-u-11-24">
-        <h2 v-if="!createNew">{{ $t('grating.data')}}  {{ $route.params.grating_ID }}</h2>
-        <h2 v-if="createNew"> {{ $t('grating.createNew')}} </h2>
 
         <div class="pure-form pure-g" >
             <!--fieldset-->
@@ -143,13 +140,12 @@
                         @update="newValue => grating.SAFEY = newValue">
                     </numericField>
                 </div> 
-                <div class="pure-u-1 row-spaced">
+                <div class="pure-u-1 btn-group row-spaced">
                     <button class="pure-button pure-button-primary" @click="saveData() && createModelFile()"
 							:disabled="dataStored.userLevel<0 || grating.SAFEX<minSafeX || grating.SAFEY<minSafeY ">
                         {{$t("Save") }} & {{$t("Create_model_file")}}
                     </button>
-                    &nbsp;
-                    <!--button 
+                    <!--button
                         style="padding:20px"
                         :disabled="!DownloadModel || createNew"
                         @click="DownloadModel()"
@@ -202,12 +198,8 @@
             <!--/fieldset-->
         </div>
       </div>
-      <div class="pure-u-1-24">
-        &nbsp;
-      </div>
       <!-- LAYOUT -->
       <div class="pure-u-11-24">
-        <br><br>
         <!-- GR3: margin-left 130px = posizionamento magico legato alla scena SVG
              sottostante, lasciato deliberatamente (raddrizzarlo e' refactor layout) -->
         <div class="pure-u-1" style="margin-left:130px">
@@ -350,7 +342,7 @@
             </div>
         </div>
     </div>
-    <br><br><br><br><br><br><br><br><br><br><br><br><br>
+    </div>
     </div>
 </template>
 
@@ -944,6 +936,13 @@ export default {
     /* Ex inline (GR2): spaziatura riga azioni + margine del bottone associa. */
     .row-spaced{
         margin-top: var(--space-5);
+    }
+
+    /* Shell §2.3: riga a due colonne form | preview (come layout-row di
+       ImportGrating). pure-g e' flex, il gap si applica. */
+    .grating-row{
+        gap: var(--space-4);
+        align-items: flex-start;
     }
     .associate-btn{
         margin-top: var(--space-2);

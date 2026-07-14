@@ -7,8 +7,9 @@
 </script>
 
 
-<template>   
-    <h2 class="layout-title">&nbsp;LAYOUT {{ $t('TRAY')}} ID{{$route.params.trayID }} - {{$t('piano')}}{{$route.params.floorMag }}</h2>
+<template>
+  <div class="view-shell">
+    <h2 class="layout-title view-title">LAYOUT {{ $t('TRAY')}} ID{{$route.params.trayID }} - {{$t('piano')}}{{$route.params.floorMag }}</h2>
 	
     <div class="pure-u-1">
         <svg width="480" height="360" 
@@ -71,7 +72,7 @@
     <div class="pure-u-1">
         <svg width="480" height="100" 
             version="1.1" xmlns="http://www.w3.org/2000/svg" 
-            viewBox="0 0 480 100" style="margin-top:20px;margin-left:60px"> 
+            viewBox="0 0 480 100" style="margin-left:60px">
             
             <rect x="51" y="0" width="50" height="50" style="fill:lightgray" />
             <text x="58" y="28" style="fill:white;font-family:times;font-size:10">EMPTY</text>
@@ -96,12 +97,12 @@
     </div>
 
     <div class="pure-u-3-4" v-if="$route.params.modifyEnable==1">
-        <div class="pure-u-1">
-            <button class="btn-ghost pure-u-1-2 bulk-btn" @click="allRaugh()">Tutti grezzi </button>
-            <button class="btn-ghost pure-u-1-2 bulk-btn" @click="allEmpty()">Tutti vuoti </button>
+        <div class="btn-group">
+            <button class="btn-ghost" @click="allRaugh()">Tutti grezzi </button>
+            <button class="btn-ghost" @click="allEmpty()">Tutti vuoti </button>
         </div>
-        <div class="pure-u-1">
-            <button class="pure-button-primary pure-u-1-2 save-btn" @click="saveAllData()">
+        <div class="btn-group save-row">
+            <button class="pure-button-primary" @click="saveAllData()">
                 Save!
                 <progress v-if="avanzamento>0" max="100" :value="avanzamento"> {{avanzamento}} </progress>
             </button>
@@ -110,6 +111,7 @@
     <div class="pure-u-1" v-if="$route.params.modifyEnable==0">
         <h2 class="blink"> VIEW ONLY!! </h2>
     </div>
+  </div>
 </template>
 
 <script>
@@ -341,12 +343,8 @@
         }
     }
 
-    /* Ex inline (LY2/LY3): solo spacing, l'estetica viene dalle varianti
-       canoniche (buttons.css). */
-    .bulk-btn {
-        margin: var(--space-2);
-    }
-    .save-btn {
-        margin: var(--space-4) var(--space-2) var(--space-2);
+    /* Spaziatura extra della riga Save sotto i bulk (il resto dal .btn-group). */
+    .save-row {
+        margin-top: var(--space-2);
     }
 </style>

@@ -12,15 +12,12 @@
 </script>
 
 <template>   
-      &nbsp;
-      <div class="pure-u-21-24">
-        <!--div class="pure-u-1-2" style="background-color: lightcoral;">merda</div>
-        <div class="pure-u-1-2" style="background-color: lightblue;">merdone</div>
-      </div-->
-<p>test</p>
+      <div class="view-shell">
+        <h2 v-if="!createNew" class="view-title">{{ $t('grating.data')}}  {{ $route.params.grating_ID }}</h2>
+        <h2 v-if="createNew" class="view-title"> {{ $t('grating.createNew')}} </h2>
+
+      <div class="pure-g grating-row">
       <div class="pure-u-11-24">
-        <h2 v-if="!createNew">{{ $t('grating.data')}}  {{ $route.params.grating_ID }}</h2>
-        <h2 v-if="createNew"> {{ $t('grating.createNew')}} </h2>
 
         <div class="pure-form pure-g" >
             <!--fieldset-->
@@ -174,12 +171,8 @@
             <!--/fieldset-->
         </div>
       </div>
-      <div class="pure-u-1-24">
-        &nbsp;
-      </div>
       <!-- LAYOUT -->
       <div class="pure-u-11-24">
-        <br><br>
         <!-- GR3: margin-left 130px = posizionamento magico legato alla scena SVG,
              lasciato deliberatamente -->
         <div class="pure-u-1" style="margin-left:130px">
@@ -257,7 +250,7 @@
 
         </div>
     </div>
-    <br><br><br><br><br><br><br><br><br><br><br><br><br>>
+    </div>
     </div>
 </template>
 
@@ -682,5 +675,11 @@ export default {
     }
     .save-btn{
         margin-top: var(--space-2);
+    }
+
+    /* Shell §2.3: riga a due colonne form | preview. */
+    .grating-row{
+        gap: var(--space-4);
+        align-items: flex-start;
     }
 </style>

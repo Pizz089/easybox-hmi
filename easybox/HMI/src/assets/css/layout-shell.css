@@ -37,6 +37,23 @@
   gap: var(--space-4);
 }
 
+/* Etichetta di sezione dentro le card (stesso impianto del titolo card
+   "COMANDI CRITICI" ma su --text-muted). margin-top solo quando segue
+   altro contenuto (sottosezioni), zero quando apre la card. */
+.section-label {
+  display: block;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin: var(--space-4) 0 0;
+}
+
+.section-label:first-child {
+  margin-top: 0;
+}
+
 /* Gruppo bottoni orizzontale. */
 .btn-group {
   display: flex;

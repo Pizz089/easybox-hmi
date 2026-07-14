@@ -12,6 +12,7 @@ const el = ref()
 </script>
 
 <template>
+  <div class="view-shell">
   <div class="pure-g layout-row">
 
     <div class="pure-u-1 pure-u-md-10-24" >
@@ -118,8 +119,6 @@ const el = ref()
         </button>
       </div>
       <!----------------------------------->
-        <br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
-
       <div class="stats" v-if="ready">
         <p>
           <strong>{{ n_row }}</strong> righe × <strong>{{ n_cln }}</strong> colonne
@@ -170,7 +169,7 @@ const el = ref()
   </div>
 </div>
 
-
+  </div>
   </div>
 </template>
 

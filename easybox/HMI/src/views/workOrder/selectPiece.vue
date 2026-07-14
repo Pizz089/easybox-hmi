@@ -9,14 +9,10 @@
 </script>
 
 <template>
-   <workOrderStep></workOrderStep>
-  <div class="pure-g">
-    <div class="pure-u-1-24">
-          &nbsp;
-      </div>
-    <span class="pure-u-22-24">
-      <h3>Tipo pezzo</h3>
-      <div class="search-bar">
+  <div class="view-shell">
+    <workOrderStep></workOrderStep>
+    <h3 class="view-title">Tipo pezzo</h3>
+    <div class="search-bar">
           <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24"
                fill="none" stroke="currentColor" stroke-width="2"
                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -30,6 +26,7 @@
               v-model="searchQuery"
           />
       </div>
+    <div class="pure-g">
       <div class="container_card pure-u-1-2 pure-u-md-1-3 pure-u-lg-1-5">
         <div class="card" @click="nextStep(0)" style="background-color: coral;">
             <h4><b>{{ t('wizard.value.manualVice') }}</b></h4>
@@ -52,7 +49,7 @@
             </div>
         </div>
       </div>
-    </span>
+    </div>
   </div>
 </template>
 
@@ -129,7 +126,8 @@ export default {
 .search-bar {
     position: relative;
     max-width: 400px;
-    margin: 0 0 var(--space-4);
+    /* margin-bottom rimosso: lo spazio lo da' il gap del .view-shell */
+    margin: 0;
 }
 
 .search-icon {

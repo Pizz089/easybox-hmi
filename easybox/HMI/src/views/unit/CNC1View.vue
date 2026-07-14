@@ -3,12 +3,9 @@
 </script>
 
 <template>
-  <div class="pure-u-1">
-    
-    <div class="pure-u-1-24">
-    </div>
+  <div class="pure-u-1 unit-columns">
     <div class="pure-u-10-24">
-      <h1>{{$t('Stato')}} {{ $t('MC1') }}</h1>
+      <h1 class="view-title">{{$t('Stato')}} {{ $t('MC1') }}</h1>
       <div class="status-card pure-u-1">
           <h5 v-if="dataFixture.ID>0"> {{$t('Fixture')}} ID: {{ dataFixture.ID }} </h5>
           <h5 v-if="dataFixture.ID>0"> 
@@ -20,10 +17,8 @@
       </div>
 
     </div>
-    <div class="pure-u-1-24">
-    </div>
     <div class="pure-u-10-24">
-      <h1> {{$t('Comandi')}} </h1>
+      <h1 class="view-title"> {{$t('Comandi')}} </h1>
       
       <div class="pure-u-1-2">
         <button class="pure-button-micromission pure-u-1 button_pressed"

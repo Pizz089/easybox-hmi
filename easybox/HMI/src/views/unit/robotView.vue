@@ -3,11 +3,9 @@
 </script>
 
 <template>
-  <div class="pure-u-1">
-    <div class="pure-u-1-24">
-    </div>
+  <div class="pure-u-1 unit-columns">
     <div class="pure-u-10-24">
-      <h1>{{ $t('Stato') }} Robot </h1>
+      <h1 class="view-title">{{ $t('Stato') }} Robot </h1>
       <div class="status-card pure-u-1" :class="getColorFromStatus()">
         <h5>
           <span v-if="dataRobot.DESCR>0">
@@ -37,16 +35,13 @@
               </h5>
             </div>
           </div>
-          <br><br>
         </span>
         <h5 v-else> NO GRIPPER MOUNTED! </h5>
       </div>
 
       
       <div class="pure-control-group">
-        <br><br><br><br>
-        <label for="aligned-foo">ROBOT SPEED: </label>
-        <br>
+        <label class="section-label" for="aligned-foo">ROBOT SPEED: </label>
         <!--numericField 
             name="speed" 
             unitMeasure="%" 
@@ -67,14 +62,12 @@
       </div>
 
     </div>
-    <div class="pure-u-1-24">
-    </div>
     <div class="pure-u-10-24">
-      <h1>{{ $t('Comandi') }}</h1>
+      <h1 class="view-title">{{ $t('Comandi') }}</h1>
 
       <!-- ===== CARD 1: Comandi critici (RESET / HOLD-START / RESTART) ===== -->
       <section class="command-section">
-        <h3 class="command-section-title">{{ $t('robot.section.critical') }}</h3>
+        <h3 class="section-label">{{ $t('robot.section.critical') }}</h3>
 
         <button class="pure-button-micromission pure-u-1 specialCMD button_pressed"
           @click="sendToRobot(99)">
@@ -111,7 +104,7 @@
 
       <!-- ===== CARD 2: Movimenti (HOME/MAINT + Punti destinazione) ===== -->
       <section class="command-section">
-        <h3 class="command-section-title">{{ $t('robot.section.movement') }}</h3>
+        <h3 class="section-label">{{ $t('robot.section.movement') }}</h3>
 
         <button class="pure-u-1 button_pressed"
           :class="[dataStored.cmdActive==0? 'pure-button-disable' : 'pure-button-micromission']"
@@ -125,7 +118,7 @@
           {{ $t('MAINTENANCE') }}
         </button>
 
-        <h4 class="command-subsection-title">{{ $t('robot.section.destination') }}</h4>
+        <h4 class="section-label">{{ $t('robot.section.destination') }}</h4>
         <div class="pure-g">
           <div class="pure-u-1-3">
             <button style="width:100%" class="button_pressed"
@@ -153,7 +146,7 @@
 
       <!-- ===== CARD 3: Missioni (SCARICA/CARICA PINZA + CARICA/SCARICA PALLET) ===== -->
       <section class="command-section">
-        <h3 class="command-section-title">{{ $t('robot.section.mission') }}</h3>
+        <h3 class="section-label">{{ $t('robot.section.mission') }}</h3>
 
         <button class="pure-u-1 button_pressed"
           :class="[dataStored.cmdActiveMission==0? 'pure-button-disable' : 'pure-button-mission']"

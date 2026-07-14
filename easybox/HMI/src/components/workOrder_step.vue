@@ -113,7 +113,8 @@ const steps = computed(() => {
   justify-content: space-between;
   gap: var(--space-3);
   padding: var(--space-5) var(--space-4);
-  margin-bottom: var(--space-5);
+  /* margin-bottom rimosso: lo spazio lo da' il gap del .view-shell delle view */
+  margin-bottom: 0;
   position: relative;
 }
 

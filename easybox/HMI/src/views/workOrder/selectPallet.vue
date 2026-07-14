@@ -9,16 +9,11 @@
 </script>
 
 <template>
-   <workOrderStep></workOrderStep>
-  <div class="pure-g">
-    <div class="pure-u-1-24">
-          &nbsp;
-      </div>
-    <span class="pure-u-22-24">
-      <h3> 
-          Tipo pallet
-          <!--button class="pure-button-primary">create new </button--> 
-      </h3> 
+  <div class="view-shell">
+    <workOrderStep></workOrderStep>
+    <h3 class="view-title"> Tipo pallet </h3>
+    <!--button class="pure-button-primary">create new </button-->
+    <div class="pure-g">
 
       <div class="container_card pure-u-1-2 pure-u-md-1-3 pure-u-lg-1-5">
         <div class="card" @click="nextStep(0)" style="background-color: coral;">
@@ -40,7 +35,7 @@
             </div>
         </div>
       </div>
-    </span>
+    </div>
   </div>
 </template>
 

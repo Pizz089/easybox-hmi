@@ -103,6 +103,7 @@ Ogni view usa il guscio standard:
 - **Larghezza contenuto**: piena del `.content` (che dà già `padding: 80px --space-5 --space-4`); l'eventuale limite si mette come `max-width` sulla card (es. `.machine-card`), non con colonne-spacer.
 - **Titolo**: sempre `.view-title` (`--font-size-xl`, semibold, `margin: 0` — lo spazio sotto lo dà il gap del shell); il tag (h1..h3) è libero. Titolo + azioni sulla stessa riga = `.view-header`.
 - **Gruppi bottoni**: `.btn-group` (flex, `gap: --space-4`, wrap) + varianti `--end`/`--center`.
+- **Etichette di sezione dentro le card**: `.section-label` (`--font-size-sm`, semibold, uppercase, 0.05em, `--text-muted`; `margin-top: --space-4` quando segue contenuto, 0 se apre la card) — usata dalle unit view per i gruppi comandi.
 - **VIETATI nel guscio**: colonne spacer `pure-u-1-24`, `&nbsp;` e `<br>` come spaziatori.
 
 **Deroghe shell**: Dashboard senza titolo (è il pannello di default kiosk); MqttDiag guscio denso proprio (vedi deroga light §3.4); Gripper/Vice fino alla ritematizzazione glassmorphism (§4.2); TestView escluso (playground di sviluppo); i `margin-left` della scena SVG di Grating (deroga GR3); le griglie comando frazionali delle unit view (`pure-u-1-2/1-3/1-5`) restano — si uniforma solo il gap.

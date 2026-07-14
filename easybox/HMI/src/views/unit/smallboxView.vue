@@ -4,11 +4,9 @@
 </script>
 
 <template>
-  <div class="pure-u-1">
-    <div class="pure-u-1-24">
-    </div>
+  <div class="pure-u-1 unit-columns">
     <div class="pure-u-10-24">
-      <h1>{{$t('Stato')}} EasyBox </h1>
+      <h1 class="view-title">{{$t('Stato')}} EasyBox </h1>
       <div class="status-card pure-u-1" :class="getColorFromStatus()">
           <h5>
             {{ getDescriptionFromStatus(status) }}
@@ -39,11 +37,9 @@
     </div>
 
     <!--------------------- COLONNA COMANDI -------------------->
-    
-    <div class="pure-u-1-24">
-    </div>
+
     <div class="pure-u-10-24">
-      <h1> {{$t('Comandi')}} </h1>
+      <h1 class="view-title"> {{$t('Comandi')}} </h1>
       
       <button class="pure-button-micromission pure-u-1 specialCMD button_pressed" 
         @click="sendToBox(99)">
@@ -57,9 +53,7 @@
         <button class="pure-button-micromission pure-u-1"  style="margin-top:10px; padding:10px"> {{ $t('CHIUDI_PORTA')}}</button>
       </div-->    
       
-      <br><br><br><br><br><br>
-
-      <h6> {{ $t("unit.MacroMission") }}
+      <h6 class="section-label"> {{ $t("unit.MacroMission") }}
       </h6>
       <div class="pure-u-1">
         <button class="pure-u-1"

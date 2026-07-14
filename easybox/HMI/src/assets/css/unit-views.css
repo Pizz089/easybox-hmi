@@ -53,6 +53,17 @@
    qui restano solo pattern specifici delle unit view. */
 
 
+/* ============ UNIT COLUMNS (shell §2.3) ============ */
+/* Colonne stato|comandi affiancate: sostituisce le colonne-spacer
+   pure-u-1-24 (vietate dal shell standard). Le larghezze pure-u-10-24
+   dei figli restano invariate. */
+.unit-columns {
+    display: flex;
+    gap: var(--space-5);
+    align-items: flex-start;
+}
+
+
 /* ============ ANIMATIONS ============ */
 /* @keyframes globale: allineato a units.vue UI-3.3 (pulse su accent-hover). */
 @keyframes blinker {

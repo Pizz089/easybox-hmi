@@ -5,19 +5,14 @@
 </script>
 
 <template>
-   <workOrderStep></workOrderStep>
-  <div class="pure-g">
-    <div class="pure-u-1-24">
-          &nbsp;
-      </div>
-    <span class="pure-u-22-24">
-      <h3> 
-          Tipo Pinza
-      </h3> 
+  <div class="view-shell">
+    <workOrderStep></workOrderStep>
+    <h3 class="view-title"> Tipo Pinza </h3>
+    <div class="pure-g">
       <div v-for="(p) in data" :key="p.ID" class="container_card pure-u-1-2 pure-u-md-1-3 pure-u-lg-1-5">
 
         <div class="card" @click="nextStep(p.ID)">
-            <div class="container" style="padding-bottom: 21px;">
+            <div class="container">
                 <h3 style="min-height: 80px;margin:auto;width:80%;"> <b>{{ p.FAMILY }}</b> </h3>
                 <hr>
                 <h5 style="min-height: 60px;margin:auto;width:80%;"> {{p.DESCR}}</h5>
@@ -29,7 +24,7 @@
         </div>
 
       </div>
-    </span>
+    </div>
   </div>
 </template>
 

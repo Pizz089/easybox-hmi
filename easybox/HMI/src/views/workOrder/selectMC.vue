@@ -5,25 +5,20 @@
 </script>
 
 <template>
-   <workOrderStep></workOrderStep>
-  <div class="pure-g">
-    <!--div class="pure-u-1-24">
-          &nbsp;
-      </div-->
-    <span class="pure-u-22-24">
-      <h3> 
-        &nbsp; Macchina
-      </h3> 
+  <div class="view-shell">
+    <workOrderStep></workOrderStep>
+    <h3 class="view-title"> Macchina </h3>
+    <div class="pure-g">
       <div v-for="(p) in data" :key="p.ID"
         class="container_card pure-u-1-2 pure-u-md-1-4 pure-u-xl-1-4">
 
         <div v-if="p.UNIT.substring(0,2)=='MC'" class="card" @click="nextStep(p.UNIT)">
-            <div class="container" style="padding-bottom: 21px;">
+            <div class="container">
                 <h4><b>{{ p.UNIT.trim() }}</b></h4>
             </div>
         </div>
       </div>
-    </span>
+    </div>
   </div>
 </template>
 
