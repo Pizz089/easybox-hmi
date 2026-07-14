@@ -10,7 +10,7 @@
 </script>
 
 <template>   
-      <div class="view-shell conf-card">
+      <div class="view-shell view-shell--fill conf-card">
         <div class="view-header">
           <h3 class="view-title">{{$t('grating.welcome')}}</h3>
           <div class="btn-group">

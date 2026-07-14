@@ -269,17 +269,16 @@ main.content:has(table.pure-table.pure-table-horizontal) td.WORKING:not(.table-d
   padding: var(--space-4);
 }
 
-/* Zona tabella scrollabile dentro la conf-card (K-FIX2, opzione A variante
-   max-height): il thead sticky della regola globale ingaggia su QUESTO
-   wrapper invece che sulla pagina (dove finiva sotto la topbar fissa).
-   280px = budget guscio: 80 padding-top .content + 16 padding card +
-   ~52 view-header + 16 gap + 16 padding card + 16 bottom + margine.
-   Liste corte restano compatte (max-height, non height), lunghe scrollano
-   internamente con titolo+bottone crea sempre visibili. */
+/* Zona tabella scrollabile dentro la conf-card (K-FIX3, pattern FILL come
+   Produzione): la view ha .view-shell--fill (height vincolata), la card e'
+   la colonna flex, la zona tabella prende il resto e scrolla internamente
+   -> il thead sticky della regola globale ingaggia su QUESTO wrapper.
+   Il box arriva sempre al fondo pagina; nelle liste corte lo spazio vuoto
+   resta dentro la card, come in Produzione. */
 .conf-card .table-scroll {
-  max-height: calc(100vh - 280px);
-  overflow-y: auto;
+  flex: 1;
   min-height: 0;
+  overflow-y: auto;
 }
 
 

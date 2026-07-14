@@ -8,7 +8,7 @@
 </script>
 
 <template>   
-      <div class="view-shell">
+      <div class="view-shell view-shell--fill">
         <div class="view-header">
           <h3 class="view-title">{{$t('position.welcome')}}</h3>
           <!--button class="pure-button pure-button-primary" @click="createposition()">
@@ -498,20 +498,26 @@ export default {
         display: flex;
         align-items: center;
         gap: var(--space-2);
+        min-width: 0;   /* comprimibile dentro la view-header */
     }
 
-    /* Titolo su una riga dentro la .view-header (testo lungo a 28px). */
-    .view-header .view-title{
-        white-space: nowrap;
+    /* K-FIX3 2a: l'header non deve mai sforare il viewport — niente nowrap
+       sul titolo (puo' andare a capo), la riga puo' wrappare e la search
+       si comprime. */
+    .view-header{
+        flex-wrap: wrap;
     }
 
-    /* contenitore di scroll: il thead sticky della regola globale
-       (custom-fix.css) si aggancia qui. max-height perche' il parent
-       non e' flex column (diversamente dal pattern prodtable). */
+    /* Contenitore di scroll (K-FIX3, pattern FILL come Produzione): il
+       parent ORA e' flex column vincolato (.view-shell--fill), quindi via
+       il max-height a stima -> flex:1 + min-height:0. Il thead sticky
+       della regola globale ingaggia qui. overflow-x per le colonne larghe:
+       lo scroll orizzontale sta nel wrapper, mai sulla pagina. */
     .postable-wrapper{
-        /* margin-top rimosso: lo spazio lo da' il gap del .view-shell */
+        flex: 1;
+        min-height: 0;
         overflow-y: auto;
-        max-height: calc(100vh - 240px);
+        overflow-x: auto;
     }
 
     .th-sort{
@@ -533,6 +539,10 @@ export default {
         min-height: 44px;   /* touch target, come .cat-filter */
         padding: var(--space-2);
         font-size: var(--font-size-base);
+        /* elastica: si comprime senza far sforare l'header (K-FIX3 2a) */
+        flex: 1;
+        min-width: 120px;
+        max-width: 280px;
     }
 
     /* K-FIX2: larghezza fluida (segue il resize), min-width per i numeri

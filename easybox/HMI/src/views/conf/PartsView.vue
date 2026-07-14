@@ -6,7 +6,7 @@
 </script>
 
 <template>
-    <div class="view-shell conf-card" >
+    <div class="view-shell view-shell--fill conf-card" >
       <div class="view-header">
           <h3 class="view-title"> Tipo pezzi </h3>
           <button class="pure-button pure-button-primary"

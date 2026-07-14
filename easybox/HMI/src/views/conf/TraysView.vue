@@ -8,7 +8,7 @@
 </script>
 
 <template>   
-      <div class="view-shell conf-card">
+      <div class="view-shell view-shell--fill conf-card">
         <div class="view-header">
             <h3 class="view-title">{{$t('tray.welcome')}}</h3>
             <button class="pure-button pure-button-primary" :class="{'pure-button-disabled':dataStored.userLevel<=1}" :id="locked" @click="createTray()">
