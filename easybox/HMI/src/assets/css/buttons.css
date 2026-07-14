@@ -1,4 +1,4 @@
-/* ============ BUTTON VARIANTS — 6 varianti canoniche (doc §3) ============ */
+﻿/* ============ BUTTON VARIANTS — 6 varianti canoniche (doc §3) ============ */
 /* Sede unica delle varianti bottone del pannello (decisione audit-sistema-b).
    Spostate qui da unit-views.css; import in main.js DOPO design-tokens.css
    (token) e DOPO pure.css (l'alias .pure-button-primary ridefinisce una classe
@@ -18,7 +18,7 @@
        scurisce, le combo bordo/selected che lo usano passano gia'. */
     color: var(--bg-base);
     border: 0;
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-btn);
     padding: var(--space-4) var(--space-5);
     min-height: 52px;
     font-weight: var(--font-weight-medium);
@@ -32,7 +32,7 @@
     background: var(--color-warning-button);
     color: var(--color-warning-text);
     border: 0;
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-btn);
     padding: var(--space-4) var(--space-5);
     min-height: 52px;
     font-weight: var(--font-weight-medium);
@@ -78,7 +78,7 @@
     background: transparent;
     border: 1px solid var(--border-default);
     color: var(--text-secondary);
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-btn);
     min-height: 52px;
     padding: var(--space-4) var(--space-5);
     font-weight: var(--font-weight-medium);
@@ -101,7 +101,7 @@
     color: var(--text-secondary);
     min-height: 44px;
     min-width: 44px;
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-btn);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -136,7 +136,7 @@
        resta "subdued ma leggibile". */
     opacity: 0.8;
     border: 0;
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-btn);
     padding: var(--space-4) var(--space-5);
     min-height: 52px;
     font-weight: var(--font-weight-medium);
@@ -145,10 +145,5 @@
     pointer-events: none;
 }
 
-/* Eccezione forma: "pill solo per critical" (§3.1) vale anche da disabilitato —
-   senza questa regola il radius-md del blocco disabled (0-2-0 via :disabled)
-   vincerebbe su .specialCMD (0-1-0) e il bottone cambierebbe forma con lo stato. */
-.specialCMD:disabled,
-.specialCMD.pure-button-disable {
-    border-radius: var(--radius-pill);
-}
+/* Ex eccezione specialCMD-disabled rimossa (K-FIX): con --radius-btn pill
+   su tutte le varianti azione, il disabled ha gia' la stessa forma. */

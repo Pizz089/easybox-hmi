@@ -129,7 +129,7 @@ Tutti i bottoni del pannello devono ricondursi a una di queste 6 varianti. Nient
 
 ```css
 border: 0;
-border-radius: var(--radius-md);     /* 8px; pill solo per critical */
+border-radius: var(--radius-btn);    /* 999px: PILL = AZIONE, squadrato = informazione (K-FIX 2026-07) */
 min-height: 52px;                     /* touch target industriale */
 padding: var(--space-4) var(--space-5); /* 16 / 24 */
 font-weight: var(--font-weight-medium);
@@ -289,10 +289,15 @@ Regola chiave già consolidata: **`--color-warning`** (#FBBF24 saturato) per **s
 ## 7. Radius / Elevation / Transition — riferimento
 
 ```css
---radius-sm: 4px;    /* icon button, input */
---radius-md: 8px;    /* card, bottoni standard */
+--radius-sm: 4px;    /* input, micro-elementi */
+--radius-md: 8px;    /* card, elementi informativi */
 --radius-lg: 12px;   /* contenitori grandi */
---radius-pill: 999px;/* solo critical/specialCMD */
+--radius-pill: 999px;/* forma pill generica */
+--radius-btn: 999px; /* bottoni AZIONE (tutte le varianti canoniche + icon
+                        button circolari). Regola: PILL = AZIONE, SQUADRATO =
+                        INFORMAZIONE (card, badge, status, input, voci elenco).
+                        Esclusi: segmenti ROBOT SPEED, voci sidebar, palette
+                        ComandsRows solo nei colori (la forma e' pill/cerchio). */
 
 --elevation-1/2/3    /* ombre crescenti; outlined card preferisce border a elevation */
 

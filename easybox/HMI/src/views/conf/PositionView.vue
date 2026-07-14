@@ -487,11 +487,17 @@ export default {
         background-color: var(--color-warning-bg);
     }
 
+    /* K-FIX punto 5: search+filtro affiancati nella .view-header; via
+       l'icona lente in background (era per il vecchio look chiaro). */
     .searchBar{
-        background-image:url('/src/assets/lente.png');
-        background-repeat: no-repeat;
-        background-size: 1.7em;
-        background-position: left;
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+    }
+
+    /* Titolo su una riga dentro la .view-header (testo lungo a 28px). */
+    .view-header .view-title{
+        white-space: nowrap;
     }
 
     /* contenitore di scroll: il thead sticky della regola globale
@@ -512,10 +518,16 @@ export default {
         font-size: var(--font-size-xs);
     }
 
-    /* Ex inline (PV5/PV6): spazio per l'icona lente del searchBar
-       + geometria colonna degli input numerici in edit. */
+    /* Input canonico dark (regola F10: --border-strong sugli input),
+       allineato al select .cat-filter. */
     .search-input{
-        margin-left: var(--space-6);
+        background: var(--bg-input);
+        color: var(--text-primary);
+        border: 1px solid var(--border-strong);
+        border-radius: var(--radius-sm);
+        min-height: 44px;   /* touch target, come .cat-filter */
+        padding: var(--space-2);
+        font-size: var(--font-size-base);
     }
 
     .pos-input{
@@ -524,8 +536,7 @@ export default {
     }
 
     .cat-filter{
-        margin-left: var(--space-4);
-        min-height: 44px;   /* touch target */
+        min-height: 44px;   /* touch target; lo spacing lo da' il gap del .searchBar */
         padding: var(--space-2);
         background: var(--bg-input);
         color: var(--text-primary);

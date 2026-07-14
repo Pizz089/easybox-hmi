@@ -200,6 +200,7 @@
 /* Deroga touch annotata (doc §3.4): 48px, sotto il 52 preferito ma sopra il
    minimo 44 — a 52 le righe della tabella ordini perdono densita'. */
 .pure-button-group .pure-button {
+    /* larghezza = altezza + --radius-btn pill = cerchi (K-FIX doc §3) */
     width: 48px;
     height: 48px;
     padding: 0;
@@ -207,7 +208,7 @@
     align-items: center;
     justify-content: center;
     border: 0;
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-btn);
     cursor: pointer;
     transition: filter var(--transition-fast);
     color: var(--text-primary);

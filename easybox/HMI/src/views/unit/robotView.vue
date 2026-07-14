@@ -119,7 +119,7 @@
         </button>
 
         <h4 class="section-label">{{ $t('robot.section.destination') }}</h4>
-        <div class="pure-g">
+        <div class="pure-g dest-grid">
           <div class="pure-u-1-3">
             <button style="width:100%" class="button_pressed"
               :class="[dataStored.cmdActive==0? 'pure-button-disable' : 'pure-button-micromission']"
@@ -572,6 +572,18 @@ h6 {
   background: var(--color-info);
   border: 4px solid var(--accent);
   animation: blinker 1s linear infinite;
+}
+
+/* Punti di destinazione (K-FIX): pure-g e' flex ma le colonne pure-u-1-3
+   a 33.33% con un gap andrebbero in overflow -> flex:1 con width auto,
+   larghezze uguali tra loro come prima, gap allineato al gap 8 della card. */
+.dest-grid {
+  gap: var(--space-2);
+}
+
+.dest-grid > div {
+  flex: 1;
+  width: auto;
 }
 
 /* Speed selector: 5 bottoni preset 1/10/20/50/100%. Base scura distinguibile

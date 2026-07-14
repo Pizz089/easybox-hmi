@@ -151,8 +151,6 @@
                         @click="DownloadModel()"
                         class="pure-button pure-button-primary buttonDownload">
                         {{$t("scarica modello")}} 
-                        &nbsp;
-                        &nbsp;
                     </button-->
                     
                     <!--button class="pure-button pure-button-primary"  style="padding:20px">

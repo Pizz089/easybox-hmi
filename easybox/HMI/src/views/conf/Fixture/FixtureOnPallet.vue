@@ -29,7 +29,7 @@
                 
                 <span v-if="fixture.POS_PLANT>0">
                     <h4>Position on pallet #{{ fixture.POS_PLANT }}
-                        &nbsp; <button @click="resetData()" class="btn-ghost"> reset position </button>
+                        <button @click="resetData()" class="btn-ghost reset-btn"> reset position </button>
                     </h4> 
                     <div class="pure-control-group">
                         <label for="aligned-foo">X</label>
@@ -46,8 +46,7 @@
                         <input type="number" step="0.02" id="aligned-foo" name="stroke_claw" v-model="fixture.POS_Z" placeholder="0"/>
                         mm
                     </div>
-                    <br>
-                    <div class="pure-control-group">
+                    <div class="pure-control-group group-spaced">
                         <label for="aligned-foo">X_ROT</label>
                         <input type="number" step="0.02" id="aligned-foo" name="stroke_claw" v-model="fixture.POS_X_ROT" placeholder="0"/>
                         °
@@ -62,8 +61,7 @@
                         <input type="number" step="0.02" id="aligned-foo" name="stroke_claw" v-model="fixture.POS_Z_ROT" placeholder="0"/>
                         °
                     </div>
-                    <br>
-                    <div class="pure-control-group">
+                    <div class="pure-control-group group-spaced">
                         <label for="aligned-foo">X_CORR</label>
                         <input type="number" step="0.01" id="aligned-foo" name="stroke_claw" v-model="fixture.POS_X_CORR" placeholder="0"/>
                         mm
@@ -213,5 +211,15 @@ export default {
 
     #aligned-foo{
         width:300px;
+    }
+
+    /* Ex spaziatori <br> tra le terzine del form (K-FIX). */
+    .group-spaced{
+        margin-top: var(--space-4);
+    }
+
+    /* Ex &nbsp; prima del bottone reset inline nell'h4 (K-FIX). */
+    h4 .reset-btn{
+        margin-left: var(--space-2);
     }
 </style>
