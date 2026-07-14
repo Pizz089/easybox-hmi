@@ -305,7 +305,8 @@
       "mission": "Missioni"
     },
     "mission": {
-      "gripper": "Gestione pinza"
+      "gripper": "Gestione pinza",
+      "tray": "Gestione cassetto"
     }
   },
   "unit": {

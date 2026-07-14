@@ -305,7 +305,8 @@
       "mission": "Missions"
     },
     "mission": {
-      "gripper": "Gripper handling"
+      "gripper": "Gripper handling",
+      "tray": "Tray handling"
     }
   },
   "unit": {

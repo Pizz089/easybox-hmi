@@ -171,16 +171,15 @@
           {{ $t('SCARICA PALLET') }}
         </button>
 
+        <!-- M2: bottone unico a label FISSA per i cassetti. NON invia mai
+             direttamente: apre il dialog del ramo corrente — estrazione (25)
+             se nessun cassetto estratto, rilascio (26) se EXTRACT==1.
+             Gate = trayBranchEnabled (unica fonte per classe e click);
+             manovra in corso (EXTRACT 1000/2000) => disabilitato. -->
         <button class="pure-u-1 button_pressed"
-          :class="[dataStored.cmdActiveMission==0? 'pure-button-disable' : 'pure-button-mission']"
-          @click="dataStored.cmdActiveMission==1?openDialog('tray'):''">
-          {{ $t('ESTRAI CASSETTO') }}
-        </button>
-
-        <button class="pure-u-1 button_pressed"
-          :class="[dataStored.cmdActiveMission==0? 'pure-button-disable' : 'pure-button-mission']"
-          @click="dataStored.cmdActiveMission==1?openDialog('trayRelease'):''">
-          {{ $t('RILASCIA CASSETTO') }}
+          :class="[trayBranchEnabled? 'pure-button-mission' : 'pure-button-disable']"
+          @click="trayBranchEnabled?openTrayMission():''">
+          {{ $t('robot.mission.tray') }}
         </button>
 
         <!-- Dialog scelta elemento missione: nessuna preselezione, la conferma
@@ -188,6 +187,13 @@
         <div v-if="dialog.type!=''" class="mission-dialog-overlay">
           <div class="mission-dialog">
             <h3 class="command-section-title">{{ $t(dialogTitle) }}</h3>
+
+            <!-- M2 (aggiunta SOLO informativa, autorizzata): QUALE cassetto
+                 si sta rilasciando -->
+            <div class="unload-info" v-if="dialog.type=='trayRelease' && extractedTray">
+              {{ $t('robot.dialog.tray') }} {{ extractedTray.FLOOR_MAG }}
+              <span v-if="(extractedTray.DESCR || '').trim()"> - {{ extractedTray.DESCR.trim() }}</span>
+            </div>
 
             <!-- trayRelease: dialog di sola conferma, nessun elenco -->
             <div class="mission-dialog-list" v-if="dialog.type!='trayRelease'">
@@ -272,7 +278,13 @@ export default {
         type: '',         // '' | 'gripper' | 'palletLoad' | 'palletUnload' | 'tray' | 'trayRelease'
         selected: null    // riga selezionata; nessuna preselezione
       },
-      unloadOpen: false   // M: dialog conferma scarico pinza (blocco separato)
+      unloadOpen: false,  // M: dialog conferma scarico pinza (blocco separato)
+      // M2: stato estrazione cassetti (colonna TRAY.EXTRACT, appendice audit):
+      // extractedTray = riga con EXTRACT==1 (conferma PLC) o null;
+      // trayBusy = manovra in corso (EXTRACT 1000 richiesta estrazione /
+      // 2000 richiesta rilascio). A freddo: null/false -> ramo estrazione.
+      extractedTray: null,
+      trayBusy: false
     }
   },
   methods: {
@@ -459,6 +471,9 @@ export default {
         .then(trays => {
           // solo cassetti a magazzino: il PLC accetta Tray_ID (FLOOR_MAG) 1..11
           this.traysList = trays.filter(t => t.FLOOR_MAG >= 1 && t.FLOOR_MAG <= 11);
+          // M2: stato estrazione dalla stessa risposta (nessun fetch in piu')
+          this.extractedTray = trays.find(t => t.EXTRACT == 1) || null;
+          this.trayBusy = trays.some(t => t.EXTRACT == 1000 || t.EXTRACT == 2000);
         })
         .catch(error => {
           console.info("-------------")
@@ -485,6 +500,14 @@ export default {
         this.unloadOpen = true;
       else
         this.openDialog('gripper');
+    },
+    // M2: dispatcher del bottone unico "Gestione cassetto". Nessuna
+    // condizione propria (gate = trayBranchEnabled, come per la pinza).
+    openTrayMission() {
+      if (this.extractedTray)
+        this.openDialog('trayRelease');
+      else
+        this.openDialog('tray');
     },
     // M: conferma scarico (cmd 12) con re-check del discriminante sulla
     // STESSA fonte di verita' del bottone (segnali primari freschi, non i
@@ -515,17 +538,35 @@ export default {
       let missionEnabled;
       switch (this.dialog.type) {
         case 'gripper':
-          missionEnabled = dataStored.cmdActiveLoad;
+          // M2 micro-fix autorizzato: stessa fonte di verita' del bottone
+          // (segnali primari), non il flag dataStored stantio. Ramo carico
+          // valido solo se abilitato E ancora senza pinza a bordo.
+          missionEnabled = (this.gripperBranchEnabled && !this.gripperOnBoardNow());
           break;
         case 'palletLoad':
         case 'palletUnload':
           missionEnabled = dataStored.cmdActivePallet;
           break;
+        case 'tray':
+          // M2 re-check EXTRACT (punto 8): ancora nessun estratto/manovra
+          missionEnabled = (this.trayBranchEnabled && !this.extractedTray);
+          break;
+        case 'trayRelease':
+          // M2 re-check EXTRACT (punto 8): il cassetto estratto e' ancora li'
+          missionEnabled = (this.trayBranchEnabled && !!this.extractedTray);
+          break;
         default:
           missionEnabled = dataStored.cmdActiveMission;
       }
-      if (missionEnabled != 1)
+      if (missionEnabled != 1) {
+        // M2 (vincolo di design): stato cambiato col dialog aperto ->
+        // chiudi con messaggio, NON inviare (prima: return muto).
+        this.closeDialog();
+        dataStored.alert.title = this.$t('WARNING');
+        dataStored.alert.desc = 'robot.dialog.stateChanged';
+        dataStored.alert.type = 'warning';
         return;
+      }
       // trayRelease e' a sola conferma, non richiede selezione
       if (this.dialog.type != 'trayRelease' && this.dialog.selected == null)
         return;
@@ -565,6 +606,16 @@ export default {
       const inHold = this.dataRobot.STATUS == dataStored.status_hold;
       const onBoard = this.gripperOnBoardNow();
       return onBoard ? (inHold && onBoard) : (inHold && !onBoard);
+    },
+    // M2: unica fonte di verita' del bottone "Gestione cassetto".
+    // Entrambi i rami richiedono HOLD + pinza a bordo (il gating storico
+    // di ESTRAI/RILASCIA, cmdActiveMission, valutato fresco); il ramo e'
+    // scelto da extractedTray; manovra in corso (1000/2000) blocca tutto.
+    trayBranchEnabled() {
+      const inHold = this.dataRobot.STATUS == dataStored.status_hold;
+      if (!inHold || !this.gripperOnBoardNow()) return false;
+      if (this.trayBusy) return false;
+      return true;
     },
     dialogTitle() {
       switch (this.dialog.type) {
@@ -620,11 +671,19 @@ export default {
     dataStored.WS.socket.on('ROBOT/CHANGESPEED', payload => {
       dataStored.robotSpeed = payload;
     })
+    // M2: campanello estrazione cassetti — il backend emette BOX/STATUS a
+    // ogni FROM_PLANT/TRAY/BOX/EXTRACT|RELEASE del PLC (pattern e4ab4e5:
+    // handler nominato, off specifico in unmounted).
+    this.boxStatusHandler = () => {
+      this.getTraysList();
+    };
+    dataStored.WS.socket.on('BOX/STATUS', this.boxStatusHandler);
   },
   unmounted() {
     // off SPECIFICO (evento + callback): un off('ROBOT/STATUS') nudo
     // staccherebbe anche i listener di altri componenti (es. units.vue).
     dataStored.WS.socket.off('ROBOT/STATUS', this.statusHandler);
+    dataStored.WS.socket.off('BOX/STATUS', this.boxStatusHandler);
     //dataStored.WS.socket.off('ROBOT/DESCR');
     //dataStored.WS.socket.off('ROBOT/UPDATEGRIPPER');
   }
