@@ -22,12 +22,9 @@
           </div>
         </div>
 
-        <!-- Tab per categoria (pattern .tab-bar, doc §2.3): stesso stato del
-             vecchio select (categoryFilter, ""=Tutte), stessi categoryOptions -->
+        <!-- Tab per categoria (pattern .tab-bar, doc §2.3): solo le categorie
+             presenti nei dati, la prima e' il default (niente "Tutte", N-2) -->
         <div class="tab-bar">
-          <button class="tab" :class="{ active: categoryFilter=='' }" @click="categoryFilter=''">
-            {{$t('position.cat.all')}}
-          </button>
           <button v-for="opt in categoryOptions" :key="opt.id"
             class="tab" :class="{ active: categoryFilter==opt.id }"
             @click="categoryFilter=opt.id">
@@ -41,12 +38,9 @@
             <thead>
                 <tr>
                     <!--th>ID</th-->
-                    <th class="th-sort" @click="setSort('category')">
-                        <img src="../../assets/lente.png" width="15px">
-                        <br>
-                        {{$t('name')}}
-                        <span class="sort-ind" v-if="sortField=='category'">{{ sortDir==1?'▲':'▼' }}</span>
-                    </th>
+                    <!-- N-2: sort per categoria morto (dentro un tab le righe
+                         hanno tutte la stessa categoria) -> th semplice -->
+                    <th>{{$t('name')}}</th>
                     <th class="th-sort" @click="setSort('SUB_POS')">
                         <img src="../../assets/lente.png" width="15px">
                         <br>
@@ -190,8 +184,9 @@ export default {
             editID:0,
             datiInEdit:{},
             searchQuery:"",
-            categoryFilter:"",      // id categoria selezionata, ""=Tutte
-            sortField:"category",   // 'category' | 'SUB_POS'
+            categoryFilter:"",      // id tab attiva; "" solo pre-dati, il watcher
+                                    // su categoryOptions imposta la prima (N-2)
+            sortField:"SUB_POS",    // solo SUB_POS: sort per categoria morto (N-2)
             sortDir:1               // 1=asc, -1=desc
         }
     },
@@ -346,6 +341,13 @@ export default {
         }
     },
     watch:{
+        // N-2: senza tab "Tutte" il default e' la prima categoria disponibile.
+        // Guard anche se la categoria attiva sparisce dai dati. Flush 'pre'
+        // di default: scatta prima del render, nessun flash non filtrato.
+        categoryOptions(opts){
+            if (opts.length>0 && !opts.some(o => o.id==this.categoryFilter))
+                this.categoryFilter = opts[0].id;
+        },
         searchQuery(search){
             //console.log(JSON.stringify(this.datiTab,null,4))
             if (search=="") 
@@ -403,23 +405,15 @@ export default {
         // reference delle righe restano quelle di datiTab, obbligatorio
         // per non rompere l'aliasing datiInEdit del flusso di salvataggio.
         viewGroups(){
-            let rows = this.datiTabFiltred;
-            if (this.categoryFilter!="")
-                rows = rows.filter(dt => this.getCategory(dt.PARENT.trim()).id==this.categoryFilter);
+            // N-2: filtro sempre sul tab attivo (il filter senza guard "" e'
+            // deliberato: nell'istante pre-dati svuota invece di mostrare il
+            // set non filtrato). Sort solo per SUB_POS: dentro un tab tutte
+            // le righe hanno la stessa categoria, il sort per categoria e'
+            // morto ed e' stato rimosso col suo ramo.
+            let rows = this.datiTabFiltred
+                .filter(dt => this.getCategory(dt.PARENT.trim()).id==this.categoryFilter);
             const dir = this.sortDir;
-            rows = rows.slice().sort((a,b)=>{
-                const ca = this.getCategory(a.PARENT.trim()).id;
-                const cb = this.getCategory(b.PARENT.trim()).id;
-                if (this.sortField=='SUB_POS'){
-                    const d = (a.SUB_POS-b.SUB_POS)*dir;
-                    return d!=0 ? d : ca.localeCompare(cb);
-                }
-                const d = ca.localeCompare(cb)*dir;
-                return d!=0 ? d : (a.SUB_POS-b.SUB_POS);
-            });
-            // Tab per categoria (feat positions-tabs, D3): niente piu'
-            // righe-label di gruppo in tabella; l'ordinamento per categoria
-            // nel tab "Tutte" resta invariato (sort qui sopra).
+            rows = rows.slice().sort((a,b)=> (a.SUB_POS-b.SUB_POS)*dir);
             return [{ key:'flat', label:null, rows:rows }];
         }
     },
