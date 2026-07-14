@@ -8,7 +8,7 @@
 </script>
 
 <template>   
-      <div class="view-shell view-shell--fill">
+      <div class="view-shell view-shell--fill conf-card">
         <div class="view-header">
           <h3 class="view-title">{{$t('position.welcome')}}</h3>
           <!--button class="pure-button pure-button-primary" @click="createposition()">
@@ -27,9 +27,9 @@
             </select>
           </div>
         </div>
-        <!-- wrapper scroll dedicato: il thead sticky (regola globale in
-             custom-fix.css) si aggancia a questo contenitore, non alla pagina -->
-        <div class="postable-wrapper">
+        <!-- zona tabella condivisa (.conf-card .table-scroll, custom-fix):
+             pattern FILL, il thead sticky si aggancia qui -->
+        <div class="table-scroll">
         <table class="pure-table pure-table-horizontal">
             <thead>
                 <tr>
@@ -453,12 +453,13 @@ export default {
             text-align: center;
         }
     }
-    /* K-FIX2: zebra righe come productionTable (righe dispari --bg-input).
-       La classe pure-table-odd e' gia' bindata sulle righe ma il suo bg era
-       sovrascritto dal td bg-base !important globale di custom-fix; questa
-       regola piu' specifica lo ripristina. :not(.locked4OP) preserva
-       l'evidenziazione warning delle celle bloccate per l'operatore. */
-    .postable-wrapper tr.pure-table-odd td:not(.locked4OP){
+    /* Zebra righe come productionTable (righe dispari --bg-input), riancorata
+       alla .table-scroll condivisa. La classe pure-table-odd e' gia' bindata
+       sulle righe ma il suo bg era sovrascritto dal td bg-base !important
+       globale di custom-fix; questa regola piu' specifica lo ripristina.
+       :not(.locked4OP) preserva l'evidenziazione warning delle celle bloccate.
+       Promozione globale a tutte le liste: annotata in P3, post A/B. */
+    .table-scroll tr.pure-table-odd td:not(.locked4OP){
         background: var(--bg-input) !important;
     }
 
@@ -508,17 +509,8 @@ export default {
         flex-wrap: wrap;
     }
 
-    /* Contenitore di scroll (K-FIX3, pattern FILL come Produzione): il
-       parent ORA e' flex column vincolato (.view-shell--fill), quindi via
-       il max-height a stima -> flex:1 + min-height:0. Il thead sticky
-       della regola globale ingaggia qui. overflow-x per le colonne larghe:
-       lo scroll orizzontale sta nel wrapper, mai sulla pagina. */
-    .postable-wrapper{
-        flex: 1;
-        min-height: 0;
-        overflow-y: auto;
-        overflow-x: auto;
-    }
+    /* Contenitore di scroll: ora e' la .table-scroll condivisa di custom-fix
+       (flex:1 + min-height:0 + overflow y/x) — CSS scoped duplicato rimosso. */
 
     .th-sort{
         cursor: pointer;

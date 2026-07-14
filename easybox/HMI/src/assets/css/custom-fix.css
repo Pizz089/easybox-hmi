@@ -279,6 +279,9 @@ main.content:has(table.pure-table.pure-table-horizontal) td.WORKING:not(.table-d
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  /* lo scroll orizzontale (tabelle larghe, es. Posizioni) vive nel wrapper,
+     mai sulla pagina (#app ha overflow-x hidden) */
+  overflow-x: auto;
 }
 
 
