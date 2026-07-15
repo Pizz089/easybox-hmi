@@ -122,15 +122,18 @@
       <section class="command-section">
         <h3 class="section-label">{{ $t('robot.section.movement') }}</h3>
 
+        <!-- S: {'btn-mission-running': ...} = feedback missione in corso sul
+             SOLO bottone che l'ha inviata; gating e comandi INVARIATI
+             (sendMission marca la chiave e delega a sendToRobot). -->
         <button class="pure-u-1 button_pressed"
-          :class="[dataStored.cmdActive==0? 'pure-button-disable' : 'pure-button-micromission']"
-          @click="dataStored.cmdActive==1?sendToRobot(20):''">
+          :class="[dataStored.cmdActive==0? 'pure-button-disable' : 'pure-button-micromission', {'btn-mission-running': missionRunning=='home'}]"
+          @click="dataStored.cmdActive==1?sendMission('home',20):''">
           {{ $t('HOME') }}
         </button>
 
         <button class="pure-u-1 button_pressed"
-          :class="[dataStored.cmdActive==0? 'pure-button-disable' : 'pure-button-micromission']"
-          @click="dataStored.cmdActive==1?sendToRobot(21):''">
+          :class="[dataStored.cmdActive==0? 'pure-button-disable' : 'pure-button-micromission', {'btn-mission-running': missionRunning=='maintenance'}]"
+          @click="dataStored.cmdActive==1?sendMission('maintenance',21):''">
           {{ $t('MAINTENANCE') }}
         </button>
 
@@ -138,22 +141,22 @@
         <div class="pure-g dest-grid">
           <div class="pure-u-1-3">
             <button style="width:100%" class="button_pressed"
-              :class="[dataStored.cmdActive==0? 'pure-button-disable' : 'pure-button-micromission']"
-              @click="dataStored.cmdActive==1?sendToRobot('15;1'):''">
+              :class="[dataStored.cmdActive==0? 'pure-button-disable' : 'pure-button-micromission', {'btn-mission-running': missionRunning=='dest-easybox'}]"
+              @click="dataStored.cmdActive==1?sendMission('dest-easybox','15;1'):''">
               {{ $t('Easybox') }}
             </button>
           </div>
           <div class="pure-u-1-3">
             <button style="width:100%" class="button_pressed"
-              :class="[dataStored.cmdActive==0? 'pure-button-disable' : 'pure-button-micromission']"
-              @click="dataStored.cmdActive==1?sendToRobot('15;11'):''">
+              :class="[dataStored.cmdActive==0? 'pure-button-disable' : 'pure-button-micromission', {'btn-mission-running': missionRunning=='dest-mc1'}]"
+              @click="dataStored.cmdActive==1?sendMission('dest-mc1','15;11'):''">
               {{ $t('MC1') }}
             </button>
           </div>
           <div class="pure-u-1-3">
             <button style="width:100%" class="button_pressed"
-              :class="[dataStored.cmdActive==0? 'pure-button-disable' : 'pure-button-micromission']"
-              @click="dataStored.cmdActive==1?sendToRobot('15;12'):''">
+              :class="[dataStored.cmdActive==0? 'pure-button-disable' : 'pure-button-micromission', {'btn-mission-running': missionRunning=='dest-mc2'}]"
+              @click="dataStored.cmdActive==1?sendMission('dest-mc2','15;12'):''">
               {{ $t('MC2') }}
             </button>
           </div>
@@ -170,7 +173,7 @@
              scarico (12) se pinza a bordo. Gate = gripperBranchEnabled
              (computed, unica fonte di verita' per classe e click). -->
         <button class="pure-u-1 button_pressed"
-          :class="[gripperBranchEnabled? 'pure-button-mission' : 'pure-button-disable']"
+          :class="[gripperBranchEnabled? 'pure-button-mission' : 'pure-button-disable', {'btn-mission-running': missionRunning=='gripper'}]"
           @click="gripperBranchEnabled?openGripperMission():''">
           {{ $t('robot.mission.gripper') }}
         </button>
@@ -181,7 +184,7 @@
              palletUnload (14) se c'e' un oggetto in pinza.
              Gate = palletBranchEnabled (unica fonte per classe e click). -->
         <button class="pure-u-1 button_pressed"
-          :class="[palletBranchEnabled? 'pure-button-mission' : 'pure-button-disable']"
+          :class="[palletBranchEnabled? 'pure-button-mission' : 'pure-button-disable', {'btn-mission-running': missionRunning=='pallet'}]"
           @click="palletBranchEnabled?openPalletMission():''">
           {{ $t('robot.mission.pallet') }}
         </button>
@@ -192,7 +195,7 @@
              Gate = trayBranchEnabled (unica fonte per classe e click);
              manovra in corso (EXTRACT 1000/2000) => disabilitato. -->
         <button class="pure-u-1 button_pressed"
-          :class="[trayBranchEnabled? 'pure-button-mission' : 'pure-button-disable']"
+          :class="[trayBranchEnabled? 'pure-button-mission' : 'pure-button-disable', {'btn-mission-running': missionRunning=='tray'}]"
           @click="trayBranchEnabled?openTrayMission():''">
           {{ $t('robot.mission.tray') }}
         </button>
@@ -324,7 +327,16 @@ export default {
       // sovrascrive mentre si digita, e l'Enter (che fa blur) non produce
       // un secondo invio.
       speedManual: '',
-      speedEditing: false
+      speedEditing: false,
+      // S: feedback "missione in corso" — chiave del bottone che ha inviato
+      // la missione (una sola alla volta) + macchinetta a 3 fasi:
+      // 'armed' all'invio (STATUS ancora HOLD) -> 'active' quando STATUS
+      // ESCE da HOLD -> spenta quando STATUS RIENTRA in HOLD. Mai spegnere
+      // sul semplice STATUS==17: subito dopo l'invio e' ancora 17.
+      missionRunning: '',     // '' | 'gripper'|'pallet'|'tray'|'home'|'maintenance'|'dest-easybox'|'dest-mc1'|'dest-mc2'
+      missionPhase: '',       // '' | 'armed' | 'active'
+      missionArmTimer: null,  // ~5s: STATUS mai uscito da HOLD -> missione rifiutata
+      missionMaxTimer: null   // 180s: timeout assoluto di sicurezza
     }
   },
   methods: {
@@ -448,6 +460,54 @@ export default {
     },
     sendToRobot(val) {
       dataStored.WS.socket.emit("TO_PLANT/CMD/ROBOT", val);
+    },
+    // S: unico punto di accensione del feedback missione — il comando resta
+    // IDENTICO (passa da sendToRobot), qui si marca solo QUALE bottone e'
+    // in corso. RESET/HOLD/RESTART e speed (100) NON passano da qui.
+    sendMission(key, val) {
+      this.startMission(key);
+      this.sendToRobot(val);
+    },
+    startMission(key) {
+      this.clearMission();          // una sola missione in corso alla volta
+      this.missionRunning = key;
+      this.missionPhase = 'armed';
+      // uscita di sicurezza 1: STATUS non esce da HOLD entro ~5s
+      // (missione rifiutata dal PLC) -> spegni
+      this.missionArmTimer = setTimeout(() => {
+        if (this.missionPhase == 'armed') this.clearMission();
+      }, 5000);
+      // uscita di sicurezza 2: timeout assoluto (missione fisica lunga
+      // ma non infinita; oltre, il feedback non e' piu' affidabile)
+      this.missionMaxTimer = setTimeout(() => { this.clearMission(); }, 180000);
+    },
+    clearMission() {
+      clearTimeout(this.missionArmTimer);
+      clearTimeout(this.missionMaxTimer);
+      this.missionArmTimer = null;
+      this.missionMaxTimer = null;
+      this.missionRunning = '';
+      this.missionPhase = '';
+    },
+    // S: macchinetta a 3 fasi, SOLO osservazione dello STATUS gia' in casa
+    // (watcher esistente su dataRobot.STATUS): armed -> active quando
+    // STATUS esce da HOLD, spenta quando rientra in HOLD.
+    checkMissionPhase() {
+      if (!this.missionRunning) return;
+      const s = this.dataRobot.STATUS;
+      // uscita di sicurezza 3: allarme o stato Sconosciuto -> spegni
+      if (s == dataStored.status_alarm || s == dataStored.status_notDef) {
+        this.clearMission();
+        return;
+      }
+      if (this.missionPhase == 'armed' && s != dataStored.status_hold) {
+        // il robot e' partito: da qui lo spegnimento e' il rientro in HOLD
+        this.missionPhase = 'active';
+        clearTimeout(this.missionArmTimer);
+        this.missionArmTimer = null;
+      } else if (this.missionPhase == 'active' && s == dataStored.status_hold) {
+        this.clearMission();
+      }
     },
     updateSpeed(val){
       //dataStored.robotSpeed = val;
@@ -615,7 +675,8 @@ export default {
         return;
       }
       this.unloadOpen = false;
-      this.sendToRobot(12);
+      // S: feedback acceso ALL'INVIO (conferma dialog), comando invariato
+      this.sendMission('gripper', 12);
       // ricarico gli elenchi come confirmDialog()
       this.getGrippersList();
       this.getPalletsList();
@@ -722,19 +783,22 @@ export default {
             this.confirmUnload(true);
             return;
           }
-          this.sendToRobot('11;' + sel.ID);
+          // S: feedback acceso ALL'INVIO (conferma dialog) — la chiave e'
+          // quella del BOTTONE (gripper/pallet/tray), non del comando:
+          // e' il bottone che si illumina. Comandi INVARIATI.
+          this.sendMission('gripper', '11;' + sel.ID);
           break;
         case 'palletLoad':
-          this.sendToRobot('13;3;' + sel.ID + ';' + sel.MAG_POS);
+          this.sendMission('pallet', '13;3;' + sel.ID + ';' + sel.MAG_POS);
           break;
         case 'palletUnload':
-          this.sendToRobot('14;3;' + sel.ID + ';' + sel.MAG_POS);
+          this.sendMission('pallet', '14;3;' + sel.ID + ';' + sel.MAG_POS);
           break;
         case 'tray':
-          this.sendToRobot('25;' + sel.FLOOR_MAG);
+          this.sendMission('tray', '25;' + sel.FLOOR_MAG);
           break;
         case 'trayRelease':
-          this.sendToRobot(26);
+          this.sendMission('tray', 26);
           break;
       }
       this.closeDialog();
@@ -749,7 +813,9 @@ export default {
     // ordine arrivino i due eventi (dataGripper cambia su UPDATEGRIPPER via
     // getRobotData, STATUS via statusHandler).
     dataGripper() { this.checkSwapPending(); },
-    'dataRobot.STATUS'() { this.checkSwapPending(); }
+    // S: la macchinetta missione osserva lo STESSO segnale (nessun nuovo
+    // listener): copre sia ROBOT/STATUS (statusHandler) sia il fetch.
+    'dataRobot.STATUS'() { this.checkSwapPending(); this.checkMissionPhase(); }
   },
   computed: {
     // M-fix: UNICA fonte di verita' del bottone "Gestione pinza", reattiva
@@ -877,6 +943,8 @@ export default {
     clearTimeout(this.swapTimer);
     this.swapPending = false;
     this.swapTargetId = null;
+    // S: niente timer/feedback orfani, la missione visiva muore con la view
+    this.clearMission();
     //dataStored.WS.socket.off('ROBOT/DESCR');
     //dataStored.WS.socket.off('ROBOT/UPDATEGRIPPER');
   }

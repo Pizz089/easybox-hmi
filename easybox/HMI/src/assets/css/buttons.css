@@ -147,3 +147,22 @@
 
 /* Ex eccezione specialCMD-disabled rimossa (K-FIX): con --radius-btn pill
    su tutte le varianti azione, il disabled ha gia' la stessa forma. */
+
+/* --- STATO: MISSIONE IN CORSO (.btn-mission-running) ----------------------- */
+/* Classe di STATO trasversale (doc §3.2, feat mission-feedback), non settima
+   variante: applicata dal componente al SOLO bottone la cui missione robot e'
+   in corso. Bordo accent + fill info, NIENTE animazioni (kiosk).
+   DOPO il blocco disabled e con i selettori combo: durante la missione il
+   robot esce da HOLD e il gating disabilita i comandi, ma il bottone in corso
+   DEVE restare distinguibile (vince sul grigio, opacity torna 1);
+   pointer-events: none del disabled resta attivo (non si clicca comunque). */
+.btn-mission-running,
+.btn-mission-running:disabled,
+.pure-button-disable.btn-mission-running,
+.pure-button-disabled.btn-mission-running {
+    background: var(--color-info-bg);
+    background-image: none;
+    border: 2px solid var(--accent);
+    color: var(--text-primary);
+    opacity: 1;
+}
