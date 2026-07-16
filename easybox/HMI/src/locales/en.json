@@ -215,6 +215,10 @@
     "sectionFixture": "3. Fixture (special machining)",
     "alreadyMounted": "Pallet already rigged",
     "unmountHint": "to change it, unmount from the Rigs list",
+    "place": "Place",
+    "placeTitle": "Warehouse position",
+    "removeFromMag": "Remove from warehouse",
+    "plantWarning": "Pallet on robot or in machine: position is plant-managed — set it manually only with the plant stopped",
     "createNew": "Create new...",
     "offsets": "Position on pallet (mm / °)",
     "save": "Save rig"

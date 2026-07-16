@@ -215,6 +215,10 @@
     "sectionFixture": "3. Attrezzatura (lavorazione speciale)",
     "alreadyMounted": "Pallet già attrezzato",
     "unmountHint": "per cambiare, smonta dalla lista Attrezzaggi",
+    "place": "Posiziona",
+    "placeTitle": "Posizione a magazzino",
+    "removeFromMag": "Rimuovi dal magazzino",
+    "plantWarning": "Pallet al robot o in macchina: posizione gestita dall'impianto — impostarla a mano solo a impianto fermo",
     "createNew": "Crea nuova...",
     "offsets": "Posizione sul pallet (mm / °)",
     "save": "Salva attrezzaggio"
