@@ -20,7 +20,14 @@ const toggleSidebar = () => {
       :aria-label="isOpen ? 'Collassa sidebar' : 'Espandi sidebar'"
       type="button"
     >
-      <span>{{ isOpen ? "«" : "»" }}</span>
+      <!-- Y: icona SVG stroke coerente coi chevron del collasso sidebar
+           (niente caratteri tipografici come icona); punta a sinistra da
+           aperto, ruota di 180° da chiuso. -->
+      <svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+        aria-hidden="true">
+        <polyline points="15 6 9 12 15 18" />
+      </svg>
     </button>
 
     <main class="content" :class="{ 'content--collapsed': !isOpen }">
@@ -47,31 +54,34 @@ const toggleSidebar = () => {
   margin-left: 0;                                /* sidebar invisibile (era 80) */
 }
 
-/* Toggle button: pillola fissa fra sidebar e contenuto.
+/* Toggle button: cerchio fisso fra sidebar e contenuto.
    left transiziona sincronizzato con sidebar width per restare attaccata
-   al bordo della sidebar durante l'animazione (entrambe 0.25s ease-in-out). */
+   al bordo della sidebar durante l'animazione (entrambe 0.25s ease-in-out).
+   Y: restyling a variante GHOST icon-only (grammatica .btn-icon di
+   buttons.css, qui in cerchio 44 per la regola pill icone->cerchi):
+   fondo trasparente, niente bordi/ombra, hover/focus su --bg-surface-2.
+   Geometria (fixed/top/left/size/z-index) INVARIATA: nulla si sposta. */
 .toggle-btn {
   position: fixed;
   top: 50vh;
   transform: translateY(-50%);
-  /* 44x44: touch minimo (era 32, sotto soglia) */
+  /* 44x44: touch minimo (deroga sidebar) */
   width: 44px;
   height: 44px;
-  border-radius: 50%;
-  background: var(--bg-surface);
-  color: var(--text-primary);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  border: 0;
+  color: var(--text-secondary);
   cursor: pointer;
   z-index: 950;                                  /* sopra sidebar (900), sotto TopBar (1000) */
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: var(--font-size-md);
-  line-height: 1;
   padding: 0;
-  box-shadow: var(--elevation-2);
   transition:
     left 0.25s ease-in-out,
-    background var(--transition-fast);
+    background var(--transition-fast),
+    color var(--transition-fast);
 }
 
 .toggle-btn.open {
@@ -85,10 +95,24 @@ const toggleSidebar = () => {
 .toggle-btn:hover,
 .toggle-btn:focus-visible {
   background: var(--bg-surface-2);
+  color: var(--text-primary);
 }
 
 .toggle-btn:focus {
   outline: none;
+}
+
+/* Y: chevron ~22px nel cerchio da 44; rotazione al posto del cambio
+   glifo «/» — stessa transizione leggera (solo transform) dei chevron
+   del collasso, kiosk-safe. */
+.toggle-icon {
+  width: 22px;
+  height: 22px;
+  transition: transform var(--transition-fast);
+}
+
+.toggle-btn.closed .toggle-icon {
+  transform: rotate(180deg);
 }
 </style>
 
