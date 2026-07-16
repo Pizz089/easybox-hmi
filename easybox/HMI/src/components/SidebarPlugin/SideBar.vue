@@ -32,15 +32,22 @@ const unitItems = [
   { key: "menu.smallbox", fallback: "EasyBox", path: "/unit/smallbox" },
 ];
 
-const confItems = [
-  { key: "menu.grippers", fallback: "Pinze", path: "/conf/Grippers" },
+// U-FASE2 (setup impianto): CONFIGURAZIONE divisa in due gruppi che seguono
+// i due percorsi cliente — MAGAZZINO (cosa produco: pezzo->grigliato->
+// cassetto->posizioni) e ATTREZZAGGIO (con cosa: pallet+morsa+attrezzatura,
+// pinze, macchine).
+const magItems = [
   { key: "menu.parts", fallback: "Pezzi", path: "/conf/Parts" },
-  { key: "menu.trays", fallback: "Cassetti", path: "/conf/Trays" },
-  { key: "menu.fixtures", fallback: "Attrezzature", path: "/conf/Fixtures" },
-  { key: "menu.vices", fallback: "Morse", path: "/conf/Vices" },
-  { key: "menu.pallets", fallback: "Pallets", path: "/conf/Pallets" },
   { key: "menu.gratings", fallback: "Grigliati", path: "/conf/Gratings" },
+  { key: "menu.trays", fallback: "Cassetti", path: "/conf/Trays" },
   { key: "menu.position", fallback: "Posizioni", path: "/conf/Position" },
+];
+
+const toolItems = [
+  { key: "menu.pallets", fallback: "Pallets", path: "/conf/Pallets" },
+  { key: "menu.vices", fallback: "Morse", path: "/conf/Vices" },
+  { key: "menu.fixtures", fallback: "Attrezzature", path: "/conf/Fixtures" },
+  { key: "menu.grippers", fallback: "Pinze", path: "/conf/Grippers" },
   // Config macchina (selettore brand): area tecnico, stesso pattern
   // requiresLevel introdotto in N1-2a per la voce diagnostica.
   { key: "menu.machines", fallback: "Macchine", path: "/conf/Machines", requiresLevel: 2 },
@@ -64,7 +71,8 @@ function filterByLevel(items) {
 
 const filteredMenuItems = filterByLevel(menuItems);
 const filteredUnitItems = filterByLevel(unitItems);
-const filteredConfItems = filterByLevel(confItems);
+const filteredMagItems = filterByLevel(magItems);
+const filteredToolItems = filterByLevel(toolItems);
 const filteredDiagItems = filterByLevel(diagItems);
 </script>
 
@@ -103,10 +111,25 @@ const filteredDiagItems = filterByLevel(diagItems);
 
       <div class="section">
         <h4 v-if="props.open" class="section-title">
-          {{ tr("sidebar.section.conf", "Conf") }}
+          {{ tr("sidebar.section.warehouse", "Magazzino") }}
         </h4>
         <ul>
-          <li v-for="item in filteredConfItems" :key="item.path">
+          <li v-for="item in filteredMagItems" :key="item.path">
+            <RouterLink :to="item.path">
+              <span v-if="props.open">
+                {{ tr(item.key, item.fallback) }}
+              </span>
+            </RouterLink>
+          </li>
+        </ul>
+      </div>
+
+      <div class="section">
+        <h4 v-if="props.open" class="section-title">
+          {{ tr("sidebar.section.tooling", "Attrezzaggio") }}
+        </h4>
+        <ul>
+          <li v-for="item in filteredToolItems" :key="item.path">
             <RouterLink :to="item.path">
               <span v-if="props.open">
                 {{ tr(item.key, item.fallback) }}
@@ -178,13 +201,19 @@ const filteredDiagItems = filterByLevel(diagItems);
   gap: var(--space-2);
 }
 
+/* U-FASE2: header DIMAGRITI (~30px a blocco, prima ~51): con 5 sezioni il
+   costo verticale degli header pesava piu' delle voci risparmiate. Padding
+   verticale 8->4 (space-1), margin-bottom 8->0 (resta il gap 8 della
+   .section), line-height 1.6 ereditata -> tight. Il blocco header vale ora
+   4+4+14.4+8(gap) ~= 30px. */
 .section-title {
-  padding: var(--space-2) var(--space-4);
-  margin: 0 0 var(--space-2) 0;
+  padding: var(--space-1) var(--space-4);
+  margin: 0;
   background: var(--bg-input);
   border-radius: var(--radius-sm);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-tight);
   text-transform: uppercase;
   text-align: center;
   color: var(--text-secondary);
@@ -214,7 +243,10 @@ a {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
   /* Touch 44 (deroga al 52 preferito, documentata §3.4): il menu completo
-     ha 17 voci, a 52px sforerebbe il viewport del pannello. */
+     ha 17 voci, a 52px sforerebbe il viewport del pannello. NON scendere
+     sotto 44. Regola documentata (doc, deroga sidebar): il set OPERATORE
+     (liv. 0) deve stare in 1080p SENZA scroll; per i livelli tecnici lo
+     scroll (overflow-y della .sb-nav) e' accettato. */
   min-height: 44px;
   transition: all 0.18s ease-out;
 }

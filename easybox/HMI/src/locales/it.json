@@ -197,6 +197,8 @@
       "menu": "Menu",
       "unit": "Unità",
       "conf": "Configurazione",
+      "warehouse": "Magazzino",
+      "tooling": "Attrezzaggio",
       "diagnostics": "Diagnostica"
     }
   },

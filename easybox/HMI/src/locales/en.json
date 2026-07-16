@@ -197,6 +197,8 @@
       "menu": "Menu",
       "unit": "Unit",
       "conf": "Configuration",
+      "warehouse": "Warehouse",
+      "tooling": "Tooling",
       "diagnostics": "Diagnostics"
     }
   },
