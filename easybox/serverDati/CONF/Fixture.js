@@ -113,6 +113,11 @@ router.get('/updateFixture', (req, res) => {
 	});
 })
 
+// QUIRK STORICO (documentato, NON riparare — ha consumatori: FixtureOnPallet.vue
+// serializza l'intera fixture con URLSearchParams): il pallet arriva nel campo
+// POS_PLANT e la fixture nel campo ID. Quindi PALLET_ID=POS_PLANT e
+// FIXTURE_ID=ID non sono errori di mappatura ma il contratto di fatto.
+// L'insert nuovo qui sotto accetta anche i nomi espliciti PALLET_ID/FIXTURE_ID.
 router.get('/updateFixtureOnPallet', (req, res) => {
 
 	//console.log(">>>"+JSON.stringify(req.query,null,4));
@@ -150,6 +155,56 @@ router.get('/updateFixtureOnPallet', (req, res) => {
             }else
 				res.send("OK")
 		});
+	});
+})
+
+// Cantiere Attrezzaggi (U-FASE2): endpoint INSERT che mancava — la view
+// FixtureOnPallet in creazione chiamava insertFixtureOnPallet e riceveva la
+// 400 del catch-all (l'associazione nasceva solo a mano nel DB).
+// Parametri: nomi espliciti PALLET_ID/FIXTURE_ID per i consumatori nuovi,
+// fallback sul quirk storico POS_PLANT/ID (vedi updateFixtureOnPallet sopra)
+// cosi' la form esistente funziona senza modifiche. POS_X/Y/Z not null:
+// default 0 se assenti, come CORR e ROT; quote in micron come l'update (*1000).
+router.get('/insertFixtureOnPallet', (req, res) => {
+
+	sql.connect(DBf.configDB, function (err) {
+        if (err) {
+            log.error("err insertFixtureOnPallet: " + err);
+            return;
+        }
+
+		const palletID  = parseInt(req.query.PALLET_ID  != undefined ? req.query.PALLET_ID  : req.query.POS_PLANT);
+		const fixtureID = parseInt(req.query.FIXTURE_ID != undefined ? req.query.FIXTURE_ID : req.query.ID);
+		if (isNaN(palletID) || isNaN(fixtureID)) {
+			log.error("err insertFixtureOnPallet: PALLET_ID/FIXTURE_ID mancanti o non numerici");
+			res.send("KO");
+			return;
+		}
+		const num = (v) => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
+
+		var request = new sql.Request();
+		let query = `INSERT INTO FIXTURE_ON_PALLET
+					(PALLET_ID, FIXTURE_ID, POS_X, POS_Y, POS_Z, POS_X_CORR, POS_Y_CORR, POS_Z_CORR, POS_X_ROT, POS_Y_ROT, POS_Z_ROT)
+					VALUES(${palletID},
+					${fixtureID},
+					${num(req.query.POS_X)}*1000,
+					${num(req.query.POS_Y)}*1000,
+					${num(req.query.POS_Z)}*1000,
+					${num(req.query.POS_X_CORR)}*1000,
+					${num(req.query.POS_Y_CORR)}*1000,
+					${num(req.query.POS_Z_CORR)}*1000,
+					${num(req.query.POS_X_ROT)}*1000,
+					${num(req.query.POS_Y_ROT)}*1000,
+					${num(req.query.POS_Z_ROT)}*1000);`
+
+        log.info('query ' + query);
+        request.query(query, function (err, recordset) {
+            if (err) {
+                log.error("Err query: " + err)
+                res.send("KO")
+            }else
+				res.send("OK")
+        });
 	});
 })
 

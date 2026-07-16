@@ -48,11 +48,14 @@
                         <td>{{dt.DESCR.trim()}}</td>
                         
                         <td>
-                            <orderCMD  
+                            <!-- U-FASE2 (punto 6): riattivato il bottone place
+                                 verso FixtureOnPallet — era commentato e
+                                 callPage puntava a un path inesistente. -->
+                            <orderCMD
                                 modify="true"   @cmdModify="updatefixture(dt.ID)"
                                 del="true"      @cmdDel="sicurezza(dt.ID)"
+                                place="true"    @cmdPlace="callPage(dt.ID)"
                             />
-                            <!--place="true"    @cmdPlace="callPage(dt.ID)" -->
                         </td>
                     </tr>
                     <tr v-if="_showPopUp(dt.ID)">
@@ -135,7 +138,11 @@ export default {
             this.$router.push('/conf/fixture');
         },
         callPage(id){
-            this.$router.push('/conf/fixtureOnPallet/'+id);
+            // U-FASE2 (punto 6): la route e' /conf/FixtureOnPallet SENZA
+            // parametro di path e la view legge $route.query.fixtureID —
+            // il vecchio push('/conf/fixtureOnPallet/'+id) non matchava
+            // nessuna route (ingresso morto).
+            this.$router.push('/conf/FixtureOnPallet?fixtureID='+id);
         },
         _showPopUp(i){
             if (this.showPopUp==i)

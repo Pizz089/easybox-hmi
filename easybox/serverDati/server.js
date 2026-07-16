@@ -106,6 +106,9 @@ const server = app.listen(process.env.serverPort, () => {
   log.init(`Server listening on port  ${process.env.serverPort}`)
   console.log(`Server listening on port ${process.env.serverPort}`)
 
+  //migrazione schema idempotente (cantiere Attrezzaggi)
+  ensureSchema();
+
   //////////////////////////////////////getAndCheckLicense(10) //ripristinare
 
   //setInterval(() => {
@@ -163,6 +166,34 @@ async function shutdownHandler(signal) {
 process.on('SIGTERM',  () => shutdownHandler('SIGTERM'));
 process.on('SIGINT',   () => shutdownHandler('SIGINT'));
 process.on('SIGBREAK', () => shutdownHandler('SIGBREAK'));
+
+// Guarded ALTER idempotente al boot (cantiere Attrezzaggi): VICE.PALLET_ID
+// int NULL = pallet su cui la morsa e' montata (NULL = smontata). Il guard
+// COL_LENGTH rende l'ALTER ripetibile a ogni avvio senza effetti quando la
+// colonna esiste gia'. Lo sp_refreshview e' NECESSARIO: la lettura HMI passa
+// dalla vista VICES (select *), che in SQL Server congela le colonne alla
+// creazione — senza refresh la colonna nuova non arriverebbe mai all'HMI
+// (il guard sys.views la salta se VICES non fosse una vista).
+function ensureSchema() {
+	var sql = require('mssql');
+	sql.connect(DBf.configDB, function (err) {
+		if (err) {
+			log.error("err ensureSchema: " + err);
+			return;
+		}
+		let query = `IF COL_LENGTH('VICE','PALLET_ID') IS NULL
+						ALTER TABLE VICE ADD PALLET_ID int NULL;
+					 IF EXISTS (SELECT 1 FROM sys.views WHERE name='VICES')
+						EXEC sp_refreshview 'VICES';`
+		var request = new sql.Request();
+		request.query(query, function (err) {
+			if (err)
+				log.error("Err ensureSchema: " + err)
+			else
+				log.init("ensureSchema OK: VICE.PALLET_ID")
+		});
+	});
+}
 
 async function getAndCheckLicense(_len) {
   console.log("check license...")

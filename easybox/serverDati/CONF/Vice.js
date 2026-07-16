@@ -43,18 +43,30 @@ router.get('/updateVice', (req, res) => {
             return;
         }
 
+		// PALLET_ID (cantiere Attrezzaggi): campo OPZIONALE — la clausola entra
+		// solo se il chiamante lo manda (il form storico Vice.vue non lo manda:
+		// un undefined interpolato romperebbe la query e azzererebbe il
+		// montaggio a ogni salvataggio anagrafica). Monta = intero, smonta =
+		// vuoto/non numerico -> NULL. Colonna creata dal guarded ALTER al boot
+		// (ensureSchema in server.js).
+		let palletClause = '';
+		if (req.query.PALLET_ID != undefined) {
+			const pid = parseInt(req.query.PALLET_ID);
+			palletClause = `, PALLET_ID=${isNaN(pid) ? 'NULL' : pid}`;
+		}
+
 		let query = `UPDATE VICE
-					 SET FAMILY='${req.query.FAMILY}', 
-					 DESCR='${req.query.DESCR}', 
-					 STATUS=${req.query.STATUS}, 
-					 X=${req.query.X}, 
-					 Y=${req.query.Y}, 
-					 Z=${req.query.Z}, 
-					 Z_CLAW=${req.query.Z_CLAW}, 
-					 Z_SINK_CLAW=${req.query.Z_SINK_CLAW}, 
-					 MAG=${req.query.MAG}, 
-					 MAG_POS=${req.query.MAG_POS}, 
-					 POS_PLANT=${req.query.POS_PLANT}
+					 SET FAMILY='${req.query.FAMILY}',
+					 DESCR='${req.query.DESCR}',
+					 STATUS=${req.query.STATUS},
+					 X=${req.query.X},
+					 Y=${req.query.Y},
+					 Z=${req.query.Z},
+					 Z_CLAW=${req.query.Z_CLAW},
+					 Z_SINK_CLAW=${req.query.Z_SINK_CLAW},
+					 MAG=${req.query.MAG},
+					 MAG_POS=${req.query.MAG_POS},
+					 POS_PLANT=${req.query.POS_PLANT}${palletClause}
 					WHERE ID=${req.query.ID};`
 		
 		var request = new sql.Request();
