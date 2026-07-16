@@ -59,6 +59,9 @@ const toolItems = [
 // MAGAZZINO: e' taratura impianto, non flusso quotidiano di magazzino).
 const setItems = [
   { key: "menu.position", fallback: "Posizioni", path: "/conf/Position" },
+  // AD: abilita/disabilita posizioni dei magazzini pallet/pinze — area
+  // tecnico (gate ratificato: livello >= 1, view gated allo stesso modo).
+  { key: "menu.warehouses", fallback: "Magazzini", path: "/conf/Warehouses", requiresLevel: 1 },
 ];
 
 const diagItems = [

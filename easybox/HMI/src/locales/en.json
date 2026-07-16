@@ -190,8 +190,21 @@
     "position": "Position",
     "machines": "Machines",
     "attrezzaggi": "Rigs",
+    "warehouses": "Warehouses",
     "diagnostics": "Diagnostics",
     "mqttDiag": "MQTT Live"
+  },
+  "warehouses": {
+    "welcome": "Warehouses — enabled positions",
+    "tabPallet": "Pallets",
+    "tabGrippers": "Grippers",
+    "enabled": "enabled",
+    "disabled": "disabled",
+    "notInDb": "not in DB",
+    "sureDisable": "Disable position {n}?",
+    "sureEnable": "Re-enable position {n}?",
+    "occupiedBy": "Position occupied by {name}",
+    "disabledPos": "Position disabled"
   },
   "attrezzaggi": {
     "welcome": "Rigs (pallet + vice / fixture)",

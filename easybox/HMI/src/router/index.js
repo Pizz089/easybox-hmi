@@ -107,6 +107,12 @@ const router = createRouter({
       component: () => import("../views/conf/Grating/ImportGrating.vue"),
     },
     {
+      path: "/conf/Warehouses",
+      name: "Warehouses",
+      meta: { layout: StandardMenu },
+      component: () => import("../views/conf/WarehousesView.vue"),
+    },
+    {
       path: "/conf/Attrezzaggi",
       name: "Attrezzaggi",
       meta: { layout: StandardMenu },

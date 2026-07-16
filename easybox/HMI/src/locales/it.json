@@ -190,8 +190,21 @@
     "position": "Posizioni",
     "machines": "Macchine",
     "attrezzaggi": "Attrezzaggi",
+    "warehouses": "Magazzini",
     "diagnostics": "Diagnostica",
     "mqttDiag": "MQTT Live"
+  },
+  "warehouses": {
+    "welcome": "Magazzini — posizioni abilitate",
+    "tabPallet": "Pallet",
+    "tabGrippers": "Pinze",
+    "enabled": "abilitata",
+    "disabled": "disabilitata",
+    "notInDb": "non censita",
+    "sureDisable": "Disabilitare la posizione {n}?",
+    "sureEnable": "Riabilitare la posizione {n}?",
+    "occupiedBy": "Posizione occupata da {name}",
+    "disabledPos": "Posizione disabilitata"
   },
   "attrezzaggi": {
     "welcome": "Attrezzaggi (pallet + morsa / attrezzatura)",
