@@ -1,7 +1,7 @@
 <script setup>
     import { RouterLink, RouterView } from 'vue-router'
     import { dataStored } from '../../../data.js'
-    import { KO_OCCUPIED, KO_DISABLED } from '../../../util/errorCodes.js'
+    import { palletPositionLabel } from '../../../util/warehouseGrid.js'
 
     import { ref, onMounted } from 'vue'
     const el = ref()
@@ -48,18 +48,19 @@
                     <label for="aligned-foo">{{$t('pallet.Z_Corr')}}</label>
                     <input type="number" id="aligned-foo" name="Z_CORR" v-model="pallet.Z_CORR" placeholder="0" :readonly="dataStored.userLevel==0"/> 0.001mm
                 </div>
+                <!-- AE: la posizione a magazzino NON si edita piu' da qui —
+                     blocco informativo in SOLA LETTURA (decodifica condivisa
+                     palletPositionLabel); si imposta solo dal dialog
+                     Posiziona della vista Attrezzaggi. -->
                 <div class="pure-control-group">
-                    <label for="aligned-foo">{{$t('pallet.magazzino')}}</label>
-                    <input type="number" id="aligned-foo" name="NUM_POSTI" v-model="pallet.MAG" placeholder="0" :readonly="dataStored.userLevel==0" />
+                    <label>{{$t('pallet.posizione')}}</label>
+                    <span class="pos-readonly">
+                        {{ createNew ? $t('fuori_magazzino') : palletPositionLabel(pallet, $t) }}
+                    </span>
                 </div>
                 <div class="pure-control-group">
-                    <label for="aligned-foo">{{$t('pallet.posizione')}}</label>
-                    <input type="number" id="aligned-foo" name="NUM_POSTI" v-model="pallet.MAG_POS" placeholder="0" :readonly="dataStored.userLevel==0" />
-                </div>
-                <div class="pure-control-group">
-                    <label for="aligned-foo">{{$t('pallet.posizioneImpianto')}}</label>
-                    <input type="number" id="aligned-foo" name="NUM_POSTI" v-model="pallet.POS_PLANT" placeholder="0" :readonly="dataStored.userLevel==0" />
-                    <span> {{getPositionOnPlant}} </span>
+                    <label>&nbsp;</label>
+                    <span class="pos-hint">{{ $t('pallet.positionHint') }}</span>
                 </div>
 
                 <div class="pure-controls">
@@ -124,52 +125,79 @@ export default {
                     console.info(error);
                 });
         },
+        // AE: campi che il form EDITA davvero. Le dimensioni sono mostrate
+        // in mm (getDataTable divide per 1000) e il DB le vuole in micron:
+        // la rimoltiplicazione qui CHIUDE l'incidente storico 396000->396
+        // (il vecchio saveData rispediva this.pallet cosi' com'era, in mm,
+        // e updatePallet scrive raw: ogni salvataggio anagrafica corrompeva
+        // le dimensioni di un fattore 1000). CORR restano raw (il form li
+        // edita gia' in 0.001mm).
+        editedFields() {
+            return {
+                FAMILY: this.pallet.FAMILY,
+                DESCR: this.pallet.DESCR,
+                X: this.pallet.X * 1000,
+                Y: this.pallet.Y * 1000,
+                Z: this.pallet.Z * 1000,
+                X_CORR: this.pallet.X_CORR,
+                Y_CORR: this.pallet.Y_CORR,
+                Z_CORR: this.pallet.Z_CORR
+            };
+        },
         saveData() {
-            var cmd = ""
-            if (!this.createNew){
-                //eseguo aggiornamento -> update DB
-                cmd = dataStored.server+'api/conf/pallet/updatepallet?' + new URLSearchParams( this.pallet ).toString();
-            }else{
-                //nuovo cassetto -> insert DB
-                cmd = dataStored.server+'api/conf/pallet/insertpallet?' + new URLSearchParams( this.pallet ).toString();
-                //console.log(JSON.stringify(this.pallet,null,4))
+            if (this.createNew) {
+                // AE: il pallet NASCE FUORI MAGAZZINO — MAG_POS=-1 (stessa
+                // codifica del "Rimuovi dal magazzino" del dialog Posiziona),
+                // POS_PLANT=0 (convenzione dei pallet fuori impianto: il
+                // Rimuovi lo passa through e i pallet fuori hanno 0), MAG=1
+                // (magazzino unico della cella). La posizione si assegna poi
+                // SOLO dal dialog Posiziona di Attrezzaggi.
+                const params = new URLSearchParams({
+                    ...this.editedFields(),
+                    MAG: 1,
+                    MAG_POS: -1,
+                    POS_PLANT: 0
+                });
+                fetch(dataStored.server+'api/conf/pallet/insertpallet?' + params.toString(), { method: 'GET' })
+                    .then(response => {
+                        if (!response.ok) throw new Error('Network response was not ok');
+                        return this.$router.push(this.$route.query.returnTo || '/conf/pallets');
+                    })
+                    .catch(error => { console.info(error); });
+                return;
             }
-            // AD (R3): MAG_POS resta input numerico ma l'endpoint ora rifiuta
-            // posizione occupata/disabilitata con codici (error contract):
-            // messaggio chiaro e si resta sul form per correggere.
-            fetch( cmd ,{ method: 'GET'})
+            // AE + TRAPPOLA PASS-THROUGH (incidente storico 396000->396: mai
+            // rimandare valori trasformati o stantii): updatePallet esige
+            // TUTTI i campi, quindi prima del submit la riga viene RILETTA
+            // FRESCA e i campi posizione (MAG/MAG_POS/POS_PLANT) ripartono
+            // da li' — un'altra postazione (o il PLC) puo' aver spostato il
+            // pallet mentre il form era aperto: la posizione fresca vince,
+            // mai quella caricata all'apertura. I campi editati vengono dal
+            // form (dimensioni riconvertite in micron, vedi editedFields).
+            fetch(dataStored.server+'api/conf/pallet/show/'+this.pallet.ID, { method: 'GET' })
                 .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok');
-                    }
-                    return response.text();
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    return response.json();
                 })
-                .then(body => {
-                    if (body == KO_OCCUPIED || body == KO_DISABLED) {
-                        dataStored.alert.title = this.$t('WARNING');
-                        dataStored.alert.desc = body == KO_OCCUPIED
-                            ? this.$t('warehouses.occupiedBy', { name: 'MAG_POS ' + this.pallet.MAG_POS })
-                            : this.$t('warehouses.disabledPos');
-                        dataStored.alert.type = 'warning';
-                        return;
-                    }
+                .then(rows => {
+                    const fresh = rows[0];
+                    const params = new URLSearchParams({
+                        ID: this.pallet.ID,
+                        ...this.editedFields(),
+                        MAG: fresh.MAG,
+                        MAG_POS: fresh.MAG_POS,
+                        POS_PLANT: fresh.POS_PLANT
+                    });
+                    return fetch(dataStored.server+'api/conf/pallet/updatepallet?' + params.toString(), { method: 'GET' });
+                })
+                .then(response => {
+                    if (!response.ok) throw new Error('Network response was not ok');
                     // U-FASE2: ritorno opzionale al chiamante (form composito Attrezzaggio)
                     return this.$router.push(this.$route.query.returnTo || '/conf/pallets');
                 })
                 .catch(error => {
                     console.info(error);
                 });
-        }
-    },
-    computed:{
-        getPositionOnPlant() {
-            if (this.pallet.POS_PLANT>=100 && this.pallet.POS_PLANT<200)
-                return " MC1";
-            if (this.pallet.POS_PLANT>=200 && this.pallet.POS_PLANT<300)
-                return " MC2";
-            if (this.pallet.POS_PLANT>=300 && this.pallet.POS_PLANT<400)
-                return " MC3";
-            return "";
         }
     },
     mounted(){
@@ -189,5 +217,16 @@ export default {
 
     #aligned-foo{
         width:300px;
+    }
+
+    /* AE: posizione in sola lettura + hint */
+    .pos-readonly {
+        color: var(--text-primary);
+        font-weight: var(--font-weight-semibold);
+    }
+
+    .pos-hint {
+        color: var(--text-muted);
+        font-size: var(--font-size-sm);
     }
 </style>

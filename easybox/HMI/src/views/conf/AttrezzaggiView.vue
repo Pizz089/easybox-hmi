@@ -7,7 +7,7 @@
     // badge di anomalia (mai sanatorie automatiche, si sistema con gli
     // smonta).
     import { dataStored } from '../../data';
-    import { palletGridOrder } from '../../util/warehouseGrid';
+    import { palletGridOrder, palletPositionLabel } from '../../util/warehouseGrid';
     import { KO_OCCUPIED, KO_DISABLED } from '../../util/errorCodes';
 </script>
 
@@ -194,12 +194,9 @@ export default {
             get('api/conf/fixture/showFixtureOnPallet/all', d => this.fop = d || []);
             get('api/conf/position/showWarehouse/WPALLET', d => this.wpallet = d || []);
         },
+        // AE: decodifica portata a utility condivisa (riuso non copia)
         getPosition(pal){
-            if (pal.POS_PLANT>=100)
-                return this.$t('Mag')+" "+pal.MAG_POS+' >> '+this.$t('Machine')+' '+(pal.POS_PLANT-99);
-            if (pal.MAG_POS<0)
-                return this.$t('fuori_magazzino')
-            return this.$t('Mag')+" "+pal.MAG_POS;
+            return palletPositionLabel(pal, this.$t);
         },
         fixtureName(fixtureID){
             const f = this.fixtures.find(x => x.ID == fixtureID);

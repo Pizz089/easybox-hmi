@@ -38,3 +38,17 @@ export function fullGridOrder(total = WPALLET_TOTAL) {
   for (let n = total; n >= 1; n--) out.push(n);
   return out;
 }
+
+// AE: decodifica testuale della posizione pallet — la stessa storica di
+// PalletsView.getPosition, portata a utility per RIUSO (non copia).
+// t = la funzione $t del chiamante (la utility non ha accesso a i18n).
+// Semantica: POS_PLANT>=100 = in macchina (quirk storico incluso: con
+// 1000=robot mostra "Machine 901", riprodotto fedelmente, non riparato);
+// MAG_POS<0 = fuori magazzino; altrimenti in magazzino al posto N.
+export function palletPositionLabel(pal, t) {
+  if (pal.POS_PLANT >= 100)
+    return t('Mag') + " " + pal.MAG_POS + ' >> ' + t('Machine') + ' ' + (pal.POS_PLANT - 99);
+  if (pal.MAG_POS < 0)
+    return t('fuori_magazzino');
+  return t('Mag') + " " + pal.MAG_POS;
+}

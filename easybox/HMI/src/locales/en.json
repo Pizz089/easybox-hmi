@@ -461,7 +461,8 @@
     "Y_Corr": "Correction Y",
     "Z_Corr": "Correction Z",
     "magazzino": "# Warehouse",
-    "posizioneImpianto": "Plant position"
+    "posizioneImpianto": "Plant position",
+    "positionHint": "Position is set from Rigs (Place)"
   },
   "decentrated_tray": {
     "pick": "Pick from ",

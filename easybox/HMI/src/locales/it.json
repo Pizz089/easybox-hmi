@@ -461,7 +461,8 @@
     "Y_Corr": "Correzione in Y",
     "Z_Corr": "Correzione in Z",
     "magazzino": "# magazzino",
-    "posizioneImpianto": "Posizione su impianto"
+    "posizioneImpianto": "Posizione su impianto",
+    "positionHint": "La posizione si imposta da Attrezzaggi (Posiziona)"
   },
   "decentrated_tray": {
     "pick": "Prelievo da ",
