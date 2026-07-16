@@ -54,23 +54,27 @@ const toggleSidebar = () => {
   margin-left: 0;                                /* sidebar invisibile (era 80) */
 }
 
-/* Toggle button: cerchio fisso fra sidebar e contenuto.
+/* Toggle: LINGUETTA della sidebar (Y2), a filo del suo bordo destro.
    left transiziona sincronizzato con sidebar width per restare attaccata
-   al bordo della sidebar durante l'animazione (entrambe 0.25s ease-in-out).
-   Y: restyling a variante GHOST icon-only (grammatica .btn-icon di
-   buttons.css, qui in cerchio 44 per la regola pill icone->cerchi):
-   fondo trasparente, niente bordi/ombra, hover/focus su --bg-surface-2.
-   Geometria (fixed/top/left/size/z-index) INVARIATA: nulla si sposta. */
+   al bordo durante l'animazione (entrambe 0.25s ease-in-out).
+   Forma "appendice": stesso fondo della sidebar, bordo 1px monotono
+   (--border-card) SOLO sui lati esposti (border-left: 0 = raccordo senza
+   stacco), angoli arrotondati solo a destra. NIENTE ombre/gradienti.
+   Visivo 24x44 (dimezzata la larghezza), touch 44 garantito dal
+   pseudo-elemento ::before qui sotto (tecnica annotata nel doc accanto
+   alla deroga sidebar). */
 .toggle-btn {
   position: fixed;
   top: 50vh;
   transform: translateY(-50%);
-  /* 44x44: touch minimo (deroga sidebar) */
-  width: 44px;
+  width: 24px;
   height: 44px;
-  border-radius: var(--radius-pill);
-  background: transparent;
-  border: 0;
+  /* = mid-tone della sidebar (SideBar.vue): DEBITO TECNICO condiviso —
+     quando nascera' il token --bg-sidebar va aggiornato in entrambi. */
+  background: #141D2A;
+  border: var(--border-card);
+  border-left: 0;
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
   color: var(--text-secondary);
   cursor: pointer;
   z-index: 950;                                  /* sopra sidebar (900), sotto TopBar (1000) */
@@ -84,12 +88,24 @@ const toggleSidebar = () => {
     color var(--transition-fast);
 }
 
+/* Y2: area di tocco estesa a 44x44, centrata sul visivo 24x44 — la
+   soglia touch resta rispettata nella sostanza senza ingombro visivo. */
+.toggle-btn::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
+}
+
 .toggle-btn.open {
-  left: 198px;                                   /* 220 sidebar - 22 = half-in half-out */
+  left: 220px;                                   /* A FILO del bordo destro della sidebar (220) */
 }
 
 .toggle-btn.closed {
-  left: 4px;                                     /* visibile sul bordo sx del viewport */
+  left: 0;                                       /* linguetta a filo del bordo sx del viewport */
 }
 
 .toggle-btn:hover,
