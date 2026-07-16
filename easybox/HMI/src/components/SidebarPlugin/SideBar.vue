@@ -40,7 +40,6 @@ const magItems = [
   { key: "menu.parts", fallback: "Pezzi", path: "/conf/Parts" },
   { key: "menu.gratings", fallback: "Grigliati", path: "/conf/Gratings" },
   { key: "menu.trays", fallback: "Cassetti", path: "/conf/Trays" },
-  { key: "menu.position", fallback: "Posizioni", path: "/conf/Position" },
 ];
 
 const toolItems = [
@@ -54,6 +53,12 @@ const toolItems = [
   // Config macchina (selettore brand): area tecnico, stesso pattern
   // requiresLevel introdotto in N1-2a per la voce diagnostica.
   { key: "menu.machines", fallback: "Macchine", path: "/conf/Machines", requiresLevel: 2 },
+];
+
+// W: sezione IMPOSTAZIONI — quote e coordinate fini (Posizioni, spostata da
+// MAGAZZINO: e' taratura impianto, non flusso quotidiano di magazzino).
+const setItems = [
+  { key: "menu.position", fallback: "Posizioni", path: "/conf/Position" },
 ];
 
 const diagItems = [
@@ -76,6 +81,7 @@ const filteredMenuItems = filterByLevel(menuItems);
 const filteredUnitItems = filterByLevel(unitItems);
 const filteredMagItems = filterByLevel(magItems);
 const filteredToolItems = filterByLevel(toolItems);
+const filteredSetItems = filterByLevel(setItems);
 const filteredDiagItems = filterByLevel(diagItems);
 </script>
 
@@ -133,6 +139,21 @@ const filteredDiagItems = filterByLevel(diagItems);
         </h4>
         <ul>
           <li v-for="item in filteredToolItems" :key="item.path">
+            <RouterLink :to="item.path">
+              <span v-if="props.open">
+                {{ tr(item.key, item.fallback) }}
+              </span>
+            </RouterLink>
+          </li>
+        </ul>
+      </div>
+
+      <div class="section">
+        <h4 v-if="props.open" class="section-title">
+          {{ tr("sidebar.section.settings", "Impostazioni") }}
+        </h4>
+        <ul>
+          <li v-for="item in filteredSetItems" :key="item.path">
             <RouterLink :to="item.path">
               <span v-if="props.open">
                 {{ tr(item.key, item.fallback) }}

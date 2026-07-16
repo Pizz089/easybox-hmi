@@ -224,6 +224,7 @@
       "conf": "Configuration",
       "warehouse": "Warehouse",
       "tooling": "Tooling",
+      "settings": "Settings",
       "diagnostics": "Diagnostics"
     }
   },
