@@ -430,6 +430,7 @@
   "vice": {
     "welcome": "List vices",
     "add_Vice": "Add vice's type",
+    "positionHint": "Position is plant-managed — pallet mounting is done from Rigs",
     "name": "Mag.Floor",
     "family": "Family",
     "descr": "Description",
@@ -460,8 +461,6 @@
     "X_Corr": "Correction X",
     "Y_Corr": "Correction Y",
     "Z_Corr": "Correction Z",
-    "magazzino": "# Warehouse",
-    "posizioneImpianto": "Plant position",
     "positionHint": "Position is set from Rigs (Place)"
   },
   "decentrated_tray": {

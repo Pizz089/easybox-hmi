@@ -24,8 +24,8 @@
                     <!--th>{{$t('pallet.stato')}}</th-->
                     <th style="width:20%">{{$t('pallet.family')}}</th>
                     <th>{{$t('pallet.descr')}}</th>
-                    <th>{{$t('pallet.posizione')}}</th>
-                    
+                    <!-- AF: colonna Posizione rimossa — la posizione vive
+                         SOLO in Attrezzaggi (+ vista Magazzini) -->
                     <th>{{$t('pallet.comands')}}</th>
                 </tr>
             </thead>
@@ -40,10 +40,8 @@
                         <td>{{dt.FAMILY}} </td>
                     
                         <td>{{dt.DESCR.trim()}}</td>
-                        <td>
-                            {{dt.POS_PLANT==1000?'ROBOT':(dt.POS_PLANT>=200 && dt.POS_PLANT<299)?'MC 2':dt.POS_PLANT>99?'MC 1':dt.MAG_POS>=0?'MAG':'OUT'}}
-                        </td>
-                        
+                        <!-- AF: cella Posizione rimossa (decodifica inline
+                             morta con la colonna) -->
                         <td>
                             <orderCMD  
                                 modify="true"   @cmdModify="updatePallet(dt.ID)"

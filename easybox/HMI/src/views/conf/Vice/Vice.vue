@@ -93,40 +93,18 @@
             />
           </div>
 
+          <!-- AF: la posizione NON si edita piu' da qui — sola lettura +
+               hint. Rimossi: il selettore POS_MAG (campo FANTASMA: updateVice
+               non lo scrive nemmeno, restava solo a video) e la select
+               POS_PLANT. La posizione della morsa la muove l'impianto;
+               il montaggio su pallet si gestisce da Attrezzaggi. -->
           <div class="pure-control-group">
-            <label for="vice-posmag">{{ $t("vice.posizione") }}</label>
-            <div id="vice-posmag" class="shelfPosWrap" role="group">
-              <button
-                v-for="(p, index) in warehousePos.maxPos"
-                :key="p"
-                class="shelfPos"
-                type="button"
-                :disabled="getDisabled(index + 1)"
-                :value="index + 1"
-                :class="{ active: vice.POS_MAG == index + 1 }"
-                @click.prevent="vice.POS_MAG = index + 1"
-              >
-                {{ index + 1 }}
-              </button>
-            </div>
+            <label>{{ $t("vice.posizione") }}</label>
+            <span class="pos-readonly">{{ vicePositionLabel }}</span>
           </div>
-
           <div class="pure-control-group">
-            <label for="vice-posplant">{{ $t("vice.posizione") }}</label>
-            <select
-              id="vice-posplant"
-              name="POS_PLANT"
-              v-model="vice.POS_PLANT"
-              autocomplete="off"
-            >
-              <option value="-1">{{ $t("OUT") || "OUT" }}</option>
-              <option :value="vice.POS_MAG">
-                {{ $t("Posizione") || "Posizione" }} {{ vice.POS_MAG }}
-                {{ $t("Magazzino") || "Magazzino" }}
-              </option>
-              <option value="101">MC 1</option>
-              <option value="201">MC 2</option>
-            </select>
+            <label>&nbsp;</label>
+            <span class="pos-hint">{{ $t("vice.positionHint") }}</span>
           </div>
 
           <div class="pure-controls">
@@ -179,7 +157,9 @@ export default {
       Y: 100,
       Z: 80,
       STATUS: 0,
-      POS_MAG: 0,
+      // AF: via POS_MAG (campo fantasma: updateVice non lo scrive) e i
+      // campi posizione dagli editabili — restano nella riga letta e
+      // viaggiano freschi al submit (vedi saveData).
       MAG: 0,
       MAG_POS: 0,
       POS_PLANT: 0,
@@ -189,7 +169,6 @@ export default {
       defaultVice,
       vice: defaultVice(),
       viceTypeList: [],
-      warehousePos: { maxPos: [], freePos: [] },
       create: false,
 
       // Babylon
@@ -387,32 +366,70 @@ export default {
         .catch(console.info);
     },
 
-    getWarehouseFreePos() {
-      fetch(dataStored.server + "api/conf/vice/showWarehousePos", {
-        method: "GET",
-      })
+    // AF: campi che il form EDITA davvero. NB unita': la VICE viaggia in
+    // micron raw sia in lettura che in scrittura (nessuna divisione in
+    // getDataTable) — il round-trip e' gia' fedele, quindi QUI non c'e' il
+    // gemello dell'incidente 396000->396 del form Pallet (chiuso in AE);
+    // resta il difetto SOLO VISIVO dell'etichetta "mm" su valori micron,
+    // segnalato a parte e non toccato per non cambiare la semantica.
+    editedFields() {
+      return {
+        FAMILY: this.vice.FAMILY,
+        DESCR: this.vice.DESCR,
+        STATUS: this.vice.STATUS,
+        X: this.vice.X,
+        Y: this.vice.Y,
+        Z: this.vice.Z,
+      };
+    },
+    saveData() {
+      if (this.create) {
+        // AF: nessun input posizione — la morsa nasce con posizione neutra
+        // (0/0/0, come i default storici del form quando non si toccavano
+        // i campi); Z_CLAW/Z_SINK_CLAW ai default della riga vuota.
+        const params = new URLSearchParams({
+          ID: this.vice.ID,
+          ...this.editedFields(),
+          Z_CLAW: 0,
+          Z_SINK_CLAW: 0,
+          MAG: 0,
+          MAG_POS: 0,
+          POS_PLANT: 0,
+        });
+        fetch(dataStored.server + "api/conf/vice/insertVice?" + params.toString(), { method: "GET" })
+          .then((r) => {
+            if (!r.ok) throw new Error("Network response was not ok");
+            return this.$router.push(this.$route.query.returnTo || "/conf/Vices");
+          })
+          .catch(console.info);
+        return;
+      }
+      // AF + TRAPPOLA PASS-THROUGH (pattern AE, incidente 396000->396):
+      // updateVice esige tutti i campi -> la riga viene RILETTA FRESCA al
+      // submit e tutto cio' che il form NON edita (Z_CLAW, Z_SINK_CLAW,
+      // MAG, MAG_POS, POS_PLANT) riparte da li', mai dai valori stantii
+      // caricati all'apertura (l'impianto puo' aver mosso la morsa).
+      // PALLET_ID viene OMESSO di proposito: la clausola condizionale di
+      // updateVice non tocca il montaggio se il parametro non arriva
+      // (cautela (a): la preservazione resta al server, zero staleness).
+      fetch(dataStored.server + "api/conf/vice/show/" + this.vice.ID, { method: "GET" })
         .then((r) => {
           if (!r.ok) throw new Error("Network response was not ok");
           return r.json();
         })
-        .then((data) => {
-          this.warehousePos = data || { maxPos: [], freePos: [] };
+        .then((rows) => {
+          const fresh = rows[0];
+          const params = new URLSearchParams({
+            ID: this.vice.ID,
+            ...this.editedFields(),
+            Z_CLAW: fresh.Z_CLAW,
+            Z_SINK_CLAW: fresh.Z_SINK_CLAW,
+            MAG: fresh.MAG,
+            MAG_POS: fresh.MAG_POS,
+            POS_PLANT: fresh.POS_PLANT,
+          });
+          return fetch(dataStored.server + "api/conf/vice/updateVice?" + params.toString(), { method: "GET" });
         })
-        .catch(console.info);
-    },
-
-    saveData() {
-      const v = this.vice;
-      const payload = { ...v };
-
-      const base =
-        dataStored.server +
-        (this.create
-          ? "api/conf/vice/insertVice?"
-          : "api/conf/vice/updateVice?");
-      const cmd = base + new URLSearchParams(payload).toString();
-
-      fetch(cmd, { method: "GET" })
         .then((r) => {
           if (!r.ok) throw new Error("Network response was not ok");
           // U-FASE2: ritorno opzionale al chiamante (form composito Attrezzaggio)
@@ -420,18 +437,23 @@ export default {
         })
         .catch(console.info);
     },
+  },
 
-    getDisabled(index) {
-      const free = this.warehousePos.freePos || [];
-      for (let i = 0; i < free.length; i++) if (free[i] == index) return false;
-      return true;
+  computed: {
+    // AF: decodifica in sola lettura — stessa semantica della colonna
+    // storica di VicesView (rimossa): POS_PLANT>200 MC2, >100 MC1,
+    // altrimenti magazzino morse MAG.
+    vicePositionLabel() {
+      if (this.create) return this.$t("OUT");
+      if (this.vice.POS_PLANT > 200) return "MC 2";
+      if (this.vice.POS_PLANT > 100) return "MC 1";
+      return this.$t("Mag") + " " + this.vice.MAG + "." + this.vice.MAG_POS;
     },
   },
 
   mounted() {
     this.getDataTable();
     this.getViceType();
-    this.getWarehouseFreePos();
     this.$nextTick(async () => {
       await this.initBabylon();
     });
@@ -574,45 +596,18 @@ h2 {
   min-width: 30px !important;
 }
 
-/* === SHELF POSITION BUTTONS === */
-.vice-form .shelfPosWrap {
-  display: flex !important;
-  flex-wrap: wrap !important;
-  gap: 6px !important;
+/* AF: rimossi gli stili shelfPos/shelfPosWrap (morti col selettore
+   POS_MAG fantasma — updateVice non scriveva nemmeno il campo). */
+
+/* AF: posizione in sola lettura + hint */
+.pos-readonly {
+  color: var(--text-primary);
+  font-weight: var(--font-weight-semibold);
 }
 
-/* Pattern "segmented toggle" ad-hoc — candidato a variante canonica futura
-   (annotato nel doc §3.4). GV2: touch 44px minimo, active su token accent. */
-.vice-form .shelfPos {
-  height: 44px !important;
-  width: 48px !important;
-  border: 1px solid rgba(71, 85, 105, 0.5) !important;
-  border-radius: 6px !important;
-  background: rgba(15, 23, 42, 0.8) !important;
-  color: #94a3b8 !important;
-  font-weight: 600 !important;
-  font-size: var(--font-size-sm) !important;
-  cursor: pointer !important;
-  transition: all 0.2s ease !important;
-  margin-right: 0 !important;
-}
-
-.vice-form .shelfPos:hover:not(:disabled) {
-  border-color: #3b82f6 !important;
-  background: rgba(59, 130, 246, 0.1) !important;
-  color: #f1f5f9 !important;
-}
-
-.vice-form .shelfPos:disabled {
-  opacity: 0.35 !important;
-  cursor: not-allowed !important;
-}
-
-.vice-form .shelfPos.active {
-  background: var(--accent) !important;
-  border-color: var(--accent-active) !important;
-  color: var(--text-primary) !important;
-  box-shadow: 0 0 16px rgba(59, 130, 246, 0.35) !important;
+.pos-hint {
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
 }
 
 /* === SAVE BUTTON === */

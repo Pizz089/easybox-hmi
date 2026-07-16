@@ -430,6 +430,7 @@
   "vice": {
     "welcome": "Elenco morse",
     "add_Vice": "Aggiungi tipo morsa",
+    "positionHint": "Posizione gestita dall'impianto — il montaggio su pallet si fa da Attrezzaggi",
     "name": "Magaz.Piano",
     "family": "Famiglia",
     "descr": "Descrizione",
@@ -460,8 +461,6 @@
     "X_Corr": "Correzione in X",
     "Y_Corr": "Correzione in Y",
     "Z_Corr": "Correzione in Z",
-    "magazzino": "# magazzino",
-    "posizioneImpianto": "Posizione su impianto",
     "positionHint": "La posizione si imposta da Attrezzaggi (Posiziona)"
   },
   "decentrated_tray": {

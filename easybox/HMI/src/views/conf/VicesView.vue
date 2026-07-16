@@ -24,8 +24,8 @@
                     <th>{{$t('vice.stato')}}</th>
                     <th>{{$t('vice.family')}}</th>
                     <th>{{$t('vice.descr')}}</th>
-                    <th>{{$t('vice.posizione')}}</th>
-                    
+                    <!-- AF: colonna Posizione rimossa — la posizione vive
+                         SOLO in Attrezzaggi (+ vista Magazzini) -->
                     <th>{{$t('vice.comands')}}</th>
                 </tr>
             </thead>
@@ -40,8 +40,7 @@
                         <td>{{dt.FAMILY}} </td>
                     
                         <td>{{dt.DESCR.trim()}}</td>
-                        <td>{{dt.POS_PLANT>200?'MC 2':dt.POS_PLANT>100?'MC 1':'MAG '+dt.MAG}}</td>
-                        
+                        <!-- AF: cella Posizione rimossa -->
                         <td>
                             <orderCMD  
                                 modify="true"   @cmdModify="updateVice(dt.ID)"
