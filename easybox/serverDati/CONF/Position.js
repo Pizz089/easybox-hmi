@@ -139,6 +139,101 @@ router.get('/updatePositionTray', (req, res) => {
 })
 
 
+//////////////////////////////////////////////////////////
+///////////// MAGAZZINI (cantiere AD) ////////////////////
+//////////////////////////////////////////////////////////
+
+// Whitelist dei parent ammessi come "magazzino": WPALLET (pallet, 5x4)
+// e SHELF (scaffale pinze). Mappa chiusa = niente injection dal path e
+// niente usi fuori scope su altri parent di [POSITION].
+const WAREHOUSE_PARENTS = { WPALLET: 'WPALLET', SHELF: 'SHELF' };
+
+// AD (R1): lettura posizioni di un magazzino: ID, SUB_POS, STATUS.
+// L'OCCUPANTE non viene joinato qui di proposito: lo deriva il client
+// dalle liste pallet/gripper gia' in polling nelle view (stessa fonte
+// di verita' della tabella a video, niente doppia semantica server).
+router.get('/showWarehouse/:parent', (req, res) => {
+	const parent = WAREHOUSE_PARENTS[String(req.params.parent || '').toUpperCase()];
+	if (!parent) {
+		res.json([]);
+		return;
+	}
+	sql.connect(DBf.configDB, function (err) {
+        if (err) {
+            log.error("err showWarehouse: " + err);
+            return;
+        }
+
+		let query = `select ID, SUB_POS, STATUS from [POSITION] where PARENT like '${parent}%' order by SUB_POS;`
+
+		var request = new sql.Request();
+        log.info('query ' + query);
+        request.query(query, function (err, recordset) {
+            if (err) {
+                log.error("Err query: " + err)
+                res.json([])
+            }else
+				res.send(recordset.recordset)
+        });
+	});
+})
+
+// AD (R1): set/clear disabilitazione di una posizione magazzino.
+// Scrive SOLO STATUS e SOLO le transizioni da/verso 9 (status_locked):
+//   disable = qualunque valore -> 9;
+//   enable  = 9 -> 2 (SOLO se attualmente 9: un 2/4 scritto in cella
+//             non viene MAI riscritto — regola "9=disabilitata,
+//             qualunque altro valore=abilitata").
+// NON riusa /updateposition (che riscrive le coordinate).
+router.get('/warehouseSlot/:action/:parent/:subpos', (req, res) => {
+	const parent = WAREHOUSE_PARENTS[String(req.params.parent || '').toUpperCase()];
+	const subpos = parseInt(req.params.subpos);
+	const action = String(req.params.action);
+	if (!parent || isNaN(subpos) || (action != 'disable' && action != 'enable')) {
+		res.send("KO");
+		return;
+	}
+	sql.connect(DBf.configDB, function (err) {
+        if (err) {
+            log.error("err warehouseSlot: " + err);
+            return;
+        }
+
+		let query;
+		if (action == 'disable')
+			query = `UPDATE [POSITION] SET STATUS=9 WHERE PARENT like '${parent}%' AND SUB_POS=${subpos};`
+		else
+			query = `UPDATE [POSITION] SET STATUS=2 WHERE PARENT like '${parent}%' AND SUB_POS=${subpos} AND STATUS=9;`
+
+		var request = new sql.Request();
+        log.info('query ' + query);
+        request.query(query, function (err, result) {
+            if (err) {
+                log.error("Err query: " + err)
+                res.send("KO")
+				return;
+            }
+			const n = result.rowsAffected && result.rowsAffected[0] ? result.rowsAffected[0] : 0;
+			if (n > 0) {
+				res.send("OK")
+				return;
+			}
+			if (action == 'enable') {
+				// riga esistente e gia' non-9 = gia' abilitata: OK idempotente
+				let check = `select STATUS from [POSITION] where PARENT like '${parent}%' AND SUB_POS=${subpos};`
+				new sql.Request().query(check, function (err2, rs2) {
+					if (!err2 && rs2.recordset.length > 0 && rs2.recordset[0].STATUS != 9)
+						res.send("OK")
+					else
+						res.send("KO")
+				});
+				return;
+			}
+			res.send("KO")   // disable su posizione inesistente
+        });
+	});
+})
+
 //utilizzata per la pagina conf/positionView
 router.get('/updateposition', (req, res) => {
 
