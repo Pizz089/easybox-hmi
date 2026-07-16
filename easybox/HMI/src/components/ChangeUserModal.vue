@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { dataStored } from '@/data'
 
@@ -69,6 +70,28 @@ function onSuccess(level) {
     level: t('changeUser.levelLabel.' + level),
   })
   dataStored.alert.type = 'message'
+  close()
+}
+
+// X: ritorno esplicito al livello operatore — prima esisteva solo il
+// timeout dei 5' (e il login '666' non ne aveva affatto): nessun percorso
+// manuale per tornare a 0. Azzera anche la persistenza sessionStorage
+// (stessa coppia di operazioni del timeout). L'eventuale timer dei 5'
+// ancora pendente rifissera' 0 su 0: innocuo.
+const route = useRoute()
+const router = useRouter()
+
+// Voci sidebar gated da requiresLevel (SideBar.vue): /conf/Machines (2),
+// /diag/mqtt (1). Dopo il downgrade l'operatore non deve restare su una
+// pagina che la sua sidebar non mostra -> redirect a /dashboard.
+// startsWith: copre anche eventuali sotto-route future delle stesse aree.
+const RESTRICTED_PATHS = ['/conf/machines', '/diag/mqtt']
+
+function backToOperator() {
+  dataStored.userLevel = 0
+  sessionStorage.removeItem('userLevel')
+  if (RESTRICTED_PATHS.some((p) => route.path.toLowerCase().startsWith(p)))
+    router.push('/dashboard')
   close()
 }
 
@@ -151,6 +174,11 @@ onUnmounted(() => {
 
           <button type="button" class="pure-button-primary btn-primary" @click="submit">
             {{ t('changeUser.submit') }}
+          </button>
+
+          <!-- X: visibile SOLO sopra il livello operatore -->
+          <button v-if="dataStored.userLevel > 0" type="button" class="btn-ghost btn-logout" @click="backToOperator">
+            {{ t('changeUser.backToOperator') }}
           </button>
         </div>
       </div>
@@ -284,6 +312,13 @@ onUnmounted(() => {
    l'estetica viene dalla variante Primary canonica (buttons.css). */
 .btn-primary {
   width: 100%;
+}
+
+/* X: layout hook come .btn-primary — l'estetica e' la variante Ghost
+   canonica (buttons.css), qui solo full-width + stacco dal submit. */
+.btn-logout {
+  width: 100%;
+  margin-top: var(--space-2);
 }
 
 @keyframes shake {

@@ -595,6 +595,7 @@
   "changeUser": {
     "title": "Change operator level",
     "subtitle": "Enter the password to change your access level",
+    "backToOperator": "Back to operator",
     "currentLevel": "Current level",
     "levelLabel": {
       "0": "Operator",
