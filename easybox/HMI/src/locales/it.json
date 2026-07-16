@@ -194,7 +194,7 @@
     "mqttDiag": "MQTT Live"
   },
   "attrezzaggi": {
-    "welcome": "Attrezzaggi (pallet + morsa + attrezzatura)",
+    "welcome": "Attrezzaggi (pallet + morsa / attrezzatura)",
     "add": "Nuovo attrezzaggio",
     "create": "Nuovo attrezzaggio",
     "pallet": "Pallet",

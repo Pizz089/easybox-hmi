@@ -194,7 +194,7 @@
     "mqttDiag": "MQTT Live"
   },
   "attrezzaggi": {
-    "welcome": "Rigs (pallet + vice + fixture)",
+    "welcome": "Rigs (pallet + vice / fixture)",
     "add": "New rig",
     "create": "New rig",
     "pallet": "Pallet",
