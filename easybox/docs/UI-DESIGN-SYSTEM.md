@@ -109,6 +109,8 @@ Ogni view usa il guscio standard:
 
 **Deroghe shell**: Dashboard senza titolo (è il pannello di default kiosk); MqttDiag guscio denso proprio (vedi deroga light §3.4); Gripper/Vice fino alla ritematizzazione glassmorphism (§4.2); TestView escluso (playground di sviluppo); i `margin-left` della scena SVG di Grating (deroga GR3); le griglie comando frazionali delle unit view (`pure-u-1-2/1-3/1-5`) restano — si uniforma solo il gap.
 
+**Scopo dichiarato — finestra ridotta (Z, responsive-min).** Il target primario resta il **kiosk 1920**: lì il layout è il riferimento e non deve cambiare di un pixel. A larghezze ridotte la degradazione accettabile è il **WRAP** — `.view-header`, `.btn-group` e `.tab-bar` hanno `flex-wrap: wrap` (il gap esistente fa da spaziatura di wrap), i gruppi vanno a capo, niente ridisegno né breakpoint dedicati: **questo NON è un cantiere responsive**. Lo scroll orizzontale di pagina è vietato per costruzione (`html/body/#app` con `overflow-x: hidden`, custom-fix.css §A); le tabelle larghe scrollano SOLO nel proprio wrapper `.table-scroll` (`overflow-x: auto`).
+
 ### 2.4 Regole spacing per contenitori
 
 - Padding interno card: `--space-4` (16px) standard, `--space-5` (24px) per card primarie ariose.

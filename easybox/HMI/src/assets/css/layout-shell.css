@@ -29,12 +29,17 @@
   margin: 0;
 }
 
-/* Riga titolo + azioni (sostituisce il pattern "bottone dentro l'h3"). */
+/* Riga titolo + azioni (sostituisce il pattern "bottone dentro l'h3").
+   Z (responsive-min): wrap a finestra ridotta — sotto il punto di rottura
+   le azioni vanno a capo (gap esistente come spaziatura di wrap) invece di
+   schiacciarsi o sbordare. A 1920 il wrap non scatta mai: layout identico.
+   Target primario resta il kiosk 1920 (vedi doc, scopo dichiarato). */
 .view-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
+  flex-wrap: wrap;
 }
 
 /* Etichetta di sezione dentro le card (stesso impianto del titolo card
