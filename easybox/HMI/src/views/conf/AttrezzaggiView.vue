@@ -84,7 +84,8 @@ export default {
             fixtures:[],
             fop:[],          // righe FIXTURE_ON_PALLET
             pending:null,    // {type:'vice'|'fixture', palletID, id} in attesa di conferma
-            polling:true
+            polling:true,
+            pollTimer:null   // handle del setInterval: senza, il timer sopravvive alla view
         }
     },
     methods: {
@@ -171,13 +172,17 @@ export default {
     },
     mounted(){
         this.getDataTable()
-        setInterval(() => {
+        // handle salvato + clearInterval in unmounted: il flag polling da solo
+        // (pattern storico delle conf view) lascia il timer a girare a vuoto
+        // per sempre dopo l'uscita dalla view.
+        this.pollTimer = setInterval(() => {
             if(this.polling)
                 this.getDataTable()
         }, 3000);
     },
     unmounted(){
         this.polling=false;
+        clearInterval(this.pollTimer);
     }
 }
 </script>
