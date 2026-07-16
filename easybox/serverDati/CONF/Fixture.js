@@ -208,6 +208,67 @@ router.get('/insertFixtureOnPallet', (req, res) => {
 	});
 })
 
+// Cantiere Attrezzaggi (U-FASE2, commit 3): lettura FIXTURE_ON_PALLET per la
+// lista Attrezzaggi (prima nessuno leggeva la tabella). :ID = PALLET_ID o 'all'.
+router.get('/showFixtureOnPallet/:ID', (req, res) => {
+	sql.connect(DBf.configDB, function (err) {
+        if (err) {
+            log.error("err showFixtureOnPallet: " + err);
+            return;
+        }
+
+		let query = `select * from FIXTURE_ON_PALLET;`
+		if (String(req.params.ID)!="all") {
+			const palletID = parseInt(req.params.ID);
+			if (isNaN(palletID)) {
+				res.json([]);
+				return;
+			}
+			query = `select * from FIXTURE_ON_PALLET where PALLET_ID=${palletID};`
+		}
+
+		var request = new sql.Request();
+        log.info('query ' + query);
+        request.query(query, function (err, recordset) {
+            if (err) {
+                log.error("Err query: " + err)
+                res.json([])
+            }else
+				res.send(recordset.recordset)
+        });
+	});
+})
+
+// Cantiere Attrezzaggi (U-FASE2, commit 3): smonta attrezzatura = rimozione
+// della riga (chiave composta pallet+fixture, come il WHERE dell'update).
+router.delete('/fixtureOnPallet/:palletID/:fixtureID', (req, res) => {
+	sql.connect(DBf.configDB, function (err) {
+        if (err) {
+            log.error("err delete fixtureOnPallet: " + err);
+            return;
+        }
+
+		const palletID  = parseInt(req.params.palletID);
+		const fixtureID = parseInt(req.params.fixtureID);
+		if (isNaN(palletID) || isNaN(fixtureID)) {
+			res.send("KO");
+			return;
+		}
+
+		var request = new sql.Request();
+		let query = `DELETE FROM FIXTURE_ON_PALLET WHERE PALLET_ID=${palletID} AND FIXTURE_ID=${fixtureID};`
+
+        log.info('query ' + query);
+        request.query(query, function (err, recordset) {
+            if (err) {
+                log.error("Err query: " + err)
+                res.send("KO")
+            }else
+				res.send("OK")
+        });
+	});
+});
+
 //TODO:da testare
 router.get('/insertFixture', (req, res) => {
 

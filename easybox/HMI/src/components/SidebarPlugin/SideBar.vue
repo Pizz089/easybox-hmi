@@ -44,6 +44,9 @@ const magItems = [
 ];
 
 const toolItems = [
+  // Vista aggregata pallet+morsa+attrezzatura: prima voce del blocco,
+  // e' il punto d'ingresso del percorso attrezzaggio.
+  { key: "menu.attrezzaggi", fallback: "Attrezzaggi", path: "/conf/Attrezzaggi" },
   { key: "menu.pallets", fallback: "Pallets", path: "/conf/Pallets" },
   { key: "menu.vices", fallback: "Morse", path: "/conf/Vices" },
   { key: "menu.fixtures", fallback: "Attrezzature", path: "/conf/Fixtures" },

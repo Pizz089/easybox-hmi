@@ -415,7 +415,8 @@ export default {
       fetch(cmd, { method: "GET" })
         .then((r) => {
           if (!r.ok) throw new Error("Network response was not ok");
-          return this.$router.push("/conf/Vices");
+          // U-FASE2: ritorno opzionale al chiamante (form composito Attrezzaggio)
+          return this.$router.push(this.$route.query.returnTo || "/conf/Vices");
         })
         .catch(console.info);
     },

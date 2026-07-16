@@ -138,7 +138,8 @@ export default {
                     if (!response.ok) {
                         throw new Error('Network response was not ok');
                     }
-                    return this.$router.push('/conf/pallets');
+                    // U-FASE2: ritorno opzionale al chiamante (form composito Attrezzaggio)
+                    return this.$router.push(this.$route.query.returnTo || '/conf/pallets');
                 })
                 .catch(error => {
                     console.info(error);

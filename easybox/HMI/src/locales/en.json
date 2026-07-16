@@ -189,8 +189,33 @@
     "gratings": "Gratings",
     "position": "Position",
     "machines": "Machines",
+    "attrezzaggi": "Rigs",
     "diagnostics": "Diagnostics",
     "mqttDiag": "MQTT Live"
+  },
+  "attrezzaggi": {
+    "welcome": "Rigs (pallet + vice + fixture)",
+    "add": "New rig",
+    "create": "New rig",
+    "pallet": "Pallet",
+    "position": "Position",
+    "vice": "Vice",
+    "fixture": "Fixture",
+    "noVice": "no vice",
+    "noFixture": "no fixture",
+    "unmount": "UNMOUNT",
+    "unmountVice": "Unmount vice",
+    "unmountFixture": "Unmount fixture",
+    "sureUnmountVice": "Unmount the vice from the pallet?",
+    "sureUnmountFixture": "Unmount the fixture from the pallet?",
+    "sectionPallet": "1. Pallet",
+    "sectionVice": "2. Vice (permanent mount)",
+    "sectionFixture": "3. Fixture",
+    "none": "None",
+    "viceAlreadyMounted": "Vice already mounted on this pallet",
+    "createNew": "Create new...",
+    "offsets": "Position on pallet (mm / °)",
+    "save": "Save rig"
   },
   "sidebar": {
     "section": {

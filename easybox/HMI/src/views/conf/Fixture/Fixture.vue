@@ -140,7 +140,8 @@ export default {
                         throw new Error('Network response was not ok');
                     }
                     //return this.$router.push("/conf/Fixtures")
-                    return this.$router.push("/conf/Fixtureonpallet?fixtureID="+this.fixture.ID)
+                    // U-FASE2: ritorno opzionale al chiamante (form composito Attrezzaggio)
+                    return this.$router.push(this.$route.query.returnTo || ("/conf/Fixtureonpallet?fixtureID="+this.fixture.ID))
                 })
                 .catch(error => {
                     console.info(error);

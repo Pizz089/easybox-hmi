@@ -189,8 +189,33 @@
     "gratings": "Grigliati",
     "position": "Posizioni",
     "machines": "Macchine",
+    "attrezzaggi": "Attrezzaggi",
     "diagnostics": "Diagnostica",
     "mqttDiag": "MQTT Live"
+  },
+  "attrezzaggi": {
+    "welcome": "Attrezzaggi (pallet + morsa + attrezzatura)",
+    "add": "Nuovo attrezzaggio",
+    "create": "Nuovo attrezzaggio",
+    "pallet": "Pallet",
+    "position": "Posizione",
+    "vice": "Morsa",
+    "fixture": "Attrezzatura",
+    "noVice": "senza morsa",
+    "noFixture": "senza attrezzatura",
+    "unmount": "SMONTA",
+    "unmountVice": "Smonta morsa",
+    "unmountFixture": "Smonta attrezzatura",
+    "sureUnmountVice": "Smontare la morsa dal pallet?",
+    "sureUnmountFixture": "Smontare l'attrezzatura dal pallet?",
+    "sectionPallet": "1. Pallet",
+    "sectionVice": "2. Morsa (montaggio permanente)",
+    "sectionFixture": "3. Attrezzatura",
+    "none": "Nessuna",
+    "viceAlreadyMounted": "Morsa già montata su questo pallet",
+    "createNew": "Crea nuova...",
+    "offsets": "Posizione sul pallet (mm / °)",
+    "save": "Salva attrezzaggio"
   },
   "sidebar": {
     "section": {
