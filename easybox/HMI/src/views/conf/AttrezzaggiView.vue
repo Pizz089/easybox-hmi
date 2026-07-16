@@ -1,4 +1,11 @@
 <script setup>
+    // MODELLO ESCLUSIVO (dal creatore del progetto, AB): ogni pallet monta
+    // UNA sola morsa O UNA sola attrezzatura, mai entrambe. Morsa = ciclo
+    // EasyBox pieno (grezzi/finiti dai cassetti); attrezzatura = lavorazione
+    // speciale (entra in macchina col grezzo gia' montato). Una riga con
+    // entrambe o con piu' attrezzature e' un DATO SPORCO: si mostra col
+    // badge di anomalia (mai sanatorie automatiche, si sistema con gli
+    // smonta).
     import { dataStored } from '../../data';
 </script>
 
@@ -16,6 +23,7 @@
                 <tr>
                     <th>{{$t('attrezzaggi.pallet')}}</th>
                     <th>{{$t('attrezzaggi.position')}}</th>
+                    <th>{{$t('attrezzaggi.type')}}</th>
                     <th>{{$t('attrezzaggi.vice')}}</th>
                     <th style='width:25%'>{{$t('attrezzaggi.fixture')}}</th>
                     <th>&nbsp;</th>
@@ -27,9 +35,20 @@
                         <td>#{{row.pallet.ID}} {{(row.pallet.FAMILY || '').trim()}} - {{(row.pallet.DESCR || '').trim()}}</td>
                         <td>{{ getPosition(row.pallet) }}</td>
 
+                        <!-- AB: badge semantico del modello esclusivo — nudo
+                             (warning), Morsa/Attrezzatura (informativi),
+                             ANOMALIA (entrambe o piu' attrezzature: dato
+                             sporco MOSTRATO, mai nascosto ne' sanato). -->
+                        <td>
+                            <span v-if="rowState(row)=='bare'" class="badge badge-missing">{{$t('attrezzaggi.bare')}}</span>
+                            <span v-else-if="rowState(row)=='vice'" class="badge badge-type">{{$t('attrezzaggi.vice')}}</span>
+                            <span v-else-if="rowState(row)=='fixture'" class="badge badge-type">{{$t('attrezzaggi.fixture')}}</span>
+                            <span v-else class="badge badge-anomaly">{{$t('attrezzaggi.anomaly')}}</span>
+                        </td>
+
                         <td>
                             <span v-if="row.vice">{{(row.vice.FAMILY || '').trim()}} {{(row.vice.DESCR || '').trim()}}</span>
-                            <span v-else class="badge badge-missing">{{$t('attrezzaggi.noVice')}}</span>
+                            <span v-else class="cell-empty">—</span>
                         </td>
 
                         <td>
@@ -38,7 +57,7 @@
                                     {{ fixtureName(f.FIXTURE_ID) }}
                                 </div>
                             </span>
-                            <span v-else class="badge badge-missing">{{$t('attrezzaggi.noFixture')}}</span>
+                            <span v-else class="cell-empty">—</span>
                         </td>
 
                         <td>
@@ -111,6 +130,18 @@ export default {
         fixtureName(fixtureID){
             const f = this.fixtures.find(x => x.ID == fixtureID);
             return f ? ((f.FAMILY || '').trim()+' '+(f.DESCR || '').trim()) : ('#'+fixtureID);
+        },
+        // AB: stato semantico della riga nel modello esclusivo.
+        // 'bare' = da attrezzare; 'vice'/'fixture' = tipo montato;
+        // 'anomaly' = entrambe o piu' di un'attrezzatura (configurazione
+        // impossibile nel modello, es. il pallet 1 storico con 2 fixture).
+        rowState(row){
+            const hasVice = !!row.vice;
+            const nFix = row.fixtures.length;
+            if ((hasVice && nFix > 0) || nFix > 1) return 'anomaly';
+            if (hasVice) return 'vice';
+            if (nFix == 1) return 'fixture';
+            return 'bare';
         },
         askUnmount(type, palletID, id){
             this.pending = { type, palletID, id };
@@ -205,19 +236,37 @@ export default {
         padding: var(--space-6);
     }
 
-    /* Badge di completezza: stessa grammatica dei badge status WORKING/EMPTY
-       delle conf view (bg semantico + testo colore pieno + radius-lg),
-       warning = attrezzaggio incompleto. */
+    /* Badge semantici (grammatica badge status WORKING/EMPTY delle conf
+       view: bg semantico + testo colore pieno + radius-lg).
+       AB: warning = pallet nudo ("Da attrezzare"); info = tipo montato
+       (Morsa/Attrezzatura, informativi non warning); danger semibold =
+       ANOMALIA (doppio montaggio, ben visibile). */
     .badge {
         display: inline-block;
         padding: var(--space-1) var(--space-3);
         border-radius: var(--radius-lg);
         font-size: var(--font-size-sm);
+        white-space: nowrap;
     }
 
     .badge-missing {
         background-color: var(--color-warning-bg);
         color: var(--color-warning);
+    }
+
+    .badge-type {
+        background-color: var(--color-info-bg);
+        color: var(--color-info);
+    }
+
+    .badge-anomaly {
+        background-color: var(--color-danger-bg);
+        color: var(--color-danger);
+        font-weight: var(--font-weight-semibold);
+    }
+
+    .cell-empty {
+        color: var(--text-muted);
     }
 
     .action-btn {
