@@ -46,20 +46,25 @@ const toggleSidebar = () => {
   flex: 1;
   padding: 80px var(--space-5) var(--space-4);  /* top 80 = 64 TopBar + 16 breathing (sotto ombra proiettata) */
   box-sizing: border-box;
-  margin-left: 220px;                            /* sidebar piena (era 260) */
+  /* Y3 CLEARANCE: il contenuto sta ad ALMENO 5px dal bordo destro della
+     linguetta in ENTRAMBI gli stati. Aperta: linguetta finisce a 220+24=244,
+     contenuto a margin 225 + padding-left 24 = 249 (5px). Chiusa: linguetta
+     0+24=24, contenuto a 5+24=29 (5px). Stessa transizione 0.25s del left
+     della linguetta: niente scatti relativi. */
+  margin-left: 225px;
   transition: margin-left 0.25s ease-in-out;
 }
 
 .content--collapsed {
-  margin-left: 0;                                /* sidebar invisibile (era 80) */
+  margin-left: 5px;
 }
 
 /* Toggle: LINGUETTA della sidebar (Y2), a filo del suo bordo destro.
    left transiziona sincronizzato con sidebar width per restare attaccata
    al bordo durante l'animazione (entrambe 0.25s ease-in-out).
-   Forma "appendice": stesso fondo della sidebar, bordo 1px monotono
-   (--border-card) SOLO sui lati esposti (border-left: 0 = raccordo senza
-   stacco), angoli arrotondati solo a destra. NIENTE ombre/gradienti.
+   Forma "appendice" (Y3: SENZA bordatura): solo il fondo della sidebar,
+   stessa estetica della sua base, angoli arrotondati solo a destra.
+   NIENTE bordi/ombre/gradienti.
    Visivo 24x44 (dimezzata la larghezza), touch 44 garantito dal
    pseudo-elemento ::before qui sotto (tecnica annotata nel doc accanto
    alla deroga sidebar). */
@@ -72,8 +77,7 @@ const toggleSidebar = () => {
   /* = mid-tone della sidebar (SideBar.vue): DEBITO TECNICO condiviso —
      quando nascera' il token --bg-sidebar va aggiornato in entrambi. */
   background: #141D2A;
-  border: var(--border-card);
-  border-left: 0;
+  border: 0;
   border-radius: 0 var(--radius-md) var(--radius-md) 0;
   color: var(--text-secondary);
   cursor: pointer;
