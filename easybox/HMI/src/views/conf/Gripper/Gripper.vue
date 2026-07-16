@@ -248,6 +248,7 @@ import {
 } from "@babylonjs/core";
 import { dataStored } from "../../../data.js";
 import optionStatus from "@/components/optionStatus.vue";
+import { KO_OCCUPIED, KO_DISABLED } from "../../../util/errorCodes.js";
 
 export default {
   components: { optionStatus },
@@ -662,9 +663,24 @@ export default {
           : "api/conf/gripper/updateGripper?");
       const cmd = base + new URLSearchParams(payload).toString();
 
+      // AD (R3): l'endpoint puo' rifiutare lo slot con i codici
+      // KO_OCCUPIED/KO_DISABLED (error contract, body testuale su 200):
+      // messaggio chiaro e si resta sul form per correggere.
       fetch(cmd, { method: "GET" })
         .then((r) => {
           if (!r.ok) throw new Error("Network response was not ok");
+          return r.text();
+        })
+        .then((body) => {
+          if (body == KO_OCCUPIED || body == KO_DISABLED) {
+            dataStored.alert.title = this.$t("WARNING");
+            dataStored.alert.desc =
+              body == KO_OCCUPIED
+                ? this.$t("warehouses.occupiedBy", { name: "POS_MAG " + this.gripper.POS_MAG })
+                : this.$t("warehouses.disabledPos");
+            dataStored.alert.type = "warning";
+            return;
+          }
           return this.$router.push("/conf/Grippers");
         })
         .catch(console.info);

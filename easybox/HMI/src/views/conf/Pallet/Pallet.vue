@@ -1,6 +1,7 @@
 <script setup>
     import { RouterLink, RouterView } from 'vue-router'
     import { dataStored } from '../../../data.js'
+    import { KO_OCCUPIED, KO_DISABLED } from '../../../util/errorCodes.js'
 
     import { ref, onMounted } from 'vue'
     const el = ref()
@@ -133,10 +134,24 @@ export default {
                 cmd = dataStored.server+'api/conf/pallet/insertpallet?' + new URLSearchParams( this.pallet ).toString();
                 //console.log(JSON.stringify(this.pallet,null,4))
             }
+            // AD (R3): MAG_POS resta input numerico ma l'endpoint ora rifiuta
+            // posizione occupata/disabilitata con codici (error contract):
+            // messaggio chiaro e si resta sul form per correggere.
             fetch( cmd ,{ method: 'GET'})
                 .then(response => {
                     if (!response.ok) {
                         throw new Error('Network response was not ok');
+                    }
+                    return response.text();
+                })
+                .then(body => {
+                    if (body == KO_OCCUPIED || body == KO_DISABLED) {
+                        dataStored.alert.title = this.$t('WARNING');
+                        dataStored.alert.desc = body == KO_OCCUPIED
+                            ? this.$t('warehouses.occupiedBy', { name: 'MAG_POS ' + this.pallet.MAG_POS })
+                            : this.$t('warehouses.disabledPos');
+                        dataStored.alert.type = 'warning';
+                        return;
                     }
                     // U-FASE2: ritorno opzionale al chiamante (form composito Attrezzaggio)
                     return this.$router.push(this.$route.query.returnTo || '/conf/pallets');

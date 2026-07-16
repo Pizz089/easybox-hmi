@@ -7,6 +7,8 @@
     // badge di anomalia (mai sanatorie automatiche, si sistema con gli
     // smonta).
     import { dataStored } from '../../data';
+    import { palletGridOrder } from '../../util/warehouseGrid';
+    import { KO_OCCUPIED, KO_DISABLED } from '../../util/errorCodes';
 </script>
 
 <template>
@@ -113,14 +115,19 @@
                 {{ $t('attrezzaggi.plantWarning') }}
             </div>
 
+            <!-- AD: celle disabilitate (STATUS 9) spente con stile DISTINTO
+                 dalle occupate; righe di coda tagliate da posGridOrder. -->
             <div class="pos-grid">
                 <button v-for="n in posGridOrder" :key="n" class="pos-cell"
-                    :class="{ selected: placeSel===n }"
-                    :disabled="!!occupantOf(n)"
+                    :class="{ selected: placeSel===n, 'disabled-slot': disabledSlots.has(n) }"
+                    :disabled="!!occupantOf(n) || disabledSlots.has(n)"
                     @click="placeSel=n">
                     <span class="pos-num">{{ n }}</span>
                     <span v-if="occupantOf(n)" class="pos-occ">
                         #{{ occupantOf(n).ID }} {{ (occupantOf(n).FAMILY || '').trim() }}
+                    </span>
+                    <span v-else-if="disabledSlots.has(n)" class="pos-occ">
+                        {{ $t('warehouses.disabled') }}
                     </span>
                 </button>
             </div>
@@ -160,6 +167,7 @@ export default {
             vices:[],
             fixtures:[],
             fop:[],          // righe FIXTURE_ON_PALLET
+            wpallet:[],      // righe [POSITION] WPALLET (per gli slot disabilitati, AD)
             pending:null,    // {type:'vice'|'fixture', palletID, id} in attesa di conferma
             // AC: dialog posizione a magazzino.
             // magPositions = 20: layout fisico della cella, magazzino pallet
@@ -184,6 +192,7 @@ export default {
             get('api/conf/vice/show/all',    d => this.vices    = d || []);
             get('api/conf/fixture/show/all', d => this.fixtures = d || []);
             get('api/conf/fixture/showFixtureOnPallet/all', d => this.fop = d || []);
+            get('api/conf/position/showWarehouse/WPALLET', d => this.wpallet = d || []);
         },
         getPosition(pal){
             if (pal.POS_PLANT>=100)
@@ -289,9 +298,27 @@ export default {
                 MAG_POS: sel > 0 ? sel : -1,   // -1 = fuori magazzino (decodifica PalletsView)
                 POS_PLANT: row.POS_PLANT
             });
+            // AD (chiusura finestra nota): l'endpoint ora rifiuta con codici
+            // KO_OCCUPIED/KO_DISABLED (HTTP 200, body = codice) — qui si
+            // mostra il messaggio, si rifa' la foto e il dialog RESTA aperto
+            // perche' l'operatore scelga un altro posto.
             fetch(dataStored.server+'api/conf/pallet/updatePallet?'+params.toString(), { method: 'GET' })
                 .then(r => {
                     if (!r.ok) throw new Error('Network response was not ok');
+                    return r.text();
+                })
+                .then(body => {
+                    if (body == KO_OCCUPIED || body == KO_DISABLED) {
+                        const occ = sel > 0 ? this.pallets.find(p => p.MAG_POS == sel && p.ID != t.ID) : null;
+                        dataStored.alert.title = this.$t('WARNING');
+                        dataStored.alert.desc = body == KO_OCCUPIED
+                            ? this.$t('warehouses.occupiedBy', { name: occ ? ('#'+occ.ID+' '+(occ.FAMILY || '').trim()) : '?' })
+                            : this.$t('warehouses.disabledPos');
+                        dataStored.alert.type = 'warning';
+                        this.placeSel = null;
+                        this.getDataTable();
+                        return;
+                    }
                     this.closePlace();
                     this.getDataTable();
                 })
@@ -322,19 +349,17 @@ export default {
                 return 'locked4maintenance'
             return ''
         },
-        // AC: la griglia rispecchia la disposizione FISICA del magazzino
-        // pallet, vista come la vede l'operatore davanti al magazzino:
-        // 5 righe x 4 posti, RIGA 1 IN BASSO, POSIZIONE 1 in basso a DESTRA;
-        // la numerazione procede verso sinistra lungo la riga (1->4), poi
-        // sale alla riga sopra (5->8, sempre da destra) fino alla 20 in
-        // alto a sinistra. La CSS grid riempie da sinistra a destra, riga
-        // per riga dall'alto: quell'ordine fisico equivale quindi al
-        // semplice 20..1 discendente (riga alta: 20 19 18 17; ...;
-        // riga bassa: 4 3 2 1).
+        // AD: slot disabilitati del magazzino pallet (POSITION STATUS=9)
+        disabledSlots(){
+            return new Set(this.wpallet.filter(r => r.STATUS == 9).map(r => r.SUB_POS));
+        },
+        // AC/AD: convenzione fisica (riga 1 in basso, pos. 1 in basso a
+        // destra -> render N..1) + REGOLA RIGHE DI CODA ora nell'utility
+        // CONDIVISA util/warehouseGrid.js: le righe interamente disabilitate
+        // spariscono solo dalla coda in alto; le intermedie restano
+        // visibili ma spente.
         posGridOrder(){
-            const out = [];
-            for (let n = this.magPositions; n >= 1; n--) out.push(n);
-            return out;
+            return palletGridOrder(this.disabledSlots);
         }
     },
     mounted(){
@@ -501,6 +526,16 @@ export default {
     .pos-cell:disabled {
         opacity: 0.6;
         cursor: not-allowed;
+    }
+
+    /* AD: slot DISABILITATO — stile distinto dall'occupato (bordo
+       tratteggiato warning, nessun fill), stessa grammatica della vista
+       Magazzini. */
+    .pos-cell.disabled-slot {
+        border: 2px dashed var(--color-warning);
+        background: transparent;
+        color: var(--text-muted);
+        opacity: 1;
     }
 
     .pos-num {
