@@ -1,6 +1,6 @@
 <script setup>
-import { computed } from "vue";
-import { RouterLink } from "vue-router";
+import { computed, reactive, watch } from "vue";
+import { RouterLink, useRoute } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { dataStored } from "@/data";
 
@@ -83,6 +83,63 @@ const filteredMagItems = filterByLevel(magItems);
 const filteredToolItems = filterByLevel(toolItems);
 const filteredSetItems = filterByLevel(setItems);
 const filteredDiagItems = filterByLevel(diagItems);
+
+// W: gruppi COLLASSABILI — tutti tranne MENU (che resta hardcoded nel
+// template, header slim non interattivo). Una sezione senza voci visibili
+// al livello corrente sparisce (era gia' cosi' per Diagnostica).
+const groups = computed(() =>
+  [
+    { id: "unit", key: "sidebar.section.unit", fallback: "Unit", items: filteredUnitItems.value },
+    { id: "warehouse", key: "sidebar.section.warehouse", fallback: "Magazzino", items: filteredMagItems.value },
+    { id: "tooling", key: "sidebar.section.tooling", fallback: "Attrezzaggio", items: filteredToolItems.value },
+    { id: "settings", key: "sidebar.section.settings", fallback: "Impostazioni", items: filteredSetItems.value },
+    { id: "diagnostics", key: "sidebar.section.diagnostics", fallback: "Diagnostica", items: filteredDiagItems.value },
+  ].filter((g) => g.items.length > 0)
+);
+
+// W: stato collasso per gruppo, default TUTTO APERTO (chiave assente =
+// aperto), persistito in localStorage = per postazione (ogni kiosk il suo).
+const COLLAPSE_KEY = "easybox.sidebar.collapsed";
+function loadCollapsed() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(COLLAPSE_KEY) || "{}");
+    return raw && typeof raw === "object" ? raw : {};
+  } catch (e) {
+    return {};
+  }
+}
+const collapsed = reactive(loadCollapsed());
+
+function persistCollapsed() {
+  try {
+    localStorage.setItem(COLLAPSE_KEY, JSON.stringify(collapsed));
+  } catch (e) {
+    /* storage pieno/negato: lo stato resta solo in sessione */
+  }
+}
+
+function toggleGroup(id) {
+  collapsed[id] = !collapsed[id];
+  persistCollapsed();
+}
+
+// REGOLA W (punto 4): il gruppo che contiene la voce attiva si espande
+// automaticamente alla navigazione (match esatto sul path della voce;
+// immediate: vale anche per la route di primo caricamento).
+const route = useRoute();
+watch(
+  () => route.path,
+  (p) => {
+    const target = (p || "").toLowerCase();
+    for (const g of groups.value) {
+      if (collapsed[g.id] && g.items.some((i) => i.path.toLowerCase() === target)) {
+        collapsed[g.id] = false;
+        persistCollapsed();
+      }
+    }
+  },
+  { immediate: true }
+);
 </script>
 
 <template>
@@ -103,72 +160,27 @@ const filteredDiagItems = filterByLevel(diagItems);
         </ul>
       </div>
 
-      <div class="section">
-        <h4 v-if="props.open" class="section-title">
-          {{ tr("sidebar.section.unit", "Unit") }}
+      <!-- W: gruppi collassabili (tutti tranne MENU sopra). Header
+           interattivo touch 44, chevron che ruota, a11y minima
+           (role button + tastiera). -->
+      <div class="section section--collapsible" v-for="g in groups" :key="g.id">
+        <h4 v-if="props.open" class="section-title section-title--toggle"
+          role="button"
+          tabindex="0"
+          :aria-expanded="!collapsed[g.id]"
+          @click="toggleGroup(g.id)"
+          @keydown.enter.prevent="toggleGroup(g.id)"
+          @keydown.space.prevent="toggleGroup(g.id)">
+          {{ tr(g.key, g.fallback) }}
+          <svg class="chevron" :class="{ closed: collapsed[g.id] }"
+            viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+            aria-hidden="true">
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
         </h4>
-        <ul>
-          <li v-for="item in filteredUnitItems" :key="item.path">
-            <RouterLink :to="item.path">
-              <span v-if="props.open">
-                {{ tr(item.key, item.fallback) }}
-              </span>
-            </RouterLink>
-          </li>
-        </ul>
-      </div>
-
-      <div class="section">
-        <h4 v-if="props.open" class="section-title">
-          {{ tr("sidebar.section.warehouse", "Magazzino") }}
-        </h4>
-        <ul>
-          <li v-for="item in filteredMagItems" :key="item.path">
-            <RouterLink :to="item.path">
-              <span v-if="props.open">
-                {{ tr(item.key, item.fallback) }}
-              </span>
-            </RouterLink>
-          </li>
-        </ul>
-      </div>
-
-      <div class="section">
-        <h4 v-if="props.open" class="section-title">
-          {{ tr("sidebar.section.tooling", "Attrezzaggio") }}
-        </h4>
-        <ul>
-          <li v-for="item in filteredToolItems" :key="item.path">
-            <RouterLink :to="item.path">
-              <span v-if="props.open">
-                {{ tr(item.key, item.fallback) }}
-              </span>
-            </RouterLink>
-          </li>
-        </ul>
-      </div>
-
-      <div class="section">
-        <h4 v-if="props.open" class="section-title">
-          {{ tr("sidebar.section.settings", "Impostazioni") }}
-        </h4>
-        <ul>
-          <li v-for="item in filteredSetItems" :key="item.path">
-            <RouterLink :to="item.path">
-              <span v-if="props.open">
-                {{ tr(item.key, item.fallback) }}
-              </span>
-            </RouterLink>
-          </li>
-        </ul>
-      </div>
-
-      <div class="section" v-if="filteredDiagItems.length > 0">
-        <h4 v-if="props.open" class="section-title">
-          {{ tr("sidebar.section.diagnostics", "Diagnostica") }}
-        </h4>
-        <ul>
-          <li v-for="item in filteredDiagItems" :key="item.path">
+        <ul v-show="!collapsed[g.id]">
+          <li v-for="item in g.items" :key="item.path">
             <RouterLink :to="item.path">
               <span v-if="props.open">
                 {{ tr(item.key, item.fallback) }}
@@ -225,11 +237,11 @@ const filteredDiagItems = filterByLevel(diagItems);
   gap: var(--space-2);
 }
 
-/* U-FASE2: header DIMAGRITI (~30px a blocco, prima ~51): con 5 sezioni il
-   costo verticale degli header pesava piu' delle voci risparmiate. Padding
-   verticale 8->4 (space-1), margin-bottom 8->0 (resta il gap 8 della
-   .section), line-height 1.6 ereditata -> tight. Il blocco header vale ora
-   4+4+14.4+8(gap) ~= 30px. */
+/* Header base = solo MENU (non collassabile, non interattivo): resta slim
+   (~30px a blocco) — nessun requisito touch su un elemento non cliccabile.
+   W: per i gruppi collassabili la deroga --space-1 del dimagrimento
+   (77fca84) SI RIENTRA: l'altezza la governa il min-height 44 interattivo
+   (vedi .section-title--toggle), l'aria e' tornata a token. */
 .section-title {
   padding: var(--space-1) var(--space-4);
   margin: 0;
@@ -242,6 +254,49 @@ const filteredDiagItems = filterByLevel(diagItems);
   text-align: center;
   color: var(--text-secondary);
   letter-spacing: 0.05em;
+}
+
+/* W: gap header->lista 8->0 SOLO per i gruppi collassabili (opzione D):
+   l'aria la da' gia' l'header interattivo a 44. Gap fra sezioni e altezza
+   voci invariati. */
+.section--collapsible {
+  gap: 0;
+}
+
+/* W: header interattivo dei gruppi collassabili — touch 44, label centrata
+   come il canone, chevron ancorato a destra. */
+.section-title--toggle {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: var(--space-2) var(--space-6);   /* orizzontale > per non finire sotto il chevron */
+  cursor: pointer;
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+
+.section-title--toggle:hover,
+.section-title--toggle:focus-visible {
+  background: var(--bg-surface-2);
+  color: var(--text-primary);
+}
+
+.section-title--toggle:focus {
+  outline: none;               /* feedback tastiera dato da :focus-visible sopra */
+}
+
+/* W: chevron che ruota — transizione leggera (solo transform, kiosk-safe) */
+.chevron {
+  position: absolute;
+  right: var(--space-3);
+  width: 14px;
+  height: 14px;
+  transition: transform var(--transition-fast);
+}
+
+.chevron.closed {
+  transform: rotate(-90deg);
 }
 
 ul {
