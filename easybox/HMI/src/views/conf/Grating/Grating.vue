@@ -463,8 +463,8 @@ export default {
             prismatic:true,
             minSafeX:0,             //il minimo raggiungibile in base ai dati della pinza
             minSafeY:0,             //il minimo raggiungibile in base ai dati della pinza
-            minBordoX:20,           //bordo minimo a destra e sinistra del cassetto  
-            minBordoY:20,           //bordo minimo a sopra e sotto del cassetto 
+            minBordoX:20,           //bordo minimo dx/sx — (2b-2) diventerà derivato dalle chele  
+            minBordoY:20,           //bordo minimo sopra/sotto — (2b-2) diventerà derivato dalle chele 
             readyToDownload:false   //activa il download del file di progetto svg
         }
     },
@@ -645,13 +645,14 @@ export default {
             this.grating.ID=this.$route.params.grating_ID;
         },
         calculateCylinder(){ //da controllare con il file excell
-            this.n_cln=Math.floor(this.grating.width/(this.x+2*(this.grating.gripperMouvement+this.grating.tickGripperComponent)+this.grating.SAFEX));
-            this.n_row=Math.floor(this.grating.height/(this.y+this.grating.SAFEY));
+            // (2b) perimetro minBordo applicato ANCHE al cilindro (prima assente: buco chiuso)
+            this.n_cln=Math.floor((this.grating.width-2*this.minBordoX)/(this.x+2*(this.grating.gripperMouvement+this.grating.tickGripperComponent)+this.grating.SAFEX));
+            this.n_row=Math.floor((this.grating.height-2*this.minBordoY)/(this.y+this.grating.SAFEY));
             this.minSpaceX=this.grating.gripperMouvement+this.grating.tickGripperComponent+this.grating.SAFEX
             
             this.minSpaceY=this.grating.SAFEY /////
-            this.spaceNullX=this.grating.width-((this.n_cln-1)*this.minSpaceX)-(this.n_cln*this.x)-(2*this.grating.SAFEX);
-            this.spaceNullY=this.grating.height-((this.n_row-1)*this.minSpaceY)-(this.n_row*this.y)-(2*this.grating.SAFEY);
+            this.spaceNullX=(this.grating.width-2*this.minBordoX)-((this.n_cln-1)*this.minSpaceX)-(this.n_cln*this.x)-(2*this.grating.SAFEX);
+            this.spaceNullY=(this.grating.height-2*this.minBordoY)-((this.n_row-1)*this.minSpaceY)-(this.n_row*this.y)-(2*this.grating.SAFEY);
             
             // (fase 2b) guardia anti-Infinity: con n=0 niente divisione
             this.corrX=this.n_cln>0 ? Math.floor(this.spaceNullX/(this.n_cln)) : 0;
@@ -661,8 +662,9 @@ export default {
                 for (let c=1;c<=this.n_cln; c++){
                     let obj = {}    // {prisma:true, x:700, y:500, status:7},
                     obj.prisma = false;
-                    obj.x=this.grating.width-(this.minSpaceX+this.x)*c +this.x/2;
-                    obj.y=this.grating.height-(this.minSpaceY+this.y)*r+this.y/2;
+                    // (2b) distribuzione CENTRATA: origine con meta' residuo -> margini simmetrici
+                    obj.x=-this.minBordoX+this.grating.width-(this.minSpaceX+this.x)*c +this.x/2-this.spaceNullX/2;
+                    obj.y=-this.minBordoY+this.grating.height-(this.minSpaceY+this.y)*r+this.y/2-this.spaceNullY/2;
                     obj.status=2;
                     this.listPz.push(obj);
                 }
@@ -689,8 +691,9 @@ export default {
                 for (let c=1;c<=this.n_cln; c++){
                     let obj = {}    // {prisma:true, x:700, y:500, status:7},
                     obj.prisma = true;
-                    obj.x=-this.minBordoX+this.grating.width-(this.minSpaceX+this.x)*c;
-                    obj.y=-this.minBordoY+this.grating.height-(this.minSpaceY+this.y)*r;
+                    // (2b) distribuzione CENTRATA: origine con meta' residuo -> margini simmetrici
+                    obj.x=-this.minBordoX+this.grating.width-(this.minSpaceX+this.x)*c-this.spaceNullX/2;
+                    obj.y=-this.minBordoY+this.grating.height-(this.minSpaceY+this.y)*r-this.spaceNullY/2;
                     obj.status=2;
                     this.listPz.push(obj);
                 }
@@ -719,8 +722,10 @@ export default {
             this.distribute();
         },
         distribute(){
-            this.grating.SAFEX=this.grating.SAFEX+this.corrX-this.grating.gripperMouvement-this.grating.tickGripperComponent ;
-            this.grating.SAFEY=this.grating.SAFEY+this.corrY;
+            // (2b) morte del rilassamento iterativo: la distribuzione centra
+            // da sola il residuo; SAFEX/SAFEY appartengono all'OPERATORE (li
+            // edita a mano se vuole piu' aria). Ricalcolo puro -> IDEMPOTENTE.
+            this.calculateData();
         },
         setGratingAssociated(){
             this.gratingAssociated=!this.gratingAssociated;
