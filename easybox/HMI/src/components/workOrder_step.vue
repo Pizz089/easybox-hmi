@@ -38,15 +38,15 @@ const steps = computed(() => {
     {
       key: 'piece',
       route: '/selectPiece',
+      // Manual Vice rimossa (C3): pieceID=0 esiste ormai solo nel ramo
+      // attrezzatura, dove il valore mostrato e' il pezzo DICHIARATO
       value: isFixture
         ? (wo.declaredPieceID > 0 ? t('wizard.value.piece', { id: wo.declaredPieceID }) : null)
         : wo.pieceID > 0
           ? t('wizard.value.piece', { id: wo.pieceID })
-          : wo.pieceID === 0 && wo.rigType !== ''
-            ? t('wizard.value.manualVice')
-            : null,
+          : null,
       state: getState(
-        isFixture ? wo.declaredPieceID > 0 : wo.pieceID >= 0,
+        isFixture ? wo.declaredPieceID > 0 : wo.pieceID > 0,
         currentRoute === 'selectPiece'
       ),
     },

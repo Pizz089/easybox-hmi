@@ -39,14 +39,10 @@
           />
       </div>
     <div class="pure-g">
-      <!-- Manual Vice: solo ramo morsa (nel dichiarativo un "pezzo 0" non
-           esiste; la rimozione totale e' proposta C3 da ratificare) -->
-      <div v-if="dataStored.createWorkOrder.rigType!='fixture'"
-        class="container_card pure-u-1-2 pure-u-md-1-3 pure-u-lg-1-5">
-        <div class="card" @click="nextStep(0)" style="background-color: coral;">
-            <h4><b>{{ t('wizard.value.manualVice') }}</b></h4>
-        </div>
-      </div>
+      <!-- Modalità Manual Vice differita (rimossa nel C3, ratificato):
+           lato PLC vive solo in FB202/MC2 (oggi stub); riattivabile da git
+           quando supportata — richiederà PALLET_ID=0 esatto, VICE_ID>0 e una
+           sorgente part program dedicata (pezzo 0 non ne ha). -->
       <div v-for="(p) in piecesFiltered" :key="p.ID"
         class="container_card pure-u-1-2 pure-u-md-1-3 pure-u-lg-1-5">
 

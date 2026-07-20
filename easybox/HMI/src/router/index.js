@@ -220,23 +220,19 @@ const router = createRouter({
       meta: { layout: StandardMenu },
       component: () => import("../views/workOrder/selectGripper.vue"),
     },
+    // Step demoliti dal cantiere AG (C3): pallet/morsa/attrezzatura derivano
+    // dal rig (selectRig). Redirect per link storici: mai schermata vuota.
     {
       path: "/selectPallet",
-      name: "selectPallet",
-      meta: { layout: StandardMenu },
-      component: () => import("../views/workOrder/selectPallet.vue"),
+      redirect: "/selectRig",
     },
     {
       path: "/selectVice",
-      name: "selectVice",
-      meta: { layout: StandardMenu },
-      component: () => import("../views/workOrder/selectVice.vue"),
+      redirect: "/selectRig",
     },
     {
       path: "/selectFixture",
-      name: "selectFixture",
-      meta: { layout: StandardMenu },
-      component: () => import("../views/workOrder/selectFixture.vue"),
+      redirect: "/selectRig",
     },
     {
       path: "/selectMC",
