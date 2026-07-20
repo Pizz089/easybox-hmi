@@ -108,7 +108,7 @@ export default {
                 });
         },
         modifyOrder(i){
-            this.$router.push('/selectPiece');
+            this.$router.push('/selectRig');
         },
         modifyOrderStatus(id, stat, pieceID){
             dataStored.WS.socket.emit("TO_PLANT/CMD/ORDER",

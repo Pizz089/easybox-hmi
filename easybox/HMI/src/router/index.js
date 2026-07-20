@@ -203,6 +203,12 @@ const router = createRouter({
       component: () => import("../views/layoutView.vue"),
     },
     {
+      path: "/selectRig",
+      name: "selectRig",
+      meta: { layout: StandardMenu },
+      component: () => import("../views/workOrder/selectRig.vue"),
+    },
+    {
       path: "/selectPiece",
       name: "selectPiece",
       meta: { layout: StandardMenu },

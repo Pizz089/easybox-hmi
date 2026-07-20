@@ -13,50 +13,55 @@ function getState(isComplete, isCurrent) {
   return 'pending'
 }
 
+// Due sequenze per RAMO (cantiere AG fase 2, rig scelto in selectRig):
+//   morsa       : rig -> piece -> gripper -> machine -> final
+//   attrezzatura: rig -> piece(dichiarato) -> machine -> final
+// A ramo non ancora scelto si mostra la sequenza morsa (piu' lunga) come
+// anteprima; gli step pallet/fixture del vecchio flusso non esistono piu'
+// (il pallet e' derivato dal rig).
 const steps = computed(() => {
   const wo = dataStored.createWorkOrder
   const currentRoute = route.name
+  const isFixture = wo.rigType === 'fixture'
 
-  return [
+  const list = [
+    {
+      key: 'rig',
+      route: '/selectRig',
+      value:
+        wo.rigType !== '' && wo.palletID > 0
+          ? t('wizard.value.rig', { id: wo.palletID }) + ' · ' +
+            t(wo.rigType === 'vice' ? 'attrezzaggi.vice' : 'attrezzaggi.fixture')
+          : null,
+      state: getState(wo.rigType !== '' && wo.palletID > 0, currentRoute === 'selectRig'),
+    },
     {
       key: 'piece',
       route: '/selectPiece',
-      value:
-        wo.pieceID > 0
+      value: isFixture
+        ? (wo.declaredPieceID > 0 ? t('wizard.value.piece', { id: wo.declaredPieceID }) : null)
+        : wo.pieceID > 0
           ? t('wizard.value.piece', { id: wo.pieceID })
-          : wo.pieceID === 0
+          : wo.pieceID === 0 && wo.rigType !== ''
             ? t('wizard.value.manualVice')
             : null,
-      state: getState(wo.pieceID >= 0, currentRoute === 'selectPiece'),
+      state: getState(
+        isFixture ? wo.declaredPieceID > 0 : wo.pieceID >= 0,
+        currentRoute === 'selectPiece'
+      ),
     },
-    {
+  ]
+
+  if (!isFixture) {
+    list.push({
       key: 'gripper',
       route: '/selectGripper',
       value: wo.gripperID > 0 ? t('wizard.value.gripper', { id: wo.gripperID }) : null,
       state: getState(wo.gripperID > 0, currentRoute === 'selectGripper'),
-    },
-    {
-      key: 'pallet',
-      route: '/selectPallet',
-      value:
-        wo.palletID > 0
-          ? t('wizard.value.pallet', { id: wo.palletID })
-          : wo.palletID === 0
-            ? t('wizard.value.noPallet')
-            : null,
-      state: getState(wo.palletID >= 0, currentRoute === 'selectPallet'),
-    },
-    {
-      key: 'fixture',
-      route: '/selectFixture',
-      value:
-        wo.fixtureID > 0
-          ? t('wizard.value.fixture', { id: wo.fixtureID })
-          : wo.fixtureID === 0
-            ? t('wizard.value.noFixture')
-            : null,
-      state: getState(wo.fixtureID >= 0, currentRoute === 'selectFixture'),
-    },
+    })
+  }
+
+  list.push(
     {
       key: 'machine',
       route: '/selectMC',
@@ -68,8 +73,9 @@ const steps = computed(() => {
       route: '/lastData',
       value: null,
       state: currentRoute === 'lastData' ? 'current' : 'pending',
-    },
-  ]
+    }
+  )
+  return list
 })
 </script>
 

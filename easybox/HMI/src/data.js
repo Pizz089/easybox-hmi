@@ -48,11 +48,18 @@ export const dataStored = reactive({
     status_alarm    : 99,
 
     createWorkOrder:{
+      // Convenzioni PLC (cantiere AG fase 2): VICE_ID=0 SEMPRE (mai -1);
+      // ramo morsa: pieceID reale, gripperID reale, fixtureID=0, declaredPieceID 0/NULL;
+      // ramo attrezzatura: pieceID=0 (un PIECE_ID!=0 farebbe partire una
+      // missione di carico dal magazzino), gripperID=0, declaredPieceID=pezzo
+      // dichiarato (sorgente del PP), fixtureID solo uso HMI; palletID reale sempre.
+      rigType   :'',       // '' | 'vice' | 'fixture' — ramo del wizard (solo client)
+      declaredPieceID:0,   // pezzo dichiarato ramo attrezzatura -> WORKORDER.DECLARED_PIECE_ID
       pieceID   :-1,
       gripperID :0,
       palletID  :-1,
-      fixtureID :-1,
-      viceID    :-1,
+      fixtureID :0,
+      viceID    :0,
       machineID :0,
       quantity  :0,
       decentrated_tray_x_pick :0,
@@ -71,11 +78,13 @@ export const dataStored = reactive({
     },
 
     emptingStructure(){
+      dataStored.createWorkOrder.rigType                  ='';
+      dataStored.createWorkOrder.declaredPieceID          =0;
       dataStored.createWorkOrder.pieceID                  =-1;
       dataStored.createWorkOrder.gripperID                =0;
       dataStored.createWorkOrder.palletID                 =-1;
-      dataStored.createWorkOrder.fixtureID                =-1;
-      dataStored.createWorkOrder.viceID                   =-1;
+      dataStored.createWorkOrder.fixtureID                =0;   //convenzione PLC: mai -1
+      dataStored.createWorkOrder.viceID                   =0;   //convenzione PLC: mai -1
       dataStored.createWorkOrder.machineID                =0;
       dataStored.createWorkOrder.quantity                 =0;
       dataStored.createWorkOrder.decentrated_tray_x_pick  =0;

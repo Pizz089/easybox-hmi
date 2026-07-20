@@ -578,6 +578,7 @@
   },
   "wizard": {
     "step": {
+      "rig": "ATTREZZAGGIO",
       "piece": "PEZZO",
       "gripper": "PINZA",
       "pallet": "PALLET",
@@ -585,7 +586,16 @@
       "machine": "MACCHINA",
       "final": "RIEPILOGO"
     },
+    "rig": {
+      "title": "Scegli l'attrezzaggio (pallet)",
+      "noneSelectable": "Nessun pallet attrezzato selezionabile: attrezza un pallet da Configurazione → Attrezzaggi"
+    },
+    "piece": {
+      "title": "Tipo pezzo",
+      "declaredTitle": "Pezzo montato sul pallet (dichiarazione)"
+    },
     "value": {
+      "rig": "Pallet {id}",
       "piece": "Pezzo {id}",
       "manualVice": "Morsa Manuale",
       "gripper": "Pinza {id}",

@@ -84,6 +84,10 @@ router.get('/updateOrder', (req, res) => {
             return;
         }
 
+		// DECLARED_PIECE_ID: come in insertOrder (NULL se assente o ramo morsa)
+		const declared = parseInt(req.query.declaredPieceID, 10);
+		const declaredSql = (Number.isInteger(declared) && declared > 0) ? declared : 'NULL';
+
 		// SCRITTURA sulla base table WORKORDER (la view WORKORDERS non e'
 		// aggiornabile). Riparati gli apici rotti storici (B1) e il refuso
 		// Y_PLACE_DECENTRATED_TRAY che riceveva il valore X.
@@ -104,7 +108,8 @@ router.get('/updateOrder', (req, res) => {
 					X_PLACE_DECENTRATED_MC='${req.query.decentrated_MC_x_place}',
 					Y_PICK_DECENTRATED_MC='${req.query.decentrated_MC_y_pick}',
 					Y_PLACE_DECENTRATED_MC='${req.query.decentrated_MC_y_place}',
-					PartProg_ID=${req.query.PP}
+					PartProg_ID=${req.query.PP},
+					DECLARED_PIECE_ID=${declaredSql}
 					WHERE ID='${req.query.ID}';`
 		
 		var request = new sql.Request();
@@ -131,27 +136,35 @@ router.get('/insertOrder', (req, res) => {
         }
 		
 		var request = new sql.Request();
-        // SCRITTURA sulla base table WORKORDER (la view WORKORDERS non e' aggiornabile)
+        // SCRITTURA sulla base table WORKORDER (la view WORKORDERS non e' aggiornabile).
+        // Sfalsamento storico X_PLACE_TRAY<->Y_PICK_TRAY corretto (cantiere AG
+        // C2, ratificato: tutti i valori storici a DB erano 0, rischio zero).
+        // DECLARED_PIECE_ID: pezzo dichiarato del ramo attrezzatura (solo uso
+        // HMI, NULL nel ramo morsa) — colonna aggiunta da
+        // scripts/workorder-declared-piece.sql.
+        const declared = parseInt(req.query.declaredPieceID, 10);
+        const declaredSql = (Number.isInteger(declared) && declared > 0) ? declared : 'NULL';
         let query = `INSERT INTO WORKORDER
-					(PIECE_ID, GRIPPER_ID, VICE_ID, FIXTURE_ID, PALLET_ID, STATUS, MACHINE_ID, QUANTITY, X_PICK_DECENTRATED_TRAY, X_PLACE_DECENTRATED_TRAY, Y_PICK_DECENTRATED_TRAY, Y_PLACE_DECENTRATED_TRAY, X_PICK_DECENTRATED_MC, X_PLACE_DECENTRATED_MC, Y_PICK_DECENTRATED_MC, Y_PLACE_DECENTRATED_MC, PartProg_ID)
+					(PIECE_ID, GRIPPER_ID, VICE_ID, FIXTURE_ID, PALLET_ID, STATUS, MACHINE_ID, QUANTITY, X_PICK_DECENTRATED_TRAY, X_PLACE_DECENTRATED_TRAY, Y_PICK_DECENTRATED_TRAY, Y_PLACE_DECENTRATED_TRAY, X_PICK_DECENTRATED_MC, X_PLACE_DECENTRATED_MC, Y_PICK_DECENTRATED_MC, Y_PLACE_DECENTRATED_MC, PartProg_ID, DECLARED_PIECE_ID)
 					VALUES(
-					'${req.query.pieceID}', 
-					'${req.query.gripperID}', 
-					'${req.query.viceID}', 
+					'${req.query.pieceID}',
+					'${req.query.gripperID}',
+					'${req.query.viceID}',
 					'${req.query.fixtureID}',
-					'${req.query.palletID}', 
-					 4, 
-					'${req.query.machineID}', 
-					'${req.query.quantity}', 
-					'${req.query.decentrated_tray_x_pick}', 
-					'${req.query.decentrated_tray_y_pick}', 
-					'${req.query.decentrated_tray_x_place}', 
-					'${req.query.decentrated_tray_y_place}', 
-					'${req.query.decentrated_MC_x_pick}', 
-					'${req.query.decentrated_MC_x_place}', 
-					'${req.query.decentrated_MC_y_pick}', 
+					'${req.query.palletID}',
+					 4,
+					'${req.query.machineID}',
+					'${req.query.quantity}',
+					'${req.query.decentrated_tray_x_pick}',
+					'${req.query.decentrated_tray_x_place}',
+					'${req.query.decentrated_tray_y_pick}',
+					'${req.query.decentrated_tray_y_place}',
+					'${req.query.decentrated_MC_x_pick}',
+					'${req.query.decentrated_MC_x_place}',
+					'${req.query.decentrated_MC_y_pick}',
 					'${req.query.decentrated_MC_y_place}',
-					 ${req.query.PP}
+					 ${req.query.PP},
+					 ${declaredSql}
 					);`
 					
         log.info('query ' + query);

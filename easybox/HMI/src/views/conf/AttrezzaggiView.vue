@@ -8,6 +8,7 @@
     // smonta).
     import { dataStored } from '../../data';
     import { palletGridOrder, palletPositionLabel } from '../../util/warehouseGrid';
+    import { buildRigRows, rigState } from '../../util/rigging';
     import { KO_OCCUPIED, KO_DISABLED } from '../../util/errorCodes';
 </script>
 
@@ -202,17 +203,10 @@ export default {
             const f = this.fixtures.find(x => x.ID == fixtureID);
             return f ? ((f.FAMILY || '').trim()+' '+(f.DESCR || '').trim()) : ('#'+fixtureID);
         },
-        // AB: stato semantico della riga nel modello esclusivo.
-        // 'bare' = da attrezzare; 'vice'/'fixture' = tipo montato;
-        // 'anomaly' = entrambe o piu' di un'attrezzatura (configurazione
-        // impossibile nel modello, es. il pallet 1 storico con 2 fixture).
+        // AB: stato semantico della riga — logica portata nell'utility
+        // condivisa util/rigging.js (riuso con selectRig, regola AE).
         rowState(row){
-            const hasVice = !!row.vice;
-            const nFix = row.fixtures.length;
-            if ((hasVice && nFix > 0) || nFix > 1) return 'anomaly';
-            if (hasVice) return 'vice';
-            if (nFix == 1) return 'fixture';
-            return 'bare';
+            return rigState(row);
         },
         askUnmount(type, palletID, id){
             this.pending = { type, palletID, id };
@@ -332,14 +326,10 @@ export default {
         }
     },
     computed:{
-        // UNA RIGA PER PALLET: morsa da VICE.PALLET_ID, attrezzature dalle
-        // righe FIXTURE_ON_PALLET (fonte dati come da audit U).
+        // UNA RIGA PER PALLET (fonte dati come da audit U) — costruzione
+        // portata nell'utility condivisa util/rigging.js (riuso con selectRig).
         rows(){
-            return this.pallets.map(p => ({
-                pallet: p,
-                vice: this.vices.find(v => v.PALLET_ID == p.ID) || null,
-                fixtures: this.fop.filter(f => f.PALLET_ID == p.ID)
-            }));
+            return buildRigRows(this.pallets, this.vices, this.fop);
         },
         locked(){
             if (dataStored.userLevel<=1)

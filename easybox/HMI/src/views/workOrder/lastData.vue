@@ -200,11 +200,14 @@ export default {
         }
     },
     methods: {
-        // Legge il PARTPROGRAM del pezzo selezionato nel wizard: e' la sola
-        // sorgente del PP dell'ordine (snapshot in WORKORDERS.PP_ID al save).
+        // Legge il PARTPROGRAM del pezzo del wizard: e' la sola sorgente del
+        // PP dell'ordine (snapshot in WORKORDER.PartProg_ID al save).
+        // Ramo attrezzatura: la sorgente e' il pezzo DICHIARATO
+        // (declaredPieceID); ramo morsa: il pezzo reale (pieceID).
         getPiecePP(){
-            const pieceID = dataStored.createWorkOrder.pieceID;
-            if (pieceID == null || pieceID < 0)
+            const wo = dataStored.createWorkOrder;
+            const pieceID = wo.rigType == 'fixture' ? wo.declaredPieceID : wo.pieceID;
+            if (pieceID == null || pieceID <= 0)
                 return;
             fetch( dataStored.server+'api/conf/piece/show/'+pieceID,{ method: 'GET'})
                 .then(response => {

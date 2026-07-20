@@ -64,7 +64,9 @@ export default {
         },
         nextStep(ID){
             dataStored.createWorkOrder.gripperID=ID;
-            this.$router.push('/selectPallet');
+            // il pallet e' gia' derivato dal rig (selectRig, primo step):
+            // dal ramo morsa si va dritti alla scelta macchina
+            this.$router.push('/selectMC');
         }
       },
       mounted(){

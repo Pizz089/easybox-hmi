@@ -4,16 +4,20 @@
 > automatizzate. Ogni voce qui sotto va eseguita a mano da Dario, spuntata
 > con data, e rimossa solo quando verificata.
 
-## [ ] 2026-07-20 — ALTER VIEW WORKORDERS (cantiere AG fase 2, decisione B)
+## [ ] 2026-07-20 — ALTER VIEW WORKORDERS **v2** (cantiere AG fase 2, decisioni B+A)
 
 Script: `serverDati/scripts/workorders-view-pp.sql` (idempotente, con rollback
-commentato in coda).
+commentato in coda). **La v2 SOSTITUISCE la v1**: stesso file, stato finale
+intero della vista. Chi avesse già applicato la v1 in impianto riesegue lo
+stesso script: riconosce la v1 e migra («migro da v1 a v2»); da vista
+originale migra direttamente.
 
-Cosa fa: la view WORKORDERS passa a `LEFT JOIN` su PARTPROGRAM e espone
-`PP_ID = w.PartProg_ID` (prima: `pp.id` via INNER JOIN). Senza questo, gli
-ordini con numero di sottoprogramma libero (modello part-program-dal-
-particolare) **spariscono dalla view**: invisibili al PLC e alla tabella
-produzione, senza errori. Il select del PLC non cambia.
+Cosa fa: la view WORKORDERS passa a `LEFT JOIN` su PARTPROGRAM con
+`PP_ID = w.PartProg_ID` (v1) **e a `LEFT JOIN` su GRIPPER** (v2). Senza la v1
+gli ordini a numero di sottoprogramma libero spariscono dalla view; senza la
+v2 spariscono gli ordini del ramo ATTREZZATURA (GRIPPER_ID=0, nessuna riga
+GRIPPER 0). In entrambi i casi: invisibili al PLC e alla tabella produzione,
+senza errori. Il select del PLC non cambia.
 
 **PRIMA di eseguire, obbligatorio:**
 1. Verificare che la definizione della view in cella sia IDENTICA a quella
@@ -35,3 +39,38 @@ scritture ordini puntano alla base table `WORKORDER`): view vecchia + backend
 nuovo convivono (insert funziona, ma i numeri liberi restano invisibili
 finché la view non è migrata); view nuova + backend vecchio NO (insert
 resta rotto).
+
+## [ ] 2026-07-20 — ALTER TABLE WORKORDER: colonna DECLARED_PIECE_ID (C2)
+
+Script: `serverDati/scripts/workorder-declared-piece.sql` (idempotente,
+rollback commentato). Aggiunge `DECLARED_PIECE_ID INT NULL` alla base table:
+pezzo dichiarato del ramo attrezzatura del wizard. Solo uso HMI — la view
+WORKORDERS non la espone, il PLC non la vede.
+
+```
+sqlcmd -S 172.20.70.80\SQLEXPRESS -U plc -P plc -d ADMG -i workorder-declared-piece.sql
+```
+
+PREREQUISITO del backend nuovo: senza questa colonna `insertOrder`/`updateOrder`
+falliscono (la INSERT la nomina). Eseguire PRIMA di deployare il backend C2.
+
+## [ ] Bonifica ordini legacy — PRIMA del primo ciclo automatico in cella
+
+Gli ordini storici in `Status=3` (WORKING) con `PRODUCTED<QUANTITY` verrebbero
+agganciati dal dispatcher alla prima macchina EMPTY. Vanno portati a
+`Status=7` (ABORTED) prima del collaudo:
+
+```
+-- 1) conferma di cosa c'è (annotare gli ID):
+sqlcmd -S 172.20.70.80\SQLEXPRESS -U plc -P plc -d ADMG -Q "SELECT ID, PIECE_ID, MACHINE_ID, QUANTITY, PRODUCTED, PP_ID FROM WORKORDERS WHERE Status=3 AND PRODUCTED<QUANTITY"
+
+-- 2) bonifica (sulla BASE table):
+sqlcmd -S 172.20.70.80\SQLEXPRESS -U plc -P plc -d ADMG -Q "UPDATE WORKORDER SET STATUS=7 WHERE STATUS=3 AND ID IN (SELECT ID FROM WORKORDERS WHERE Status=3 AND PRODUCTED<QUANTITY)"
+
+-- 3) conferma post (atteso: nessuna riga):
+sqlcmd -S 172.20.70.80\SQLEXPRESS -U plc -P plc -d ADMG -Q "SELECT ID FROM WORKORDERS WHERE Status=3 AND PRODUCTED<QUANTITY"
+```
+
+Nota: tra gli ordini legacy ce n'è almeno uno con `VICE_ID=-1` (visto su dev):
+la convenzione nuova è VICE_ID=0 sempre — la bonifica a Status=7 li toglie
+comunque dal giro del dispatcher.

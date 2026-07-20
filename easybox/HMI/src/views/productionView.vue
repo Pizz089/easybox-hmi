@@ -40,7 +40,7 @@ import { dataStored } from '../data';
 export default {
     methods: {
         navigateToWizard() {
-            this.$router.push('/selectPiece');
+            this.$router.push('/selectRig');
         }
     }
 }

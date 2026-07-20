@@ -1,4 +1,14 @@
 <script setup>
+    // MODELLO (cantiere AG fase 2): secondo step del wizard, comportamento
+    // per RAMO (createWorkOrder.rigType, scelto in selectRig):
+    //   morsa       -> scelta pezzo classica: pieceID reale, poi selectGripper
+    //   attrezzatura-> modalita' DICHIARATIVA: il pezzo e' gia' montato sul
+    //                  pallet, qui si DICHIARA (declaredPieceID, sorgente del
+    //                  part program); pieceID resta 0 (convenzione PLC: un
+    //                  PIECE_ID!=0 avvia una missione di carico dal
+    //                  magazzino), niente step pinza, si va a selectMC.
+    // L'azzeramento della struttura d'ordine NON avviene piu' qui: e'
+    // responsabilita' di selectRig (primo step).
     //import { RouterLink, RouterView } from 'vue-router'
     import { dataStored } from '../../data.js'
     import { useI18n } from 'vue-i18n'
@@ -11,7 +21,9 @@
 <template>
   <div class="view-shell">
     <workOrderStep></workOrderStep>
-    <h3 class="view-title">Tipo pezzo</h3>
+    <h3 class="view-title">
+      {{ dataStored.createWorkOrder.rigType=='fixture' ? t('wizard.piece.declaredTitle') : t('wizard.piece.title') }}
+    </h3>
     <div class="search-bar">
           <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24"
                fill="none" stroke="currentColor" stroke-width="2"
@@ -27,7 +39,10 @@
           />
       </div>
     <div class="pure-g">
-      <div class="container_card pure-u-1-2 pure-u-md-1-3 pure-u-lg-1-5">
+      <!-- Manual Vice: solo ramo morsa (nel dichiarativo un "pezzo 0" non
+           esiste; la rimozione totale e' proposta C3 da ratificare) -->
+      <div v-if="dataStored.createWorkOrder.rigType!='fixture'"
+        class="container_card pure-u-1-2 pure-u-md-1-3 pure-u-lg-1-5">
         <div class="card" @click="nextStep(0)" style="background-color: coral;">
             <h4><b>{{ t('wizard.value.manualVice') }}</b></h4>
         </div>
@@ -82,16 +97,26 @@ export default {
                     }
                     this.pieces = ris;
                     this.piecesFiltered = ris;
-                    //svuoto la struttura dati ogni volta che inizio il ciclo di scelta
-                    dataStored.emptingStructure()
+                    // NB: l'azzeramento della struttura d'ordine e' stato
+                    // spostato in selectRig (primo step): farlo qui
+                    // cancellerebbe la scelta del rig.
                 })
                 .catch(error => {
                     console.info(error);
                 });
         },
         nextStep(ID){
-            dataStored.createWorkOrder.pieceID=ID;
-            this.$router.push('/selectGripper');
+            if (dataStored.createWorkOrder.rigType=='fixture'){
+                // ramo attrezzatura: DICHIARAZIONE del pezzo montato sul
+                // pallet — sorgente del part program; pieceID resta 0 e non
+                // c'e' step pinza (convenzioni PLC)
+                dataStored.createWorkOrder.declaredPieceID = ID;
+                dataStored.createWorkOrder.pieceID = 0;
+                this.$router.push('/selectMC');
+            } else {
+                dataStored.createWorkOrder.pieceID = ID;
+                this.$router.push('/selectGripper');
+            }
         }
       },
       mounted(){

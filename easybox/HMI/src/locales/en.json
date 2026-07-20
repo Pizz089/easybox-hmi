@@ -578,6 +578,7 @@
   },
   "wizard": {
     "step": {
+      "rig": "RIG",
       "piece": "PIECE",
       "gripper": "GRIPPER",
       "pallet": "PALLET",
@@ -585,7 +586,16 @@
       "machine": "MACHINE",
       "final": "SUMMARY"
     },
+    "rig": {
+      "title": "Choose the rig (pallet)",
+      "noneSelectable": "No selectable rigged pallet: rig a pallet in Configuration → Rigs"
+    },
+    "piece": {
+      "title": "Piece type",
+      "declaredTitle": "Part mounted on the pallet (declaration)"
+    },
     "value": {
+      "rig": "Pallet {id}",
       "piece": "Piece {id}",
       "manualVice": "Manual Vice",
       "gripper": "Gripper {id}",
