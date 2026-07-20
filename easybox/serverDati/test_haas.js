@@ -11,7 +11,9 @@
 const mqtt = require('mqtt');
 
 // --- parametri ---
-const BROKER = 'mqtt://HMI:HMI@172.20.70.80:9001';   // stesso broker del backend
+// stesso broker del backend; override via env per girare su dev (stessa
+// convenzione MQTT_BROKER_URL di MQTT_Client.js)
+const BROKER = process.env.MQTT_BROKER_URL || 'mqtt://HMI:HMI@172.20.70.80:9001';
 const MC     = 'MC1';
 const VAR    = 10200;                                 // macro ricetta
 const VALUE  = Number(process.argv[2] || 1);          // ricetta da inviare (default 1)
@@ -24,9 +26,13 @@ const client = mqtt.connect(BROKER, { clientId: 'TEST_' + Math.random().toString
 client.on('connect', () => {
   console.log('3. ✓ CONNESSO al broker');
 
-  client.subscribe('TO_PLANT/HAAS_ACK/' + MC, { qos: 1 }, (err) => {
+  // l'esito arriva sotto TO_PLANT/CMD/ (il PLC è sottoscritto a TO_PLANT/CMD/#):
+  // HAAS_ACK per esito ok, HAAS_NACK per esito ko (vedi publishHaasAck).
+  // Sottoscrivo entrambi: un ko deve essere stampato come NACK, non
+  // confuso col timeout del test.
+  client.subscribe(['TO_PLANT/CMD/HAAS_ACK/' + MC, 'TO_PLANT/CMD/HAAS_NACK/' + MC], { qos: 1 }, (err) => {
     if (err) console.log('   ✗ Errore subscribe:', err.message);
-    else     console.log('4. ✓ Sottoscritto a TO_PLANT/HAAS_ACK/' + MC);
+    else     console.log('4. ✓ Sottoscritto a TO_PLANT/CMD/HAAS_ACK|HAAS_NACK/' + MC);
   });
 
   const payload = JSON.stringify({ cmd: 'setMacro', var: VAR, value: VALUE });
@@ -37,7 +43,8 @@ client.on('connect', () => {
 });
 
 client.on('message', (topic, msg) => {
-  console.log('6. ✓✓ ACK RICEVUTO →', topic, '=', msg.toString());
+  const esito = topic.indexOf('HAAS_NACK') !== -1 ? '✗✗ NACK RICEVUTO' : '✓✓ ACK RICEVUTO';
+  console.log('6.', esito, '→', topic, '=', msg.toString());
   client.end();
   process.exit(0);
 });

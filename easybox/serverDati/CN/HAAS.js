@@ -32,6 +32,13 @@ const diag = require('../MQTTDiag');
 const DEFAULT_TIMEOUT_MS = parseInt(process.env.HAAS_TIMEOUT_MS, 10) || 2000;
 const DEFAULT_PROGRAM_TRIGGER_VAR = parseInt(process.env.HAAS_PROGRAM_TRIGGER_VAR, 10) || 500;
 
+// TTL di permanenza IN CODA (comando accodato ma non ancora spedito, tipicam.
+// macchina offline). Default 8s: sotto i 10s di attesa del PLC, che così
+// riceve un NACK queue_expired tempestivo invece di scadere in silenzio.
+// NB: distinto da HAAS_TIMEOUT_MS, che è il timeout di RISPOSTA di una
+// richiesta già spedita sul socket.
+const DEFAULT_QUEUE_TTL_MS = parseInt(process.env.HAAS_QUEUE_TTL_MS, 10) || 8000;
+
 // Backoff esponenziale per reconnect (ms). Saturato all'ultimo valore.
 const RECONNECT_BACKOFF_MS = [1000, 2000, 5000, 10000, 30000];
 
@@ -55,6 +62,7 @@ const ERROR_CODES = {
 	CLOSING:       'closing',
 	SHUTTING_DOWN: 'shutting_down',
 	MISSING_CONFIG: 'missing_config',
+	QUEUE_EXPIRED: 'queue_expired',
 };
 
 // ============================================================================
@@ -153,6 +161,7 @@ function makeHaasInstance(mcNum, opts) {
 	const port       = opts.port || parseInt(process.env['HAAS_MC' + mcNum + '_PORT'], 10) || 5000;
 	const timeoutMs  = opts.timeoutMs  || DEFAULT_TIMEOUT_MS;
 	const triggerVar = opts.triggerVar || DEFAULT_PROGRAM_TRIGGER_VAR;
+	const queueTtlMs = opts.queueTtlMs || DEFAULT_QUEUE_TTL_MS;
 
 	// Errore di config statica (manca .env). Intercettato in 2 punti:
 	// 1) da bootEagerHaas in MQTT_Client.js al boot → diag _HAAS/CONFIG_ERROR
@@ -311,6 +320,15 @@ function makeHaasInstance(mcNum, opts) {
 			return;
 		}
 		const req = queue.shift();
+		// La richiesta esce dalla coda: disarmo il TTL di permanenza in coda
+		// (queueTtlHandle). Da qui in poi vale SOLO timeoutHandle, il timeout
+		// di risposta della richiesta spedita: due timer distinti, due scopi
+		// distinti — il primo copre "mai spedito" (macchina offline), il
+		// secondo copre "spedito ma la macchina non risponde".
+		if (req.queueTtlHandle) {
+			clearTimeout(req.queueTtlHandle);
+			req.queueTtlHandle = null;
+		}
 		busy = true;
 		pendingRequest = req;
 		req.timeoutHandle = setTimeout(() => {
@@ -350,12 +368,31 @@ function makeHaasInstance(mcNum, opts) {
 				err.code = ERROR_CODES.CLOSING;
 				return reject(err);
 			}
-			queue.push({
+			const req = {
 				packet: buildSetMacroPacket(varNum, value),
 				label: 'setMacroVar(' + varNum + ',' + value + ')',
 				resolve, reject,
 				timeoutHandle: null,
-			});
+				queueTtlHandle: null,
+			};
+			// TTL di permanenza in coda: se la richiesta non viene spedita entro
+			// queueTtlMs (es. macchina offline), viene rimossa e rigettata con
+			// QUEUE_EXPIRED — il PLC riceve un NACK tempestivo e alla riconnessione
+			// non vengono spediti comandi stantii. Disarmato in _processQueue al
+			// momento del dispatch (poi subentra timeoutHandle, timeout di risposta).
+			req.queueTtlHandle = setTimeout(() => {
+				req.queueTtlHandle = null;
+				const idx = queue.indexOf(req);
+				if (idx === -1) return;   // già spedita o già rimossa (difensivo)
+				queue.splice(idx, 1);
+				publishDiag('ERROR', 'MC' + mcNum + ' ' + req.label +
+					' scaduta in coda dopo ' + queueTtlMs + 'ms (mai spedita, macchina offline?)');
+				const err = new Error('HAAS MC' + mcNum + ' queue expired: ' + req.label +
+					' non spedita entro ' + queueTtlMs + 'ms');
+				err.code = ERROR_CODES.QUEUE_EXPIRED;
+				req.reject(err);
+			}, queueTtlMs);
+			queue.push(req);
 			_processQueue();
 		});
 	}
@@ -394,6 +431,10 @@ function makeHaasInstance(mcNum, opts) {
 			}
 			busy = false;
 			for (const req of queue) {
+				// disarmo il TTL di coda: la reject qui sotto chiude la Promise,
+				// un fire tardivo del timer troverebbe la coda svuotata (no-op)
+				// ma il timer orfano terrebbe vivo l'event loop inutilmente
+				if (req.queueTtlHandle) clearTimeout(req.queueTtlHandle);
 				const err = new Error('HAAS MC' + mcNum + ' closing');
 				err.code = ERROR_CODES.CLOSING;
 				req.reject(err);

@@ -681,6 +681,8 @@ bootEagerHaas();
 //   cn_type_mismatch  — MC<n> non configurata 'haas' in .env
 //   no_instance       — istanza HAAS non disponibile (es. IP mancante)
 //   shutting_down     — modulo HAAS in shutdown
+//   queue_expired     — comando scaduto in coda prima dell'invio (macchina
+//                       offline oltre HAAS_QUEUE_TTL_MS, default 8s)
 //   haas_timeout      — HAAS non ha risposto entro HAAS_TIMEOUT_MS
 //   haas_nak          — HAAS ha risposto NAK
 //   socket_closed     — TCP socket caduto durante la richiesta
@@ -828,6 +830,7 @@ function handleHaasCmd(mcNum, message, packet) {
 		switch (err.code) {
 			case HAAS.errorCodes.TIMEOUT:        errCode = 'haas_timeout'; break;
 			case HAAS.errorCodes.NAK:            errCode = 'haas_nak'; break;
+			case HAAS.errorCodes.QUEUE_EXPIRED:  errCode = 'queue_expired'; break;
 			case HAAS.errorCodes.SOCKET_CLOSED:  errCode = 'socket_closed'; break;
 			case HAAS.errorCodes.CLOSED:
 			case HAAS.errorCodes.CLOSING:        errCode = 'shutting_down'; break;
