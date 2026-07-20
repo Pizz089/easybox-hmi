@@ -205,8 +205,11 @@
             </h5>
         </div>
         <div class="pure-u-1">
+            <!-- @click="distribute()" RIMOSSO (fase 2b, ratificato): su touch panel
+                 il contatto accidentale col disegno mutava SAFEX/SAFEY salvati;
+                 la ridistribuzione vive solo nel bottone dedicato -->
             <svg id="trayLayout" width="480" height="360" version="1.1" xmlns="http://www.w3.org/2000/svg" 
-                :viewBox="sceneViewBox" @click="distribute()"> 
+                :viewBox="sceneViewBox"> 
                 <!-- vassoio -->
                 <rect id="tray" x="0" y="0" :width="grating.width" :height="grating.height" fill="#3A4A60" class="noPrint"/>
 
@@ -486,7 +489,7 @@ export default {
             return !p.prisma?p.x-20:p.x;
         },
         getPiecesList() {
-            fetch( dataStored.server+'api/conf/piece/show/all',{ method: 'GET'})
+            return fetch( dataStored.server+'api/conf/piece/show/all',{ method: 'GET'})
                 .then(response => {
                     if (!response.ok) {
                         throw new Error('Network response was not ok');
@@ -502,7 +505,7 @@ export default {
                 });
         },
         getGripperList() {
-            fetch( dataStored.server+'api/conf/gripper/show/all',{ method: 'GET'})
+            return fetch( dataStored.server+'api/conf/gripper/show/all',{ method: 'GET'})
                 .then(response => {
                     if (!response.ok) {
                         throw new Error('Network response was not ok');
@@ -517,7 +520,7 @@ export default {
                 });
         },
         getTrayList() {
-            fetch( dataStored.server+'api/conf/tray/show/all',{ method: 'GET'})
+            return fetch( dataStored.server+'api/conf/tray/show/all',{ method: 'GET'})
                 .then(response => {
                     if (!response.ok) {
                         throw new Error('Network response was not ok');
@@ -591,6 +594,11 @@ export default {
                     }
                     this.grating.DESCR=this.gratingList[0].DESCR;
                     this.grating.NAME=this.gratingList[0].NAME;
+                    // (fase 2b, fix reattivita') ricalcolo ESPLICITO a valle
+                    // della risoluzione di indici e vassoio: prima nessuno lo
+                    // chiamava e il disegno restava vuoto/stantio finche' un
+                    // evento (il click sul disegno) non mutava SAFEX.
+                    this.calculateData();
                 })
                 .catch(error => {
                     console.info(error);
@@ -628,8 +636,9 @@ export default {
             this.spaceNullX=this.grating.width-((this.n_cln-1)*this.minSpaceX)-(this.n_cln*this.x)-(2*this.grating.SAFEX);
             this.spaceNullY=this.grating.height-((this.n_row-1)*this.minSpaceY)-(this.n_row*this.y)-(2*this.grating.SAFEY);
             
-            this.corrX=Math.floor(this.spaceNullX/(this.n_cln));
-            this.corrY=Math.floor(this.spaceNullY/(this.n_row));
+            // (fase 2b) guardia anti-Infinity: con n=0 niente divisione
+            this.corrX=this.n_cln>0 ? Math.floor(this.spaceNullX/(this.n_cln)) : 0;
+            this.corrY=this.n_row>0 ? Math.floor(this.spaceNullY/(this.n_row)) : 0;
 
             for (let r=1; r<=this.n_row; r++){
                 for (let c=1;c<=this.n_cln; c++){
@@ -652,8 +661,12 @@ export default {
             this.spaceNullX=(this.grating.width-2*this.minBordoX)-((this.n_cln-1)*this.minSpaceX)-(this.n_cln*this.x)-(2*this.grating.SAFEX);
             this.spaceNullY=(this.grating.height-2*this.minBordoY)-((this.n_row-1)*this.minSpaceY)-(this.n_row*this.y)-(2*this.grating.SAFEY);
             
-            this.corrX=Math.floor(this.spaceNullX/(this.n_cln-1));
-            this.corrY=Math.floor(this.spaceNullY/(this.n_row-1));
+            // (fase 2b) guardia anti-Infinity: con un solo pezzo per asse
+            // non esistono interstizi da allargare -> corr=0 (il residuo
+            // resta a bordo, lato opposto al riempimento); mai Infinity
+            // iniettabile in SAFEX via distribute().
+            this.corrX=this.n_cln>1 ? Math.floor(this.spaceNullX/(this.n_cln-1)) : 0;
+            this.corrY=this.n_row>1 ? Math.floor(this.spaceNullY/(this.n_row-1)) : 0;
 
             for (let r=1; r<=this.n_row; r++){
                 for (let c=1;c<=this.n_cln; c++){
@@ -925,10 +938,11 @@ export default {
         }
     },
     mounted(){
-        this.getPiecesList();
-        this.getGripperList();
-        this.getTrayList();
-        setTimeout(() => { this.getGratingList(); }, "300");
+        // (fase 2b) getGratingList parte SOLO a liste caricate: il vecchio
+        // setTimeout(300) era una race — con trayList ancora vuota il forEach
+        // esplodeva e la funzione moriva a meta'.
+        Promise.all([this.getPiecesList(), this.getGripperList(), this.getTrayList()])
+            .then(() => { this.getGratingList(); });
 
         if (this.$route.params.grating_ID>0){
             //faccio modifica di un grigliato gia creato
