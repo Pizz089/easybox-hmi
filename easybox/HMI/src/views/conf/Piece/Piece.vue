@@ -233,8 +233,11 @@ const el = ref();
               <text :x="cylQuotes.D.tx" :y="cylQuotes.D.ty" text-anchor="middle"
                 :class="['dim-text', { active: activeDim === 'L' }]">D</text>
 
+              <!-- livello Z sul cilindro: un piano orizzontale taglia il
+                   cilindro in un'ELLISSE (stessi rx/ry della top), qui
+                   tratteggiata; tick ed etichetta dal punto destro -->
               <template v-for="z in zLevels" :key="z.key">
-                <polyline :points="z.points" fill="none"
+                <ellipse :cx="z.cx" :cy="z.cy" :rx="z.rx" :ry="z.ry" fill="none"
                   :class="['dim-line', z.dashClass, { active: activeDim === z.key, 'z-over': z.over }]" />
                 <line :x1="z.tickX1" :y1="z.tickY" :x2="z.tickX2" :y2="z.tickY"
                   :class="['dim-line', z.dashClass, { active: activeDim === z.key, 'z-over': z.over }]" />
@@ -247,14 +250,10 @@ const el = ref();
 
         <div class="pure-controls piece-actions">
           <button type="button" class="piece-save" @click="saveData()">
-            Save
+            {{ $t("Save") }}
           </button>
           <RouterLink class="piece-cancel" to="/conf/Parts">
-            {{
-              $t("common.cancel") === "common.cancel"
-                ? "Cancel"
-                : $t("common.cancel")
-            }}
+            {{ $t("common.cancel") }}
           </RouterLink>
         </div>
       </form>
@@ -490,8 +489,11 @@ export default {
         }
         const c = this.cylGeom;
         const y = +(c.botCy - f * (c.botCy - c.topCy)).toFixed(1);
+        // ellisse di livello (cantiere AK-BIS): il piano orizzontale taglia
+        // il cilindro in un'ellisse con gli stessi rx/ry della top, centrata
+        // su cx alla quota y; tick/etichetta dal punto destro (cx+rx, y)
         return { key, labelKey, dashClass, over,
-                 points: (c.cx - c.rx) + ',' + y + ' ' + (c.cx + c.rx) + ',' + y,
+                 cx: c.cx, cy: y, rx: c.rx, ry: c.ry,
                  tickX1: c.cx + c.rx, tickX2: 128, tickY: y, tx: 130, ty: +(y + 3).toFixed(1) };
       };
       return [
@@ -805,14 +807,24 @@ export default {
    diverso dall'<a>, min-height+padding verticale producevano taglie
    diverse), stesso box-sizing, stesso padding orizzontale, inline-flex
    centrato per entrambi. */
-.piece-save,
-.piece-cancel {
+/* GEMELLI TOTALI (cantiere AK-BIS): oltre alla metrica fissa di a888df6
+   (che gia' vinceva la cascata: le sole regole globali matchanti sono i
+   reset element-level 0-0-1 di pure.css 'button' ed email/theme 'a'),
+   min-width CONDIVISA 140px: copre la label piu' lunga nelle due lingue
+   ("Annulla"/"Cancel" a font 16 medium + padding 48 ~ 115px) cosi' nemmeno
+   la lunghezza del testo differenzia i due bottoni. Selettore rinforzato
+   col metodo dei toggle (prevenzione: vince anche su eventuali regole
+   future .pure-form/.pure-controls a specificity piu' alta). */
+.pure-form .pure-controls .piece-save,
+.pure-form .pure-controls .piece-cancel {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
   height: 52px;
+  min-width: 140px;
   padding: 0 var(--space-5);
+  margin: 0;
   border-radius: var(--radius-btn);
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-medium);
