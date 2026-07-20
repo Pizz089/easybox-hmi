@@ -180,94 +180,55 @@ const el = ref();
               </span>
             </div>
 
+            <!-- Solido istruzioni ridisegnato sul CAMPIONE CubeIcon3D:
+                 isometrica cos30/sin30, 3 facce con gerarchia luce
+                 (top chiara, right media, left ombra), stroke round.
+                 Quote H/W/L parallele agli spigoli, evidenziate al focus. -->
             <svg v-if="piece.PRISMA" viewBox="0 0 120 120" class="dim-svg">
-              <rect x="20" y="40" width="50" height="40" class="cube-face" />
-              <polyline
-                points="20,40 40,25 90,25 70,40 20,40"
-                class="cube-edge"
-              />
-              <polyline points="70,40 70,80 90,65 90,25" class="cube-edge" />
-              <polyline points="20,80 70,80 90,65" class="cube-edge" />
+              <polygon points="60,60 25.4,40 25.4,80 60,100" class="face-left" />
+              <polygon points="60,60 94.6,40 94.6,80 60,100" class="face-right" />
+              <polygon points="60,60 94.6,40 60,20 25.4,40" class="face-top" />
 
-              <line
-                x1="70"
-                y1="40"
-                x2="70"
-                y2="80"
-                :class="['dim-line', { active: activeDim === 'H' }]"
-              />
-              <text
-                x="53"
-                y="65"
-                :class="['dim-text', { active: activeDim === 'H' }]"
-              >
+              <line x1="103" y1="40" x2="103" y2="80"
+                :class="['dim-line', { active: activeDim === 'H' }]" />
+              <text x="107" y="64"
+                :class="['dim-text', { active: activeDim === 'H' }]">
                 H
               </text>
 
-              <line
-                x1="20"
-                y1="80"
-                x2="70"
-                y2="80"
-                :class="['dim-line', { active: activeDim === 'W' }]"
-              />
-              <text
-                x="40"
-                y="98"
-                :class="['dim-text', { active: activeDim === 'W' }]"
-              >
+              <line x1="56" y1="108" x2="21.4" y2="88"
+                :class="['dim-line', { active: activeDim === 'W' }]" />
+              <text x="24" y="104"
+                :class="['dim-text', { active: activeDim === 'W' }]">
                 W
               </text>
 
-              <line
-                x1="70"
-                y1="80"
-                x2="90"
-                y2="65"
-                :class="['dim-line', { active: activeDim === 'L' }]"
-              />
-              <text
-                x="92"
-                y="60"
-                :class="['dim-text', { active: activeDim === 'L' }]"
-              >
+              <line x1="64" y1="108" x2="98.6" y2="88"
+                :class="['dim-line', { active: activeDim === 'L' }]" />
+              <text x="88" y="104"
+                :class="['dim-text', { active: activeDim === 'L' }]">
                 L
               </text>
             </svg>
 
             <svg v-else viewBox="0 0 120 120" class="dim-svg">
-              <ellipse cx="45" cy="35" rx="20" ry="8" class="cube-face" />
-              <line x1="25" y1="35" x2="25" y2="75" class="cube-edge" />
-              <line x1="65" y1="35" x2="65" y2="75" class="cube-edge" />
-              <ellipse cx="45" cy="75" rx="20" ry="8" class="cube-edge" />
+              <!-- cilindro come il campione: body path chiuso + ellisse top -->
+              <path
+                d="M 27 35 L 27 85 A 28 11.2 0 0 0 83 85 L 83 35 A 28 11.2 0 0 1 27 35 Z"
+                class="face-left" />
+              <ellipse cx="55" cy="35" rx="28" ry="11.2" class="face-top" />
 
-              <line
-                x1="80"
-                y1="35"
-                x2="80"
-                y2="75"
-                :class="['dim-line', { active: activeDim === 'H' }]"
-              />
-              <text
-                x="76"
-                y="30"
-                :class="['dim-text', { active: activeDim === 'H' }]"
-              >
+              <line x1="95" y1="35" x2="95" y2="85"
+                :class="['dim-line', { active: activeDim === 'H' }]" />
+              <text x="100" y="64"
+                :class="['dim-text', { active: activeDim === 'H' }]">
                 H
               </text>
 
-              <line
-                x1="25"
-                y1="20"
-                x2="65"
-                y2="20"
-                :class="['dim-line', { active: activeDim === 'L' }]"
-              />
-              <text
-                x="42"
-                y="14"
-                :class="['dim-text', { active: activeDim === 'L' }]"
-              >
+              <line x1="27" y1="14" x2="83" y2="14"
+                :class="['dim-line', { active: activeDim === 'L' }]" />
+              <text x="52" y="10"
+                :class="['dim-text', { active: activeDim === 'L' }]">
                 D
               </text>
             </svg>
@@ -479,8 +440,9 @@ export default {
   color: var(--text-muted);
 }
 
+/* riga MC centrata: toggle e label colonna sulla stessa mediana */
 .mc-group {
-  align-items: flex-start;
+  align-items: center;
 }
 
 .mc-label {
@@ -492,9 +454,12 @@ export default {
   padding-top: var(--space-2);
 }
 
+/* toggle+label = unita' visiva: riga centrata, gap uniforme tra i tre
+   gruppi, track indeformabile e testo senza min-width fantasma */
 .mc-switches {
   display: flex;
-  gap: var(--space-4);
+  align-items: center;
+  gap: var(--space-6);
   flex-wrap: wrap;
 }
 
@@ -504,6 +469,7 @@ export default {
   gap: var(--space-2);
   min-height: 44px;            /* touch: l'intera label e' il target */
   font-size: var(--font-size-sm);
+  line-height: var(--line-height-tight);
   color: var(--text-primary);
   cursor: pointer;
 }
@@ -514,6 +480,7 @@ export default {
 
 /* switch fisico: pill per natura del CONTROLLO (non variante bottone) */
 .mc-track {
+  flex-shrink: 0;              /* il track non si deforma mai */
   width: 42px;
   height: 20px;
   background: var(--bg-input);
@@ -544,7 +511,7 @@ export default {
 }
 
 .mc-text {
-  min-width: 70px;
+  white-space: nowrap;         /* niente min-width fantasma: gap uniformi reali */
 }
 
 .piece-main {
@@ -601,17 +568,29 @@ export default {
   height: 160px;
 }
 
-/* quote SVG: stroke/font in unita' del viewBox (120), non px schermo */
-.cube-face {
-  fill: var(--bg-input);
-  stroke: var(--border-strong);
+/* solido istruzioni: STESSO linguaggio del campione CubeIcon3D —
+   facce con gerarchia luce (top chiara / right media / left ombra),
+   stroke text-secondary width 1, giunzioni round.
+   Stroke/font in unita' del viewBox (120), non px schermo. */
+.face-top,
+.face-right,
+.face-left {
+  stroke: var(--text-secondary);
   stroke-width: 1;
+  stroke-linejoin: round;
+  stroke-linecap: round;
 }
 
-.cube-edge {
-  fill: none;
-  stroke: var(--border-strong);
-  stroke-width: 1;
+.face-top {
+  fill: var(--bg-surface-2);
+}
+
+.face-right {
+  fill: var(--bg-input);
+}
+
+.face-left {
+  fill: var(--bg-base);
 }
 
 .dim-line {
@@ -642,19 +621,35 @@ export default {
   gap: var(--space-4);
 }
 
-/* Save: variante Primary canonica (doc §3.1/3.2) in scoped — il Sistema B
-   config non ha ancora una classe primaria unificata (buco doc §3.4) */
+/* Bottoni azione GEMELLI (regola pill: azione = --radius-btn 999px).
+   Metrica identica imposta su button E RouterLink: height FISSA 52 (non
+   min-height: il reset pure.css da' al button line-height 1.15 e box model
+   diverso dall'<a>, min-height+padding verticale producevano taglie
+   diverse), stesso box-sizing, stesso padding orizzontale, inline-flex
+   centrato per entrambi. */
+.piece-save,
+.piece-cancel {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: 52px;
+  padding: 0 var(--space-5);
+  border-radius: var(--radius-btn);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  font-family: inherit;
+  line-height: 1;
+  letter-spacing: 0.025em;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+/* Save: Primary pill */
 .piece-save {
   background: var(--accent);
   color: var(--text-primary);
   border: 0;
-  border-radius: var(--radius-md);
-  min-height: 52px;
-  padding: var(--space-4) var(--space-5);
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-medium);
-  letter-spacing: 0.025em;
-  cursor: pointer;
   transition: filter var(--transition-fast);
 }
 
@@ -662,21 +657,11 @@ export default {
   filter: brightness(1.12);
 }
 
-/* Annulla: variante Ghost canonica (doc §3.3) applicata al RouterLink */
+/* Annulla: Ghost pill */
 .piece-cancel {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   background: transparent;
   border: 1px solid var(--border-default);
   color: var(--text-secondary);
-  border-radius: var(--radius-md);
-  min-height: 52px;
-  padding: var(--space-4) var(--space-5);
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-medium);
-  letter-spacing: 0.025em;
-  text-decoration: none;
   transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
 }
 
