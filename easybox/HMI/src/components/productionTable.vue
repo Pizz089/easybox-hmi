@@ -35,7 +35,9 @@
                             style="width: 20%;margin: 0 auto;">
                             {{ o.STATUS_DESC }}
                             <hr class="status-divider">
-                            [ {{ o.PP }} ]
+                            <!-- PP (path+name Heidenhain) e' vuoto per gli ordini
+                                 a numero libero HAAS: fallback sul numero PP_ID -->
+                            [ {{ (o.PP && o.PP.trim()) ? o.PP : o.PP_ID }} ]
                         </td>
                         <!--td>{{ o.GRIPPER }}</td-->
 

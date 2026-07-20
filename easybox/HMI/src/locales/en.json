@@ -250,6 +250,8 @@
   "piece": {
     "welcome": "Piece data",
     "createNew": "Create new",
+    "partProgramLabel": "Part program no. (HAAS subprogram)",
+    "partProgramInvalid": "Invalid part program: positive integer, max 6 digits",
     "MC1_ONLY": "MC1 only",
     "MC2_ONLY": "MC2 only",
     "MC3_ONLY": "MC3 only",
@@ -607,7 +609,8 @@
       "pickup": "Pickup",
       "deposit": "Deposit",
       "partProgram": "Part Program",
-      "partProgramPlaceholder": "Select program...",
+      "partProgramFromPiece": "(from part master data)",
+      "partProgramMissing": "The part has no part program: set it in the part master data before creating the order",
       "save": "Save order"
     }
   },

@@ -1,4 +1,11 @@
 <script setup>
+    // MODELLO PART PROGRAM (cantiere AG fase 2): il part program NON si sceglie
+    // qui — e' proprieta' del particolare (PIECE.PARTPROGRAM, numero di
+    // sottoprogramma HAAS). L'ordine lo eredita come snapshot in
+    // WORKORDERS.PP_ID; qui viene solo mostrato in sola lettura e, se il
+    // pezzo non ce l'ha, il salvataggio e' bloccato (un ordine HAAS senza
+    // ricetta non deve nascere). La tendina sulla tabella PARTPROGRAM
+    // (flusso Heidenhain) e' stata rimossa.
     import { dataStored } from '../../data.js'
     import { useI18n } from 'vue-i18n'
     import workOrderStep from '../../components/workOrder_step.vue'
@@ -29,20 +36,16 @@
       </div>
 
       <div class="form-row">
-        <label for="ld-pp" class="form-label">
+        <label class="form-label">
           {{ t('wizard.lastData.partProgram') }}<span class="required">*</span>
         </label>
-        <select
-          id="ld-pp"
-          class="form-select"
-          v-model="PPindex"
-          :readonly="dataStored.userLevel<0"
-        >
-          <option value="0">{{ t('wizard.lastData.partProgramPlaceholder') }}</option>
-          <option v-for="(pp, index) in PPList" :key="pp.ID" :value="index+1">
-            {{ pp.NAME.trim() }}
-          </option>
-        </select>
+        <span v-if="piecePPValid" class="pp-value">
+          {{ piecePP }}
+          <span class="pp-origin">{{ t('wizard.lastData.partProgramFromPiece') }}</span>
+        </span>
+        <span v-else class="pp-missing">
+          {{ t('wizard.lastData.partProgramMissing') }}
+        </span>
       </div>
     </section>
 
@@ -174,7 +177,7 @@
         type="button"
         class="pure-button-primary"
         @click="saveData"
-        :disabled="PPindex<=0 || dataStored.createWorkOrder.quantity<=0"
+        :disabled="!piecePPValid || dataStored.createWorkOrder.quantity<=0"
       >
         {{ t('wizard.lastData.save') }}
       </button>
@@ -188,13 +191,22 @@ export default {
     data(){
         return {
             createNew:true,
-            PPList:{},
-            PPindex:0
+            piecePP:null   // part program ereditato dal particolare (int) o null
+        }
+    },
+    computed: {
+        piecePPValid(){
+            return Number.isInteger(this.piecePP) && this.piecePP > 0;
         }
     },
     methods: {
-        getPPList(){
-            fetch( dataStored.server+'api/pp/show/all',{ method: 'GET'})
+        // Legge il PARTPROGRAM del pezzo selezionato nel wizard: e' la sola
+        // sorgente del PP dell'ordine (snapshot in WORKORDERS.PP_ID al save).
+        getPiecePP(){
+            const pieceID = dataStored.createWorkOrder.pieceID;
+            if (pieceID == null || pieceID < 0)
+                return;
+            fetch( dataStored.server+'api/conf/piece/show/'+pieceID,{ method: 'GET'})
                 .then(response => {
                     if (!response.ok) {
                         throw new Error('Network response was not ok');
@@ -202,14 +214,21 @@ export default {
                     return response.json()
                 })
                 .then(data => {
-                    this.PPList=data;
-                    console.log(JSON.stringify(data,null,4))
+                    // PARTPROGRAM e' nchar a DB: trim del padding prima del parse
+                    const raw = ((data[0] || {}).PARTPROGRAM || '').toString().trim();
+                    const n = parseInt(raw, 10);
+                    this.piecePP = (/^[1-9][0-9]{0,5}$/.test(raw) && n > 0) ? n : null;
                 })
                 .catch(error => {
                     console.info(error);
+                    this.piecePP = null;
                 });
         },
         saveData() {
+            // guardia: senza part program dal particolare l'ordine non nasce
+            // (il bottone e' gia' disabilitato, questa e' la difesa in piu')
+            if (!this.piecePPValid)
+                return;
             var cmd = ""
             dataStored.createWorkOrder.decentrated_tray_x_pick  *= 100;
             dataStored.createWorkOrder.decentrated_tray_y_pick  *= 100;
@@ -219,7 +238,7 @@ export default {
             dataStored.createWorkOrder.decentrated_MC_y_pick    *= 100;
             dataStored.createWorkOrder.decentrated_MC_x_place   *= 100;
             dataStored.createWorkOrder.decentrated_MC_y_place   *= 100;
-            dataStored.createWorkOrder.PP                        = this.PPindex;
+            dataStored.createWorkOrder.PP                        = this.piecePP;
 
             if (!this.createNew){
                 //eseguo aggiornamento -> update DB
@@ -243,7 +262,7 @@ export default {
         }
       },
       mounted(){
-        this.getPPList()
+        this.getPiecePP()
       }
     }
   </script>
@@ -307,6 +326,26 @@ export default {
 
 .form-input--small { width: 120px; }
 .form-input--xs    { width: 80px; text-align: center; }
+
+/* PP ereditato dal particolare: valore sola-lettura + origine */
+.pp-value {
+  color: var(--text-primary);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.pp-origin {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 400;
+  margin-left: var(--space-2);
+}
+
+.pp-missing {
+  color: var(--color-danger);
+  font-size: 14px;
+  font-weight: 600;
+}
 
 .form-select {
   width: 300px;

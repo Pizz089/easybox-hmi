@@ -1,4 +1,9 @@
 <script setup>
+// MODELLO PART PROGRAM (cantiere AG fase 2): il part program e' proprieta'
+// del PARTICOLARE — numero di sottoprogramma HAAS inserito a mano qui in
+// anagrafica (PIECE.PARTPROGRAM, nchar a DB: trim al load, validazione
+// intero positivo max 6 cifre al save, nessun default). L'ordine lo eredita
+// alla creazione come snapshot (WORKORDERS.PP_ID, vedi lastData.vue).
 import { RouterLink } from "vue-router";
 import { dataStored } from "../../../data.js";
 import { ref } from "vue";
@@ -38,19 +43,21 @@ const el = ref();
         </div>
 
         <div class="pure-control-group">
-          <label for="partprogram">PART PROGRAM</label>
+          <label for="partprogram">{{ $t("piece.partProgramLabel") }}</label>
           <input
             id="partprogram"
             type="number"
             name="PARTPROGRAM"
             v-model="piece.PARTPROGRAM"
-            placeholder="0"
+            min="1"
+            max="999999"
+            step="1"
           />
         </div>
 
         <div class="pure-control-group mc-group">
           <label class="mc-label">
-            
+
           </label>
           <div class="mc-switches">
             <label class="mc-toggle">
@@ -334,6 +341,9 @@ export default {
           this.piece.Z /= 1000;
           this.piece.Z_PICK /= 1000;
           this.piece.Z_PLACE /= 1000;
+          // PARTPROGRAM e' nchar a DB: arriva blank-padded, senza trim
+          // l'input number mostrerebbe vuoto ma il save rispedirebbe spazi
+          this.piece.PARTPROGRAM = (this.piece.PARTPROGRAM || '').toString().trim();
         })
         .catch((error) => {
           console.info(error);
@@ -341,6 +351,18 @@ export default {
     },
     saveData() {
       let cmd = "";
+      // Validazione part program: campo facoltativo (nessun default), ma se
+      // valorizzato deve essere un intero positivo max 6 cifre (numero di
+      // sottoprogramma HAAS). Ordini senza PP vengono bloccati a valle, in
+      // lastData.vue.
+      const pp = (this.piece.PARTPROGRAM || '').toString().trim();
+      if (pp !== '' && !/^[1-9][0-9]{0,5}$/.test(pp)) {
+        dataStored.alert.title = this.$t("WARNING");
+        dataStored.alert.desc = this.$t("piece.partProgramInvalid");
+        dataStored.alert.type = "warning";
+        return;
+      }
+      this.piece.PARTPROGRAM = pp;
       if (!this.piece.PRISMA) this.piece.Y = this.piece.X;
 
       this.piece.X *= 1000;

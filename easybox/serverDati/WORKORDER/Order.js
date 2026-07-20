@@ -1,4 +1,18 @@
 //////// HMI ////////
+// MODELLO PART PROGRAM (cantiere AG fase 2, ratificato dal cliente):
+// il part program e' proprieta' del PARTICOLARE (PIECE.PARTPROGRAM, numero di
+// sottoprogramma HAAS inserito a mano in anagrafica); l'ordine lo eredita alla
+// creazione come snapshot.
+//
+// ARCHITETTURA DB (verificata su dev, 2026-07): WORKORDERS e' una VIEW
+// (non aggiornabile: join multi-tabella); la tabella fisica e' WORKORDER
+// (singolare) con colonna PartProg_ID. Regola CRUD: le SCRITTURE (insert/
+// update/delete) vanno sulla base table WORKORDER; le LETTURE restano sulla
+// view WORKORDERS, che espone PP_ID = w.PartProg_ID (post script guardato
+// scripts/workorders-view-pp.sql: LEFT JOIN su PARTPROGRAM, numeri liberi
+// ammessi). Il PLC legge PP_id dalla view e lo spedisce alla macchina come
+// numero di sottoprogramma (macro #10200).
+// La tabella PARTPROGRAM (ID/NAME/PATH/NOTE) resta il flusso Heidenhain: non toccarla.
 var express = require('express');
 const DBf 	= require('../DBFunct');
 var sql 	= require('mssql')
@@ -70,23 +84,26 @@ router.get('/updateOrder', (req, res) => {
             return;
         }
 
-		let query = `UPDATE WORKORDERS SET
-					PIECE_ID='${req.query.pieceID}', 
-					GRIPPER_ID='${req.query.gripperID}', 
-					VICE_ID='${req.query.viceID}', 
+		// SCRITTURA sulla base table WORKORDER (la view WORKORDERS non e'
+		// aggiornabile). Riparati gli apici rotti storici (B1) e il refuso
+		// Y_PLACE_DECENTRATED_TRAY che riceveva il valore X.
+		let query = `UPDATE WORKORDER SET
+					PIECE_ID='${req.query.pieceID}',
+					GRIPPER_ID='${req.query.gripperID}',
+					VICE_ID='${req.query.viceID}',
 					FIXTURE_ID='${req.query.fixtureID}',
-					PALLET_ID='${req.query.palletID}', 
-					STATUS='${req.query.status}', 
-					MACHINE_ID='${req.query.machineID}', 
-					QUANTITY='${req.query.quantity}', 
-					X_PICK_DECENTRATED_TRAY='${req.query.decentrated_tray_x_pick}', 
-					X_PLACE_DECENTRATED_TRAY=${req.query.decentrated_tray_x_place}', 
-					Y_PICK_DECENTRATED_TRAY=${req.query.decentrated_tray_y_pick}', 
-					Y_PLACE_DECENTRATED_TRAY=${req.query.decentrated_tray_x_place}', 
-					X_PICK_DECENTRATED_MC=${req.query.decentrated_MC_x_pick}', 
-					X_PLACE_DECENTRATED_MC=${req.query.decentrated_MC_x_place}',  
-					Y_PICK_DECENTRATED_MC=${req.query.decentrated_MC_y_pick}',  
-					Y_PLACE_DECENTRATED_MC=${req.query.decentrated_MC_y_place}',
+					PALLET_ID='${req.query.palletID}',
+					STATUS='${req.query.status}',
+					MACHINE_ID='${req.query.machineID}',
+					QUANTITY='${req.query.quantity}',
+					X_PICK_DECENTRATED_TRAY='${req.query.decentrated_tray_x_pick}',
+					X_PLACE_DECENTRATED_TRAY='${req.query.decentrated_tray_x_place}',
+					Y_PICK_DECENTRATED_TRAY='${req.query.decentrated_tray_y_pick}',
+					Y_PLACE_DECENTRATED_TRAY='${req.query.decentrated_tray_y_place}',
+					X_PICK_DECENTRATED_MC='${req.query.decentrated_MC_x_pick}',
+					X_PLACE_DECENTRATED_MC='${req.query.decentrated_MC_x_place}',
+					Y_PICK_DECENTRATED_MC='${req.query.decentrated_MC_y_pick}',
+					Y_PLACE_DECENTRATED_MC='${req.query.decentrated_MC_y_place}',
 					PartProg_ID=${req.query.PP}
 					WHERE ID='${req.query.ID}';`
 		
@@ -114,7 +131,8 @@ router.get('/insertOrder', (req, res) => {
         }
 		
 		var request = new sql.Request();
-        let query = `INSERT INTO WORKORDERS
+        // SCRITTURA sulla base table WORKORDER (la view WORKORDERS non e' aggiornabile)
+        let query = `INSERT INTO WORKORDER
 					(PIECE_ID, GRIPPER_ID, VICE_ID, FIXTURE_ID, PALLET_ID, STATUS, MACHINE_ID, QUANTITY, X_PICK_DECENTRATED_TRAY, X_PLACE_DECENTRATED_TRAY, Y_PICK_DECENTRATED_TRAY, Y_PLACE_DECENTRATED_TRAY, X_PICK_DECENTRATED_MC, X_PLACE_DECENTRATED_MC, Y_PICK_DECENTRATED_MC, Y_PLACE_DECENTRATED_MC, PartProg_ID)
 					VALUES(
 					'${req.query.pieceID}', 
@@ -159,7 +177,8 @@ router.delete('/:ID', (req, res) => {
         }
 		
 		var request = new sql.Request();
-        let query = `DELETE FROM WORKORDERS WHERE ID=${req.params.ID};`
+        // SCRITTURA sulla base table WORKORDER (la view WORKORDERS non e' aggiornabile)
+        let query = `DELETE FROM WORKORDER WHERE ID=${req.params.ID};`
 					
         log.info('query ' + query);
         // query to the database and get the records
