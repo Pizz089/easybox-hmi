@@ -171,7 +171,13 @@
     "delete": "Verranno cancellati tutti i dati associati a questo grigliato ... ",
     "associate": "Associa grigliato al cassetto",
     "disassociate": "Disassocia grigliato dal cassetto",
-    "dimensioniPz": "Dimensioni scasso [mm]"
+    "dimensioniPz": "Dimensioni scasso [mm]",
+    "saveAndModel": "Salva e crea modello",
+    "modelOnly": "Crea modello",
+    "rowsCols": "{rows} righe × {cols} colonne = {tot} pz",
+    "generatedOn": "Generato il:",
+    "print": "Stampa PDF",
+    "redistribute": "Ridistribuisci le posizioni"
   },
   "menu": {
     "dashboard": "Dashboard",

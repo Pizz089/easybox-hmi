@@ -19,7 +19,7 @@
       <div class="pure-g grating-row">
       <div class="pure-u-11-24">
 
-        <div class="pure-form pure-g" >
+        <div class="pure-form pure-g grating-form-card">
             <!--fieldset-->
                 <input type="hidden" name="id" v-model="$route.params.grating_ID" /> 
                 <div class="pure-u-1">
@@ -140,10 +140,10 @@
                         @update="newValue => grating.SAFEY = newValue">
                     </numericField>
                 </div> 
-                <div class="pure-u-1 btn-group row-spaced">
+                <div class="pure-u-1 btn-group row-spaced grating-actions">
                     <button class="pure-button pure-button-primary" @click="saveData() && createModelFile()"
 							:disabled="dataStored.userLevel<0 || grating.SAFEX<minSafeX || grating.SAFEY<minSafeY ">
-                        {{$t("Save") }} & {{$t("Create_model_file")}}
+                        {{ $t("grating.saveAndModel") }}
                     </button>
                     <!--button
                         style="padding:20px"
@@ -156,15 +156,15 @@
                     <!--button class="pure-button pure-button-primary"  style="padding:20px">
                         <img src="../../../assets/pdf.png" width="15%"></img>
                     </button-->
-                    <button class="btn-ghost" @click="createModelFile()">modello</button>
+                    <button class="btn-ghost" @click="createModelFile()">{{ $t("grating.modelOnly") }}</button>
                     <button class="btn-ghost" @click="esportaDXF()" :disabled="listPz.length === 0">DXF</button>
                 </div>
                 <div class="pure-u-1 row-spaced">
-                    <img
-                        src="../../../assets/pdf.png" 
-                        width="15%" 
-                        @click="stampaDiv()">
-                    </img>
+                    <!-- img nuda -> bottone canonico touch (handler 1:1) -->
+                    <button type="button" class="btn-icon scene-iconbtn" @click="stampaDiv()"
+                        :aria-label="$t('grating.print')" :title="$t('grating.print')">
+                        <img src="../../../assets/pdf.png" alt="" />
+                    </button>
                 </div>
                     
                 <!--div>
@@ -198,18 +198,17 @@
       </div>
       <!-- LAYOUT -->
       <div class="pure-u-11-24">
-        <!-- GR3: margin-left 130px = posizionamento magico legato alla scena SVG
-             sottostante, lasciato deliberatamente (raddrizzarlo e' refactor layout) -->
-        <div class="pure-u-1" style="margin-left:130px">
+        <!-- GR3 decaduta (cantiere AL): scena centrata dal viewBox computed -->
+        <div class="pure-u-1 scene-caption">
             <h5>
-                {{ n_row }} Righe x {{ n_cln }} Colonne => {{ n_row*n_cln }} pz 
+                {{ $t('grating.rowsCols', { rows: n_row, cols: n_cln, tot: n_row*n_cln }) }} 
             </h5>
         </div>
         <div class="pure-u-1">
             <svg id="trayLayout" width="480" height="360" version="1.1" xmlns="http://www.w3.org/2000/svg" 
-                viewBox="0 0 920 630" @click="distribute()"> 
+                :viewBox="sceneViewBox" @click="distribute()"> 
                 <!-- vassoio -->
-                <rect id="tray" x="0" y="0" :width="grating.width" :height="grating.height" style="fill:lightgray" class="noPrint"/>
+                <rect id="tray" x="0" y="0" :width="grating.width" :height="grating.height" fill="#3A4A60" class="noPrint"/>
 
                 <!-- profilo esterno -->
                 <path d="M15 5 
@@ -229,7 +228,7 @@
                         l0 -70 l-8 0 l0 -25 l5 0 
                         l0 -225
                         Z" 
-                        style="fill:none;stroke:red;stroke-width:1"/>
+                        fill="none" stroke="#B2BDCE" stroke-width="1"/>
                               
                 <g v-for="(p, index) in listPz" :key="index" >
                     <prisma v-if="p.prisma"
@@ -247,39 +246,39 @@
                 </g>
                 
                 <!-- fori -->
-                <circle r="3" cx="18"  cy="15" style="fill:none;stroke:red;stroke-width:1"/>
-                <circle r="3" cx="398" cy="15" style="fill:none;stroke:red;stroke-width:1"/>
-                <circle r="3" cx="802" cy="15" style="fill:none;stroke:red;stroke-width:1"/>
+                <circle r="3" cx="18"  cy="15" fill="none" stroke="#B2BDCE" stroke-width="1"/>
+                <circle r="3" cx="398" cy="15" fill="none" stroke="#B2BDCE" stroke-width="1"/>
+                <circle r="3" cx="802" cy="15" fill="none" stroke="#B2BDCE" stroke-width="1"/>
                 
-                <circle r="3" cx="18"  cy="300" style="fill:none;stroke:red;stroke-width:1"/>
-                <circle r="3" cx="398" cy="300" style="fill:none;stroke:red;stroke-width:1"/>
-                <circle r="3" cx="802" cy="300" style="fill:none;stroke:red;stroke-width:1"/>
+                <circle r="3" cx="18"  cy="300" fill="none" stroke="#B2BDCE" stroke-width="1"/>
+                <circle r="3" cx="398" cy="300" fill="none" stroke="#B2BDCE" stroke-width="1"/>
+                <circle r="3" cx="802" cy="300" fill="none" stroke="#B2BDCE" stroke-width="1"/>
                 
-                <circle r="3" cx="18"  cy="593" style="fill:none;stroke:red;stroke-width:1"/>
-                <circle r="3" cx="398" cy="593" style="fill:none;stroke:red;stroke-width:1"/>
-                <circle r="3" cx="802" cy="593" style="fill:none;stroke:red;stroke-width:1"/>
+                <circle r="3" cx="18"  cy="593" fill="none" stroke="#B2BDCE" stroke-width="1"/>
+                <circle r="3" cx="398" cy="593" fill="none" stroke="#B2BDCE" stroke-width="1"/>
+                <circle r="3" cx="802" cy="593" fill="none" stroke="#B2BDCE" stroke-width="1"/>
 
                 <!-- misure-->
-                <!--text :x="listPz[0].x:0" :y="listPz[0].y+10" fill="dark" font-size="10">{{dim_x}}x{{dim_y}}</text-->
+                <!--text :x="listPz[0].x:0" :y="listPz[0].y+10" fill="#2A3548" font-size="10">{{dim_x}}x{{dim_y}}</text-->
                 <g v-if="listPz.length>0" class="noScreen">
-                    <text :x="listPz[0].x-20" :y="listPz[0].y+dim_y/2" fill="dark" font-size="10">{{ grating.SAFEX }}</text>
+                    <text :x="listPz[0].x-20" :y="listPz[0].y+dim_y/2" fill="#2A3548" font-size="10">{{ grating.SAFEX }}</text>
                     
-                    <text :x="listPz[0].x+dim_x/2" :y="listPz[0].y-17"  fill="dark" font-size="10" rotate="-90" v-if="grating.SAFEY.toString()[2]>0">{{ grating.SAFEY.toString()[2] }}</text>
-                    <text :x="listPz[0].x+dim_x/2" :y="listPz[0].y-11"  fill="dark" font-size="10" rotate="-90" v-if="grating.SAFEY.toString()[1]>=0">{{ grating.SAFEY.toString()[1] }}</text>
-                    <text :x="listPz[0].x+dim_x/2" :y="listPz[0].y-6"   fill="dark" font-size="10" rotate="-90">{{ grating.SAFEY.toString()[0] }}</text>
+                    <text :x="listPz[0].x+dim_x/2" :y="listPz[0].y-17"  fill="#2A3548" font-size="10" rotate="-90" v-if="grating.SAFEY.toString()[2]>0">{{ grating.SAFEY.toString()[2] }}</text>
+                    <text :x="listPz[0].x+dim_x/2" :y="listPz[0].y-11"  fill="#2A3548" font-size="10" rotate="-90" v-if="grating.SAFEY.toString()[1]>=0">{{ grating.SAFEY.toString()[1] }}</text>
+                    <text :x="listPz[0].x+dim_x/2" :y="listPz[0].y-6"   fill="#2A3548" font-size="10" rotate="-90">{{ grating.SAFEY.toString()[0] }}</text>
                     
-                    <text :x="listPz[0].x+dim_x/2" :y="listPz[0].y+dim_y+8" fill="dark" font-size="10" rotate="-90">
+                    <text :x="listPz[0].x+dim_x/2" :y="listPz[0].y+dim_y+8" fill="#2A3548" font-size="10" rotate="-90">
                         {{ (grating.height-listPz[0].y-dim_y).toString()[1] }}
                     </text>
-                    <text :x="listPz[0].x+dim_x/2" :y="listPz[0].y+dim_y+14" fill="dark" font-size="10" rotate="-90">
+                    <text :x="listPz[0].x+dim_x/2" :y="listPz[0].y+dim_y+14" fill="#2A3548" font-size="10" rotate="-90">
                         {{ (grating.height-listPz[0].y-dim_y).toString()[0] }}
                     </text>
                     
-                    <text :x="listPz[0].x+dim_x+10" :y="listPz[0].y+dim_y/2" fill="dark" font-size="10" rotate="0">
+                    <text :x="listPz[0].x+dim_x+10" :y="listPz[0].y+dim_y/2" fill="#2A3548" font-size="10" rotate="0">
                         {{ grating.width-listPz[0].x-dim_x }}
                     </text>
 
-                    <text :x="listPz[0].x+dim_x/2-15" :y="listPz[0].y+dim_y/2" fill="dark" font-size="10" rotate="0">
+                    <text :x="listPz[0].x+dim_x/2-15" :y="listPz[0].y+dim_y/2" fill="#2A3548" font-size="10" rotate="0">
                         {{dim_x}}x{{dim_y}}
                     </text>
                 </g>
@@ -290,25 +289,25 @@
                         :y="minBordoY"               
                         :width="minBordoX"      
                         :height="grating.height-minBordoY*2"        
-                        style="fill:#fff65087"/>
+                        fill="#FBBF24" fill-opacity="0.35"/>
                     <rect 
                         x="0"                 
                         y="0"               
                         :width="grating.width" 
                         :height="minBordoY" 
-                        style="fill:#fff65087"/>
+                        fill="#FBBF24" fill-opacity="0.35"/>
                     <rect 
                         :x="grating.width-minBordoX"    
                         :y="minBordoY"                  
                         :width="minBordoX"      
                         :height="grating.height-minBordoY*2"        
-                        style="fill:#fff65087"/>
+                        fill="#FBBF24" fill-opacity="0.35"/>
                     <rect 
                         x="0"                 
                         :y="grating.height-minBordoY"  
                         :width="grating.width" 
                         :height="minBordoY" 
-                        style="fill:#fff65087"/>
+                        fill="#FBBF24" fill-opacity="0.35"/>
                 </g>
                 <animate
                     xlink:href="#limits"
@@ -319,25 +318,27 @@
 
                 <g class="noScreen">
                     <!-- cartiglio -->
-                    <text x="20" y="655" 	fill="dark" font-size="14" rotate="0">
+                    <text x="20" y="655" 	fill="#2A3548" font-size="14" rotate="0">
                             {{$t("Nome")}} : {{$t("Grigliato")}} {{grating.NAME}}
                     </text>
-                    <text x="320" y="655" 	fill="dark" font-size="14" rotate="0">
+                    <text x="320" y="655" 	fill="#2A3548" font-size="14" rotate="0">
                             {{$t("grating.dimensioniPz")}} : {{dim_x}}x{{dim_y}}
                     </text>
-                    <text x="680" y="655" 	fill="dark" font-size="14" rotate="0">
-                            Generato il: {{new Date().toLocaleDateString()}}
+                    <text x="680" y="655" 	fill="#2A3548" font-size="14" rotate="0">
+                            {{ $t('grating.generatedOn') }} {{new Date().toLocaleDateString()}}
                     </text>
                 </g>
             </svg>
             
         </div>
         <div class="pure-u-1"> 
-            <!-- GR3: margin-left 200px = posizionamento magico legato alla scena SVG,
-                 lasciato deliberatamente -->
-            <div class="pure-u-1" style="margin-left:200px">
-                <img src="../../../assets/distribute.png" @click="distribute()" />      
-            </div>
+            <!-- GR3 decaduta; img nuda -> bottone canonico touch (handler 1:1) -->
+            <div class="pure-u-1 scene-actions">
+                <button type="button" class="btn-icon scene-iconbtn" @click="distribute()"
+                    :aria-label="$t('grating.redistribute')" :title="$t('grating.redistribute')">
+                    <img src="../../../assets/distribute.png" alt="" />
+                </button>
+</div>
         </div>
     </div>
     </div>
@@ -902,6 +903,26 @@ export default {
         }
     },
     computed:{
+        // ==================================================================
+        // CANTIERE AL — UNICA modifica script ammessa dal gate: viewBox
+        // reattivo sui bounds reali della scena. Bounds del profilo esterno
+        // hardcoded (path fisso, misurati una volta: x 1..820, y 1..605),
+        // uniti al vassoio dai dati (grating.width/height) e al cartiglio
+        // print (y 655). Margine di respiro uniforme. Centra la scena per
+        // qualunque cassetto: le deroghe GR3 decadono.
+        // ==================================================================
+        sceneViewBox(){
+            const PROF = { minX: 1, minY: 1, maxX: 820, maxY: 605 };
+            const CART_Y = 660;    // cartiglio di stampa a y 655
+            const M = 25;          // margine di respiro uniforme
+            const w = Number(this.grating.width) || 0;
+            const h = Number(this.grating.height) || 0;
+            const minX = Math.min(0, PROF.minX) - M;
+            const minY = Math.min(0, PROF.minY) - M;
+            const maxX = Math.max(w, PROF.maxX) + M;
+            const maxY = Math.max(h, PROF.maxY, CART_Y) + M;
+            return minX + ' ' + minY + ' ' + (maxX - minX) + ' ' + (maxY - minY);
+        }
     },
     mounted(){
         this.getPiecesList();
@@ -920,8 +941,84 @@ export default {
 </script>
 
 <style scoped>
-    label{
-        font-weight: bolder;
+    /* Cantiere AL: form a norma design system (pattern del form Particolare) */
+    .grating-form-card{
+        background: var(--bg-card);
+        border: var(--border-card);
+        border-radius: var(--radius-md);
+        padding: var(--space-5);
+    }
+
+    .grating-form-card label{
+        font-size: var(--font-size-sm);
+        font-weight: var(--font-weight-medium);
+        color: var(--text-secondary);
+        margin-bottom: var(--space-1); /* micro-aggiustamento ottico label-campo */
+    }
+
+    .grating-form-card input[type="text"],
+    .grating-form-card select{
+        box-sizing: border-box;
+        min-height: 44px;              /* touch: deroga 44 campi form */
+        padding: var(--space-2) var(--space-4);
+        background: var(--bg-input);
+        color: var(--text-primary);
+        border: 1px solid var(--border-default);
+        border-radius: var(--radius-md);
+        font-size: var(--font-size-base);
+        transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+    }
+
+    .grating-form-card input[type="text"]:focus,
+    .grating-form-card select:focus{
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 1px var(--accent);
+    }
+
+    /* Bottoni GEMELLI: metrica esatta di Piece.vue (AK-BIS) — pill h52
+       min-width 140, selettore rinforzato contro la cascata pure */
+    .pure-form .grating-actions .pure-button-primary,
+    .pure-form .grating-actions .btn-ghost{
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+        height: 52px;
+        min-width: 140px;
+        padding: 0 var(--space-5);
+        margin: 0;
+        border-radius: var(--radius-btn);
+        font-size: var(--font-size-base);
+        font-weight: var(--font-weight-medium);
+        font-family: inherit;
+        line-height: 1;
+        letter-spacing: 0.025em;
+        text-decoration: none;
+        cursor: pointer;
+    }
+
+    /* bottoni-icona scena (stampa PDF, ridistribuisci): touch, niente img nude */
+    .scene-iconbtn{
+        min-width: 52px;
+        min-height: 52px;
+    }
+
+    .scene-iconbtn img{
+        width: 36px;
+        height: 36px;
+        object-fit: contain;
+    }
+
+    .scene-caption{
+        text-align: center;
+        color: var(--text-secondary);
+    }
+
+    .scene-actions{
+        display: flex;
+        justify-content: center;
+        margin-top: var(--space-2);
     }
 	.error{
 		background-color: var(--color-danger-bg);
@@ -944,13 +1041,6 @@ export default {
     }
     .associate-btn{
         margin-top: var(--space-2);
-    }
-    .buttonDownload{
-        background-image:url('../../../assets/download.png');
-        background-repeat: no-repeat;
-        background-size: 20%;
-        background-position-x: 100%;
-        background-position-y: 28%;
     }
 
     @media screen{

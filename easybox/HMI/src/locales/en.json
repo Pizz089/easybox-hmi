@@ -171,7 +171,13 @@
     "delete": "ALL DATA associated at this grating will be erased... ",
     "associate": "Associate grating to tray",
     "disassociate": "Disassociate grating from tray",
-    "dimensioniPz": "Dimensions hole [mm]"
+    "dimensioniPz": "Dimensions hole [mm]",
+    "saveAndModel": "Save & create model",
+    "modelOnly": "Create model",
+    "rowsCols": "{rows} rows × {cols} columns = {tot} pcs",
+    "generatedOn": "Generated on:",
+    "print": "Print PDF",
+    "redistribute": "Redistribute positions"
   },
   "menu": {
     "dashboard": "Dashboard",
