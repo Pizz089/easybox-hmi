@@ -30,27 +30,27 @@
       <div v-for="row in rows" :key="row.pallet.ID"
         class="container_card pure-u-1-2 pure-u-md-1-3 pure-u-lg-1-4">
 
-        <div class="card card--detailed rig-card"
+        <div class="card rig-card"
           :class="{ 'rig-card--disabled': !isSelectable(row),
                     'rig-card--current': isCurrent(row) }"
           @click="isSelectable(row) ? pick(row) : null">
 
-          <span class="card-name">#{{ row.pallet.ID }} {{ (row.pallet.FAMILY || '').trim() }}</span>
+          <span class="rig-name">#{{ row.pallet.ID }} {{ (row.pallet.FAMILY || '').trim() }}</span>
 
           <span v-if="state(row)=='bare'" class="badge badge-missing">{{ t('attrezzaggi.bare') }}</span>
           <span v-else-if="state(row)=='vice'" class="badge badge-type">{{ t('attrezzaggi.vice') }}</span>
           <span v-else-if="state(row)=='fixture'" class="badge badge-type">{{ t('attrezzaggi.fixture') }}</span>
           <span v-else class="badge badge-anomaly">{{ t('attrezzaggi.anomaly') }}</span>
 
-          <div class="card-meta">
-            <span v-if="row.vice" class="card-descr">
+          <div class="rig-meta">
+            <span v-if="row.vice" class="rig-detail">
               {{ (row.vice.FAMILY || '').trim() }} {{ (row.vice.DESCR || '').trim() }}
             </span>
-            <span v-else-if="row.fixtures.length==1" class="card-descr">
+            <span v-else-if="row.fixtures.length==1" class="rig-detail">
               {{ fixtureName(row.fixtures[0].FIXTURE_ID) }}
             </span>
             <!-- posizione a magazzino: info, non filtrante -->
-            <span class="card-dim">{{ getPosition(row.pallet) }}</span>
+            <span class="rig-pos">{{ getPosition(row.pallet) }}</span>
           </div>
         </div>
       </div>
@@ -143,11 +143,10 @@ export default {
 /* Badge: stessa grammatica di AttrezzaggiView (bg semantico + testo pieno) */
 .badge {
     display: inline-block;
-    padding: var(--space-1) var(--space-3);
+    padding: var(--space-1) var(--space-3); /* micro-aggiustamento ottico badge, come AttrezzaggiView */
     border-radius: var(--radius-lg);
     font-size: var(--font-size-sm);
     white-space: nowrap;
-    align-self: flex-start;
 }
 
 .badge-missing {
@@ -166,11 +165,32 @@ export default {
     font-weight: var(--font-weight-semibold);
 }
 
+/* eredita dal .card globale (App.vue, wizard UI-5.5b) flex column centrata,
+   min-height 240 e padding: qui solo il ritmo verticale interno */
 .rig-card {
+    gap: var(--space-2);
+}
+
+.rig-name {
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
+}
+
+.rig-meta {
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
-    min-height: 120px;   /* target touch ampio */
+}
+
+.rig-detail {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+}
+
+.rig-pos {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
 }
 
 /* nudo/anomalia: visibile ma non azionabile (mai ordini su dati sporchi) */

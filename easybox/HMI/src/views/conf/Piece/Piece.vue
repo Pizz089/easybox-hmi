@@ -401,78 +401,82 @@ export default {
 </script>
 
 <style scoped>
+/* Cantiere AJ (style-only): blocco riscritto sul design system — era una
+   mini-palette Tailwind hardcoded (~25 font px, ~69 colori), debito censito
+   in P3. Deroghe annotate inline; layout (larghezze colonne form) invariato. */
 .piece-page {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  color: #e5e7eb;
+  gap: var(--space-2);
+  color: var(--text-primary);
 }
 
 .piece-header {
-  margin: 4px 0 0;
+  margin: var(--space-1) 0 0; /* micro-aggiustamento ottico consentito */
 }
 
 .piece-header h1 {
-  font-size: 22px;
-  font-weight: 600;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
   letter-spacing: 0.03em;
-  color: #e5e7eb;
+  color: var(--text-primary);
   margin: 0;
 }
 
 .piece-id {
-  margin-left: 6px;
-  color: #38bdf8;
-  font-weight: 500;
+  margin-left: var(--space-2);
+  color: var(--accent);
+  font-weight: var(--font-weight-medium);
 }
 
+/* contenitore form: pattern outlined (doc §4.1) */
 .piece-card {
   width: 100%;
   max-width: 1150px;
-  margin: 8px 0 32px;
-  background: rgba(9, 9, 11, 0.97);
-  border-radius: 16px;
-  padding: 20px 26px 24px;
-  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.6);
-  border: 1px solid rgba(63, 63, 70, 0.9);
+  margin: var(--space-2) 0 var(--space-6);
+  background: var(--bg-card);
+  border: var(--border-card);
+  border-radius: var(--radius-md);
+  padding: var(--space-5);
 }
 
 .pure-form-aligned .pure-control-group {
   display: flex;
   align-items: center;
-  margin: 8px 0;
+  margin: var(--space-2) 0;
 }
 
 .pure-form-aligned .pure-control-group label {
-  width: 170px;
-  margin-right: 12px;
+  width: 170px;               /* larghezza colonna label: layout, non estetica */
+  margin-right: var(--space-4);
   text-align: right;
-  font-size: 12px;
-  color: #9ca3af;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
 }
 
 .pure-form-aligned .pure-control-group input[type="text"],
 .pure-form-aligned .pure-control-group input[type="number"] {
   width: 280px;
-  padding: 6px 9px;
-  border-radius: 8px;
-  border: 1px solid rgba(75, 85, 99, 0.9);
-  background: #020817;
-  color: #e5e7eb;
-  font-size: 12px;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-default);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-size: var(--font-size-base);
+  min-height: 44px;           /* touch: deroga 44 per campi form */
   outline: none;
-  transition: all 0.18s ease-out;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .pure-form-aligned .pure-control-group input:focus {
-  border-color: #38bdf8;
-  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.25);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
 }
 
 .pure-form-aligned .pure-control-group small {
-  margin-left: 6px;
-  font-size: 10px;
-  color: #6b7280;
+  margin-left: var(--space-2);
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
 }
 
 .mc-group {
@@ -481,25 +485,26 @@ export default {
 
 .mc-label {
   width: 170px;
-  margin-right: 12px;
+  margin-right: var(--space-4);
   text-align: right;
-  font-size: 12px;
-  color: #9ca3af;
-  padding-top: 8px;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  padding-top: var(--space-2);
 }
 
 .mc-switches {
   display: flex;
-  gap: 18px;
+  gap: var(--space-4);
   flex-wrap: wrap;
 }
 
 .mc-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  color: #e5e7eb;
+  gap: var(--space-2);
+  min-height: 44px;            /* touch: l'intera label e' il target */
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
   cursor: pointer;
 }
 
@@ -507,32 +512,35 @@ export default {
   display: none;
 }
 
+/* switch fisico: pill per natura del CONTROLLO (non variante bottone) */
 .mc-track {
   width: 42px;
   height: 20px;
-  background: #4b5563;
-  border-radius: 999px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-pill);
   padding: 2px;
   box-sizing: border-box;
   display: flex;
   align-items: center;
-  transition: all 0.18s ease-out;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
 }
 
 .mc-knob {
-  width: 16px;
-  height: 16px;
-  border-radius: 999px;
-  background: #e5e7eb;
-  transition: all 0.18s ease-out;
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-pill);
+  background: var(--text-primary);
+  transition: transform var(--transition-fast);
 }
 
 .mc-toggle input:checked + .mc-track {
-  background: #22c55e;
+  background: var(--color-success);
+  border-color: var(--color-success);
 }
 
 .mc-toggle input:checked + .mc-track .mc-knob {
-  transform: translateX(18px);
+  transform: translateX(20px);
 }
 
 .mc-text {
@@ -542,8 +550,8 @@ export default {
 .piece-main {
   display: flex;
   align-items: flex-start;
-  gap: 30px;
-  margin-top: 70px;
+  gap: var(--space-6);
+  margin-top: var(--space-8);
 }
 
 .piece-fields {
@@ -555,31 +563,37 @@ export default {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 6px;
+  gap: var(--space-2);
 }
 
+/* segmented control forma pezzo: selezione attiva = accent (stesso pattern
+   .selected dei dialog / .active dello speed selector); squadrato, non pill
+   (pill riservata a critical, doc §7) */
 .shape-toggle {
   display: inline-flex;
-  background: #020817;
-  border-radius: 999px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
   padding: 2px;
   gap: 2px;
-  border: 1px solid rgba(75, 85, 99, 0.9);
 }
 
 .shape-pill {
-  padding: 4px 10px;
-  font-size: 11px;
-  border-radius: 999px;
+  padding: var(--space-2) var(--space-4);
+  min-height: 44px;            /* touch: deroga 44 per segmented control */
+  display: inline-flex;
+  align-items: center;
+  font-size: var(--font-size-sm);
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  color: #9ca3af;
-  transition: all 0.18s ease-out;
+  color: var(--text-secondary);
+  transition: background var(--transition-fast), color var(--transition-fast);
 }
 
 .shape-pill.active {
-  background: #22c55e;
-  color: #020817;
-  font-weight: 600;
+  background: var(--accent);
+  color: var(--bg-base);
+  font-weight: var(--font-weight-semibold);
 }
 
 .dim-svg {
@@ -587,72 +601,90 @@ export default {
   height: 160px;
 }
 
+/* quote SVG: stroke/font in unita' del viewBox (120), non px schermo */
 .cube-face {
-  fill: rgba(15, 23, 42, 0.9);
-  stroke: rgba(75, 85, 99, 0.9);
+  fill: var(--bg-input);
+  stroke: var(--border-strong);
   stroke-width: 1;
 }
 
 .cube-edge {
   fill: none;
-  stroke: rgba(107, 114, 128, 0.9);
+  stroke: var(--border-strong);
   stroke-width: 1;
 }
 
 .dim-line {
-  stroke: rgba(148, 163, 253, 0.7);
+  stroke: var(--text-muted);
   stroke-width: 2;
 }
 
 .dim-text {
-  font-size: 10px;
-  fill: rgba(148, 163, 253, 0.7);
-  font-weight: 500;
+  font-size: 10px;             /* unita' viewBox SVG, non px schermo */
+  fill: var(--text-muted);
+  font-weight: var(--font-weight-medium);
 }
 
 .dim-line.active {
-  stroke: #38bdf8;
+  stroke: var(--accent);
   stroke-width: 3;
 }
 
 .dim-text.active {
-  fill: #38bdf8;
-  font-weight: 700;
+  fill: var(--accent);
+  font-weight: var(--font-weight-bold);
 }
 
 .piece-actions {
-  margin-top: 18px;
+  margin-top: var(--space-4);
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: var(--space-4);
 }
 
+/* Save: variante Primary canonica (doc §3.1/3.2) in scoped — il Sistema B
+   config non ha ancora una classe primaria unificata (buco doc §3.4) */
 .piece-save {
-  background: #38bdf8;
-  border-radius: 8px;
-  padding: 7px 18px;
-  border: none;
-  color: #020817;
-  font-size: 12px;
-  font-weight: 600;
+  background: var(--accent);
+  color: var(--text-primary);
+  border: 0;
+  border-radius: var(--radius-md);
+  min-height: 52px;
+  padding: var(--space-4) var(--space-5);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: 0.025em;
   cursor: pointer;
-  transition: all 0.18s ease-out;
+  transition: filter var(--transition-fast);
 }
 
 .piece-save:hover {
-  background: #0ea5e9;
-  box-shadow: 0 4px 12px rgba(56, 189, 248, 0.35);
+  filter: brightness(1.12);
 }
 
+/* Annulla: variante Ghost canonica (doc §3.3) applicata al RouterLink */
 .piece-cancel {
-  font-size: 11px;
-  color: #9ca3af;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--border-default);
+  color: var(--text-secondary);
+  border-radius: var(--radius-md);
+  min-height: 52px;
+  padding: var(--space-4) var(--space-5);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: 0.025em;
   text-decoration: none;
+  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
 }
 
 .piece-cancel:hover {
-  color: #e5e7eb;
-  text-decoration: underline;
+  background: var(--bg-surface);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+  text-decoration: none;
 }
 </style>
 
