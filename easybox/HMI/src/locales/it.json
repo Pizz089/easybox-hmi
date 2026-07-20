@@ -252,6 +252,8 @@
     "createNew": "Crea nuovo tipo pezzo",
     "partProgramLabel": "N° part program (sottoprogramma HAAS)",
     "partProgramInvalid": "Part program non valido: intero positivo, max 6 cifre",
+    "zPickShort": "Z prel.",
+    "zPlaceShort": "Z dep.",
     "MC1_ONLY": "Solo per MC1",
     "MC2_ONLY": "Solo per MC2",
     "MC3_ONLY": "Solo per MC3",

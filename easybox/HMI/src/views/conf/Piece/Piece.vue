@@ -146,6 +146,8 @@ const el = ref();
                 type="number"
                 name="Z_PICK"
                 v-model="piece.Z_PICK"
+                @focus="setActiveDim('ZPICK')"
+                @blur="setActiveDim(null)"
               />
               <small>mm</small>
             </div>
@@ -157,6 +159,8 @@ const el = ref();
                 type="number"
                 name="Z_PLACE"
                 v-model="piece.Z_PLACE"
+                @focus="setActiveDim('ZPLACE')"
+                @blur="setActiveDim(null)"
               />
               <small>mm</small>
             </div>
@@ -180,57 +184,63 @@ const el = ref();
               </span>
             </div>
 
-            <!-- Solido istruzioni ridisegnato sul CAMPIONE CubeIcon3D:
-                 isometrica cos30/sin30, 3 facce con gerarchia luce
-                 (top chiara, right media, left ombra), stroke round.
-                 Quote H/W/L parallele agli spigoli, evidenziate al focus. -->
-            <svg v-if="piece.PRISMA" viewBox="0 0 120 120" class="dim-svg">
-              <polygon points="60,60 25.4,40 25.4,80 60,100" class="face-left" />
-              <polygon points="60,60 94.6,40 94.6,80 60,100" class="face-right" />
-              <polygon points="60,60 94.6,40 60,20 25.4,40" class="face-top" />
+            <!-- Solido istruzioni (campione CubeIcon3D, cantiere AK):
+                 geometria REATTIVA alle quote del form (computed prismGeom/
+                 cylGeom), quote H/W/L evidenziate al focus, livelli Z
+                 prelievo/deposito tratteggiati (dash lungo=prelievo,
+                 corto=deposito; fuori pezzo = warning). -->
+            <svg v-if="piece.PRISMA" viewBox="0 0 160 120" class="dim-svg">
+              <polygon :points="prismFaces.left" class="face-left" />
+              <polygon :points="prismFaces.right" class="face-right" />
+              <polygon :points="prismFaces.top" class="face-top" />
 
-              <line x1="103" y1="40" x2="103" y2="80"
+              <line :x1="prismQuotes.H.x1" :y1="prismQuotes.H.y1" :x2="prismQuotes.H.x2" :y2="prismQuotes.H.y2"
                 :class="['dim-line', { active: activeDim === 'H' }]" />
-              <text x="107" y="64"
-                :class="['dim-text', { active: activeDim === 'H' }]">
-                H
-              </text>
+              <text :x="prismQuotes.H.tx" :y="prismQuotes.H.ty" text-anchor="end"
+                :class="['dim-text', { active: activeDim === 'H' }]">H</text>
 
-              <line x1="56" y1="108" x2="21.4" y2="88"
+              <line :x1="prismQuotes.W.x1" :y1="prismQuotes.W.y1" :x2="prismQuotes.W.x2" :y2="prismQuotes.W.y2"
                 :class="['dim-line', { active: activeDim === 'W' }]" />
-              <text x="24" y="104"
-                :class="['dim-text', { active: activeDim === 'W' }]">
-                W
-              </text>
+              <text :x="prismQuotes.W.tx" :y="prismQuotes.W.ty" text-anchor="middle"
+                :class="['dim-text', { active: activeDim === 'W' }]">W</text>
 
-              <line x1="64" y1="108" x2="98.6" y2="88"
+              <line :x1="prismQuotes.L.x1" :y1="prismQuotes.L.y1" :x2="prismQuotes.L.x2" :y2="prismQuotes.L.y2"
                 :class="['dim-line', { active: activeDim === 'L' }]" />
-              <text x="88" y="104"
-                :class="['dim-text', { active: activeDim === 'L' }]">
-                L
-              </text>
+              <text :x="prismQuotes.L.tx" :y="prismQuotes.L.ty" text-anchor="middle"
+                :class="['dim-text', { active: activeDim === 'L' }]">L</text>
+
+              <template v-for="z in zLevels" :key="z.key">
+                <polyline :points="z.points" fill="none"
+                  :class="['dim-line', z.dashClass, { active: activeDim === z.key, 'z-over': z.over }]" />
+                <line :x1="z.tickX1" :y1="z.tickY" :x2="z.tickX2" :y2="z.tickY"
+                  :class="['dim-line', z.dashClass, { active: activeDim === z.key, 'z-over': z.over }]" />
+                <text :x="z.tx" :y="z.ty"
+                  :class="['dim-text', 'z-text', { active: activeDim === z.key, 'z-over': z.over }]">{{ $t(z.labelKey) }}</text>
+              </template>
             </svg>
 
-            <svg v-else viewBox="0 0 120 120" class="dim-svg">
-              <!-- cilindro come il campione: body path chiuso + ellisse top -->
-              <path
-                d="M 27 35 L 27 85 A 28 11.2 0 0 0 83 85 L 83 35 A 28 11.2 0 0 1 27 35 Z"
-                class="face-left" />
-              <ellipse cx="55" cy="35" rx="28" ry="11.2" class="face-top" />
+            <svg v-else viewBox="0 0 160 120" class="dim-svg">
+              <path :d="cylBodyPath" class="face-left" />
+              <ellipse :cx="cylGeom.cx" :cy="cylGeom.topCy" :rx="cylGeom.rx" :ry="cylGeom.ry" class="face-top" />
 
-              <line x1="95" y1="35" x2="95" y2="85"
+              <line :x1="cylQuotes.H.x1" :y1="cylQuotes.H.y1" :x2="cylQuotes.H.x2" :y2="cylQuotes.H.y2"
                 :class="['dim-line', { active: activeDim === 'H' }]" />
-              <text x="100" y="64"
-                :class="['dim-text', { active: activeDim === 'H' }]">
-                H
-              </text>
+              <text :x="cylQuotes.H.tx" :y="cylQuotes.H.ty" text-anchor="end"
+                :class="['dim-text', { active: activeDim === 'H' }]">H</text>
 
-              <line x1="27" y1="14" x2="83" y2="14"
+              <line :x1="cylQuotes.D.x1" :y1="cylQuotes.D.y1" :x2="cylQuotes.D.x2" :y2="cylQuotes.D.y2"
                 :class="['dim-line', { active: activeDim === 'L' }]" />
-              <text x="52" y="10"
-                :class="['dim-text', { active: activeDim === 'L' }]">
-                D
-              </text>
+              <text :x="cylQuotes.D.tx" :y="cylQuotes.D.ty" text-anchor="middle"
+                :class="['dim-text', { active: activeDim === 'L' }]">D</text>
+
+              <template v-for="z in zLevels" :key="z.key">
+                <polyline :points="z.points" fill="none"
+                  :class="['dim-line', z.dashClass, { active: activeDim === z.key, 'z-over': z.over }]" />
+                <line :x1="z.tickX1" :y1="z.tickY" :x2="z.tickX2" :y2="z.tickY"
+                  :class="['dim-line', z.dashClass, { active: activeDim === z.key, 'z-over': z.over }]" />
+                <text :x="z.tx" :y="z.ty"
+                  :class="['dim-text', 'z-text', { active: activeDim === z.key, 'z-over': z.over }]">{{ $t(z.labelKey) }}</text>
+              </template>
             </svg>
           </div>
         </div>
@@ -355,6 +365,141 @@ export default {
         });
     },
   },
+  // ==========================================================================
+  // CANTIERE AK — computed del DISEGNO REATTIVO (unica sezione <script>
+  // ammessa dal gate): geometria del solido derivata dai soli campi del form
+  // (X/Y/Z/Z_PICK/Z_PLACE/PRISMA gia' esistenti), zero nuovi dati, zero API.
+  // Linguaggio del campione CubeIcon3D: isometrica cos30/sin30, facce a
+  // gerarchia luce, normalizzazione sul massimo.
+  // ==========================================================================
+  computed: {
+    // Quote normalizzate 0..1. Robustezza: campo vuoto/0/NaN -> asse pieno
+    // (1.0, il solido di default: MAI collasso a zero); clamp di leggibilita'
+    // MIN_RATIO = 0.15 (nessun asse sotto il 15% del massimo: spigoli ed
+    // etichette leggibili anche con rapporti estremi tipo 500/50/50).
+    drawNorm() {
+      const MIN_RATIO = 0.15;
+      const num = (v) => {
+        const n = parseFloat(v);
+        return Number.isFinite(n) && n > 0 ? n : 0;
+      };
+      const w = num(this.piece.X);
+      const d = this.piece.PRISMA ? num(this.piece.Y) : num(this.piece.X);
+      const h = num(this.piece.Z);
+      const max = Math.max(w, d, h);
+      if (max <= 0) return { wn: 1, dn: 1, hn: 1 };
+      const clamp = (v) => (v > 0 ? Math.max(v / max, MIN_RATIO) : 1);
+      return { wn: clamp(w), dn: clamp(d), hn: clamp(h) };
+    },
+    // Vertici del prisma isometrico (SCALE 42, viewBox 160x120), centrati
+    // via bounding box su (60, 56): destra libera per i livelli Z.
+    prismGeom() {
+      const { wn, dn, hn } = this.drawNorm;
+      const S = 42;
+      const wx = wn * S * 0.866, wy = wn * S * 0.5;
+      const dx = dn * S * 0.866, dy = dn * S * 0.5;
+      const hz = hn * S;
+      const rel = {
+        front:  { x: 0,       y: 0 },
+        right:  { x: wx,      y: -wy },
+        back:   { x: wx - dx, y: -wy - dy },
+        left:   { x: -dx,     y: -dy },
+        frontT: { x: 0,       y: -hz },
+        rightT: { x: wx,      y: -wy - hz },
+        backT:  { x: wx - dx, y: -wy - dy - hz },
+        leftT:  { x: -dx,     y: -dy - hz },
+      };
+      const xs = Object.values(rel).map((p) => p.x);
+      const ys = Object.values(rel).map((p) => p.y);
+      const ox = 60 - (Math.min(...xs) + Math.max(...xs)) / 2;
+      const oy = 56 - (Math.min(...ys) + Math.max(...ys)) / 2;
+      const v = {};
+      for (const [k, p] of Object.entries(rel))
+        v[k] = { x: +(p.x + ox).toFixed(1), y: +(p.y + oy).toFixed(1) };
+      return v;
+    },
+    prismFaces() {
+      const p = this.prismGeom;
+      const pts = (...ks) => ks.map((k) => p[k].x + ',' + p[k].y).join(' ');
+      return {
+        left:  pts('frontT', 'leftT', 'left', 'front'),
+        right: pts('frontT', 'rightT', 'right', 'front'),
+        top:   pts('frontT', 'rightT', 'backT', 'leftT'),
+      };
+    },
+    // Quote H (spigolo verticale sinistro), W e L (spigoli di base),
+    // parallele e staccate dal solido.
+    prismQuotes() {
+      const p = this.prismGeom;
+      return {
+        H: { x1: p.left.x - 8, y1: p.leftT.y, x2: p.left.x - 8, y2: p.left.y,
+             tx: p.left.x - 11, ty: +(((p.leftT.y + p.left.y) / 2) + 3).toFixed(1) },
+        W: { x1: p.front.x - 3, y1: p.front.y + 7, x2: p.left.x - 3, y2: p.left.y + 7,
+             tx: +(((p.front.x + p.left.x) / 2) - 4).toFixed(1), ty: +(((p.front.y + p.left.y) / 2) + 18).toFixed(1) },
+        L: { x1: p.front.x + 3, y1: p.front.y + 7, x2: p.right.x + 3, y2: p.right.y + 7,
+             tx: +(((p.front.x + p.right.x) / 2) + 4).toFixed(1), ty: +(((p.front.y + p.right.y) / 2) + 18).toFixed(1) },
+      };
+    },
+    // Cilindro come il campione: body path chiuso + ellisse top, centrato su
+    // (60, 56); D = diametro dal campo X.
+    cylGeom() {
+      const { wn, hn } = this.drawNorm;
+      const S = 42;
+      const rx = +(wn * S * 0.75).toFixed(1);
+      const ry = +(rx * 0.4).toFixed(1);
+      const hz = hn * S * 1.3;
+      return { cx: 60, rx, ry, topCy: +(56 - hz / 2).toFixed(1), botCy: +(56 + hz / 2).toFixed(1) };
+    },
+    cylBodyPath() {
+      const c = this.cylGeom;
+      return 'M ' + (c.cx - c.rx) + ' ' + c.topCy +
+             ' L ' + (c.cx - c.rx) + ' ' + c.botCy +
+             ' A ' + c.rx + ' ' + c.ry + ' 0 0 0 ' + (c.cx + c.rx) + ' ' + c.botCy +
+             ' L ' + (c.cx + c.rx) + ' ' + c.topCy +
+             ' A ' + c.rx + ' ' + c.ry + ' 0 0 1 ' + (c.cx - c.rx) + ' ' + c.topCy + ' Z';
+    },
+    cylQuotes() {
+      const c = this.cylGeom;
+      return {
+        H: { x1: c.cx - c.rx - 10, y1: c.topCy, x2: c.cx - c.rx - 10, y2: c.botCy,
+             tx: c.cx - c.rx - 13, ty: +(((c.topCy + c.botCy) / 2) + 3).toFixed(1) },
+        D: { x1: c.cx - c.rx, y1: +(c.topCy - c.ry - 8).toFixed(1), x2: c.cx + c.rx, y2: +(c.topCy - c.ry - 8).toFixed(1),
+             tx: c.cx, ty: +(c.topCy - c.ry - 11).toFixed(1) },
+      };
+    },
+    // Livelli Z prelievo/deposito: frazione z/H proiettata sull'altezza del
+    // solido. Z assente o 0 -> livello non disegnato. Z > H -> linea resa al
+    // TOP del solido in stato 'z-over' (warning): l'operatore vede subito la
+    // quota fuori pezzo, nessun errore silenzioso. Dash lungo = prelievo,
+    // dash corto = deposito (distinguibili a colpo d'occhio, palette dim).
+    zLevels() {
+      const H = parseFloat(this.piece.Z);
+      const mk = (raw, key, labelKey, dashClass) => {
+        const z = parseFloat(raw);
+        if (!Number.isFinite(z) || z <= 0 || !Number.isFinite(H) || H <= 0) return null;
+        const over = z > H;
+        const f = over ? 1 : z / H;
+        if (this.piece.PRISMA) {
+          const p = this.prismGeom;
+          const hz = p.front.y - p.frontT.y;
+          const lift = (pt) => ({ x: pt.x, y: +(pt.y - f * hz).toFixed(1) });
+          const a = lift(p.left), b = lift(p.front), c = lift(p.right);
+          return { key, labelKey, dashClass, over,
+                   points: a.x + ',' + a.y + ' ' + b.x + ',' + b.y + ' ' + c.x + ',' + c.y,
+                   tickX1: c.x, tickX2: 128, tickY: c.y, tx: 130, ty: +(c.y + 3).toFixed(1) };
+        }
+        const c = this.cylGeom;
+        const y = +(c.botCy - f * (c.botCy - c.topCy)).toFixed(1);
+        return { key, labelKey, dashClass, over,
+                 points: (c.cx - c.rx) + ',' + y + ' ' + (c.cx + c.rx) + ',' + y,
+                 tickX1: c.cx + c.rx, tickX2: 128, tickY: y, tx: 130, ty: +(y + 3).toFixed(1) };
+      };
+      return [
+        mk(this.piece.Z_PICK,  'ZPICK',  'piece.zPickShort',  'z-dash-pick'),
+        mk(this.piece.Z_PLACE, 'ZPLACE', 'piece.zPlaceShort', 'z-dash-place'),
+      ].filter(Boolean);
+    },
+  },
   mounted() {
     this.getDataTable();
   },
@@ -445,13 +590,13 @@ export default {
   align-items: center;
 }
 
-.mc-label {
-  width: 170px;
+.pure-form-aligned .pure-control-group label.mc-label {
+  width: 170px;                /* stessa colonna delle altre label (vince sul 13em globale) */
   margin-right: var(--space-4);
   text-align: right;
   font-size: var(--font-size-sm);
   color: var(--text-secondary);
-  padding-top: var(--space-2);
+  padding-top: 0;
 }
 
 /* toggle+label = unita' visiva: riga centrata, gap uniforme tra i tre
@@ -463,10 +608,20 @@ export default {
   flex-wrap: wrap;
 }
 
-.mc-toggle {
+/* CAUSA VERA dei toggle sfasati (terza iterazione): pure.css:702
+   '.pure-form-aligned .pure-control-group label' (specificity 0-3-1) impone
+   display:inline-block + vertical-align:middle + width:10em (e App.vue
+   globale width:13em) a TUTTE le label del gruppo — i selettori corti
+   .mc-toggle/.mc-label (scoped, 0-2-0) PERDEVANO la cascata: il flex non si
+   e' mai attivato a schermo (track su baseline inline = flottante alto,
+   label strizzata a 13em). Selettori rinforzati a 0-4-1 per vincere. */
+.pure-form-aligned .pure-control-group label.mc-toggle {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
+  width: auto;                 /* annulla il 10em/13em ereditato */
+  margin: 0;
+  text-align: left;
   min-height: 44px;            /* touch: l'intera label e' il target */
   font-size: var(--font-size-sm);
   line-height: var(--line-height-tight);
@@ -564,8 +719,8 @@ export default {
 }
 
 .dim-svg {
-  width: 160px;
-  height: 160px;
+  width: 240px;                /* viewBox 160x120 (4:3): spazio per quote e livelli Z */
+  height: 180px;
 }
 
 /* solido istruzioni: STESSO linguaggio del campione CubeIcon3D —
@@ -612,6 +767,29 @@ export default {
 .dim-text.active {
   fill: var(--accent);
   font-weight: var(--font-weight-bold);
+}
+
+/* livelli Z: dash lungo = prelievo, corto = deposito */
+.z-dash-pick {
+  stroke-dasharray: 6 3;
+}
+
+.z-dash-place {
+  stroke-dasharray: 2 3;
+}
+
+.z-text {
+  font-size: 8px;              /* unita' viewBox SVG, non px schermo */
+}
+
+/* Z fuori pezzo (Z > H): warning, vince anche sul focus (l'anomalia ha
+   priorita' sull'evidenziazione) */
+.dim-line.z-over {
+  stroke: var(--color-warning);
+}
+
+.dim-text.z-over {
+  fill: var(--color-warning);
 }
 
 .piece-actions {

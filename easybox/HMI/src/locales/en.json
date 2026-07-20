@@ -252,6 +252,8 @@
     "createNew": "Create new",
     "partProgramLabel": "Part program no. (HAAS subprogram)",
     "partProgramInvalid": "Invalid part program: positive integer, max 6 digits",
+    "zPickShort": "Z pick",
+    "zPlaceShort": "Z place",
     "MC1_ONLY": "MC1 only",
     "MC2_ONLY": "MC2 only",
     "MC3_ONLY": "MC3 only",
