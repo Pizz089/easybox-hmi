@@ -163,7 +163,15 @@
                     <!-- img nuda -> bottone canonico touch (handler 1:1) -->
                     <button type="button" class="btn-icon scene-iconbtn" @click="stampaDiv()"
                         :aria-label="$t('grating.print')" :title="$t('grating.print')">
-                        <img src="../../../assets/pdf.png" alt="" />
+                        <!-- PNG a glifo scuro invisibile su fondo scuro: SVG inline
+                             stroke=currentColor, segue il colore del bottone -->
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
+                             stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                             stroke-linejoin="round" aria-hidden="true">
+                            <polyline points="6 9 6 2 18 2 18 9"/>
+                            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                            <rect x="6" y="14" width="12" height="8"/>
+                        </svg>
                     </button>
                 </div>
                     
@@ -339,7 +347,16 @@
             <div class="pure-u-1 scene-actions">
                 <button type="button" class="btn-icon scene-iconbtn" @click="distribute()"
                     :aria-label="$t('grating.redistribute')" :title="$t('grating.redistribute')">
-                    <img src="../../../assets/distribute.png" alt="" />
+                    <!-- PNG a glifo scuro invisibile su fondo scuro: SVG inline
+                         stroke=currentColor, segue il colore del bottone -->
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
+                         stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                         stroke-linejoin="round" aria-hidden="true">
+                        <rect x="3" y="3" width="7" height="7"/>
+                        <rect x="14" y="3" width="7" height="7"/>
+                        <rect x="3" y="14" width="7" height="7"/>
+                        <rect x="14" y="14" width="7" height="7"/>
+                    </svg>
                 </button>
 </div>
         </div>
@@ -1018,10 +1035,10 @@ export default {
         min-height: 52px;
     }
 
-    .scene-iconbtn img{
-        width: 36px;
-        height: 36px;
-        object-fit: contain;
+    /* stato disabled visibile (subdued ma leggibile, filosofia UI-7.5) */
+    .scene-iconbtn:disabled{
+        opacity: 0.5;
+        cursor: not-allowed;
     }
 
     .scene-caption{
