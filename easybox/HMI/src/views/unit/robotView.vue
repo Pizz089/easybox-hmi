@@ -355,15 +355,13 @@ export default {
       // 2000 richiesta rilascio). A freddo: null/false -> ramo estrazione.
       extractedTray: null,
       trayBusy: false,
-      // M3/M4: swap pinza a selezione ANTICIPATA — "Deposita e cambia" apre
-      // prima il dialog di selezione in modalita' swap (swapSelecting); la
-      // conferma registra swapTargetId, invia il 12 e arma swapPending; a
-      // deposito confermato il dialog di carico riapre col target
-      // preselezionato (l'11 parte SOLO dalla conferma dell'operatore).
-      swapPending: false,
-      swapTimer: null,
+      // M4/AO: swap pinza a selezione ANTICIPATA — "Deposita e cambia" apre
+      // prima il dialog di selezione in modalita' swap (swapSelecting); alla
+      // conferma parte un SOLO comando nativo 27;<id> e il PLC orchestra il
+      // secondo tempo (deposito->prelievo->TCP, missione robot 30 interna).
+      // Nessuno stato client di attesa: swapSelecting basta a instradare il
+      // gating del dialog e il testo del titolo.
       swapSelecting: false,
-      swapTargetId: null,
       // R2-2: editing dell'input velocita' — col flag attivo l'eco PLC non
       // sovrascrive mentre si digita, e l'Enter (che fa blur) non produce
       // un secondo invio.
@@ -710,10 +708,9 @@ export default {
       this.swapSelecting = true;
       this.openDialog('gripper');
     },
-    confirmUnload(withSwap = false) {
+    confirmUnload() {
       if (!this.gripperBranchEnabled || !this.gripperOnBoardNow()) {
         this.unloadOpen = false;
-        this.swapTargetId = null;   // M4: niente target orfano su stato cambiato
         dataStored.alert.title = this.$t('WARNING');
         dataStored.alert.desc = 'robot.dialog.stateChanged';
         dataStored.alert.type = 'warning';
@@ -726,42 +723,6 @@ export default {
       this.getGrippersList();
       this.getPalletsList();
       this.getTraysList();
-      // M3: "Deposita e cambia" — arma l'attesa della conferma pinza scesa.
-      // 90s: la missione di deposito e' fisica; oltre, annullamento
-      // SILENZIOSO (l'operatore rifa' il giro a mano dal bottone).
-      if (withSwap) {
-        this.swapPending = true;
-        clearTimeout(this.swapTimer);
-        this.swapTimer = setTimeout(() => {
-          this.swapPending = false;
-          this.swapTargetId = null;   // M4 (punto 4): azzera anche il target
-        }, 90000);
-      }
-    },
-    // M3: sblocco dello swap. Condizioni (in qualunque ordine arrivino:
-    // UPDATEGRIPPER puo' precedere il rientro in HOLD): pinza scesa +
-    // robot in HOLD + nessun altro dialog aperto (se l'operatore ha gia'
-    // aperto altro, lo swap si annulla in silenzio). SOLO apertura del
-    // dialog di carico: l'11 parte solo dalla conferma dell'operatore.
-    checkSwapPending() {
-      if (!this.swapPending) return;
-      if (this.gripperOnBoardNow()) return;                              // pinza ancora a bordo
-      if (this.dataRobot.STATUS != dataStored.status_hold) return;       // attende il rientro in HOLD
-      this.swapPending = false;
-      clearTimeout(this.swapTimer);
-      const targetId = this.swapTargetId;
-      this.swapTargetId = null;
-      if (this.dialog.type != '' || this.unloadOpen) return;             // operatore ha preso il controllo (ritiro)
-      // M4: riapre il dialog di carico con il target PRESELEZIONATO nella
-      // lista FRESCA (il deposito appena concluso rimette a magazzino la
-      // pinza scesa). Se il target non c'e' piu': nessuna preselezione,
-      // l'operatore risceglie. L'11 parte SOLO dalla conferma.
-      this.openDialog('gripper');
-      this.getGrippersList().then(() => {
-        if (this.dialog.type != 'gripper') return;   // chiuso nel frattempo
-        const target = this.grippersList.find(g => g.ID == targetId);
-        if (target) this.dialog.selected = target;
-      });
     },
     closeDialog() {
       this.dialog.type = '';
@@ -820,13 +781,15 @@ export default {
       switch (this.dialog.type) {
         case 'gripper':
           if (this.swapSelecting) {
-            // M4: selezione ANTICIPATA dello swap — NON invia l'11:
-            // registra il target, chiude e avvia il deposito (12) con
-            // l'attesa armata (confirmUnload fa anche il re-check scarico).
-            this.swapTargetId = sel.ID;
-            this.closeDialog();
-            this.confirmUnload(true);
-            return;
+            // (AO) "Deposita e cambia" = missione swap NATIVA del PLC: un
+            // SOLO comando 27;<id target> (stringa col ';', come l'11). Il
+            // PLC orchestra da solo deposito->prelievo->TCP (missione robot
+            // 30, invisibile al pannello); MissionCode/DESCR 'Swap Gripper'
+            // arrivano dai canali di sempre. Muore ogni orchestrazione
+            // client del secondo tempo. Cade sul closeDialog + reload in
+            // coda, esattamente come l'11.
+            this.sendMission('gripper', '27;' + sel.ID);
+            break;
           }
           // S: feedback acceso ALL'INVIO (conferma dialog) — la chiave e'
           // quella del BOTTONE (gripper/pallet/tray), non del comando:
@@ -854,13 +817,10 @@ export default {
     }
   },
   watch: {
-    // M3: lo swap si sblocca su pinza-scesa E rientro in HOLD, in qualunque
-    // ordine arrivino i due eventi (dataGripper cambia su UPDATEGRIPPER via
-    // getRobotData, STATUS via statusHandler).
-    dataGripper() { this.checkSwapPending(); },
-    // S: la macchinetta missione osserva lo STESSO segnale (nessun nuovo
-    // listener): copre sia ROBOT/STATUS (statusHandler) sia il fetch.
-    'dataRobot.STATUS'() { this.checkSwapPending(); this.checkMissionPhase(); }
+    // S: la macchinetta missione osserva ROBOT/STATUS (statusHandler) + il
+    // fetch. (AO) lo swap non ha piu' secondo tempo client: niente watcher
+    // su dataGripper per lo sblocco.
+    'dataRobot.STATUS'() { this.checkMissionPhase(); }
   },
   computed: {
     // ========================================================================
@@ -1056,10 +1016,6 @@ export default {
     dataStored.WS.socket.off('GRIPPER/SENSOR', this.gripperSensorHandler);
     dataStored.WS.socket.off('GRIPPER/CODE', this.gripperCodeHandler);
     dataStored.WS.socket.off('GRIPPER/REGISTERED', this.gripperRegisteredHandler);
-    // M3/M4: niente timer orfani, lo swap muore con la view (punto 4)
-    clearTimeout(this.swapTimer);
-    this.swapPending = false;
-    this.swapTargetId = null;
     // S: niente timer/feedback orfani, la missione visiva muore con la view
     this.clearMission();
     //dataStored.WS.socket.off('ROBOT/DESCR');
