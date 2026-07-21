@@ -37,6 +37,37 @@
           </div>
         </span>
         <h5 v-else> NO GRIPPER MOUNTED! </h5>
+
+        <!-- (AN) coerenza pinza: tre fonti a confronto — sensore (FB8),
+             sistema (registro PLC), magazzino (DB). Verde quando le fonti
+             DISPONIBILI concordano; messaggio operatore esplicito quando no.
+             Finche' il PLC non pubblica SENSOR/CODE la riga mostra "non
+             disponibile" (muted, non warning). @click.stop: la card resta
+             un link a /conf/grippers, l'indicatore no. -->
+        <div class="coherence" @click.stop>
+          <div class="coherence-head">
+            <span>{{ $t('robot.coherence.title') }}</span>
+            <span v-if="gripperCoherence.state=='ok'" class="badge badge-type">{{ $t('robot.coherence.ok') }}</span>
+            <span v-else class="badge badge-anomaly">{{ $t('robot.coherence.mismatch') }}</span>
+          </div>
+          <div class="coherence-row">
+            <span class="coh-label">{{ $t('robot.coherence.sensor') }}</span>
+            <span v-if="gripperSensor===null" class="coh-na">{{ $t('robot.coherence.na') }}</span>
+            <span v-else>{{ gripperSensor==1 ? $t('robot.coherence.mounted') : $t('robot.coherence.absent') }}</span>
+          </div>
+          <div class="coherence-row">
+            <span class="coh-label">{{ $t('robot.coherence.system') }}</span>
+            <span v-if="systemGripperId===null" class="coh-na">{{ $t('robot.coherence.na') }}</span>
+            <span v-else>{{ systemGripperId>0 ? ($t('robot.coherence.mounted')+' (ID '+systemGripperId+')') : $t('robot.coherence.absent') }}</span>
+          </div>
+          <div class="coherence-row">
+            <span class="coh-label">{{ $t('robot.coherence.warehouse') }}</span>
+            <span>{{ gripperOnBoardNow() ? ($t('robot.coherence.mounted')+' (ID '+dataGripper[0].ID+')') : $t('robot.coherence.absent') }}</span>
+          </div>
+          <div v-if="gripperCoherence.state=='mismatch'" class="coherence-msg">
+            {{ $t(gripperCoherence.msgKey) }}
+          </div>
+        </div>
       </div>
 
       
@@ -177,6 +208,8 @@
           @click="gripperBranchEnabled?openGripperMission():''">
           {{ $t('robot.mission.gripper') }}
         </button>
+        <!-- (AN) mai bottoni muti: motivo visibile quando disabilitato -->
+        <small class="cmd-hint" v-if="!gripperBranchEnabled && gripperDisabledReason">{{ $t(gripperDisabledReason) }}</small>
 
         <!-- M-PALLET(B): bottone unico a label FISSA. NON invia mai
              direttamente: apre palletLoad (13) se la pinza pallet e' VUOTA
@@ -188,6 +221,7 @@
           @click="palletBranchEnabled?openPalletMission():''">
           {{ $t('robot.mission.pallet') }}
         </button>
+        <small class="cmd-hint" v-if="!palletBranchEnabled && palletDisabledReason">{{ $t(palletDisabledReason) }}</small>
 
         <!-- M2: bottone unico a label FISSA per i cassetti. NON invia mai
              direttamente: apre il dialog del ramo corrente — estrazione (25)
@@ -199,6 +233,7 @@
           @click="trayBranchEnabled?openTrayMission():''">
           {{ $t('robot.mission.tray') }}
         </button>
+        <small class="cmd-hint" v-if="!trayBranchEnabled && trayDisabledReason">{{ $t(trayDisabledReason) }}</small>
 
         <!-- Dialog scelta elemento missione: nessuna preselezione, la conferma
              si attiva solo con una voce selezionata esplicitamente. -->
@@ -333,6 +368,10 @@ export default {
       // 'armed' all'invio (STATUS ancora HOLD) -> 'active' quando STATUS
       // ESCE da HOLD -> spenta quando STATUS RIENTRA in HOLD. Mai spegnere
       // sul semplice STATUS==17: subito dopo l'invio e' ancora 17.
+      // (AN) stato pinza a tre fonti: null = mai ricevuto ("non disponibile")
+      gripperSensor: null,      // FROM_PLANT/GRIPPER/SENSOR (0/1, FB8)
+      gripperCode: null,        // FROM_PLANT/GRIPPER/CODE (IW534 filtrato)
+      gripperRegistered: null,  // FROM_PLANT/GRIPPER/ROBOT (ID dichiarato PLC)
       missionRunning: '',     // '' | 'gripper'|'pallet'|'tray'|'home'|'maintenance'|'dest-easybox'|'dest-mc1'|'dest-mc2'
       missionPhase: '',       // '' | 'armed' | 'active'
       missionArmTimer: null,  // ~5s: STATUS mai uscito da HOLD -> missione rifiutata
@@ -818,6 +857,48 @@ export default {
     'dataRobot.STATUS'() { this.checkSwapPending(); this.checkMissionPhase(); }
   },
   computed: {
+    // ========================================================================
+    // (AN) MOTIVI leggibili dei comandi disabilitati — '' quando abilitato.
+    // Stesse condizioni dei rispettivi *BranchEnabled, in ordine di priorita'.
+    // ========================================================================
+    gripperDisabledReason() {
+      if (this.dataRobot.STATUS != dataStored.status_hold) return 'robot.hint.notHold';
+      return '';
+    },
+    palletDisabledReason() {
+      if (this.dataRobot.STATUS != dataStored.status_hold) return 'robot.hint.notHold';
+      if (!this.gripperOnBoardNow()) return 'robot.hint.noGripperSystem';
+      return '';
+    },
+    trayDisabledReason() {
+      if (this.dataRobot.STATUS != dataStored.status_hold) return 'robot.hint.notHold';
+      if (!this.gripperOnBoardNow()) return 'robot.hint.noGripperSystem';
+      if (this.trayBusy) return 'robot.hint.trayBusy';
+      return '';
+    },
+    // (AN) "sistema" = registro PLC: CODE (IW534) se mai arrivato, altrimenti
+    // l'ID del canale storico FROM_PLANT/GRIPPER/ROBOT; null = mai visto.
+    systemGripperId() {
+      if (this.gripperCode !== null) return this.gripperCode;
+      return this.gripperRegistered;
+    },
+    // (AN) coerenza tre fonti: confronto SOLO tra fonti disponibili — mai
+    // allarmi su dati mancanti (sensor/code arrivano col contratto FB8).
+    gripperCoherence() {
+      const db = this.gripperOnBoardNow();
+      const sys = this.systemGripperId;
+      const sysKnown = sys !== null;
+      const sysOn = sysKnown ? sys > 0 : null;
+      const senKnown = this.gripperSensor !== null;
+      const senOn = senKnown ? this.gripperSensor == 1 : null;
+      if (senKnown && sysKnown && senOn !== sysOn)
+        return { state: 'mismatch', msgKey: senOn ? 'robot.coherence.sensorNotRegistered' : 'robot.coherence.registeredNotSensed' };
+      if (sysKnown && sysOn !== db)
+        return { state: 'mismatch', msgKey: 'robot.coherence.dbMismatch' };
+      if (senKnown && !sysKnown && senOn !== db)
+        return { state: 'mismatch', msgKey: senOn ? 'robot.coherence.sensorNotRegistered' : 'robot.coherence.registeredNotSensed' };
+      return { state: 'ok', msgKey: '' };
+    },
     // M-fix: UNICA fonte di verita' del bottone "Gestione pinza", reattiva
     // sui segnali PRIMARI (dataRobot.STATUS + dataGripper) — non sui flag
     // dataStored, che vengono ricalcolati solo sugli eventi ROBOT/STATUS e
@@ -906,7 +987,13 @@ export default {
       this.Mission_enabled();
       if (payload == dataStored.status_alarm){
         dataStored.alert.title= 'ALARM';
-        dataStored.alert.desc= "robot.alarm_"+payload
+        // (AN, fix P3) il CODICE allarme vive in DESCR: prima la chiave era
+        // composta con lo STATUS (99) e mostrava sempre la chiave grezza.
+        // Stessa logica di getStatus(); fallback generico se DESCR non-codice.
+        const alarmCode = parseInt(this.dataRobot.DESCR);
+        dataStored.alert.desc = (Number.isInteger(alarmCode) && alarmCode > 0)
+          ? 'robot.alarm_' + alarmCode
+          : 'ALARM';
       }
       if (this.dataRobot.STATUS == dataStored.status_aborted ) {
         dataStored.alert.title = 'ALARM';
@@ -933,12 +1020,24 @@ export default {
       this.getTraysList();
     };
     dataStored.WS.socket.on('BOX/STATUS', this.boxStatusHandler);
+    // (AN) stato pinza a tre fonti: handler nominati (pattern e4ab4e5) +
+    // snapshot dalla cache backend al mount (payload PLC = intero: guardo)
+    this.gripperSensorHandler = v => { const n = parseInt(v, 10); if (Number.isInteger(n)) this.gripperSensor = n; };
+    this.gripperCodeHandler = v => { const n = parseInt(v, 10); if (Number.isInteger(n)) this.gripperCode = n; };
+    this.gripperRegisteredHandler = v => { const n = parseInt(v, 10); if (Number.isInteger(n)) this.gripperRegistered = n; };
+    dataStored.WS.socket.on('GRIPPER/SENSOR', this.gripperSensorHandler);
+    dataStored.WS.socket.on('GRIPPER/CODE', this.gripperCodeHandler);
+    dataStored.WS.socket.on('GRIPPER/REGISTERED', this.gripperRegisteredHandler);
+    dataStored.WS.socket.emit('GRIPPER/REQUEST_SNAPSHOT');
   },
   unmounted() {
     // off SPECIFICO (evento + callback): un off('ROBOT/STATUS') nudo
     // staccherebbe anche i listener di altri componenti (es. units.vue).
     dataStored.WS.socket.off('ROBOT/STATUS', this.statusHandler);
     dataStored.WS.socket.off('BOX/STATUS', this.boxStatusHandler);
+    dataStored.WS.socket.off('GRIPPER/SENSOR', this.gripperSensorHandler);
+    dataStored.WS.socket.off('GRIPPER/CODE', this.gripperCodeHandler);
+    dataStored.WS.socket.off('GRIPPER/REGISTERED', this.gripperRegisteredHandler);
     // M3/M4: niente timer orfani, lo swap muore con la view (punto 4)
     clearTimeout(this.swapTimer);
     this.swapPending = false;
@@ -952,6 +1051,79 @@ export default {
 </script>
 
 <style scoped>
+/* (AN) hint motivo comando disabilitato (pattern min-hint 2c) */
+.cmd-hint {
+  display: block;
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* (AN) indicatore coerenza pinza: righe fonte + badge (grammatica badge di
+   AttrezzaggiView/selectRig) */
+.coherence {
+  margin-top: var(--space-4);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border-subtle);
+  text-align: left;
+  cursor: default;
+}
+
+.coherence-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-2);
+}
+
+.coherence-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--font-size-sm);
+  padding: 2px 0;
+}
+
+.coh-label {
+  color: var(--text-secondary);
+}
+
+.coh-na {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.coherence-msg {
+  margin-top: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+}
+
+.badge {
+  display: inline-block;
+  padding: var(--space-1) var(--space-3); /* micro-aggiustamento ottico badge */
+  border-radius: var(--radius-lg);
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
+}
+
+.badge-type {
+  background-color: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.badge-anomaly {
+  background-color: var(--color-danger-bg);
+  color: var(--color-danger);
+  font-weight: var(--font-weight-semibold);
+}
 small {
   font-size: 0.8em;
 }

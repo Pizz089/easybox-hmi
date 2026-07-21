@@ -316,6 +316,25 @@
       "slot": "Slot",
       "position": "Position"
     },
+    "hint": {
+      "notHold": "Robot not in HOLD: press HOLD to enable commands",
+      "noGripperSystem": "No gripper on board according to the system",
+      "trayBusy": "Tray operation in progress"
+    },
+    "coherence": {
+      "title": "Gripper coherence",
+      "sensor": "Sensor",
+      "system": "System",
+      "warehouse": "Warehouse",
+      "ok": "Sources agree",
+      "mismatch": "Mismatch",
+      "na": "not available",
+      "mounted": "gripper present",
+      "absent": "no gripper",
+      "sensorNotRegistered": "Gripper detected by the sensor but not registered in the system: check the robot signal or run the realignment",
+      "registeredNotSensed": "Gripper registered in the system but not detected by the sensor: check the mounting and the robot signal",
+      "dbMismatch": "System register and warehouse disagree: run the gripper realignment"
+    },
     "MODE_LOCAL_REMOTE": "MODE LOCAL/REMOTE",
     "alarm_1": "Orientamento non definito",
     "alarm_2": "Tipo approccio non definito",
@@ -346,6 +365,8 @@
     "alarm_46": "TIMEOUT sbloccaggio tavola",
     "alarm_99": "GENERIC ALARM",
     "alarm_100": "NOT IN HOME POSITION",
+    "alarm_936": "Gripper deposit refused: no gripper is registered in the system. Check the last load outcome or run the gripper realignment.",
+    "alarm_938": "Gripper mismatch: physical sensor and system register disagree. Check the robot signal, the gripper mounting, or run the realignment.",
     "alarm_1001": "Workorder non defined for machine 1",
     "alarm_1002": "Workorder non defined for machine 2",
     "alarm_1010": "No pallet ready to work",

@@ -316,6 +316,25 @@
       "slot": "Slot",
       "position": "Posizione"
     },
+    "hint": {
+      "notHold": "Robot non in HOLD: premere HOLD per abilitare i comandi",
+      "noGripperSystem": "Nessuna pinza a bordo risulta al sistema",
+      "trayBusy": "Manovra cassetto in corso"
+    },
+    "coherence": {
+      "title": "Coerenza pinza",
+      "sensor": "Sensore",
+      "system": "Sistema",
+      "warehouse": "Magazzino",
+      "ok": "Fonti concordi",
+      "mismatch": "Incoerenza",
+      "na": "non disponibile",
+      "mounted": "pinza presente",
+      "absent": "nessuna pinza",
+      "sensorNotRegistered": "Pinza rilevata dal sensore ma non registrata dal sistema: verificare segnale robot o eseguire riallineamento",
+      "registeredNotSensed": "Pinza registrata dal sistema ma non rilevata dal sensore: verificare il montaggio e il segnale robot",
+      "dbMismatch": "Registro di sistema e magazzino in disaccordo: eseguire il riallineamento pinza"
+    },
     "MODE_LOCAL_REMOTE": "AUTOMAZIONE IN MANUALE/AUTOMATICO",
     "alarm_1": "Orientamento non definito",
     "alarm_2": "Tipo approccio non definito",
@@ -346,6 +365,8 @@
     "alarm_46": "TIMEOUT sbloccaggio tavola",
     "alarm_99": "ALLARME GENERICO",
     "alarm_100": "NON IN HOME POSITION",
+    "alarm_936": "Deposito pinza rifiutato: nessuna pinza risulta registrata al sistema. Verificare l'esito dell'ultimo carico o eseguire il riallineamento pinza.",
+    "alarm_938": "Incoerenza pinza: il sensore fisico e il registro di sistema sono in disaccordo. Verificare il segnale dal robot, il montaggio della pinza, o eseguire il riallineamento.",
     "alarm_1001": "Ordine di lavoro non definito per macchina 1",
     "alarm_1002": "Ordine di lavoro non definito per macchina 2",
     "alarm_1010": "Nessun pallet pronto per lavorare",

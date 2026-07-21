@@ -41,6 +41,15 @@ const brandStateCache = {};
 // brandStateCache: vuota dopo un riavvio backend finche' il PLC non ripubblica.
 const unitStatusCache = {};
 
+// Stato pinza a tre fonti (cantiere AN): il pannello confronta
+//   sensor:     FROM_PLANT/GRIPPER/SENSOR (0/1 da Gripper_mounted, FB8)
+//   code:       FROM_PLANT/GRIPPER/CODE   (GripperCode IW534 filtrato)
+//   registered: FROM_PLANT/GRIPPER/ROBOT  (ID dichiarato dal PLC, canale storico)
+// Pattern unitStatusCache: cache per il replay GRIPPER/REQUEST_SNAPSHOT;
+// publish PLC on-change (sensor/code in arrivo da Dario: finche' non
+// pubblicano, la cache resta vuota e la UI mostra "non disponibile").
+const gripperStateCache = {};
+
 client.on('error', function (err){
 	DBf.io.emit('PLC/ALARM/GENERIC', 'Impossible to connect to broker!    ['+err+']');
 	// Topic con prefisso "_" indicano eventi interni del backend,
@@ -175,6 +184,13 @@ client.on('message', function (topic, message, packet) {
 		return;
 	}
 
+	// GRIPPER stato (cantiere AN): FROM_PLANT/GRIPPER/SENSOR|CODE — cache +
+	// evento socket, replay via GRIPPER/REQUEST_SNAPSHOT (pattern brand/status)
+	if (param[1] == "GRIPPER" && (param[2] == "SENSOR" || param[2] == "CODE")) {
+		handleGripperState(param[2], message.toString());
+		return;
+	}
+
 	if (param[1] =="LOG") {
 		if (param[2] == "QUERY"){	//es: FROM_PLANT/LOG/QUERY
 			insertLog( message.toString(), 'PLC', 'QUERY' )
@@ -230,6 +246,15 @@ client.on('message', function (topic, message, packet) {
 				break;
 			case 'GRIPPER':		//es.: FROM_PLANT/GRIPPER/ROBOT
 				insertLog( "GRIPPER ON ROBOT ID="+message.toString(), 'PLC', 'ROBOT' )
+				// (AN) il VALORE del registro ora arriva al pannello (prima
+				// veniva solo loggato): cache + evento per la coerenza pinza
+				{
+					const regId = parseInt(message.toString(), 10);
+					if (Number.isInteger(regId)) {
+						gripperStateCache.registered = regId;
+						DBf.io.emit('GRIPPER/REGISTERED', regId);
+					}
+				}
 				DBf.io.emit('ROBOT/UPDATEGRIPPER')
 				break;
 			case 'CMD_MAN':
@@ -483,6 +508,16 @@ DBf.io.on('connection', (socket) => {
   socket.on('UNIT/STATUS/REQUEST', unit => {
 	if (unitStatusCache[unit] !== undefined)
 		socket.emit(unit + '/STATUS', unitStatusCache[unit]);
+  });
+
+  // Snapshot stato pinza on-demand (cantiere AN, stesso pattern BRAND/UNIT)
+  socket.on('GRIPPER/REQUEST_SNAPSHOT', () => {
+	if (gripperStateCache.sensor !== undefined)
+		socket.emit('GRIPPER/SENSOR', gripperStateCache.sensor);
+	if (gripperStateCache.code !== undefined)
+		socket.emit('GRIPPER/CODE', gripperStateCache.code);
+	if (gripperStateCache.registered !== undefined)
+		socket.emit('GRIPPER/REGISTERED', gripperStateCache.registered);
   });
   
 //  socket.on('TO_PLANT/CMD/ORDER', (data) => {
@@ -907,6 +942,23 @@ function handleBrandStatus(mcName, payloadStr) {
 	}
 	brandStateCache[mcName] = payloadStr;
 	DBf.io.emit(mcName + '/BRAND', payloadStr);
+}
+
+// ============================================================================
+// GRIPPER — stato pinza a tre fonti (cantiere AN).
+// PLC -> HMI: FROM_PLANT/GRIPPER/SENSOR (0/1) e FROM_PLANT/GRIPPER/CODE
+// (intero nudo), pubblicati on-change da FB8. Rilanciati come eventi socket
+// GRIPPER/SENSOR e GRIPPER/CODE + cache per il replay al mount delle view.
+// ============================================================================
+function handleGripperState(kind, payloadStr) {
+	// payload PLC = untrusted: solo interi
+	const n = parseInt(payloadStr, 10);
+	if (!Number.isInteger(n)) {
+		log.standard("GRIPPER/" + kind + ": payload non intero [" + payloadStr + "] — ignorato");
+		return;
+	}
+	gripperStateCache[kind.toLowerCase()] = n;
+	DBf.io.emit('GRIPPER/' + kind, n);
 }
 
 /*
