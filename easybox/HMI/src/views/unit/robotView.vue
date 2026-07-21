@@ -652,6 +652,12 @@ export default {
         });
     },
     openDialog(type) {
+      // (fix) esclusione reciproca dei due overlay: aprendo un dialog missione
+      // azzero l'eventuale conferma scarico pinza rimasta armata. Senza questo,
+      // un tap ravvicinato Gestione pinza -> Gestione cassetto lascia due
+      // overlay sovrapposti (stesso z-index) e la Conferma in cima e' quella
+      // dello scarico -> partiva il 12 invece del 25/26 del cassetto.
+      this.unloadOpen = false;
       this.dialog.type = type;
       this.dialog.selected = null;   // mai preselezionato
     },
@@ -674,9 +680,10 @@ export default {
     // fonte del :class del bottone) -> bottone attivo => il tap apre
     // sempre il dialog del ramo corrente. Nessun tap muto per costruzione.
     openGripperMission() {
-      if (this.gripperOnBoardNow())
+      if (this.gripperOnBoardNow()) {
+        this.closeDialog();          // (fix) esclusione reciproca: via ogni dialog missione residuo
         this.unloadOpen = true;
-      else
+      } else
         this.openDialog('gripper');
     },
     // M2: dispatcher del bottone unico "Gestione cassetto". Nessuna
