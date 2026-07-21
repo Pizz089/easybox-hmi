@@ -50,6 +50,12 @@ const unitStatusCache = {};
 // pubblicano, la cache resta vuota e la UI mostra "non disponibile").
 const gripperStateCache = {};
 
+// Precondizione ausiliari (cantiere AN 1-bis): FROM_PLANT/SAFETY/AUX
+// (0/1 nudo, publish PLC on-change, in arrivo). Stessa famiglia di cache:
+// replay incluso nello snapshot GRIPPER/REQUEST_SNAPSHOT (una sola
+// richiesta client per tutto lo stato pinza/safety).
+const safetyCache = {};
+
 client.on('error', function (err){
 	DBf.io.emit('PLC/ALARM/GENERIC', 'Impossible to connect to broker!    ['+err+']');
 	// Topic con prefisso "_" indicano eventi interni del backend,
@@ -188,6 +194,18 @@ client.on('message', function (topic, message, packet) {
 	// evento socket, replay via GRIPPER/REQUEST_SNAPSHOT (pattern brand/status)
 	if (param[1] == "GRIPPER" && (param[2] == "SENSOR" || param[2] == "CODE")) {
 		handleGripperState(param[2], message.toString());
+		return;
+	}
+
+	// SAFETY/AUX (cantiere AN 1-bis): precondizione ausiliari 0/1
+	if (param[1] == "SAFETY" && param[2] == "AUX") {
+		const aux = parseInt(message.toString(), 10);
+		if (!Number.isInteger(aux)) {
+			log.standard("SAFETY/AUX: payload non intero [" + message.toString() + "] — ignorato");
+			return;
+		}
+		safetyCache.aux = aux;
+		DBf.io.emit('SAFETY/AUX', aux);
 		return;
 	}
 
@@ -518,6 +536,8 @@ DBf.io.on('connection', (socket) => {
 		socket.emit('GRIPPER/CODE', gripperStateCache.code);
 	if (gripperStateCache.registered !== undefined)
 		socket.emit('GRIPPER/REGISTERED', gripperStateCache.registered);
+	if (safetyCache.aux !== undefined)
+		socket.emit('SAFETY/AUX', safetyCache.aux);
   });
   
 //  socket.on('TO_PLANT/CMD/ORDER', (data) => {

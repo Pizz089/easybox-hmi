@@ -316,7 +316,9 @@
       "slot": "Slot",
       "position": "Position"
     },
+    "auxBanner": "Auxiliaries not reset — press the reset before commanding missions",
     "hint": {
+      "auxNotReset": "Auxiliaries not reset: press the reset",
       "notHold": "Robot not in HOLD: press HOLD to enable commands",
       "noGripperSystem": "No gripper on board according to the system",
       "trayBusy": "Tray operation in progress"
@@ -365,6 +367,7 @@
     "alarm_46": "TIMEOUT sbloccaggio tavola",
     "alarm_99": "GENERIC ALARM",
     "alarm_100": "NOT IN HOME POSITION",
+    "alarm_934": "Command refused: auxiliaries not reset. Press the reset and retry.",
     "alarm_936": "Gripper deposit refused: no gripper is registered in the system. Check the last load outcome or run the gripper realignment.",
     "alarm_938": "Gripper mismatch: physical sensor and system register disagree. Check the robot signal, the gripper mounting, or run the realignment.",
     "alarm_1001": "Workorder non defined for machine 1",

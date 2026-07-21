@@ -18,6 +18,13 @@ const plcAlarmRobotHandler = payload => {
   dataStored.alert.type = 'warning'
 }
 
+// (AN 1-bis) precondizione ausiliari: stato globale in dataStored, un solo
+// listener per tutto il pannello (StandardMenu e' sempre montato).
+const safetyAuxHandler = v => {
+  const n = parseInt(v, 10)
+  if (Number.isInteger(n)) dataStored.safetyAux = n
+}
+
 const plcAlarmGenericHandler = payload => {
   dataStored.alert.title = 'GENERIC_ERROR'
   dataStored.alert.desc = payload
@@ -28,6 +35,9 @@ onMounted(() => {
   if (dataStored.WS && dataStored.WS.socket) {
     dataStored.WS.socket.on('PLC/ALARM/ROBOT', plcAlarmRobotHandler)
     dataStored.WS.socket.on('PLC/ALARM/GENERIC', plcAlarmGenericHandler)
+    dataStored.WS.socket.on('SAFETY/AUX', safetyAuxHandler)
+    // replay dalla cache backend (risponde anche SAFETY/AUX)
+    dataStored.WS.socket.emit('GRIPPER/REQUEST_SNAPSHOT')
   }
 })
 
@@ -37,6 +47,7 @@ onUnmounted(() => {
     // i listener di altri componenti sugli stessi eventi.
     dataStored.WS.socket.off('PLC/ALARM/ROBOT', plcAlarmRobotHandler)
     dataStored.WS.socket.off('PLC/ALARM/GENERIC', plcAlarmGenericHandler)
+    dataStored.WS.socket.off('SAFETY/AUX', safetyAuxHandler)
   }
 })
 </script>

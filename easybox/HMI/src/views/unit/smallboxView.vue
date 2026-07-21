@@ -53,6 +53,11 @@
         <button class="pure-button-micromission pure-u-1"  style="margin-top:10px; padding:10px"> {{ $t('CHIUDI_PORTA')}}</button>
       </div-->    
       
+      <!-- (AN 1-bis) precondizione ausiliari (vale per ogni vista con
+           comandi missione): banner SOLO con AUX=0 -->
+      <div class="aux-banner" v-if="dataStored.safetyAux === 0">
+        {{ $t('robot.auxBanner') }}
+      </div>
       <h6 class="section-label"> {{ $t("unit.MacroMission") }}
       </h6>
       <div class="pure-u-1">

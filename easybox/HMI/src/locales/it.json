@@ -316,7 +316,9 @@
       "slot": "Slot",
       "position": "Posizione"
     },
+    "auxBanner": "Ausiliari non ripristinati — premere il ripristino prima di comandare missioni",
     "hint": {
+      "auxNotReset": "Ausiliari non ripristinati: premere il ripristino",
       "notHold": "Robot non in HOLD: premere HOLD per abilitare i comandi",
       "noGripperSystem": "Nessuna pinza a bordo risulta al sistema",
       "trayBusy": "Manovra cassetto in corso"
@@ -365,6 +367,7 @@
     "alarm_46": "TIMEOUT sbloccaggio tavola",
     "alarm_99": "ALLARME GENERICO",
     "alarm_100": "NON IN HOME POSITION",
+    "alarm_934": "Comando rifiutato: ausiliari non ripristinati. Premere il ripristino e riprovare.",
     "alarm_936": "Deposito pinza rifiutato: nessuna pinza risulta registrata al sistema. Verificare l'esito dell'ultimo carico o eseguire il riallineamento pinza.",
     "alarm_938": "Incoerenza pinza: il sensore fisico e il registro di sistema sono in disaccordo. Verificare il segnale dal robot, il montaggio della pinza, o eseguire il riallineamento.",
     "alarm_1001": "Ordine di lavoro non definito per macchina 1",

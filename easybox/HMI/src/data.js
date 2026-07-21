@@ -13,6 +13,12 @@ export const dataStored = reactive({
     cmdActivePallet  : false,   //missioni CARICA/SCARICA PALLET (hold + pinza a bordo)
 
     robotSpeed : 0,
+
+    // (AN 1-bis) precondizione ausiliari da FROM_PLANT/SAFETY/AUX:
+    // null = mai ricevuto (nessun banner: mai allarmi su dato mancante),
+    // 0 = non ripristinati (banner+hint), 1 = ok. Listener globale in
+    // StandardMenu, le viste leggono da qui.
+    safetyAux : null,
     
     //tipo magazzino
     EasyBox:true,

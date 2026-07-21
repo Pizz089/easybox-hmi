@@ -112,6 +112,12 @@
     <div class="pure-u-10-24">
       <h1 class="view-title">{{ $t('Comandi') }}</h1>
 
+      <!-- (AN 1-bis) precondizione ausiliari: banner SOLO con AUX=0
+           (con 1 o n/d niente — mai allarmi su dato mancante) -->
+      <div class="aux-banner" v-if="dataStored.safetyAux === 0">
+        {{ $t('robot.auxBanner') }}
+      </div>
+
       <!-- ===== CARD 1: Comandi critici (RESET / HOLD-START / RESTART) ===== -->
       <section class="command-section">
         <h3 class="section-label">{{ $t('robot.section.critical') }}</h3>
@@ -862,15 +868,19 @@ export default {
     // Stesse condizioni dei rispettivi *BranchEnabled, in ordine di priorita'.
     // ========================================================================
     gripperDisabledReason() {
+      // (1-bis) l'hint ausiliari PREVALE su notHold: e' la precondizione
+      if (dataStored.safetyAux === 0) return 'robot.hint.auxNotReset';
       if (this.dataRobot.STATUS != dataStored.status_hold) return 'robot.hint.notHold';
       return '';
     },
     palletDisabledReason() {
+      if (dataStored.safetyAux === 0) return 'robot.hint.auxNotReset';
       if (this.dataRobot.STATUS != dataStored.status_hold) return 'robot.hint.notHold';
       if (!this.gripperOnBoardNow()) return 'robot.hint.noGripperSystem';
       return '';
     },
     trayDisabledReason() {
+      if (dataStored.safetyAux === 0) return 'robot.hint.auxNotReset';
       if (this.dataRobot.STATUS != dataStored.status_hold) return 'robot.hint.notHold';
       if (!this.gripperOnBoardNow()) return 'robot.hint.noGripperSystem';
       if (this.trayBusy) return 'robot.hint.trayBusy';
@@ -1024,7 +1034,15 @@ export default {
     // snapshot dalla cache backend al mount (payload PLC = intero: guardo)
     this.gripperSensorHandler = v => { const n = parseInt(v, 10); if (Number.isInteger(n)) this.gripperSensor = n; };
     this.gripperCodeHandler = v => { const n = parseInt(v, 10); if (Number.isInteger(n)) this.gripperCode = n; };
-    this.gripperRegisteredHandler = v => { const n = parseInt(v, 10); if (Number.isInteger(n)) this.gripperRegistered = n; };
+    this.gripperRegisteredHandler = v => {
+      const n = parseInt(v, 10);
+      if (Number.isInteger(n)) this.gripperRegistered = n;
+      // (1-bis) lista carico REATTIVA: il deposito/carico cambia il registro
+      // -> ricarica i dati pinza del dialog anche a dialog aperto (prima la
+      // pinza depositata restava invisibile fino a F5). La selezione regge:
+      // l'evidenziazione e la conferma vanno per ID.
+      this.getGrippersList();
+    };
     dataStored.WS.socket.on('GRIPPER/SENSOR', this.gripperSensorHandler);
     dataStored.WS.socket.on('GRIPPER/CODE', this.gripperCodeHandler);
     dataStored.WS.socket.on('GRIPPER/REGISTERED', this.gripperRegisteredHandler);

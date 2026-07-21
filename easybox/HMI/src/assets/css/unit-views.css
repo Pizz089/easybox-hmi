@@ -72,6 +72,20 @@
 }
 
 
+/* ============ AUX BANNER (cantiere AN 1-bis) ============ */
+/* Precondizione ausiliari non ripristinati: warning condiviso dalle unit
+   view con comandi missione (robotView, smallboxView). */
+.aux-banner {
+    background: var(--color-warning-bg);
+    color: var(--color-warning);
+    border: 1px solid var(--color-warning);
+    border-radius: var(--radius-md);
+    padding: var(--space-2) var(--space-4);
+    margin-bottom: var(--space-2);
+    font-size: var(--font-size-sm);
+}
+
+
 /* ============ ANIMATIONS ============ */
 /* @keyframes globale: allineato a units.vue UI-3.3 (pulse su accent-hover). */
 @keyframes blinker {
