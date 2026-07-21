@@ -172,6 +172,7 @@
     "associate": "Associate grating to tray",
     "disassociate": "Disassociate grating from tray",
     "dimensioniPz": "Dimensions hole [mm]",
+    "tray": "Tray",
     "saveAndModel": "Save & create model",
     "modelOnly": "Create model",
     "rowsCols": "{rows} rows × {cols} columns = {tot} pcs",

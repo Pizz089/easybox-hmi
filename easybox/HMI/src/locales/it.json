@@ -172,6 +172,7 @@
     "associate": "Associa grigliato al cassetto",
     "disassociate": "Disassocia grigliato dal cassetto",
     "dimensioniPz": "Dimensioni scasso [mm]",
+    "tray": "Cassetto",
     "saveAndModel": "Salva e crea modello",
     "modelOnly": "Crea modello",
     "rowsCols": "{rows} righe × {cols} colonne = {tot} pz",

@@ -40,7 +40,7 @@
                     <input type="number" id="aligned-foo" name="height" v-model="grating.height" placeholder="" :readonly="dataStored.userLevel<0" /> mm
                 </div-->
                 <div class="pure-u-1">
-                    <label class="pure-u-1">Tray</label>
+                    <label class="pure-u-1">{{$t('grating.tray')}}</label>
                     <select class="pure-u-1" 
                         name="trayList" 
                         v-model="grating.trayIndex" 
@@ -48,10 +48,10 @@
                         :readonly="dataStored.userLevel<0"
                         :disabled="grating.trayIndex>0 && gratingAssociated">
 
-                        <option value="-1"> </option>
+                        <option value="0"> </option>
                         <template v-for="(t,index) in trayList" :key="t.ID">
-                            <option :value="index" 
-                                    :selected="grating.trayIndex==index" 
+                            <option :value="index+1"
+                                    :selected="grating.trayIndex==index+1"
                                     :disabled="(t.FAMILY.trim().length>0||t.FLOOR_MAG<=0)"
                                     :class="{'optionDeleted':t.FAMILY.trim().length>0}"> 
                                     {{ t.FLOOR_MAG>0?t.FLOOR_MAG:'OUT' }} - {{ t.DESCR }} 
@@ -99,7 +99,7 @@
                     </select>
                 </div>
                 <!--div class="pure-u-1" >
-                    <label class="pure-u-1">{{$t('grating.safeX')}} [{{ minSafeX }}..{{ grating.width/2 }}]</label>
+                    <label class="pure-u-1">{{$t('grating.safeX')}}</label>
                     <span class="pure-u-1">
                         <input type="number" class="pure-u-11-12" name="SAFEX" v-model="grating.SAFEX" 
 						:readonly="dataStored.userLevel<0" :class="{'error':grating.SAFEX<minSafeX}"/> 
@@ -118,6 +118,7 @@
                         integerVal=true
                         @update="newValue => grating.SAFEX = newValue">
                     </numericField>
+                    <small class="min-hint">min {{ minSafeX }} &middot; max {{ grating.width/2 }} mm</small>
                 </div>    
                 <!--div class="pure-u-1" >
                     <label class="pure-u-1">
@@ -128,7 +129,7 @@
                     <span class="pure-u-1-12" style="vertical-align: middle;">&nbsp;mm</span>
                 </div-->       
                 <div>
-                    <label class="pure-u-1">{{$t('grating.safeY')}} [{{ minSafeY }}..{{ grating.height/2 }}]</label>
+                    <label class="pure-u-1">{{$t('grating.safeY')}}</label>
                     <numericField 
                         name="SAFEY" 
                         unitMeasure="mm" 
@@ -139,6 +140,7 @@
                         integerVal=true
                         @update="newValue => grating.SAFEY = newValue">
                     </numericField>
+                    <small class="min-hint">min {{ minSafeY }} &middot; max {{ grating.height/2 }} mm</small>
                 </div> 
                 <div class="pure-u-1 btn-group row-spaced grating-actions">
                     <button class="pure-button pure-button-primary" @click="saveData() && createModelFile()"
@@ -470,18 +472,17 @@ export default {
     },
     watch:{
         'grating.SAFEX'(newValue){
-			if (newValue<0) 
-			//	this.grating.SAFEX=0
-			//if (newValue<this.minSafeX)
+			// (2c) pavimento di sicurezza: mai sotto il minimo pinza-derivato
+			// (vale per digitazione, +/- e valori caricati da DB)
+			if (newValue<this.minSafeX)
 				this.grating.SAFEX=this.minSafeX
 			if (newValue>this.grating.width/2)
 				this.grating.SAFEX=this.grating.width/2
 			this.calculateData()
         },
         'grating.SAFEY'(newValue){
-            if (newValue<0) 
-            //    this.grating.SAFEY=0
-            //if (newValue<this.minSafeY)
+            // (2c) pavimento di sicurezza: mai sotto il minimo pinza-derivato
+            if (newValue<this.minSafeY)
                 this.grating.SAFEY=this.minSafeY
             if (newValue>this.grating.height/2)
                 this.grating.SAFEY=this.grating.height/2
@@ -577,7 +578,8 @@ export default {
                     this.trayList.forEach(tray => {
                         //console.log(index +" : "+tray.FLOOR_MAG +" "+tray.ID +" - "+ this.grating.TRAY_ID)
                         if (tray.ID == this.grating.TRAY_ID){
-                            this.grating.trayIndex = index;
+                            // (2c) indice 1-based, allineato a select/onChange/savePositions
+                            this.grating.trayIndex = index+1;
                             //console.log("--------- this.grating.trayIndex: "+this.grating.trayIndex)
                         }
                         index++;
@@ -602,13 +604,17 @@ export default {
                         }
                         index++;
                     });
-                    if (typeof this.grating.trayIndex !== 'undefined' && 
-                        typeof (this.trayList[this.grating.trayIndex].X) !== 'undefined'){
-                        if (this.trayList[this.grating.trayIndex].X>0)
-                            this.grating.width=this.trayList[this.grating.trayIndex].X/1000;
-                        if (this.trayList[this.grating.trayIndex].Y>0)
-                            this.grating.height=this.trayList[this.grating.trayIndex].Y/1000;
+                    if (this.grating.trayIndex > 0 && 
+                        typeof (this.trayList[this.grating.trayIndex-1].X) !== 'undefined'){
+                        if (this.trayList[this.grating.trayIndex-1].X>0)
+                            this.grating.width=this.trayList[this.grating.trayIndex-1].X/1000;
+                        if (this.trayList[this.grating.trayIndex-1].Y>0)
+                            this.grating.height=this.trayList[this.grating.trayIndex-1].Y/1000;
                     }
+                    // (2c) il grigliato caricato con TRAY_ID e' gia' associato:
+                    // select cassetto bloccata e stato coerente col bottone
+                    if (this.grating.TRAY_ID > 0)
+                        this.gratingAssociated = true;
                     this.grating.DESCR=this.gratingList[0].DESCR;
                     this.grating.NAME=this.gratingList[0].NAME;
                     // (fase 2b, fix reattivita') ricalcolo ESPLICITO a valle
@@ -642,6 +648,11 @@ export default {
             }else{
                 this.minSafeY=this.gripperList[this.grating.gripperIndex-1].STROKE_CLAW/1000+this.gripperList[this.grating.gripperIndex-1].TICKNESS_CLAW/1000;
             }
+            // (2c) pavimento post-calcolo dei minimi: il valore arrivato da DB
+            // (o digitato prima che i minimi fossero noti) risale al minimo;
+            // il set innesca il watcher che ricalcola con il valore corretto.
+            if (this.grating.SAFEX < this.minSafeX) this.grating.SAFEX = this.minSafeX;
+            if (this.grating.SAFEY < this.minSafeY) this.grating.SAFEY = this.minSafeY;
             this.grating.ID=this.$route.params.grating_ID;
         },
         calculateCylinder(){ //da controllare con il file excell
@@ -983,6 +994,13 @@ export default {
         border: var(--border-card);
         border-radius: var(--radius-md);
         padding: var(--space-5);
+    }
+
+    .min-hint{
+        display: block;
+        font-size: var(--font-size-xs);
+        color: var(--text-muted);
+        margin-top: var(--space-1); /* micro-aggiustamento ottico hint-campo */
     }
 
     .grating-form-card label{
