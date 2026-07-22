@@ -813,7 +813,12 @@ export default {
           this.sendMission('tray', '25;' + sel.FLOOR_MAG);
           break;
         case 'trayRelease':
-          this.sendMission('tray', 26);
+          // (fix) formato identico al 25: "26;<numero cassetto>". Prima si
+          // inviava l'intero nudo 26 -> il PLC (che attende "26;n") lo scarta.
+          // extractedTray e' la riga del cassetto fuori, FLOOR_MAG il numero;
+          // il ramo trayRelease e' raggiungibile solo con extractedTray truthy
+          // (openTrayMission + re-check missionEnabled), ma guardo comunque.
+          this.sendMission('tray', '26;' + (this.extractedTray ? this.extractedTray.FLOOR_MAG : ''));
           break;
       }
       this.closeDialog();
