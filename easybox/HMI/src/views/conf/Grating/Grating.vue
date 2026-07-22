@@ -724,10 +724,14 @@ export default {
         },
         onChangeGripper(){
             this.calculateData();
-            //console.log(this.gripperList[this.grating.gripperList-1].STROKE_CLAW/1000)
-            //console.log(this.gripperList[this.grating.gripperList-1].TICKNESS_CLAW/1000)
-            this.grating.SAFEX=this.gripperList[this.grating.gripperIndex-1].STROKE_CLAW/1000+this.gripperList[this.grating.gripperIndex].TICKNESS_CLAW/1000
-			this.grating.GRIPPER_ID=this.gripperList[this.grating.gripperIndex-1].ID;
+            // (grating-save, bonifica) NIENTE sovrascrittura di SAFEX: la
+            // DISTANZA e' dell'operatore; il pavimento di sicurezza pinza-
+            // derivato vive gia' nel clamp min (minSafeX/minSafeY, che
+            // calculateData rialza da solo se il valore corrente e' sotto).
+            // La riga rimossa sovrascriveva SAFEX ad ogni cambio pinza (e
+            // conteneva pure l'off-by-one censito: gripperList[gripperIndex]
+            // senza -1 sul secondo termine — muore con la riga).
+            this.grating.GRIPPER_ID=this.gripperList[this.grating.gripperIndex-1].ID;
             this.distribute();
         },
         distribute(){
@@ -744,8 +748,14 @@ export default {
                 this.calculateData();
             }
         },
-        saveData() {
-            //this.updateGratingInTray()
+        async saveData() {
+            // (grating-save) ramo grigliato ESISTENTE: guardrail e conferma
+            // PRIMA di qualsiasi scrittura — annullare = zero modifiche,
+            // anche sull'header GRATING (coerenza header/posizioni).
+            if (!this.createNew) {
+                const goAhead = await this.confirmRegenerate();
+                if (!goAhead) return;
+            }
 
             var cmd = ""
             if (!this.createNew){
@@ -761,31 +771,91 @@ export default {
                         alert("errore")
                         throw new Error('Network response was not ok');
                     }
-                    this.savePositions();
+                    // (grating-save) posizioni AWAITED prima di navigare via
+                    // (prima: fire-and-forget + push immediato)
+                    return this.savePositions();
+                })
+                .then(() => {
                     this.updateGratingInTray();
-                    //alert(this.$t("save_ok"));
                     this.$router.push('/conf/Gratings');
-                 })
+                })
                 .catch(error => {
                     console.info(error);
                     alert(error)
                 });
         },
-        savePositions() {
-            var cmd = ""
+        // (grating-save) guardrail pre-rigenerazione del cassetto:
+        //  - BLOCCO se una posizione referenzia un ordine ATTIVO
+        //    (Order_ID != 0 con WORKORDERS.STATUS == 3);
+        //  - altrimenti conferma esplicita SEMPRE, con conteggi REALI delle
+        //    righe a DB del cassetto — perimetro = QUALUNQUE PARENT del
+        //    floor (stesso like 'TRAY_{floor} %' della delete backend),
+        //    incluse le orfane con POS/PARENT divergenti (bug D2): dopo il
+        //    save il cassetto avra' SOLO le N righe nuove;
+        //  - verifica impossibile -> annulla (MAI cancellare alla cieca).
+        async confirmRegenerate() {
+            const tray = this.trayList[this.grating.trayIndex-1];
+            const floor = tray ? tray.FLOOR_MAG : 0;
+            if (!(floor > 0)) return true;   // nessun cassetto: niente da rigenerare
+            try {
+                const positions = await fetch(dataStored.server+'api/conf/position/show/all',{ method: 'GET'})
+                    .then(r => { if (!r.ok) throw new Error('Network response was not ok'); return r.json(); });
+                // equivalente client del like 'TRAY_{floor} %' (PARENT nchar
+                // paddato: il primo token trim-mato e' 'TRAY_{floor}')
+                const mine = (positions || []).filter(p => ((p.PARENT || '').trim().split(' ')[0]) == 'TRAY_'+floor);
+                if (mine.length == 0) return true;
+                const orders = await fetch(dataStored.server+'api/order/show/all',{ method: 'GET'})
+                    .then(r => { if (!r.ok) throw new Error('Network response was not ok'); return r.json(); });
+                const activeIds = new Set((orders || []).filter(o => o.STATUS == 3).map(o => o.ID));
+                const busy = mine.some(p => p.Order_ID && activeIds.has(p.Order_ID));
+                if (busy) {
+                    alert(this.$t('grating.saveBlockedOrder'));
+                    return false;
+                }
+                const notEmpty = mine.filter(p => p.STATUS != 2).length;
+                return confirm(this.$t('grating.confirmRegenerate', { n: mine.length, floor: floor, m: notEmpty }));
+            } catch (e) {
+                console.info(e);
+                alert(this.$t('grating.saveCheckFailed'));
+                return false;
+            }
+        },
+        async savePositions() {
+            // (grating-save) grigliato ESISTENTE: DELETE-THEN-INSERT.
+            // L'update per SUB_POS non poteva ne' cancellare le righe
+            // eccedenti ne' creare le nuove, e con PARENT/POS storici
+            // divergenti era un no-op TOTALE con risposta OK (bug 91@60).
+            // La delete usa deletePositionsTray (riuso GratingsView): like
+            // 'TRAY_{floor} %' — sparisce OGNI riga del cassetto, orfane
+            // incluse; poi SOLO insert delle N posizioni correnti.
+            // LIMITE DICHIARATO — NON ATOMICO (due endpoint distinti): se un
+            // insert fallisce dopo la delete lo stato e' incompleto ma
+            // RECUPERABILE ripetendo il salvataggio (alert esplicito).
+            const floorMag = this.trayList[this.grating.trayIndex-1].FLOOR_MAG;
+            if (!this.createNew) {
+                try {
+                    const del = await fetch(dataStored.server+'api/conf/position/deletePositionsTray/'+floorMag ,{ method: 'delete'});
+                    if (!del.ok) throw new Error('Network response was not ok');
+                } catch (e) {
+                    console.info(e);
+                    alert(this.$t('grating.saveIncomplete'));
+                    return;
+                }
+            }
+            let failed = 0;
             for (let i=0; i<this.listPz.length; i++){
                 let pos={};
                 pos.SUB_POS=i+1;
-                pos.POS=this.trayList[this.grating.trayIndex-1].MAG;              
-                pos.TRAY_ID=this.trayList[this.grating.trayIndex-1].FLOOR_MAG;              
+                pos.POS=this.trayList[this.grating.trayIndex-1].MAG;
+                pos.TRAY_ID=floorMag;
                 pos.PIECE_TYPE=this.partList[this.grating.pieceIndex-1].ID;
-                pos.STATUS=2;  //EMPTY  
-                pos.SAFEX=this.grating.SAFEX              
+                pos.STATUS=2;  //EMPTY
+                pos.SAFEX=this.grating.SAFEX
                 pos.SAFEY=this.grating.SAFEY
-			
+
                 if (this.listPz[i].prisma){
                     pos.X=this.grating.width-(this.listPz[i].x+this.dim_x/2);
-                    pos.Y=this.grating.height-(this.listPz[i].y+this.dim_y/2); 
+                    pos.Y=this.grating.height-(this.listPz[i].y+this.dim_y/2);
                 }else{
                     pos.X=this.grating.width-this.listPz[i].x;
                     pos.Y=this.grating.height-this.listPz[i].y;
@@ -794,22 +864,22 @@ export default {
                 pos.Y *= -1000;   //tutte le quote sono negative
 
                 pos.EASYBOX = dataStored.EasyBox;
-			
-                //alert("pos: "+JSON.stringify(pos,null,4))
-                if (this.createNew)
-                    cmd = dataStored.server+'api/conf/position/insertPositionTray?' + new URLSearchParams( pos ).toString(); 
-                else
-                    cmd = dataStored.server+'api/conf/position/updatePositionTray?' + new URLSearchParams( pos ).toString(); 
-                fetch( cmd ,{ method: 'GET'})
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error('Network response was not ok');
-                        }
-                    })
-                    .catch(error => {
-                        alert(error)
-                    });
+
+                // SEMPRE insert: dopo la delete non esistono righe da
+                // aggiornare (il vecchio ramo updatePositionTray muore qui;
+                // l'endpoint resta per GratingTest/ImportGrating)
+                const cmd = dataStored.server+'api/conf/position/insertPositionTray?' + new URLSearchParams( pos ).toString();
+                try {
+                    const r = await fetch( cmd ,{ method: 'GET'});
+                    const body = r.ok ? await r.text() : 'KO';
+                    if (body != 'OK') failed++;
+                } catch (e) {
+                    console.info(e);
+                    failed++;
+                }
             }
+            if (failed > 0)
+                alert(this.$t('grating.saveIncomplete'));
         },
         updateGratingInTray() {
             var cmd = dataStored.server+'api/conf/tray/updateGratingInTray?' + new URLSearchParams( 
