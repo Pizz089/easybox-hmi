@@ -17,8 +17,13 @@
                 {{$t('tray.add_Tray')}}
             </button>
             <!-- (tray-teaching) comando "0 CASSETTIERA": un solo teaching sul
-                 cassetto campione, derivazione automatica degli altri 11 -->
-            <button class="pure-button pure-button-primary" :class="{'pure-button-disabled':dataStored.userLevel<=1}" :id="locked" @click="openTeach()">
+                 cassetto campione, derivazione automatica degli altri 11.
+                 (teach-pick-target) gate REALE sul click, non solo classe: il
+                 dialog confermato scrive i CORR di TUTTI e 12 i cassetti —
+                 stessa soglia della classe (userLevel<=1 = locked). Il vizio
+                 solo-CSS di "Add" e dei bottoni AttrezzaggiView resta censito
+                 a backlog, qui il danno e' concreto. -->
+            <button class="pure-button pure-button-primary" :class="{'pure-button-disabled':dataStored.userLevel<=1}" :id="locked" @click="dataStored.userLevel>1 ? openTeach() : ''">
                 {{$t('tray.teach.button')}}
             </button>
         </div>
@@ -152,6 +157,9 @@
                 <numericField name="teachZ" step=0.01 min=-3000 max=3000
                   :model-value="teach.pz" @update="v => teach.pz = v"></numericField>
               </div>
+              <!-- (teach-pick-target) pezzo della posizione 1 irrisolvibile:
+                   calcolo BLOCCATO con motivo esplicito, mai stime silenziose -->
+              <div class="teach-warning" v-if="teach.calcError">{{ $t(teach.calcError) }}</div>
               <div class="teach-hint">{{ $t('tray.teach.rotHint') }}</div>
               <div class="teach-field">
                 <label>RX [&deg;]</label>
@@ -189,6 +197,13 @@
 
             <!-- passo 3: ANTEPRIMA obbligatoria -->
             <template v-if="teach.step==3">
+              <!-- (teach-pick-target) la posa DICHIARATA, scolpita sopra la
+                   tabella: e' esattamente cio' che uscira' per la pos.1 -->
+              <div class="teach-hint">
+                {{ $t('tray.teach.pickPose', { n: teach.sample }) }}:
+                X {{ teach.px }} &middot; Y {{ teach.py }} &middot; Z {{ teach.pz }} mm
+                &middot; RX {{ teach.rx }}&deg; RY {{ teach.ry }}&deg; RZ {{ teach.rz }}&deg;
+              </div>
               <div class="teach-hint">{{ $t('tray.teach.preview') }}</div>
               <div class="table-scroll">
                 <table class="pure-table pure-table-horizontal teach-table">
@@ -256,6 +271,8 @@ export default {
                 rx: 0, ry: 0, rz: 0,
                 positions: [],   // [POSITION] TRAY_% raw (eleggibilita' + SUB_POS 1)
                 cfe: [],         // COORDINATES_FOR_EXTRACT (delta tra piani)
+                pieces: [],      // anagrafica PIECE (componente pezzo in Z)
+                calcError: '',   // chiave i18n del blocco calcolo (pezzo irrisolvibile)
                 preview: []      // 12 righe {tray, xCorr, yCorr, zCorr, hasTray}
             }
         }
@@ -350,8 +367,10 @@ export default {
             this.teach.px = 0; this.teach.py = 0; this.teach.pz = 0;
             this.teach.rx = 0; this.teach.ry = 0; this.teach.rz = 0;
             this.teach.preview = [];
-            // posizioni raw dei cassetti (PARENT nchar PADDATO: trim) e
-            // coordinate di estrazione per-piano per i delta
+            this.teach.calcError = '';
+            // posizioni raw dei cassetti (PARENT nchar PADDATO: trim),
+            // coordinate di estrazione per-piano per i delta e anagrafica
+            // PIECE (componente pezzo della Z di prelievo)
             fetch(dataStored.server+'api/conf/position/show/all',{ method: 'GET'})
                 .then(r => { if (!r.ok) throw new Error('Network response was not ok'); return r.json(); })
                 .then(d => { this.teach.positions = (d || []).filter(p => (p.PARENT || '').trim().indexOf('TRAY_') == 0); })
@@ -360,6 +379,10 @@ export default {
                 .then(r => { if (!r.ok) throw new Error('Network response was not ok'); return r.json(); })
                 .then(d => { this.teach.cfe = d || []; })
                 .catch(e => { console.info(e); this.teach.cfe = []; });
+            fetch(dataStored.server+'api/conf/piece/show/all',{ method: 'GET'})
+                .then(r => { if (!r.ok) throw new Error('Network response was not ok'); return r.json(); })
+                .then(d => { this.teach.pieces = d || []; })
+                .catch(e => { console.info(e); this.teach.pieces = []; });
         },
         closeTeach(){
             this.teach.open = false;
@@ -368,18 +391,31 @@ export default {
             return (v / 1000).toFixed(3);
         },
         calcPreview(){
+            this.teach.calcError = '';
             const f = this.teach.sample;
             const p1 = this.teach.positions.find(p => p.PARENT.trim() == 'TRAY_'+f && p.SUB_POS == 1);
             const cfeC = this.teach.cfe.find(c => c.TRAY == f);
             if (!p1 || !cfeC) return;
+            // (teach-pick-target) i 6 valori dichiarati sono la POSA DI
+            // PRELIEVO della posizione 1 (robot IN PRESA sul pezzo). La vista
+            // 4Robot somma alla Z la componente pezzo (PIECE.Z - PIECE.Z_PICK):
+            // il CORR deve sottrarla, altrimenti la posa dichiarata NON e'
+            // quella che esce dalla vista. Pezzo irrisolvibile -> BLOCCO
+            // esplicito (mai calcolare con componente pezzo assunta 0).
+            const piece = this.teach.pieces.find(x => x.ID == p1.Part_Type);
+            if (!piece || piece.Z == null || piece.Z_PICK == null) {
+                this.teach.calcError = 'tray.teach.pieceMissing';
+                return;
+            }
             // (Q1) CORR campione = pendant - (pos + pos_CORR) della POSIZIONE 1.
-            // Z: si sottrae SOLO pos.Z_CORR — pos.Z NON va sottratta perche'
-            // la transazione teachTrays la porta a 0 (convenzione E/Q6):
-            // sottrarla e poi azzerarla conterebbe doppio.
+            // Z: si sottraggono pos.Z_CORR E la componente pezzo — pos.Z NON va
+            // sottratta perche' la transazione teachTrays la porta a 0
+            // (convenzione E/Q6): sottrarla e poi azzerarla conterebbe doppio.
+            // X/Y: in presa il pendant e' il centro pezzo = identico al piano.
             const corrC = {
                 x: Math.round(this.teach.px * 1000 - (p1.X + p1.X_CORR)),
                 y: Math.round(this.teach.py * 1000 - (p1.Y + p1.Y_CORR)),
-                z: Math.round(this.teach.pz * 1000 - p1.Z_CORR)
+                z: Math.round(this.teach.pz * 1000 - p1.Z_CORR - (piece.Z - piece.Z_PICK))
             };
             // delta tra piani da COORDINATES_FOR_EXTRACT (tutti e 3 gli assi:
             // in cella varia solo Z, ma X/Y coprono i piani fuori canone)
@@ -659,6 +695,14 @@ export default {
     .teach-hint {
         background: var(--color-info-bg);
         color: var(--color-info);
+        border-radius: var(--radius-md);
+        padding: var(--space-2) var(--space-4);
+        font-size: var(--font-size-sm);
+    }
+
+    .teach-warning {
+        background: var(--color-warning-bg);
+        color: var(--color-warning);
         border-radius: var(--radius-md);
         padding: var(--space-2) var(--space-4);
         font-size: var(--font-size-sm);

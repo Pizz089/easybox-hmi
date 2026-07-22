@@ -149,10 +149,13 @@
                         <option value="-1" > {{$t('OUT')}} </option>
                     </select>
                 </div>
+                <!-- (teach-pick-target) campi di teaching gated al livello
+                     tecnico: visibili ma in sola lettura, MAI spariti -->
+                <small class="teach-locked-hint" v-if="teachLocked">{{$t('tray.teach.lockedHint')}}</small>
                 <div class="pure-control-group">
                     <label for="aligned-foo">{{$t('tray.X_Corr')}}</label>
                     <!--input type="number" id="aligned-foo" name="X_CORR" v-model="tray.X_CORR"  :readonly="dataStored.userLevel==0"/-->
-                    <numericField name="X_CORR" v-model="tray.X_CORR" unitMeasure="mm" min="-5" max="5" step="0.01"
+                    <numericField name="X_CORR" v-model="tray.X_CORR" unitMeasure="mm" min="-5" max="5" step="0.01" :locked="teachLocked"
                         :model-value="tray.X_CORR"
                         @update="newValue => tray.X_CORR = newValue" >
                     </numericField>
@@ -160,14 +163,14 @@
                 <div class="pure-control-group">
                     <label for="aligned-foo">{{$t('tray.Y_Corr')}}</label>
                     <!--input type="number" id="aligned-foo" name="Y_CORR" v-model="tray.Y_CORR"  :readonly="dataStored.userLevel==0"/-->
-                    <numericField name="Y_CORR" v-model="tray.Y_CORR" unitMeasure="mm" min="-5" max="5" step="0.01"
+                    <numericField name="Y_CORR" v-model="tray.Y_CORR" unitMeasure="mm" min="-5" max="5" step="0.01" :locked="teachLocked"
                         :model-value="tray.Y_CORR"
                         @update="newValue => tray.Y_CORR = newValue" ></numericField>
                 </div>
                 <div class="pure-control-group">
                     <label for="aligned-foo">{{$t('tray.Z_Corr')}}</label>
                     <!--input type="number" id="aligned-foo" name="Z_CORR" v-model="tray.Z_CORR"  :readonly="dataStored.userLevel==0" step="0.001"/-->
-                    <numericField name="Z_CORR" v-model="tray.Z_CORR" unitMeasure="mm" min="-20" max="10" step="0.01" 
+                    <numericField name="Z_CORR" v-model="tray.Z_CORR" unitMeasure="mm" min="-20" max="10" step="0.01" :locked="teachLocked" 
                         :model-value="tray.Z_CORR"
                         @update="newValue => tray.Z_CORR = newValue" ></numericField>
                     <br>
@@ -177,21 +180,22 @@
                      millesimi di grado a DB, gradi a video; al salvataggio
                      vengono propagate alle [POSITION] del cassetto. -->
                 <h4 class="section-label">{{$t('tray.sectionRot')}}</h4>
+                <small class="teach-locked-hint" v-if="teachLocked">{{$t('tray.teach.lockedHint')}}</small>
                 <div class="pure-control-group">
                     <label for="aligned-foo">{{$t('tray.X_Rot')}}</label>
-                    <numericField name="X_ROT" unitMeasure="&deg;" min="-180" max="180" step="0.1"
+                    <numericField name="X_ROT" unitMeasure="&deg;" min="-180" max="180" step="0.1" :locked="teachLocked"
                         :model-value="tray.X_ROT"
                         @update="newValue => tray.X_ROT = newValue" ></numericField>
                 </div>
                 <div class="pure-control-group">
                     <label for="aligned-foo">{{$t('tray.Y_Rot')}}</label>
-                    <numericField name="Y_ROT" unitMeasure="&deg;" min="-180" max="180" step="0.1"
+                    <numericField name="Y_ROT" unitMeasure="&deg;" min="-180" max="180" step="0.1" :locked="teachLocked"
                         :model-value="tray.Y_ROT"
                         @update="newValue => tray.Y_ROT = newValue" ></numericField>
                 </div>
                 <div class="pure-control-group">
                     <label for="aligned-foo">{{$t('tray.Z_Rot')}}</label>
-                    <numericField name="Z_ROT" unitMeasure="&deg;" min="-180" max="180" step="0.1"
+                    <numericField name="Z_ROT" unitMeasure="&deg;" min="-180" max="180" step="0.1" :locked="teachLocked"
                         :model-value="tray.Z_ROT"
                         @update="newValue => tray.Z_ROT = newValue" ></numericField>
                 </div>
@@ -200,9 +204,10 @@
                      APPROACH_TYPE dalla approachList (gia' caricata dal form,
                      finora inutilizzata) + quote in mm (millesimi a DB). -->
                 <h4 class="section-label">{{$t('tray.sectionApproach')}}</h4>
+                <small class="teach-locked-hint" v-if="teachLocked">{{$t('tray.teach.lockedHint')}}</small>
                 <div class="pure-control-group">
                     <label for="aligned-foo">{{$t('tray.tipoApproccio')}}</label>
-                    <select id="aligned-foo" name="TIPO_APPROCCIO" v-model="tray.APPROACH_TYPE" :readonly="dataStored.userLevel==0">
+                    <select id="aligned-foo" name="TIPO_APPROCCIO" v-model="tray.APPROACH_TYPE" :disabled="teachLocked">
                         <template v-for="ap in approachList" :key="ap.ID">
                             <option :value="ap.ID">
                                 {{ ap.DESCR }}  &nbsp;&nbsp;&nbsp;&nbsp;({{$t('Code')}} {{ ap.ID }})
@@ -212,19 +217,19 @@
                 </div>
                 <div class="pure-control-group">
                     <label for="aligned-foo">{{$t('tray.approachX')}}</label>
-                    <numericField name="APPROACH_X" unitMeasure="mm" min="-500" max="500" step="1"
+                    <numericField name="APPROACH_X" unitMeasure="mm" min="-500" max="500" step="1" :locked="teachLocked"
                         :model-value="tray.APPROACH_X"
                         @update="newValue => tray.APPROACH_X = newValue" ></numericField>
                 </div>
                 <div class="pure-control-group">
                     <label for="aligned-foo">{{$t('tray.approachY')}}</label>
-                    <numericField name="APPROACH_Y" unitMeasure="mm" min="-500" max="500" step="1"
+                    <numericField name="APPROACH_Y" unitMeasure="mm" min="-500" max="500" step="1" :locked="teachLocked"
                         :model-value="tray.APPROACH_Y"
                         @update="newValue => tray.APPROACH_Y = newValue" ></numericField>
                 </div>
                 <div class="pure-control-group">
                     <label for="aligned-foo">{{$t('tray.approachZ')}}</label>
-                    <numericField name="APPROACH_Z" unitMeasure="mm" min="-500" max="500" step="1"
+                    <numericField name="APPROACH_Z" unitMeasure="mm" min="-500" max="500" step="1" :locked="teachLocked"
                         :model-value="tray.APPROACH_Z"
                         @update="newValue => tray.APPROACH_Z = newValue" ></numericField>
                 </div>
@@ -393,8 +398,13 @@ export default {
                         throw new Error('Network response was not ok');
                     }
                     // (tray-teaching) rotazioni+avvicinamento propagati alle
-                    // [POSITION] del cassetto, con conferma "applicato a N"
-                    if (!this.createNew && this.tray.FLOOR_MAG > 0)
+                    // [POSITION] del cassetto, con conferma "applicato a N".
+                    // (teach-pick-target) coi campi teaching GATED (livello
+                    // insufficiente) la propagazione NON parte: l'operatore
+                    // salva solo l'anagrafica libera, i valori teaching
+                    // viaggiano in pass-through identici e le POSITION non
+                    // vengono toccate.
+                    if (!this.createNew && this.tray.FLOOR_MAG > 0 && !this.teachLocked)
                         return this.propagateTeaching(p);
                 })
                 .then(() => this.$router.push('/conf/Trays'))
@@ -422,6 +432,13 @@ export default {
         }
     },
     computed:{
+        // (teach-pick-target) gate dei campi di TEACHING (CORR, rotazioni,
+        // avvicinamento): STESSA soglia del bottone "0 CASSETTIERA" e
+        // dell'Add in TraysView (userLevel<=1 = riservato al livello
+        // tecnico) — nessuna soglia nuova.
+        teachLocked() {
+            return dataStored.userLevel <= 1;
+        },
         getPositionOnPlant() {
             if (this.tray.POS_IN_IMPIANTO==1000)
                 return "=> ROBOT";
@@ -449,6 +466,15 @@ export default {
 
     #aligned-foo{
         width:300px;
+    }
+
+    /* (teach-pick-target) hint dei campi teaching gated */
+    .teach-locked-hint {
+        display: block;
+        color: var(--text-muted);
+        font-size: var(--font-size-sm);
+        font-style: italic;
+        margin: var(--space-1) 0;
     }
 
     /* FO3: spazio in coda per lo scroll su touch (ex <br> multipli). */

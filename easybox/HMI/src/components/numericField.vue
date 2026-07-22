@@ -9,7 +9,11 @@
 
 <template>
     <span class="numeric-field">
-        <button type="button" class="changeValue" @click="dec" :disabled="dataStored.userLevel==0">
+        <!-- (teach-pick-target) prop locked ADDITIVA (default false): permette
+             al consumer un gate a soglia diversa dal solo userLevel==0
+             hardcoded (es. campi teaching riservati al livello tecnico).
+             Readonly+disabled reali, non solo stile. -->
+        <button type="button" class="changeValue" @click="dec" :disabled="dataStored.userLevel==0 || locked">
             <strong>&minus;</strong>
         </button>
         <input  type="number"
@@ -18,11 +22,11 @@
                 :value="modelValue"
                 @input="onInput"
                 @change="onCommit"
-                :readonly="dataStored.userLevel==0"
+                :readonly="dataStored.userLevel==0 || locked"
                 :class="{'error':(parseFloat(modelValue)<parseFloat(min)||parseFloat(modelValue)>parseFloat(max))}"
                 :min="min"
                 :max="max" />
-        <button type="button" class="changeValue" @click="inc" :disabled="dataStored.userLevel==0">
+        <button type="button" class="changeValue" @click="inc" :disabled="dataStored.userLevel==0 || locked">
             <strong>+</strong>
         </button>
         <span v-if="unitMeasure!=undefined" class="unit-label">
@@ -42,7 +46,8 @@
         max:String,
         step:String,
         modelValue:Number,
-        integerVal:Boolean
+        integerVal:Boolean,
+        locked:Boolean
     },
     methods: {
         parseVal(v) {
