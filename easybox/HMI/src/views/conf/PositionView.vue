@@ -54,7 +54,8 @@
                     <th style="text-align:right">{{$t('position.Rotazione')}} [°]</th>
                     <th style="text-align:right">{{$t('position.Correzione')}} [°]</th>
                     
-                    <th style="text-align:right">{{$t('position.approach')}} [mm]</th>
+                    <th v-if="categoryFilter!='c_extract'" style="text-align:right">{{$t('position.approach')}} [mm]</th>
+                    <th v-if="categoryFilter=='c_extract'"  style="text-align:right">{{$t('position.extraction')}} [mm]</th>
                     <!--th>{{$t('position.comands')}}</th-->
                     <th>&nbsp;</th>
                 </tr>
