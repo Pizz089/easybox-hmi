@@ -119,6 +119,12 @@
                         @update="newValue => grating.SAFEX = newValue">
                     </numericField>
                     <small class="min-hint">min {{ minSafeX }} &middot; max {{ grating.width/2 }} mm</small>
+                </div>
+                <!-- (grating-pitch) interasse risultante: feedback live del
+                     centro-centro che finira' a DB (read-only) -->
+                <div>
+                    <label class="pure-u-1">{{$t('grating.pitchX')}}</label>
+                    <input type="text" class="pitch-field" :value="pitchXLabel" readonly tabindex="-1" />
                 </div>    
                 <!--div class="pure-u-1" >
                     <label class="pure-u-1">
@@ -141,6 +147,10 @@
                         @update="newValue => grating.SAFEY = newValue">
                     </numericField>
                     <small class="min-hint">min {{ minSafeY }} &middot; max {{ grating.height/2 }} mm</small>
+                </div>
+                <div>
+                    <label class="pure-u-1">{{$t('grating.pitchY')}}</label>
+                    <input type="text" class="pitch-field" :value="pitchYLabel" readonly tabindex="-1" />
                 </div> 
                 <div class="pure-u-1 btn-group row-spaced grating-actions">
                     <button class="pure-button pure-button-primary" @click="saveData() && createModelFile()"
@@ -433,8 +443,6 @@ export default {
                 DESCR:'',
                 SAFEX:5,
                 SAFEY:5,
-                gripperMouvement:0,
-                tickGripperComponent:0,
 				TRAY_ID:0, 
 				GRIPPER_ID:0, 
 				PIECE_ID:0,
@@ -446,14 +454,10 @@ export default {
             createNew:false,
             n_cln:0,
             n_row:0,
-            minSpaceX: 0,
-            minSpaceY: 0,
             spaceNullX:0,
             spaceNullY:0,
             x:0,
             y:0,
-            corrX:0,
-            corrY:0,
             gratingList:{},
             partList:{},
             gripperList:{},
@@ -488,16 +492,6 @@ export default {
                 this.grating.SAFEY=this.grating.height/2
             this.calculateData()
         },
-        'grating.gripperMouvement'(newValue){
-            if (newValue<0) 
-                this.grating.gripperMouvement=0
-            this.calculateData()
-        },
-        'grating.tickGripperComponent'(newValue){
-            if (newValue<0) 
-                this.grating.tickGripperComponent=0
-            this.calculateData()
-        }
     },
     methods: {
         calcolaY(p){
@@ -655,61 +649,65 @@ export default {
             if (this.grating.SAFEY < this.minSafeY) this.grating.SAFEY = this.minSafeY;
             this.grating.ID=this.$route.params.grating_ID;
         },
-        calculateCylinder(){ //da controllare con il file excell
-            // (2b) perimetro minBordo applicato ANCHE al cilindro (prima assente: buco chiuso)
-            this.n_cln=Math.floor((this.grating.width-2*this.minBordoX)/(this.x+2*(this.grating.gripperMouvement+this.grating.tickGripperComponent)+this.grating.SAFEX));
-            this.n_row=Math.floor((this.grating.height-2*this.minBordoY)/(this.y+this.grating.SAFEY));
-            this.minSpaceX=this.grating.gripperMouvement+this.grating.tickGripperComponent+this.grating.SAFEX
-            
-            this.minSpaceY=this.grating.SAFEY /////
-            this.spaceNullX=(this.grating.width-2*this.minBordoX)-((this.n_cln-1)*this.minSpaceX)-(this.n_cln*this.x)-(2*this.grating.SAFEX);
-            this.spaceNullY=(this.grating.height-2*this.minBordoY)-((this.n_row-1)*this.minSpaceY)-(this.n_row*this.y)-(2*this.grating.SAFEY);
-            
-            // (fase 2b) guardia anti-Infinity: con n=0 niente divisione
-            this.corrX=this.n_cln>0 ? Math.floor(this.spaceNullX/(this.n_cln)) : 0;
-            this.corrY=this.n_row>0 ? Math.floor(this.spaceNullY/(this.n_row)) : 0;
+        calculateCylinder(){
+            // (grating-pitch) FORMULA DICHIARATA:
+            //   passo X (centro-centro) = pezzo.x + SAFEX
+            //   passo Y (centro-centro) = pezzo.y + SAFEY
+            // SAFEX/SAFEY = DISTANZA TRA I PEZZI (riqualificata, gia'
+            // persistita a DB: zero cambi schema); la sicurezza pinza vive
+            // nel clamp min (minSafeX/minSafeY). Contributo chele ELIMINATO
+            // (era sempre 0: nessun input lo alimentava, e pesava 2x nel
+            // divisore ma 1x nel passo). n per asse = fencepost corretto:
+            // n pezzi occupano n*pezzo + (n-1)*distanza nell'area utile
+            // (width/height - 2*minBordo); il residuo centra la griglia
+            // (margini simmetrici, 2b). corrX/corrY morti rimossi.
+            const stepX = this.x + this.grating.SAFEX;
+            const stepY = this.y + this.grating.SAFEY;
+            const utilX = this.grating.width  - 2*this.minBordoX;
+            const utilY = this.grating.height - 2*this.minBordoY;
+            this.n_cln = (this.x>0 && stepX>0) ? Math.max(0, Math.floor((utilX + this.grating.SAFEX)/stepX)) : 0;
+            this.n_row = (this.y>0 && stepY>0) ? Math.max(0, Math.floor((utilY + this.grating.SAFEY)/stepY)) : 0;
+            this.spaceNullX = this.n_cln>0 ? utilX - this.n_cln*this.x - (this.n_cln-1)*this.grating.SAFEX : utilX;
+            this.spaceNullY = this.n_row>0 ? utilY - this.n_row*this.y - (this.n_row-1)*this.grating.SAFEY : utilY;
 
             for (let r=1; r<=this.n_row; r++){
                 for (let c=1;c<=this.n_cln; c++){
-                    let obj = {}    // {prisma:true, x:700, y:500, status:7},
+                    let obj = {}    // {prisma:false, x:700, y:500, status:2},
                     obj.prisma = false;
-                    // (2b) distribuzione CENTRATA: origine con meta' residuo -> margini simmetrici
-                    obj.x=-this.minBordoX+this.grating.width-(this.minSpaceX+this.x)*c +this.x/2-this.spaceNullX/2;
-                    obj.y=-this.minBordoY+this.grating.height-(this.minSpaceY+this.y)*r+this.y/2-this.spaceNullY/2;
+                    // centro cerchio: spigolo prisma equivalente + pezzo/2;
+                    // margini simmetrici: residuo/2 per lato
+                    obj.x=-this.minBordoX+this.grating.width+this.grating.SAFEX-stepX*c+this.x/2-this.spaceNullX/2;
+                    obj.y=-this.minBordoY+this.grating.height+this.grating.SAFEY-stepY*r+this.y/2-this.spaceNullY/2;
                     obj.status=2;
                     this.listPz.push(obj);
                 }
             }
-            //console.log(JSON.stringify(this.listPz,null,4));
             this.radius=this.x/2;
         },
         calculatePrisma(){
-            this.n_cln=Math.floor((this.grating.width-2*this.minBordoX)/(this.x+2*(this.grating.gripperMouvement+this.grating.tickGripperComponent)+this.grating.SAFEX));
-            this.n_row=Math.floor((this.grating.height-2*this.minBordoY)/(this.y+this.grating.SAFEY));
-            this.minSpaceX=this.grating.gripperMouvement+this.grating.tickGripperComponent+this.grating.SAFEX
-            this.minSpaceY=this.grating.SAFEY
-            this.spaceNullX=(this.grating.width-2*this.minBordoX)-((this.n_cln-1)*this.minSpaceX)-(this.n_cln*this.x)-(2*this.grating.SAFEX);
-            this.spaceNullY=(this.grating.height-2*this.minBordoY)-((this.n_row-1)*this.minSpaceY)-(this.n_row*this.y)-(2*this.grating.SAFEY);
-            
-            // (fase 2b) guardia anti-Infinity: con un solo pezzo per asse
-            // non esistono interstizi da allargare -> corr=0 (il residuo
-            // resta a bordo, lato opposto al riempimento); mai Infinity
-            // iniettabile in SAFEX via distribute().
-            this.corrX=this.n_cln>1 ? Math.floor(this.spaceNullX/(this.n_cln-1)) : 0;
-            this.corrY=this.n_row>1 ? Math.floor(this.spaceNullY/(this.n_row-1)) : 0;
+            // (grating-pitch) stessa formula dichiarata di calculateCylinder:
+            //   passo = pezzo + distanza (SAFEX/SAFEY), fencepost su area
+            //   utile, residuo centrato. obj.x/y = spigolo del prisma.
+            const stepX = this.x + this.grating.SAFEX;
+            const stepY = this.y + this.grating.SAFEY;
+            const utilX = this.grating.width  - 2*this.minBordoX;
+            const utilY = this.grating.height - 2*this.minBordoY;
+            this.n_cln = (this.x>0 && stepX>0) ? Math.max(0, Math.floor((utilX + this.grating.SAFEX)/stepX)) : 0;
+            this.n_row = (this.y>0 && stepY>0) ? Math.max(0, Math.floor((utilY + this.grating.SAFEY)/stepY)) : 0;
+            this.spaceNullX = this.n_cln>0 ? utilX - this.n_cln*this.x - (this.n_cln-1)*this.grating.SAFEX : utilX;
+            this.spaceNullY = this.n_row>0 ? utilY - this.n_row*this.y - (this.n_row-1)*this.grating.SAFEY : utilY;
 
             for (let r=1; r<=this.n_row; r++){
                 for (let c=1;c<=this.n_cln; c++){
-                    let obj = {}    // {prisma:true, x:700, y:500, status:7},
+                    let obj = {}    // {prisma:true, x:700, y:500, status:2},
                     obj.prisma = true;
-                    // (2b) distribuzione CENTRATA: origine con meta' residuo -> margini simmetrici
-                    obj.x=-this.minBordoX+this.grating.width-(this.minSpaceX+this.x)*c-this.spaceNullX/2;
-                    obj.y=-this.minBordoY+this.grating.height-(this.minSpaceY+this.y)*r-this.spaceNullY/2;
+                    // margini simmetrici: residuo/2 per lato
+                    obj.x=-this.minBordoX+this.grating.width+this.grating.SAFEX-stepX*c-this.spaceNullX/2;
+                    obj.y=-this.minBordoY+this.grating.height+this.grating.SAFEY-stepY*r-this.spaceNullY/2;
                     obj.status=2;
                     this.listPz.push(obj);
                 }
             }
-            //console.log(JSON.stringify(this.listPz,null,4));
             this.dim_x=this.x;
             this.dim_y=this.y;
         },
@@ -949,6 +947,20 @@ export default {
         }
     },
     computed:{
+        // (grating-pitch) interasse risultante (centro-centro) che finira'
+        // a DB: pezzo + distanza, aggiornato live; null finche' manca il pezzo
+        pitchX(){
+            return this.grating.pieceIndex>0 ? this.x + this.grating.SAFEX : null;
+        },
+        pitchY(){
+            return this.grating.pieceIndex>0 ? this.y + this.grating.SAFEY : null;
+        },
+        pitchXLabel(){
+            return this.pitchX!=null ? this.pitchX+' mm' : '\u2014';
+        },
+        pitchYLabel(){
+            return this.pitchY!=null ? this.pitchY+' mm' : '\u2014';
+        },
         // ==================================================================
         // CANTIERE AL — UNICA modifica script ammessa dal gate: viewBox
         // reattivo sui bounds reali della scena. Bounds del profilo esterno
@@ -1107,5 +1119,19 @@ export default {
         .noPrint{
             display: none;
         }
+    }
+
+    /* (grating-pitch) campo interasse read-only: da form ma chiaramente
+       non editabile (feedback, non input) */
+    .pitch-field {
+        box-sizing: border-box;
+        min-height: 44px;
+        padding: var(--space-1) var(--space-3);
+        background: var(--bg-surface);
+        color: var(--text-secondary);
+        border: 1px dashed var(--border-default);
+        border-radius: var(--radius-md);
+        font-size: var(--font-size-base);
+        cursor: default;
     }
 </style>
