@@ -76,16 +76,28 @@ router.get('/insertPositionTray', (req, res) => {
         }
 		
 		var request = new sql.Request();
-		let quotaZ = (parseInt(req.query.TRAY_ID)-1)*100000; //interasse tra cassetti easybox =100
+		// POSITION.Z dei cassetti = 0 per convenzione; l'origine Z è TRAY.Z_CORR
+		// (teaching); la componente pezzo viene dall'anagrafica (Z e Z_PICK del PIECE)
+		// (tray-teaching, punto D) INSERT...SELECT: ROT e APPROACH ereditati dal
+		// TRAY associato (FLOOR_MAG = TRAY_ID del chiamante), COALESCE coi
+		// default storici (rot 0, approach type 3 / 100000): comportamento
+		// attuale al byte se il TRAY non e' mai stato insegnato. TOP 1 =
+		// robustezza contro eventuali doppioni di FLOOR_MAG (mai piu' di una
+		// riga inserita). NB: TRAY inesistente -> 0 righe (i chiamanti passano
+		// sempre un FLOOR_MAG reale dalla trayList). PREREQUISITO: colonne del
+		// DDL scripts/tray-teaching.sql (la SELECT le nomina).
         let query = `INSERT INTO [POSITION]
-					(PARENT, POS, SUB_POS, STATUS, X, Y, Z, X_ROT, Y_ROT, Z_ROT, APPROACH_TYPE, Part_Type)
-					VALUES('TRAY_${req.query.TRAY_ID}', 
-						${req.query.POS}, 
-						${req.query.SUB_POS}, 
-						${req.query.STATUS}, 
-						${req.query.X}, ${req.query.Y}, ${quotaZ}, 
-						0, 0, 0, 
-						3, ${req.query.PIECE_TYPE});`;
+					(PARENT, POS, SUB_POS, STATUS, X, Y, Z, X_ROT, Y_ROT, Z_ROT, APPROACH_TYPE, APPROACH_X, APPROACH_Y, APPROACH_Z, Part_Type)
+					SELECT 'TRAY_${req.query.TRAY_ID}',
+						${req.query.POS},
+						${req.query.SUB_POS},
+						${req.query.STATUS},
+						${req.query.X}, ${req.query.Y}, 0,
+						COALESCE(t.X_ROT,0), COALESCE(t.Y_ROT,0), COALESCE(t.Z_ROT,0),
+						COALESCE(t.APPROACH_TYPE,3), COALESCE(t.APPROACH_X,100000), COALESCE(t.APPROACH_Y,100000), COALESCE(t.APPROACH_Z,100000),
+						${req.query.PIECE_TYPE}
+					FROM (SELECT TOP 1 X_ROT, Y_ROT, Z_ROT, APPROACH_TYPE, APPROACH_X, APPROACH_Y, APPROACH_Z
+						  FROM TRAY WHERE FLOOR_MAG=${req.query.TRAY_ID}) t;`;
 
         log.info('query ' + query);
         // query to the database and get the records
@@ -111,16 +123,20 @@ router.get('/updatePositionTray', (req, res) => {
         }
 
 		var request = new sql.Request();
-		let quotaZ = 0;
-		if (req.query.EASYBOX === 'true'){
-			quotaZ = (parseInt(req.query.TRAY_ID)-1)*100000; //interasse tra cassetti easybox =100
-		}
+		// POSITION.Z dei cassetti = 0 per convenzione; l'origine Z è TRAY.Z_CORR
+		// (teaching); la componente pezzo viene dall'anagrafica (Z e Z_PICK del PIECE)
+		// (tray-teaching, punto E) Z=0 FISSO. Il param EASYBOX resta accettato e
+		// IGNORATO per la Z (prima sceglieva interasse nominale/0 per tipo
+		// magazzino): con la convenzione la Z non dipende piu' dal tipo, e i 3
+		// chiamanti (Grating/GratingTest/ImportGrating) restano intatti.
+		// ROT e APPROACH non vengono toccati qui: il teaching sopravvive alla
+		// ri-associazione del grigliato.
         let query = `UPDATE [POSITION] SET 
 					STATUS=${req.query.STATUS},
 					X=${req.query.X},
 					Y=${req.query.Y},
 					Part_Type=${req.query.PIECE_TYPE},
-					Z=${quotaZ}
+					Z=0
 					WHERE 
 						PARENT like 'TRAY_${req.query.TRAY_ID} %' AND 
 						POS=${req.query.POS} AND 

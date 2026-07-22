@@ -173,6 +173,62 @@
                     <br>
                     
                 </div>
+                <!-- ===== (tray-teaching) Rotazioni di presa =====
+                     millesimi di grado a DB, gradi a video; al salvataggio
+                     vengono propagate alle [POSITION] del cassetto. -->
+                <h4 class="section-label">{{$t('tray.sectionRot')}}</h4>
+                <div class="pure-control-group">
+                    <label for="aligned-foo">{{$t('tray.X_Rot')}}</label>
+                    <numericField name="X_ROT" unitMeasure="&deg;" min="-180" max="180" step="0.1"
+                        :model-value="tray.X_ROT"
+                        @update="newValue => tray.X_ROT = newValue" ></numericField>
+                </div>
+                <div class="pure-control-group">
+                    <label for="aligned-foo">{{$t('tray.Y_Rot')}}</label>
+                    <numericField name="Y_ROT" unitMeasure="&deg;" min="-180" max="180" step="0.1"
+                        :model-value="tray.Y_ROT"
+                        @update="newValue => tray.Y_ROT = newValue" ></numericField>
+                </div>
+                <div class="pure-control-group">
+                    <label for="aligned-foo">{{$t('tray.Z_Rot')}}</label>
+                    <numericField name="Z_ROT" unitMeasure="&deg;" min="-180" max="180" step="0.1"
+                        :model-value="tray.Z_ROT"
+                        @update="newValue => tray.Z_ROT = newValue" ></numericField>
+                </div>
+
+                <!-- ===== (tray-teaching) Avvicinamento =====
+                     APPROACH_TYPE dalla approachList (gia' caricata dal form,
+                     finora inutilizzata) + quote in mm (millesimi a DB). -->
+                <h4 class="section-label">{{$t('tray.sectionApproach')}}</h4>
+                <div class="pure-control-group">
+                    <label for="aligned-foo">{{$t('tray.tipoApproccio')}}</label>
+                    <select id="aligned-foo" name="TIPO_APPROCCIO" v-model="tray.APPROACH_TYPE" :readonly="dataStored.userLevel==0">
+                        <template v-for="ap in approachList" :key="ap.ID">
+                            <option :value="ap.ID">
+                                {{ ap.DESCR }}  &nbsp;&nbsp;&nbsp;&nbsp;({{$t('Code')}} {{ ap.ID }})
+                            </option>
+                        </template>
+                    </select>
+                </div>
+                <div class="pure-control-group">
+                    <label for="aligned-foo">{{$t('tray.approachX')}}</label>
+                    <numericField name="APPROACH_X" unitMeasure="mm" min="-500" max="500" step="1"
+                        :model-value="tray.APPROACH_X"
+                        @update="newValue => tray.APPROACH_X = newValue" ></numericField>
+                </div>
+                <div class="pure-control-group">
+                    <label for="aligned-foo">{{$t('tray.approachY')}}</label>
+                    <numericField name="APPROACH_Y" unitMeasure="mm" min="-500" max="500" step="1"
+                        :model-value="tray.APPROACH_Y"
+                        @update="newValue => tray.APPROACH_Y = newValue" ></numericField>
+                </div>
+                <div class="pure-control-group">
+                    <label for="aligned-foo">{{$t('tray.approachZ')}}</label>
+                    <numericField name="APPROACH_Z" unitMeasure="mm" min="-500" max="500" step="1"
+                        :model-value="tray.APPROACH_Z"
+                        @update="newValue => tray.APPROACH_Z = newValue" ></numericField>
+                </div>
+
                 <div class="pure-controls">
                     <button class="pure-button pure-button-primary" @click="saveData()" :disabled="dataStored.userLevel==0">
                         Save
@@ -207,7 +263,15 @@ export default {
                 FLOOR_MAG:-1, 
                 X_CORR:0, 
                 Y_CORR:0, 
-                Z_CORR:0
+                Z_CORR:0,
+                // (tray-teaching) rotazioni di presa (gradi a video) e
+                // avvicinamento (mm a video) — vedi conversioni load/save
+                X_ROT:0,
+                Y_ROT:0,
+                Z_ROT:0,
+                APPROACH_X:100,
+                APPROACH_Y:100,
+                APPROACH_Z:100
             },
             createNew:false,
             approachList:{},
@@ -249,6 +313,16 @@ export default {
                     this.tray.X_CORR = this.tray.X_CORR / 1000;
                     this.tray.Y_CORR = this.tray.Y_CORR / 1000;
                     this.tray.Z_CORR = this.tray.Z_CORR / 1000;
+                    // (tray-teaching) rotazioni (millesimi di grado -> gradi)
+                    // e avvicinamenti (millesimi -> mm). NULL = mai insegnato:
+                    // a video il valore EFFETTIVO di fallback (0 rot, 100 mm);
+                    // salvandolo si scrive quel fallback = comportamento identico.
+                    this.tray.X_ROT = this.tray.X_ROT == null ? 0 : this.tray.X_ROT / 1000;
+                    this.tray.Y_ROT = this.tray.Y_ROT == null ? 0 : this.tray.Y_ROT / 1000;
+                    this.tray.Z_ROT = this.tray.Z_ROT == null ? 0 : this.tray.Z_ROT / 1000;
+                    this.tray.APPROACH_X = this.tray.APPROACH_X == null ? 100 : this.tray.APPROACH_X / 1000;
+                    this.tray.APPROACH_Y = this.tray.APPROACH_Y == null ? 100 : this.tray.APPROACH_Y / 1000;
+                    this.tray.APPROACH_Z = this.tray.APPROACH_Z == null ? 100 : this.tray.APPROACH_Z / 1000;
                 })
                 .catch(error => {
                     console.info(error);
@@ -287,32 +361,63 @@ export default {
                 });
         },
         saveData() {
-            this.tray.X = this.tray.X * 1000;
-            this.tray.Y = this.tray.Y * 1000;
+            // (tray-teaching, fix vizio 396000) conversioni su COPIA locale:
+            // MAI mutare this.tray — un doppio click o un fetch fallito con
+            // risalvataggio moltiplicherebbero di nuovo x1000 (incidente
+            // storico form Pallet). Pattern AE: riga fresca + campi editati.
+            const p = Object.assign({}, this.tray);
+            p.X = Math.round(p.X * 1000);
+            p.Y = Math.round(p.Y * 1000);
+            p.X_CORR = Math.round(p.X_CORR * 1000);
+            p.Y_CORR = Math.round(p.Y_CORR * 1000);
+            p.Z_CORR = Math.round(p.Z_CORR * 1000);
+            // (tray-teaching) gradi -> millesimi di grado; mm -> millesimi
+            p.X_ROT = Math.round(p.X_ROT * 1000);
+            p.Y_ROT = Math.round(p.Y_ROT * 1000);
+            p.Z_ROT = Math.round(p.Z_ROT * 1000);
+            p.APPROACH_X = Math.round(p.APPROACH_X * 1000);
+            p.APPROACH_Y = Math.round(p.APPROACH_Y * 1000);
+            p.APPROACH_Z = Math.round(p.APPROACH_Z * 1000);
 
-            this.tray.X_CORR = this.tray.X_CORR * 1000;
-            this.tray.Y_CORR = this.tray.Y_CORR * 1000;
-            this.tray.Z_CORR = this.tray.Z_CORR * 1000;
-            
             var cmd = ""
             if (!this.createNew){
                 //eseguo aggiornamento -> update DB
-                cmd = dataStored.server+'api/conf/tray/updatetray?' + new URLSearchParams( this.tray ).toString();
+                cmd = dataStored.server+'api/conf/tray/updatetray?' + new URLSearchParams( p ).toString();
             }else{
                 //nuovo cassetto -> insert DB
-                cmd = dataStored.server+'api/conf/tray/inserttray?' + new URLSearchParams( this.tray ).toString();
-                console.log(JSON.stringify(this.tray,null,4))
+                cmd = dataStored.server+'api/conf/tray/inserttray?' + new URLSearchParams( p ).toString();
             }
             fetch( cmd ,{ method: 'GET'})
                 .then(response => {
                     if (!response.ok) {
                         throw new Error('Network response was not ok');
                     }
-                    //return this.$router.go(-8);  //va per fortuna?
-                    return this.$router.push('/conf/Trays');
+                    // (tray-teaching) rotazioni+avvicinamento propagati alle
+                    // [POSITION] del cassetto, con conferma "applicato a N"
+                    if (!this.createNew && this.tray.FLOOR_MAG > 0)
+                        return this.propagateTeaching(p);
                 })
+                .then(() => this.$router.push('/conf/Trays'))
                 .catch(error => {
                     console.info(error);
+                });
+        },
+        // (tray-teaching) ROT+APPROACH del cassetto -> [POSITION] TRAY_n
+        // esistenti; il backend risponde "OK;<n>" per la conferma a video.
+        propagateTeaching(p) {
+            const params = new URLSearchParams({
+                FLOOR_MAG: this.tray.FLOOR_MAG,
+                X_ROT: p.X_ROT, Y_ROT: p.Y_ROT, Z_ROT: p.Z_ROT,
+                APPROACH_TYPE: p.APPROACH_TYPE,
+                APPROACH_X: p.APPROACH_X, APPROACH_Y: p.APPROACH_Y, APPROACH_Z: p.APPROACH_Z
+            });
+            return fetch(dataStored.server+'api/conf/tray/propagateTeaching?'+params.toString(), { method: 'GET' })
+                .then(r => { if (!r.ok) throw new Error('Network response was not ok'); return r.text(); })
+                .then(body => {
+                    const n = (body || '').indexOf('OK;') == 0 ? body.slice(3) : '0';
+                    dataStored.alert.title = 'INFO';
+                    dataStored.alert.desc = this.$t('tray.teach.applied', { n: n });
+                    dataStored.alert.type = 'message';
                 });
         }
     },

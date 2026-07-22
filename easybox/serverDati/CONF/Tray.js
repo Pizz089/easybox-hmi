@@ -43,6 +43,19 @@ router.get('/updateTray', (req, res) => {
             return;
         }
 
+		// (tray-teaching) colonne di teaching OPZIONALI — clausola solo se il
+		// chiamante le manda (pattern PALLET_ID di updateVice: i chiamanti che
+		// rimandano righe lette PRIMA del DDL non le hanno, un undefined
+		// interpolato romperebbe la query e azzererebbe il teaching a ogni
+		// salvataggio). Non numerico -> NULL (= mai insegnato).
+		let teachClause = '';
+		for (const col of ['X_ROT','Y_ROT','Z_ROT','APPROACH_X','APPROACH_Y','APPROACH_Z']) {
+			if (req.query[col] != undefined) {
+				const v = parseInt(req.query[col]);
+				teachClause += `, ${col}=${isNaN(v) ? 'NULL' : v}`;
+			}
+		}
+
 		let query = `UPDATE TRAY SET 
 					MAG='${req.query.MAG}', 
 					FAMILY='${req.query.FAMILY}', 
@@ -56,7 +69,7 @@ router.get('/updateTray', (req, res) => {
 					FLOOR_MAG='${req.query.FLOOR_MAG}', 
 					X_CORR='${req.query.X_CORR}', 
 					Y_CORR='${req.query.Y_CORR}', 
-					Z_CORR='${req.query.Z_CORR}'
+					Z_CORR='${req.query.Z_CORR}'${teachClause}
 					WHERE ID='${req.query.ID}';`
 		
 		var request = new sql.Request();
@@ -408,6 +421,120 @@ router.get('/resetInsert/:trayID', (req, res) => {
             }else
 				res.send(recordset.recordset)
         });
+	});
+})
+
+//////////////////////////////////////////////////////////
+////////// TEACHING CASSETTIERA (tray-teaching) //////////
+//////////////////////////////////////////////////////////
+
+// Coordinate di estrazione per-piano (tabella solo-PLC, 12 righe TRAY 1..12):
+// al pannello servono i DELTA XYZ tra piani per derivare il teaching degli
+// altri 11 cassetti dal campione. Sola lettura.
+router.get('/extractCoords', (req, res) => {
+	sql.connect(DBf.configDB, function (err) {
+		if (err) {
+			log.error("err extractCoords: " + err);
+			return;
+		}
+		let query = `select * from COORDINATES_FOR_EXTRACT order by TRAY;`
+		var request = new sql.Request();
+		log.info('query ' + query);
+		request.query(query, function (err, recordset) {
+			if (err) {
+				log.error("Err query: " + err)
+				res.json([])
+			}else
+				res.send(recordset.recordset)
+		});
+	});
+})
+
+// Scrittura ATOMICA del teaching su tutta la cassettiera (comando "0").
+// Input: rows = JSON [{tray:1..12, xCorr,yCorr,zCorr,xRot,yRot,zRot}, ...]
+// (millesimi interi). Validazione numerica server-side: QUALUNQUE campo non
+// numerico -> KO_BAD_INPUT, nessuna scrittura. Per ogni riga, nella STESSA
+// transazione (SET XACT_ABORT ON + BEGIN TRAN: qualsiasi errore runtime
+// annulla TUTTO — o si scrive tutta la cassettiera o niente):
+//   1. UPDATE TRAY (CORR+ROT) WHERE FLOOR_MAG=tray (piano senza riga TRAY:
+//      no-op, non errore — il pannello lo annota in anteprima);
+//   2. UPDATE [POSITION] ROT + Z=0 WHERE PARENT like 'TRAY_n %'.
+//      Z=0 = migrazione alla CONVENZIONE (vedi Position.js): le righe
+//      vecchio-regime con Z=interasse vengono azzerate QUI, nella stessa
+//      transazione del teaching che mette la quota assoluta in TRAY.Z_CORR.
+router.get('/teachTrays', (req, res) => {
+	let rows;
+	try { rows = JSON.parse(req.query.rows); } catch (e) { res.send("KO_BAD_INPUT"); return; }
+	if (!Array.isArray(rows) || rows.length < 1 || rows.length > 12) { res.send("KO_BAD_INPUT"); return; }
+	const FIELDS = ['xCorr','yCorr','zCorr','xRot','yRot','zRot'];
+	for (const r of rows) {
+		const tray = Number(r && r.tray);
+		if (!Number.isInteger(tray) || tray < 1 || tray > 12) { res.send("KO_BAD_INPUT"); return; }
+		for (const f of FIELDS)
+			if (!Number.isFinite(Number(r[f]))) { res.send("KO_BAD_INPUT"); return; }
+	}
+	sql.connect(DBf.configDB, function (err) {
+		if (err) {
+			log.error("err teachTrays: " + err);
+			res.send("KO");
+			return;
+		}
+		// tutti i valori passano da Math.round(Number()) DOPO la validazione:
+		// nella query entrano SOLO numeri.
+		let query = "SET XACT_ABORT ON; BEGIN TRAN;";
+		for (const r of rows) {
+			const t = Math.round(Number(r.tray));
+			const v = f => Math.round(Number(r[f]));
+			query += ` UPDATE TRAY SET X_CORR=${v('xCorr')}, Y_CORR=${v('yCorr')}, Z_CORR=${v('zCorr')}, X_ROT=${v('xRot')}, Y_ROT=${v('yRot')}, Z_ROT=${v('zRot')} WHERE FLOOR_MAG=${t};`;
+			query += ` UPDATE [POSITION] SET X_ROT=${v('xRot')}, Y_ROT=${v('yRot')}, Z_ROT=${v('zRot')}, Z=0 WHERE PARENT like 'TRAY_${t} %';`;
+		}
+		query += " COMMIT TRAN;";
+		var request = new sql.Request();
+		log.info('query ' + query);
+		request.query(query, function (err) {
+			if (err) {
+				log.error("Err query: " + err)
+				res.send("KO")
+			}else
+				res.send("OK")
+		});
+	});
+})
+
+// Propagazione teaching del SINGOLO cassetto (form Tray): ROT + APPROACH
+// gia' persistiti su TRAY -> [POSITION] TRAY_n esistenti. Risponde
+// "OK;<n righe>" per la conferma "applicato a N posizioni" a video.
+router.get('/propagateTeaching', (req, res) => {
+	const num = k => Number(req.query[k]);
+	const COLS = ['X_ROT','Y_ROT','Z_ROT','APPROACH_TYPE','APPROACH_X','APPROACH_Y','APPROACH_Z'];
+	const floor = num('FLOOR_MAG');
+	if (!Number.isInteger(floor) || floor < 1 || floor > 12 || COLS.some(c => !Number.isFinite(num(c)))) {
+		res.send("KO_BAD_INPUT");
+		return;
+	}
+	sql.connect(DBf.configDB, function (err) {
+		if (err) {
+			log.error("err propagateTeaching: " + err);
+			res.send("KO");
+			return;
+		}
+		// SET NOCOUNT ON + COUNT esplicita: su [POSITION] c'e' un trigger
+		// (POSITION_trig) i cui conteggi finiscono in rowsAffected PRIMA di
+		// quello dell'UPDATE — il numero per la conferma a video va contato
+		// a parte, non letto da rowsAffected.
+		let query = `SET NOCOUNT ON; UPDATE [POSITION] SET ` +
+			COLS.map(c => `${c}=${Math.round(num(c))}`).join(', ') +
+			` WHERE PARENT like 'TRAY_${floor} %';` +
+			` SELECT COUNT(*) as n FROM [POSITION] WHERE PARENT like 'TRAY_${floor} %';`;
+		var request = new sql.Request();
+		log.info('query ' + query);
+		request.query(query, function (err, result) {
+			if (err) {
+				log.error("Err query: " + err)
+				res.send("KO")
+			}else
+				res.send("OK;" + (result.recordset && result.recordset[0] ? result.recordset[0].n : 0))
+		});
 	});
 })
 

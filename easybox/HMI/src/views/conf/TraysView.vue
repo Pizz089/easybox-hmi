@@ -4,6 +4,8 @@
     
     import { ref, onMounted } from 'vue'
     import { dataStored } from '../../data';
+    // (tray-teaching) campo numerico condiviso per i 6 valori pendant
+    import numericField from '../../components/numericField.vue'
     const el = ref()
 </script>
 
@@ -13,6 +15,11 @@
             <h3 class="view-title">{{$t('tray.welcome')}}</h3>
             <button class="pure-button pure-button-primary" :class="{'pure-button-disabled':dataStored.userLevel<=1}" :id="locked" @click="createTray()">
                 {{$t('tray.add_Tray')}}
+            </button>
+            <!-- (tray-teaching) comando "0 CASSETTIERA": un solo teaching sul
+                 cassetto campione, derivazione automatica degli altri 11 -->
+            <button class="pure-button pure-button-primary" :class="{'pure-button-disabled':dataStored.userLevel<=1}" :id="locked" @click="openTeach()">
+                {{$t('tray.teach.button')}}
             </button>
         </div>
         <div class="table-scroll">
@@ -91,6 +98,143 @@
             </tbody>
         </table>
         </div>
+
+        <!-- ===== (tray-teaching) dialog comando "0 CASSETTIERA" =====
+             3 passi: campione eleggibile -> 6 valori pendant -> ANTEPRIMA
+             obbligatoria (12 righe in mm) -> scrittura transazionale. -->
+        <div v-if="teach.open" class="mission-dialog-overlay">
+          <div class="mission-dialog">
+            <h3 class="command-section-title">{{ $t('tray.teach.title') }}</h3>
+
+            <!-- passo 1: cassetto CAMPIONE (eleggibile = posizioni a DB) -->
+            <template v-if="teach.step==1">
+              <div class="teach-hint">{{ $t('tray.teach.chooseSample') }}</div>
+              <div class="teach-list">
+                <button v-for="n in 12" :key="n" class="mission-dialog-item"
+                  :class="{ selected: teach.sample===n }"
+                  :disabled="!eligibleFloors.has(n)"
+                  @click="teach.sample=n">
+                  <span>{{ $t('tray.teach.floor') }} {{ n }}</span>
+                  <span v-if="!eligibleFloors.has(n)" class="teach-muted">{{ $t('tray.teach.notEligible') }}</span>
+                </button>
+              </div>
+              <div class="pure-g">
+                <div class="pure-u-1-2">
+                  <button style="width:100%" class="button_pressed"
+                    :class="[teach.sample==null ? 'pure-button-disable' : 'pure-button-mission']"
+                    @click="teach.sample!=null ? teach.step=2 : ''">
+                    {{ $t('tray.teach.next') }}
+                  </button>
+                </div>
+                <div class="pure-u-1-2">
+                  <button style="width:100%" class="btn-ghost" @click="closeTeach()">
+                    {{ $t('robot.dialog.cancel') }}
+                  </button>
+                </div>
+              </div>
+            </template>
+
+            <!-- passo 2: valori pendant (X/Y/Z mm, RX/RY/RZ gradi) -->
+            <template v-if="teach.step==2">
+              <div class="teach-hint">{{ $t('tray.teach.pendantHint', { n: teach.sample }) }}</div>
+              <div class="teach-field">
+                <label>X [mm]</label>
+                <numericField name="teachX" step=0.01 min=-3000 max=3000
+                  :model-value="teach.px" @update="v => teach.px = v"></numericField>
+              </div>
+              <div class="teach-field">
+                <label>Y [mm]</label>
+                <numericField name="teachY" step=0.01 min=-3000 max=3000
+                  :model-value="teach.py" @update="v => teach.py = v"></numericField>
+              </div>
+              <div class="teach-field">
+                <label>Z [mm]</label>
+                <numericField name="teachZ" step=0.01 min=-3000 max=3000
+                  :model-value="teach.pz" @update="v => teach.pz = v"></numericField>
+              </div>
+              <div class="teach-hint">{{ $t('tray.teach.rotHint') }}</div>
+              <div class="teach-field">
+                <label>RX [&deg;]</label>
+                <numericField name="teachRX" step=0.1 min=-360 max=360
+                  :model-value="teach.rx" @update="v => teach.rx = v"></numericField>
+              </div>
+              <div class="teach-field">
+                <label>RY [&deg;]</label>
+                <numericField name="teachRY" step=0.1 min=-360 max=360
+                  :model-value="teach.ry" @update="v => teach.ry = v"></numericField>
+              </div>
+              <div class="teach-field">
+                <label>RZ [&deg;]</label>
+                <numericField name="teachRZ" step=0.1 min=-360 max=360
+                  :model-value="teach.rz" @update="v => teach.rz = v"></numericField>
+              </div>
+              <div class="pure-g">
+                <div class="pure-u-1-3">
+                  <button style="width:100%" class="btn-ghost" @click="teach.step=1">
+                    {{ $t('tray.teach.back') }}
+                  </button>
+                </div>
+                <div class="pure-u-1-3">
+                  <button style="width:100%" class="button_pressed pure-button-mission" @click="calcPreview()">
+                    {{ $t('tray.teach.next') }}
+                  </button>
+                </div>
+                <div class="pure-u-1-3">
+                  <button style="width:100%" class="btn-ghost" @click="closeTeach()">
+                    {{ $t('robot.dialog.cancel') }}
+                  </button>
+                </div>
+              </div>
+            </template>
+
+            <!-- passo 3: ANTEPRIMA obbligatoria -->
+            <template v-if="teach.step==3">
+              <div class="teach-hint">{{ $t('tray.teach.preview') }}</div>
+              <div class="table-scroll">
+                <table class="pure-table pure-table-horizontal teach-table">
+                  <thead>
+                    <tr>
+                      <th>{{ $t('tray.teach.floor') }}</th>
+                      <th>X_CORR [mm]</th>
+                      <th>Y_CORR [mm]</th>
+                      <th>Z_CORR [mm]</th>
+                      <th>&nbsp;</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="r in teach.preview" :key="r.tray" :class="{'pure-table-odd': r.tray % 2==1}">
+                      <td><strong>{{ r.tray }}</strong>{{ r.tray==teach.sample ? ' *' : '' }}</td>
+                      <td>{{ mm(r.xCorr) }}</td>
+                      <td>{{ mm(r.yCorr) }}</td>
+                      <td>{{ mm(r.zCorr) }}</td>
+                      <td><span v-if="!r.hasTray" class="teach-muted">{{ $t('tray.teach.noTrayRow') }}</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="teach-hint">
+                {{ $t('tray.teach.rotSummary') }}: RX {{ teach.rx }}&deg; &middot; RY {{ teach.ry }}&deg; &middot; RZ {{ teach.rz }}&deg;
+              </div>
+              <div class="pure-g">
+                <div class="pure-u-1-3">
+                  <button style="width:100%" class="btn-ghost" @click="teach.step=2">
+                    {{ $t('tray.teach.back') }}
+                  </button>
+                </div>
+                <div class="pure-u-1-3">
+                  <button style="width:100%" class="button_pressed pure-button-mission" @click="confirmTeach()">
+                    {{ $t('tray.teach.write') }}
+                  </button>
+                </div>
+                <div class="pure-u-1-3">
+                  <button style="width:100%" class="btn-ghost" @click="closeTeach()">
+                    {{ $t('robot.dialog.cancel') }}
+                  </button>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
       </div>
 </template>
 
@@ -101,7 +245,19 @@ export default {
             datiTab:[],
             showPopUp:0,
             //polling:true,
-			allInside:false
+			allInside:false,
+            // (tray-teaching) dialog "0 CASSETTIERA": step 1 campione,
+            // step 2 pendant (mm/gradi), step 3 anteprima (millesimi interi).
+            teach: {
+                open: false,
+                step: 1,
+                sample: null,
+                px: 0, py: 0, pz: 0,
+                rx: 0, ry: 0, rz: 0,
+                positions: [],   // [POSITION] TRAY_% raw (eleggibilita' + SUB_POS 1)
+                cfe: [],         // COORDINATES_FOR_EXTRACT (delta tra piani)
+                preview: []      // 12 righe {tray, xCorr, yCorr, zCorr, hasTray}
+            }
         }
     },
     methods: {
@@ -186,6 +342,80 @@ export default {
         createTray(){
             this.$router.push('/conf/tray');
         },
+        // ===== (tray-teaching) comando "0 CASSETTIERA" =====
+        openTeach(){
+            this.teach.open = true;
+            this.teach.step = 1;
+            this.teach.sample = null;
+            this.teach.px = 0; this.teach.py = 0; this.teach.pz = 0;
+            this.teach.rx = 0; this.teach.ry = 0; this.teach.rz = 0;
+            this.teach.preview = [];
+            // posizioni raw dei cassetti (PARENT nchar PADDATO: trim) e
+            // coordinate di estrazione per-piano per i delta
+            fetch(dataStored.server+'api/conf/position/show/all',{ method: 'GET'})
+                .then(r => { if (!r.ok) throw new Error('Network response was not ok'); return r.json(); })
+                .then(d => { this.teach.positions = (d || []).filter(p => (p.PARENT || '').trim().indexOf('TRAY_') == 0); })
+                .catch(e => { console.info(e); this.teach.positions = []; });
+            fetch(dataStored.server+'api/conf/tray/extractCoords',{ method: 'GET'})
+                .then(r => { if (!r.ok) throw new Error('Network response was not ok'); return r.json(); })
+                .then(d => { this.teach.cfe = d || []; })
+                .catch(e => { console.info(e); this.teach.cfe = []; });
+        },
+        closeTeach(){
+            this.teach.open = false;
+        },
+        mm(v){
+            return (v / 1000).toFixed(3);
+        },
+        calcPreview(){
+            const f = this.teach.sample;
+            const p1 = this.teach.positions.find(p => p.PARENT.trim() == 'TRAY_'+f && p.SUB_POS == 1);
+            const cfeC = this.teach.cfe.find(c => c.TRAY == f);
+            if (!p1 || !cfeC) return;
+            // (Q1) CORR campione = pendant - (pos + pos_CORR) della POSIZIONE 1.
+            // Z: si sottrae SOLO pos.Z_CORR — pos.Z NON va sottratta perche'
+            // la transazione teachTrays la porta a 0 (convenzione E/Q6):
+            // sottrarla e poi azzerarla conterebbe doppio.
+            const corrC = {
+                x: Math.round(this.teach.px * 1000 - (p1.X + p1.X_CORR)),
+                y: Math.round(this.teach.py * 1000 - (p1.Y + p1.Y_CORR)),
+                z: Math.round(this.teach.pz * 1000 - p1.Z_CORR)
+            };
+            // delta tra piani da COORDINATES_FOR_EXTRACT (tutti e 3 gli assi:
+            // in cella varia solo Z, ma X/Y coprono i piani fuori canone)
+            const floorsWithTray = new Set(this.datiTab.map(t => t.FLOOR_MAG));
+            this.teach.preview = this.teach.cfe
+                .filter(c => c.TRAY >= 1 && c.TRAY <= 12)
+                .map(c => ({
+                    tray: c.TRAY,
+                    xCorr: corrC.x + (c.X - cfeC.X),
+                    yCorr: corrC.y + (c.Y - cfeC.Y),
+                    zCorr: corrC.z + (c.Z - cfeC.Z),
+                    hasTray: floorsWithTray.has(c.TRAY)
+                }));
+            this.teach.step = 3;
+        },
+        confirmTeach(){
+            // rotazioni pendant: uniformi per tutta la cassettiera (gradi ->
+            // millesimi di grado)
+            const rows = this.teach.preview.map(r => ({
+                tray: r.tray,
+                xCorr: r.xCorr, yCorr: r.yCorr, zCorr: r.zCorr,
+                xRot: Math.round(this.teach.rx * 1000),
+                yRot: Math.round(this.teach.ry * 1000),
+                zRot: Math.round(this.teach.rz * 1000)
+            }));
+            fetch(dataStored.server+'api/conf/tray/teachTrays?rows='+encodeURIComponent(JSON.stringify(rows)),{ method: 'GET'})
+                .then(r => { if (!r.ok) throw new Error('Network response was not ok'); return r.text(); })
+                .then(body => {
+                    dataStored.alert.title = body == 'OK' ? 'INFO' : this.$t('WARNING');
+                    dataStored.alert.desc = body == 'OK' ? 'tray.teach.writeOk' : 'tray.teach.writeErr';
+                    dataStored.alert.type = body == 'OK' ? 'message' : 'warning';
+                    this.closeTeach();
+                    this.getDataTable();
+                })
+                .catch(e => { console.info(e); });
+        },
         _showPopUp(i){
             if (this.showPopUp==i)
                 return true
@@ -214,6 +444,13 @@ export default {
 		}
     },
     computed:{
+        // (tray-teaching) piani eleggibili come campione: hanno la POSIZIONE 1
+        // a DB (un cassetto senza grigliato associato non e' eleggibile)
+        eligibleFloors(){
+            return new Set(this.teach.positions
+                .filter(p => p.SUB_POS == 1)
+                .map(p => parseInt(p.PARENT.trim().slice(5))));
+        },
         locked(){
             if (dataStored.userLevel<=1)
                 return 'locked4maintenance'
@@ -357,5 +594,98 @@ export default {
         background-color: var(--color-info-bg);
         color: var(--color-info);
         border-radius: var(--radius-lg);
+    }
+
+    /* ===== (tray-teaching) overlay canonico (stesso pattern scoped di
+       robotView/AttrezzaggiView: overlay a schermo pieno z 1000, card
+       dialog, voci touch) ===== */
+    .mission-dialog-overlay {
+        position: fixed;
+        inset: 0;
+        background: var(--bg-backdrop);
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .mission-dialog {
+        background: var(--bg-surface);
+        border: var(--border-card);
+        border-radius: var(--radius-md);
+        box-shadow: var(--elevation-3);
+        padding: var(--space-4);
+        width: min(560px, 92vw);
+        max-height: 85vh;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-4);
+    }
+
+    .mission-dialog-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: var(--space-4);
+        min-height: 52px;
+        padding: var(--space-2) var(--space-4);
+        background: var(--bg-input);
+        color: var(--text-primary);
+        border: 2px solid transparent;
+        border-radius: var(--radius-md);
+        font-size: var(--font-size-base);
+        cursor: pointer;
+        text-align: left;
+    }
+
+    .mission-dialog-item.selected {
+        background: var(--accent);
+        border-color: var(--accent-hover);
+        font-weight: var(--font-weight-semibold);
+    }
+
+    .mission-dialog-item:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    .teach-list {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: var(--space-2);
+    }
+
+    .teach-hint {
+        background: var(--color-info-bg);
+        color: var(--color-info);
+        border-radius: var(--radius-md);
+        padding: var(--space-2) var(--space-4);
+        font-size: var(--font-size-sm);
+    }
+
+    .teach-muted {
+        color: var(--text-muted);
+        font-size: var(--font-size-xs);
+        font-style: italic;
+    }
+
+    .teach-field {
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+    }
+
+    .teach-field label {
+        min-width: 64px;
+        color: var(--text-secondary);
+    }
+
+    .teach-table td, .teach-table th {
+        text-align: right;
+    }
+
+    .teach-table td:first-child, .teach-table th:first-child {
+        text-align: left;
     }
 </style>

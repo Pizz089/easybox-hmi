@@ -74,3 +74,28 @@ sqlcmd -S 172.20.70.80\SQLEXPRESS -U plc -P plc -d ADMG -Q "SELECT ID FROM WORKO
 Nota: tra gli ordini legacy ce n'è almeno uno con `VICE_ID=-1` (visto su dev):
 la convenzione nuova è VICE_ID=0 sempre — la bonifica a Status=7 li toglie
 comunque dal giro del dispatcher.
+
+## [ ] Tray-teaching — ORDINE OBBLIGATO in cella (DDL prima del backend)
+
+Il backend nuovo nomina le colonne di teaching di TRAY (insertPositionTray le
+usa nella INSERT...SELECT): senza DDL il salvataggio grigliato FALLISCE.
+Inoltre la convenzione POSITION.Z=0 entra in vigore col deploy: le righe
+POSITION esistenti (Z=interasse) vengono migrate a 0 SOLO dalla transazione
+del teaching. Sequenza obbligata:
+
+```
+-- 1) DDL (login plc senza ALTER: eseguire con -E):
+sqlcmd -S 172.20.70.80SQLEXPRESS -E -d ADMG -i tray-teaching.sql
+
+-- 2) deploy backend+HMI
+
+-- 3) teaching cassettiera dal pannello (Cassetti > "0 CASSETTIERA"):
+--    scrive TRAY.CORR/ROT di tutti e 12 e porta a 0 la Z delle POSITION
+--    esistenti nella STESSA transazione.
+
+-- 4) SOLO DOPO: eventuali ri-associazioni grigliato (le righe nuove nascono
+--    gia' con Z=0 e ROT/APPROACH ereditati dal TRAY).
+```
+
+NB: tra il punto 2 e il punto 3 NON ri-associare grigliati: righe con Z=0 ma
+TRAY.Z_CORR ancora vecchio-regime darebbero quote basse di ~800 mm.
