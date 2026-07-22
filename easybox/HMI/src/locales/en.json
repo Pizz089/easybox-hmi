@@ -308,6 +308,8 @@
       "unloadGripper": "Unload the on-board gripper?",
       "unloadAndSwap": "Unload and swap",
       "chooseSwapGripper": "Which gripper to load after unloading?",
+      "choosePalletPickMC": "Pick pallet from MC1 — choose the pallet",
+      "choosePalletPlaceMC": "Place pallet on MC1 — choose the pallet",
       "stateChanged": "State changed: command cancelled",
       "tray": "Tray",
       "confirm": "Confirm",
@@ -321,7 +323,8 @@
       "auxNotReset": "Auxiliaries not reset: press the reset",
       "notHold": "Robot not in HOLD: press HOLD to enable commands",
       "noGripperSystem": "No gripper on board according to the system",
-      "trayBusy": "Tray operation in progress"
+      "trayBusy": "Tray operation in progress",
+      "noTrayExtracted": "No tray extracted: extract a tray first"
     },
     "coherence": {
       "title": "Gripper coherence",
@@ -378,6 +381,8 @@
     "alarm_1010": "No pallet ready to work",
     "alarm_1021": "Gripper not empty",
     "alarm_15090": "Data for gripper not found",
+    "alarm_20001": "No tray extracted",
+    "alarm_20002": "Invalid part position",
     "alarm_30122": "Gripper not present",
     "alarm_30123": "Gripper not empty",
     "alarm_900000": "CONNECTION DB ERROR",
@@ -389,12 +394,26 @@
       "critical": "Critical commands",
       "movement": "Movements",
       "destination": "Destinations",
-      "mission": "Missions"
+      "mission": "Missions",
+      "test": "Mission testing"
     },
     "mission": {
       "gripper": "Gripper handling",
       "tray": "Tray handling",
       "pallet": "Pallet handling"
+    },
+    "test": {
+      "pickTray": "Pick piece from tray",
+      "placeTray": "Place piece in tray",
+      "pickMC": "Pick piece from MC1",
+      "placeMC": "Place piece on MC1",
+      "palletPickMC": "Pick pallet from MC1",
+      "palletPlaceMC": "Place pallet on MC1",
+      "subpos": "Position in tray",
+      "subposZeroHint": "0 = first empty position",
+      "gripperChoice": "Gripper to use",
+      "gripperOnBoard": "On-board gripper",
+      "confirmPlaceMC": "Confirm placing the piece on MC1?"
     }
   },
   "unit": {

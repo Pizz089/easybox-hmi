@@ -1,5 +1,8 @@
 <script setup>
   import { dataStored } from '../../data.js'
+  // (collaudo) campo numerico condiviso a contratto "emette sempre numeri
+  // interi clampati" (AL 2c) — per la scelta subpos nei comandi 31/32
+  import numericField from '../../components/numericField.vue'
 </script>
 
 <template>
@@ -328,6 +331,130 @@
           </div>
         </div>
       </section>
+
+      <!-- ===== CARD 4: Collaudo missioni singole (comandi manuali PLC) =====
+           Stesso pattern della CARD 3: bottone a label FISSA che NON invia mai
+           direttamente (apre un dialog di conferma), gate = computed unica
+           fonte per classe e click, hint del motivo quando disabilitato.
+           Contratto comandi: stringhe "CMD;p1;p2" su TO_PLANT/CMD/ROBOT. -->
+      <section class="command-section">
+        <h3 class="section-label">{{ $t('robot.section.test') }}</h3>
+
+        <!-- 31;subpos;gripperID — richiede cassetto estratto (PLC: 20001) -->
+        <button class="pure-u-1 button_pressed"
+          :class="[testTrayEnabled? 'pure-button-mission' : 'pure-button-disable', {'btn-mission-running': missionRunning=='test-pickTray'}]"
+          @click="testTrayEnabled?openTestDialog('pickTray'):''">
+          {{ $t('robot.test.pickTray') }}
+        </button>
+        <small class="cmd-hint" v-if="!testTrayEnabled && testTrayDisabledReason">{{ $t(testTrayDisabledReason) }}</small>
+
+        <!-- 32;subpos (0 = prima posizione vuota) — richiede cassetto estratto -->
+        <button class="pure-u-1 button_pressed"
+          :class="[testTrayEnabled? 'pure-button-mission' : 'pure-button-disable', {'btn-mission-running': missionRunning=='test-placeTray'}]"
+          @click="testTrayEnabled?openTestDialog('placeTray'):''">
+          {{ $t('robot.test.placeTray') }}
+        </button>
+        <small class="cmd-hint" v-if="!testTrayEnabled && testTrayDisabledReason">{{ $t(testTrayDisabledReason) }}</small>
+
+        <!-- 33;gripperID -->
+        <button class="pure-u-1 button_pressed"
+          :class="[testBaseEnabled? 'pure-button-mission' : 'pure-button-disable', {'btn-mission-running': missionRunning=='test-pickMC'}]"
+          @click="testBaseEnabled?openTestDialog('pickMC'):''">
+          {{ $t('robot.test.pickMC') }}
+        </button>
+        <small class="cmd-hint" v-if="!testBaseEnabled && testBaseDisabledReason">{{ $t(testBaseDisabledReason) }}</small>
+
+        <!-- 34 — conferma semplice -->
+        <button class="pure-u-1 button_pressed"
+          :class="[testBaseEnabled? 'pure-button-mission' : 'pure-button-disable', {'btn-mission-running': missionRunning=='test-placeMC'}]"
+          @click="testBaseEnabled?openTestDialog('placeMC'):''">
+          {{ $t('robot.test.placeMC') }}
+        </button>
+        <small class="cmd-hint" v-if="!testBaseEnabled && testBaseDisabledReason">{{ $t(testBaseDisabledReason) }}</small>
+
+        <!-- 13;3;palletID;0 / 14;3;palletID;0 — riusano il dialog generico
+             (scelta pallet dalla lista esistente), posizione fissa 0 = MC1 -->
+        <button class="pure-u-1 button_pressed"
+          :class="[testBaseEnabled? 'pure-button-mission' : 'pure-button-disable', {'btn-mission-running': missionRunning=='test-palletPickMC'}]"
+          @click="testBaseEnabled?openDialog('palletPickMC'):''">
+          {{ $t('robot.test.palletPickMC') }}
+        </button>
+        <small class="cmd-hint" v-if="!testBaseEnabled && testBaseDisabledReason">{{ $t(testBaseDisabledReason) }}</small>
+
+        <button class="pure-u-1 button_pressed"
+          :class="[testBaseEnabled? 'pure-button-mission' : 'pure-button-disable', {'btn-mission-running': missionRunning=='test-palletPlaceMC'}]"
+          @click="testBaseEnabled?openDialog('palletPlaceMC'):''">
+          {{ $t('robot.test.palletPlaceMC') }}
+        </button>
+        <small class="cmd-hint" v-if="!testBaseEnabled && testBaseDisabledReason">{{ $t(testBaseDisabledReason) }}</small>
+
+        <!-- Dialog di collaudo (pezzo cassetto/MC1): subpos e/o scelta pinza.
+             TERZO overlay: entra nell'invariante "un solo overlay" (fix
+             mutual-exclusion) via openTestDialog/openDialog/openGripperMission. -->
+        <div v-if="testDialog.type!=''" class="mission-dialog-overlay">
+          <div class="mission-dialog">
+            <h3 class="command-section-title">{{ $t(testDialogTitle) }}</h3>
+
+            <!-- posizione nel cassetto (31: min 1; 32: min 0 = prima vuota) -->
+            <div class="test-field" v-if="testDialog.type=='pickTray' || testDialog.type=='placeTray'">
+              <div class="test-field-label">{{ $t('robot.test.subpos') }}</div>
+              <numericField
+                name="subpos"
+                step=1
+                :min="testDialog.type=='pickTray' ? '1' : '0'"
+                max=999
+                :model-value="testDialog.subpos"
+                integerVal=true
+                @update="v => testDialog.subpos = v">
+              </numericField>
+              <small class="cmd-hint" v-if="testDialog.type=='placeTray'">{{ $t('robot.test.subposZeroHint') }}</small>
+            </div>
+
+            <!-- scelta pinza (31/33): default "a bordo" (0); disabilitata se
+                 nessuna pinza risulta a bordo (il PLC risponderebbe 22) -->
+            <div class="test-field" v-if="testDialog.type=='pickTray' || testDialog.type=='pickMC'">
+              <div class="test-field-label">{{ $t('robot.test.gripperChoice') }}</div>
+              <div class="mission-dialog-list">
+                <button class="mission-dialog-item"
+                  :class="{ selected: testDialog.gripperSel===0 }"
+                  :disabled="!gripperOnBoardNow()"
+                  @click="gripperOnBoardNow() ? testDialog.gripperSel=0 : ''">
+                  <span>{{ $t('robot.test.gripperOnBoard') }}</span>
+                  <span v-if="gripperOnBoardNow()">(ID {{ dataGripper[0].ID }})</span>
+                  <span v-else class="coh-na">{{ $t('robot.hint.noGripperSystem') }}</span>
+                </button>
+                <button v-for="g in grippersList" :key="g.ID"
+                  class="mission-dialog-item"
+                  :class="{ selected: testDialog.gripperSel===g.ID }"
+                  @click="testDialog.gripperSel=g.ID">
+                  <span>{{ (g.FAMILY || '').trim() }}</span>
+                  <span>{{ $t('robot.dialog.slot') }} {{ g.SUB_POS }} (ID {{ g.ID }})</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- 34: conferma semplice -->
+            <div class="unload-info" v-if="testDialog.type=='placeMC'">
+              {{ $t('robot.test.confirmPlaceMC') }}
+            </div>
+
+            <div class="pure-g">
+              <div class="pure-u-1-2">
+                <button style="width:100%" class="button_pressed"
+                  :class="[!testConfirmEnabled? 'pure-button-disable' : 'pure-button-mission']"
+                  @click="testConfirmEnabled?confirmTestDialog():''">
+                  {{ $t('robot.dialog.confirm') }}
+                </button>
+              </div>
+              <div class="pure-u-1-2">
+                <button style="width:100%" class="btn-ghost" @click="closeTestDialog()">
+                  {{ $t('robot.dialog.cancel') }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
 
   </div>
@@ -362,6 +489,15 @@ export default {
       // Nessuno stato client di attesa: swapSelecting basta a instradare il
       // gating del dialog e il testo del titolo.
       swapSelecting: false,
+      // (collaudo) dialog dei comandi manuali di collaudo missioni singole.
+      // type: '' | 'pickTray'(31) | 'placeTray'(32) | 'pickMC'(33) | 'placeMC'(34)
+      // subpos: posizione nel cassetto (31: >=1; 32: 0 = prima posizione vuota)
+      // gripperSel: 0 = pinza a bordo, >0 = ID pinza a magazzino, null = non scelta
+      testDialog: {
+        type: '',
+        subpos: 1,
+        gripperSel: null
+      },
       // R2-2: editing dell'input velocita' — col flag attivo l'eco PLC non
       // sovrascrive mentre si digita, e l'Enter (che fa blur) non produce
       // un secondo invio.
@@ -671,6 +807,8 @@ export default {
       // overlay sovrapposti (stesso z-index) e la Conferma in cima e' quella
       // dello scarico -> partiva il 12 invece del 25/26 del cassetto.
       this.unloadOpen = false;
+      // (collaudo) l'invariante copre anche il terzo overlay
+      this.closeTestDialog();
       this.dialog.type = type;
       this.dialog.selected = null;   // mai preselezionato
     },
@@ -695,6 +833,7 @@ export default {
     openGripperMission() {
       if (this.gripperOnBoardNow()) {
         this.closeDialog();          // (fix) esclusione reciproca: via ogni dialog missione residuo
+        this.closeTestDialog();      // (collaudo) idem per il dialog di collaudo
         this.unloadOpen = true;
       } else
         this.openDialog('gripper');
@@ -714,6 +853,71 @@ export default {
         this.openDialog('palletLoad');
       else
         this.openDialog('palletUnload');
+    },
+    // (collaudo) dispatcher del dialog di collaudo. Nessuna condizione
+    // propria: il gate e' la computed del bottone (pattern CARD 3); i
+    // re-check freschi stanno nella conferma. Esclusione reciproca:
+    // un solo overlay aperto, ultimo bottone premuto vince.
+    openTestDialog(type) {
+      this.closeDialog();
+      this.unloadOpen = false;
+      this.testDialog.type = type;
+      // default: 31 parte dalla posizione 1; 32 da 0 = prima posizione vuota
+      this.testDialog.subpos = (type == 'placeTray') ? 0 : 1;
+      // default pinza: quella a bordo (0) se risulta al sistema, altrimenti
+      // scelta esplicita obbligatoria (conferma spenta finche' null)
+      this.testDialog.gripperSel = this.gripperOnBoardNow() ? 0 : null;
+    },
+    closeTestDialog() {
+      this.testDialog.type = '';
+      this.testDialog.gripperSel = null;
+    },
+    confirmTestDialog() {
+      const t = this.testDialog.type;
+      // re-check del gating alla conferma sui segnali FRESCHI (pattern M2:
+      // stato decaduto col dialog aperto -> chiudi con messaggio, NON inviare)
+      let ok;
+      switch (t) {
+        case 'pickTray':
+        case 'placeTray':
+          ok = this.testTrayEnabled;          // HOLD + cassetto ancora estratto
+          break;
+        default:
+          ok = this.testBaseEnabled;          // HOLD
+      }
+      // pick con "pinza a bordo" (0): la pinza deve risultare ANCORA a bordo
+      // (il PLC risponderebbe 22)
+      if (ok && (t == 'pickTray' || t == 'pickMC') &&
+          this.testDialog.gripperSel === 0 && !this.gripperOnBoardNow())
+        ok = false;
+      if (!ok) {
+        this.closeTestDialog();
+        dataStored.alert.title = this.$t('WARNING');
+        dataStored.alert.desc = 'robot.dialog.stateChanged';
+        dataStored.alert.type = 'warning';
+        return;
+      }
+      // contratto: stringhe "CMD;p1;p2" (come 25/11/27); feedback col pattern
+      // sendMission — la chiave e' quella del BOTTONE che si illumina
+      switch (t) {
+        case 'pickTray':
+          this.sendMission('test-pickTray', '31;' + this.testDialog.subpos + ';' + this.testDialog.gripperSel);
+          break;
+        case 'placeTray':
+          this.sendMission('test-placeTray', '32;' + this.testDialog.subpos);
+          break;
+        case 'pickMC':
+          this.sendMission('test-pickMC', '33;' + this.testDialog.gripperSel);
+          break;
+        case 'placeMC':
+          this.sendMission('test-placeMC', '34');
+          break;
+      }
+      this.closeTestDialog();
+      // ricarico gli elenchi dopo ogni comando inviato (pattern confirmDialog)
+      this.getGrippersList();
+      this.getPalletsList();
+      this.getTraysList();
     },
     // M: conferma scarico (cmd 12) con re-check del discriminante sulla
     // STESSA fonte di verita' del bottone (segnali primari freschi, non i
@@ -782,6 +986,12 @@ export default {
           // M2 re-check EXTRACT (punto 8): il cassetto estratto e' ancora li'
           missionEnabled = (this.trayBranchEnabled && !!this.extractedTray);
           break;
+        case 'palletPickMC':
+        case 'palletPlaceMC':
+          // (collaudo) pallet da/su MC1: solo HOLD fresco — le precondizioni
+          // fini (quale pallet sta in macchina) le valuta il PLC
+          missionEnabled = this.testBaseEnabled;
+          break;
         default:
           missionEnabled = dataStored.cmdActiveMission;
       }
@@ -833,6 +1043,14 @@ export default {
           // (openTrayMission + re-check missionEnabled), ma guardo comunque.
           this.sendMission('tray', '26;' + (this.extractedTray ? this.extractedTray.FLOOR_MAG : ''));
           break;
+        case 'palletPickMC':
+          // (collaudo) pick pallet DA MC1: posizione fissa 0 = macchina
+          this.sendMission('test-palletPickMC', '13;3;' + sel.ID + ';0');
+          break;
+        case 'palletPlaceMC':
+          // (collaudo) place pallet SU MC1: posizione fissa 0 = macchina
+          this.sendMission('test-palletPlaceMC', '14;3;' + sel.ID + ';0');
+          break;
       }
       this.closeDialog();
       // ricarico gli elenchi dopo ogni comando inviato
@@ -870,6 +1088,44 @@ export default {
       if (!this.gripperOnBoardNow()) return 'robot.hint.noGripperSystem';
       if (this.trayBusy) return 'robot.hint.trayBusy';
       return '';
+    },
+    // ========================================================================
+    // (collaudo) gate/hint dei comandi di collaudo — stesso schema dei
+    // fratelli: gate = HOLD fresco (+ cassetto estratto per 31/32), hint in
+    // ordine aux -> notHold -> specifico. Come per la CARD 3, l'aux non
+    // blocca il click (banner+hint avvisano, il PLC rifiuta con 934).
+    // ========================================================================
+    testBaseEnabled() {
+      return this.dataRobot.STATUS == dataStored.status_hold;
+    },
+    testTrayEnabled() {
+      // 31/32 richiedono un cassetto estratto (il PLC risponde 20001)
+      return this.testBaseEnabled && !!this.extractedTray;
+    },
+    testBaseDisabledReason() {
+      if (dataStored.safetyAux === 0) return 'robot.hint.auxNotReset';
+      if (this.dataRobot.STATUS != dataStored.status_hold) return 'robot.hint.notHold';
+      return '';
+    },
+    testTrayDisabledReason() {
+      if (this.testBaseDisabledReason) return this.testBaseDisabledReason;
+      if (!this.extractedTray) return 'robot.hint.noTrayExtracted';
+      return '';
+    },
+    testDialogTitle() {
+      switch (this.testDialog.type) {
+        case 'pickTray':  return 'robot.test.pickTray';
+        case 'placeTray': return 'robot.test.placeTray';
+        case 'pickMC':    return 'robot.test.pickMC';
+        case 'placeMC':   return 'robot.test.placeMC';
+      }
+      return '';
+    },
+    testConfirmEnabled() {
+      const t = this.testDialog.type;
+      if (t == 'pickTray' || t == 'pickMC')
+        return this.testDialog.gripperSel !== null;   // pinza scelta obbligatoria
+      return t != '';
     },
     // (AN) "sistema" = registro PLC: CODE (IW534) se mai arrivato, altrimenti
     // l'ID del canale storico FROM_PLANT/GRIPPER/ROBOT; null = mai visto.
@@ -953,6 +1209,8 @@ export default {
                                     : 'robot.dialog.chooseGripper';
         case 'palletLoad':   return 'robot.dialog.choosePalletLoad';
         case 'palletUnload': return 'robot.dialog.choosePalletUnload';
+        case 'palletPickMC':  return 'robot.dialog.choosePalletPickMC';
+        case 'palletPlaceMC': return 'robot.dialog.choosePalletPlaceMC';
         case 'tray':         return 'robot.dialog.chooseTray';
         case 'trayRelease':  return 'robot.dialog.releaseTray';
       }
@@ -1289,5 +1547,19 @@ h6 {
   font-size: var(--font-size-md);
   text-align: center;
   padding: var(--space-2) 0;
+}
+/* (collaudo) campi del dialog di collaudo missioni */
+.test-field {
+  margin-bottom: var(--space-4);
+  text-align: left;
+}
+
+.test-field-label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-2);
 }
 </style>

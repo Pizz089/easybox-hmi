@@ -308,6 +308,8 @@
       "unloadGripper": "Scaricare la pinza a bordo?",
       "unloadAndSwap": "Deposita e cambia",
       "chooseSwapGripper": "Quale pinza caricare dopo il deposito?",
+      "choosePalletPickMC": "Preleva pallet da MC1 — scegli il pallet",
+      "choosePalletPlaceMC": "Deposita pallet su MC1 — scegli il pallet",
       "stateChanged": "Stato cambiato: comando annullato",
       "tray": "Cassetto",
       "confirm": "Conferma",
@@ -321,7 +323,8 @@
       "auxNotReset": "Ausiliari non ripristinati: premere il ripristino",
       "notHold": "Robot non in HOLD: premere HOLD per abilitare i comandi",
       "noGripperSystem": "Nessuna pinza a bordo risulta al sistema",
-      "trayBusy": "Manovra cassetto in corso"
+      "trayBusy": "Manovra cassetto in corso",
+      "noTrayExtracted": "Nessun cassetto estratto: estrarre prima un cassetto"
     },
     "coherence": {
       "title": "Coerenza pinza",
@@ -378,6 +381,8 @@
     "alarm_1010": "Nessun pallet pronto per lavorare",
     "alarm_1021": "Pinza non vuota",
     "alarm_15090": "Dati pinza richiesta non trovati",    
+    "alarm_20001": "Nessun cassetto estratto",
+    "alarm_20002": "Posizione pezzo non valida",
     "alarm_30122": "Pinza non presente",
     "alarm_30123": "Pinza non vuota",
     "alarm_900000": "CONNESSIONE DATABASE IN ERRORE",
@@ -389,12 +394,26 @@
       "critical": "Comandi critici",
       "movement": "Movimenti",
       "destination": "Punti di destinazione",
-      "mission": "Missioni"
+      "mission": "Missioni",
+      "test": "Collaudo missioni"
     },
     "mission": {
       "gripper": "Gestione pinza",
       "tray": "Gestione cassetto",
       "pallet": "Gestione pallet"
+    },
+    "test": {
+      "pickTray": "Preleva pezzo da cassetto",
+      "placeTray": "Deposita pezzo in cassetto",
+      "pickMC": "Preleva pezzo da MC1",
+      "placeMC": "Deposita pezzo su MC1",
+      "palletPickMC": "Preleva pallet da MC1",
+      "palletPlaceMC": "Deposita pallet su MC1",
+      "subpos": "Posizione nel cassetto",
+      "subposZeroHint": "0 = prima posizione vuota",
+      "gripperChoice": "Pinza da usare",
+      "gripperOnBoard": "Pinza a bordo",
+      "confirmPlaceMC": "Confermare il deposito del pezzo su MC1?"
     }
   },
   "unit": {
