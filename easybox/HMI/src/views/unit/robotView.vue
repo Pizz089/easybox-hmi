@@ -639,10 +639,23 @@ export default {
           return response.json()
         })
         .then(trays => {
-          // solo cassetti a magazzino: il PLC accetta Tray_ID (FLOOR_MAG) 1..11
-          this.traysList = trays.filter(t => t.FLOOR_MAG >= 1 && t.FLOOR_MAG <= 11);
-          // M2: stato estrazione dalla stessa risposta (nessun fetch in piu')
-          this.extractedTray = trays.find(t => t.EXTRACT == 1) || null;
+          // I 12 cassetti fisici del magazzino: uno per FLOOR_MAG 1..12 (il PLC
+          // movimenta per POSIZIONE, non per contenuto). Range 1..12 (prima 1..11:
+          // il piano 12 non compariva mai) + dedup per FLOOR_MAG tenendo la PRIMA
+          // occorrenza (rete di sicurezza contro doppioni residui a DB, come quello
+          // rimosso sul piano 8) + ordine piano CRESCENTE. La sorgente (vista TRAYS)
+          // e' gia' una riga per cassetto: i pezzi contenuti sono conteggi
+          // (N_PLACE/N_RAW/...), non righe, quindi non entrano come voci.
+          this.traysList = trays
+            .filter(t => t.FLOOR_MAG >= 1 && t.FLOOR_MAG <= 12)
+            .filter((t, i, a) => a.findIndex(x => x.FLOOR_MAG == t.FLOOR_MAG) === i)
+            .sort((a, b) => a.FLOOR_MAG - b.FLOOR_MAG);
+          // M2: stato estrazione dalla stessa risposta (nessun fetch in piu').
+          // Resta derivato dal grezzo (NON da traysList), ma con lo STESSO vincolo
+          // di range 1..12: una riga spuria/fuori range/duplicata con EXTRACT==1
+          // non deve leggersi come "cassetto estratto" (disallineo pannello<->PLC,
+          // e' il bug vissuto sul cassetto 8).
+          this.extractedTray = trays.find(t => t.EXTRACT == 1 && t.FLOOR_MAG >= 1 && t.FLOOR_MAG <= 12) || null;
           this.trayBusy = trays.some(t => t.EXTRACT == 1000 || t.EXTRACT == 2000);
         })
         .catch(error => {
