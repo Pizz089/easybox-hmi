@@ -378,6 +378,22 @@
 </template>
 
 <script>
+// ============================================================================
+// (grating-axis-swap, 23/7 — TERZO giro sul generatore in un giorno)
+// CONVENZIONE ASSI ROBOT, validata sul ferro (TRAY 9, 91 tasche):
+//   - numerazione COLONNA PER COLONNA: loop INTERNO lungo l'asse Y robot
+//     (che corre lungo il lato LUNGO del cassetto = width del disegno),
+//     verso POSITIVO; loop ESTERNO lungo X robot (= height del disegno);
+//   - ORIGINE = tasca 1 ATTUALE, che NON si muove: l'origine ingloba il
+//     teaching del TRAY — un'origine diversa invaliderebbe la taratura dei
+//     cassetti gia' insegnati. Cambiano SOLO passi e versi delle successive.
+// Il vecchio mapping scriveva lungo-width in pos.X e lungo-height NEGATO in
+// pos.Y: assi scambiati per il robot (incidente di campo 23/7).
+// VERSI: un punto solo, QUI — ribaltare un asse = cambiare UN carattere.
+const DIR_X = +1;   // ASSUNTO — validazione ferro PENDENTE (tasca 14)
+const DIR_Y = +1;   // VALIDATO sul ferro il 23/7
+// ============================================================================
+
 function buildGratingDxf({ width, height, pieces, dimX, dimY, radius, flipY = true, profileD = null, holes = [] }) {
   const W = Number(width), H = Number(height);
   const fy = (y) => (flipY ? H - Number(y) : Number(y));
@@ -832,6 +848,16 @@ export default {
             // insert fallisce dopo la delete lo stato e' incompleto ma
             // RECUPERABILE ripetendo il salvataggio (alert esplicito).
             const floorMag = this.trayList[this.grating.trayIndex-1].FLOOR_MAG;
+            // (grating-axis-swap) origine = tasca 1 (prima della lista):
+            // le sue coordinate disegno definiscono w1/h1 per TUTTE le tasche
+            let w1 = 0, h1 = 0;
+            if (this.listPz.length > 0) {
+                const p1 = this.listPz[0];
+                w1 = p1.prisma ? this.grating.width - (p1.x + this.dim_x/2)
+                               : this.grating.width - p1.x;
+                h1 = p1.prisma ? this.grating.height - (p1.y + this.dim_y/2)
+                               : this.grating.height - p1.y;
+            }
             if (!this.createNew) {
                 try {
                     const del = await fetch(dataStored.server+'api/conf/position/deletePositionsTray/'+floorMag ,{ method: 'delete'});
@@ -853,15 +879,22 @@ export default {
                 pos.SAFEX=this.grating.SAFEX
                 pos.SAFEY=this.grating.SAFEY
 
-                if (this.listPz[i].prisma){
-                    pos.X=this.grating.width-(this.listPz[i].x+this.dim_x/2);
-                    pos.Y=this.grating.height-(this.listPz[i].y+this.dim_y/2);
-                }else{
-                    pos.X=this.grating.width-this.listPz[i].x;
-                    pos.Y=this.grating.height-this.listPz[i].y;
-                }
-                pos.X *=  1000;
-                pos.Y *= -1000;   //tutte le quote sono negative
+                // (grating-axis-swap) coordinate DISEGNO della tasca:
+                // w = lungo width (lato lungo), h = lungo height
+                const w = this.listPz[i].prisma
+                    ? this.grating.width - (this.listPz[i].x + this.dim_x/2)
+                    : this.grating.width - this.listPz[i].x;
+                const h = this.listPz[i].prisma
+                    ? this.grating.height - (this.listPz[i].y + this.dim_y/2)
+                    : this.grating.height - this.listPz[i].y;
+                // assi ROBOT: origine = tasca 1 attuale (w1, -h1); da li'
+                // X avanza lungo height (DIR_X), Y lungo width (DIR_Y).
+                // Caso validato: tasca1 (50000,-65000), 2 (50000,-5000),
+                // 14 (130000,-65000), 91 (530000,655000).
+                pos.X = w1 + DIR_X * (h - h1);
+                pos.Y = -h1 + DIR_Y * (w - w1);
+                pos.X *= 1000;
+                pos.Y *= 1000;   // micron; il segno vive nei DIR_*, non qui
 
                 pos.EASYBOX = dataStored.EasyBox;
 

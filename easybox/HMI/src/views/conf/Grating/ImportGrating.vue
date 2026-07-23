@@ -174,6 +174,22 @@ const el = ref()
 </template>
 
 <script>
+// ============================================================================
+// (grating-axis-swap, 23/7 — TERZO giro sul generatore in un giorno)
+// CONVENZIONE ASSI ROBOT, validata sul ferro (TRAY 9, 91 tasche):
+//   - numerazione COLONNA PER COLONNA: loop INTERNO lungo l'asse Y robot
+//     (che corre lungo il lato LUNGO del cassetto = width del disegno),
+//     verso POSITIVO; loop ESTERNO lungo X robot (= height del disegno);
+//   - ORIGINE = tasca 1 ATTUALE, che NON si muove: l'origine ingloba il
+//     teaching del TRAY — un'origine diversa invaliderebbe la taratura dei
+//     cassetti gia' insegnati. Cambiano SOLO passi e versi delle successive.
+// Il vecchio mapping scriveva lungo-width in pos.X e lungo-height NEGATO in
+// pos.Y: assi scambiati per il robot (incidente di campo 23/7).
+// VERSI: un punto solo, QUI — ribaltare un asse = cambiare UN carattere.
+const DIR_X = +1;   // ASSUNTO — validazione ferro PENDENTE (tasca 14)
+const DIR_Y = +1;   // VALIDATO sul ferro il 23/7
+// ============================================================================
+
 export default {
   name: 'ImportGrating',
   data() {
@@ -450,6 +466,13 @@ export default {
 
     savePositions() {
       var cmd = ""
+      // (grating-axis-swap) origine = tasca 1: definisce w1/h1 per tutte
+      let w1 = 0, h1 = 0;
+      if (this.listPz.length > 0) {
+        const p1 = this.listPz[0];
+        w1 = p1.prisma ? this.grating.width - p1.cx : this.grating.width - p1.x;
+        h1 = p1.prisma ? this.grating.height - p1.cy : this.grating.height - p1.y;
+      }
       for (let i=0; i<this.listPz.length; i++){
         let pos={};
         pos.SUB_POS   = i+1;
@@ -460,15 +483,18 @@ export default {
         pos.SAFEX     = this.grating.SAFEX;
         pos.SAFEY     = this.grating.SAFEY;
 
-        if (this.listPz[i].prisma){
-          pos.X = this.grating.width - this.listPz[i].cx; //(this.listPz[i].x + this.dim_x/2);
-          pos.Y = this.grating.height-this.listPz[i].cy; //(this.listPz[i].y + this.dim_y/2);
-        }else{
-          pos.X = this.grating.width - this.listPz[i].x;
-          pos.Y = this.grating.height- this.listPz[i].y;
-        }
+        // (grating-axis-swap) coordinate DISEGNO (stessi termini storici:
+        // prisma -> cx/cy, altrimenti x/y) -> assi ROBOT via origine tasca 1
+        const w = this.listPz[i].prisma
+          ? this.grating.width - this.listPz[i].cx
+          : this.grating.width - this.listPz[i].x;
+        const h = this.listPz[i].prisma
+          ? this.grating.height - this.listPz[i].cy
+          : this.grating.height - this.listPz[i].y;
+        pos.X = w1 + DIR_X * (h - h1);
+        pos.Y = -h1 + DIR_Y * (w - w1);
         pos.X *= 1000;
-        pos.Y *= -1000;   //lo zero è il bordo del cassetto verso il robot. Le Y negative vanno dentro al cassetto
+        pos.Y *= 1000;   // micron; il segno vive nei DIR_*, non qui
 
         if (this.createNew)
           cmd = dataStored.server+'api/conf/position/insertPositionTray?' + new URLSearchParams( pos ).toString();

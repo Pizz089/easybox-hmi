@@ -421,6 +421,7 @@
     "alarm_937": "Cambio pinza rifiutato: pinza di destinazione non valida.",
     "alarm_939": "Cambio pinza rifiutato: la pinza richiesta è già a bordo.",
     "alarm_943": "Cambio pinza: timeout di fase (deposito o prelievo). Verificare il robot e riprovare dopo il ripristino.",
+    "alarm_991": "Robot: pezzo non trovato nel cassetto (verificare ordine e stato tasca a DB)",
     "alarm_1001": "Ordine di lavoro non definito per macchina 1",
     "alarm_1002": "Ordine di lavoro non definito per macchina 2",
     "alarm_1010": "Nessun pallet pronto per lavorare",
