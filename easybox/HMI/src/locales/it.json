@@ -276,7 +276,17 @@
     "plantWarning": "Pallet al robot o in macchina: posizione gestita dall'impianto — impostarla a mano solo a impianto fermo",
     "createNew": "Crea nuova...",
     "offsets": "Posizione sul pallet (mm / °)",
-    "save": "Salva attrezzaggio"
+    "save": "Salva attrezzaggio",
+    "edit": "Modifica",
+    "editTitle": "Modifica attrezzaggio pallet",
+    "sureEdit": "Modificare l'attrezzaggio di questo pallet?",
+    "magWarning": "Il pallet è a magazzino: assicurarsi che l'attrezzaggio fisico corrisponda",
+    "blockedOrder": "Bloccato: ordine attivo #{id} su questo pallet",
+    "blockedInMachine": "Bloccato: pallet in macchina",
+    "inMachine": "In macchina ({mc})",
+    "machineOccupied": "Occupata dal pallet #{id}",
+    "machineAmbiguous": "Pallet #{id} in posizione macchina non riconosciuta: verificare",
+    "editIncomplete": "Modifica incompleta: il pallet può essere rimasto senza attrezzaggio — ripetere l'operazione dall'elenco"
   },
   "sidebar": {
     "section": {
@@ -579,6 +589,8 @@
     "WPALLET": "Magazzino pallet",
     "approach": "Approccio",
     "extraction": "Estrazione",
+    "onRobot": "Robot",
+    "plantUnknown": "Posizione non riconosciuta (POS_PLANT={v})",
     "sure": "sei sicuro?",
     "cat": {
       "all": "Tutte",

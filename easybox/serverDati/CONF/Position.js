@@ -205,7 +205,7 @@ router.get('/warehouseSlot/:action/:parent/:subpos', (req, res) => {
 	const parent = WAREHOUSE_PARENTS[String(req.params.parent || '').toUpperCase()];
 	const subpos = parseInt(req.params.subpos);
 	const action = String(req.params.action);
-	if (!parent || isNaN(subpos) || (action != 'disable' && action != 'enable')) {
+	if (!parent || isNaN(subpos) || (action != 'disable' && action != 'enable' && action != 'occupy' && action != 'free')) {
 		res.send("KO");
 		return;
 	}
@@ -218,8 +218,16 @@ router.get('/warehouseSlot/:action/:parent/:subpos', (req, res) => {
 		let query;
 		if (action == 'disable')
 			query = `UPDATE [POSITION] SET STATUS=9 WHERE PARENT like '${parent}%' AND SUB_POS=${subpos};`
-		else
+		else if (action == 'enable')
 			query = `UPDATE [POSITION] SET STATUS=2 WHERE PARENT like '${parent}%' AND SUB_POS=${subpos} AND STATUS=9;`
+		// (attrezzaggi-edit-remove-place, D3) flag occupazione casella per la
+		// dichiarazione manuale dal dialog posizione: transizioni STRETTE come
+		// enable — occupy 2->4 (solo da libera), free 4->2 (solo da occupata),
+		// MAI toccato 9 (disabilitata). Idempotenti via check sotto.
+		else if (action == 'occupy')
+			query = `UPDATE [POSITION] SET STATUS=4 WHERE PARENT like '${parent}%' AND SUB_POS=${subpos} AND STATUS=2;`
+		else
+			query = `UPDATE [POSITION] SET STATUS=2 WHERE PARENT like '${parent}%' AND SUB_POS=${subpos} AND STATUS=4;`
 
 		var request = new sql.Request();
         log.info('query ' + query);
@@ -234,14 +242,18 @@ router.get('/warehouseSlot/:action/:parent/:subpos', (req, res) => {
 				res.send("OK")
 				return;
 			}
-			if (action == 'enable') {
-				// riga esistente e gia' non-9 = gia' abilitata: OK idempotente
+			if (action == 'enable' || action == 'occupy' || action == 'free') {
+				// 0 righe ma stato gia' quello voluto: OK idempotente
+				// (enable: non-9; occupy: gia' 4; free: gia' 2)
 				let check = `select STATUS from [POSITION] where PARENT like '${parent}%' AND SUB_POS=${subpos};`
 				new sql.Request().query(check, function (err2, rs2) {
-					if (!err2 && rs2.recordset.length > 0 && rs2.recordset[0].STATUS != 9)
-						res.send("OK")
-					else
-						res.send("KO")
+					if (err2 || rs2.recordset.length == 0) { res.send("KO"); return; }
+					const st = rs2.recordset[0].STATUS;
+					const okAlready =
+						(action == 'enable' && st != 9) ||
+						(action == 'occupy' && st == 4) ||
+						(action == 'free'   && st == 2);
+					res.send(okAlready ? "OK" : "KO")
 				});
 				return;
 			}

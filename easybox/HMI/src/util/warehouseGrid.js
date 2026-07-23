@@ -1,3 +1,5 @@
+import { MACHINE_POSITIONS } from './machineBrands';
+
 // Griglia magazzino pallet (cantiere AD) — utility CONDIVISA fra il dialog
 // "Posiziona" (AttrezzaggiView) e la vista IMPOSTAZIONI > Magazzini.
 //
@@ -39,15 +41,28 @@ export function fullGridOrder(total = WPALLET_TOTAL) {
   return out;
 }
 
-// AE: decodifica testuale della posizione pallet — la stessa storica di
-// PalletsView.getPosition, portata a utility per RIUSO (non copia).
-// t = la funzione $t del chiamante (la utility non ha accesso a i18n).
-// Semantica: POS_PLANT>=100 = in macchina (quirk storico incluso: con
-// 1000=robot mostra "Machine 901", riprodotto fedelmente, non riparato);
-// MAG_POS<0 = fuori magazzino; altrimenti in magazzino al posto N.
+// AE: decodifica testuale della posizione pallet, RIUSO (non copia) da
+// AttrezzaggiView / form Pallet / selectRig. t = la $t del chiamante.
+// (attrezzaggi-edit-remove-place, R-A) decodifica ALLINEATA al canone
+// POS_PLANT = 100 + n (101=MC1, 102=MC2 — D2), quattro rami in ORDINE:
+//   1000                 -> Robot (esplicito, coerente con PalletsView);
+//   fascia macchina con n CONFIGURATA (machineBrands, cantiere AS) -> label
+//   macchina;
+//   fascia macchina NON riconosciuta (incluso 100 esatto e macchine non
+//   configurate) -> etichetta esplicita col valore: MAI cadere in silenzio
+//   nella decodifica MAG_POS su un dato anomalo;
+//   altrimenti -> decodifica storica da MAG_POS.
+// (Il vecchio quirk -99 etichettava 101 come "Machine 2" e 1000 come
+// "Machine 901": rimosso col canone.)
 export function palletPositionLabel(pal, t) {
-  if (pal.POS_PLANT >= 100)
-    return t('Mag') + " " + pal.MAG_POS + ' >> ' + t('Machine') + ' ' + (pal.POS_PLANT - 99);
+  if (pal.POS_PLANT == 1000)
+    return t('position.onRobot');
+  if (pal.POS_PLANT >= 100 && pal.POS_PLANT < 1000) {
+    const n = pal.POS_PLANT - 100;
+    if (MACHINE_POSITIONS.some((p) => p.n === n))
+      return t('Machine') + ' ' + n;
+    return t('position.plantUnknown', { v: pal.POS_PLANT });
+  }
   if (pal.MAG_POS < 0)
     return t('fuori_magazzino');
   return t('Mag') + " " + pal.MAG_POS;

@@ -10,6 +10,8 @@
     import { palletGridOrder, palletPositionLabel } from '../../util/warehouseGrid';
     import { buildRigRows, rigState } from '../../util/rigging';
     import { KO_OCCUPIED, KO_DISABLED } from '../../util/errorCodes';
+    // (edit-remove-place) voci "In macchina" dalla configurazione (cantiere AS)
+    import { MACHINE_POSITIONS } from '../../util/machineBrands';
 </script>
 
 <template>
@@ -69,26 +71,63 @@
                                 @click="openPlace(row.pallet)">
                                 {{$t('attrezzaggi.place')}}
                             </button>
+                            <!-- (edit-remove-place) MODIFICA: solo montaggi SANI
+                                 (vice|fixture) — sull'anomalia l'unica azione e'
+                                 lo smonta (D5). Gating D1: bottone SEMPRE
+                                 visibile, disabilitato col motivo sotto. -->
+                            <button v-if="rowState(row)=='vice' || rowState(row)=='fixture'"
+                                class="btn-ghost action-btn"
+                                :disabled="rowBlockReason(row)!=''"
+                                @click="askEdit(row)">
+                                {{$t('attrezzaggi.edit')}}
+                            </button>
                             <button v-if="row.vice" class="btn-ghost action-btn"
+                                :disabled="rowBlockReason(row)!=''"
                                 @click="askUnmount('vice', row.pallet.ID, row.vice.ID)">
                                 {{$t('attrezzaggi.unmountVice')}}
                             </button>
                             <button v-for="f in row.fixtures" :key="'u'+f.FIXTURE_ID" class="btn-ghost action-btn"
+                                :disabled="rowBlockReason(row)!=''"
                                 @click="askUnmount('fixture', row.pallet.ID, f.FIXTURE_ID)">
                                 {{$t('attrezzaggi.unmountFixture')}} {{ row.fixtures.length>1 ? '#'+f.FIXTURE_ID : '' }}
                             </button>
+                            <!-- D1: mai bottoni muti — il motivo del blocco -->
+                            <div class="action-hint" v-if="rowBlockReason(row)">{{ rowBlockReason(row) }}</div>
                         </td>
                     </tr>
-                    <!-- popup di conferma canonico (pattern popUpOnLine delle conf view) -->
+                    <!-- popup di conferma canonico (pattern popUpOnLine delle conf view).
+                         (edit-remove-place) arricchito col CONTENUTO REALE della
+                         riga + conferma RAFFORZATA se il pallet e' a magazzino -->
                     <tr v-if="pending && pending.palletID==row.pallet.ID">
                         <td class="popUpOnLine" colspan="20">
                             <div class="center">
                                 <h3>{{ pending.type=='vice' ? $t('attrezzaggi.sureUnmountVice') : $t('attrezzaggi.sureUnmountFixture') }}</h3>
+                                <h4 class="unmount-detail">{{ pendingDetail(row) }}</h4>
+                                <h4 class="mag-warning" v-if="row.pallet.MAG_POS > 0">{{ $t('attrezzaggi.magWarning') }}</h4>
                                 <span class="pure-g">
                                     <button class="pure-button-micromission specialCMD pure-u-1" @click="confirmUnmount()">
                                         {{$t('attrezzaggi.unmount')}}
                                     </button>
                                     <button class="btn-ghost pure-u-1" @click="pending=null">
+                                        EXIT
+                                    </button>
+                                </span>
+                            </div>
+                        </td>
+                    </tr>
+                    <!-- (edit-remove-place, D1) conferma RAFFORZATA della
+                         Modifica quando il pallet e' A MAGAZZINO: l'attrezzaggio
+                         fisico si fa a banco -->
+                    <tr v-if="pendingEdit==row.pallet.ID">
+                        <td class="popUpOnLine" colspan="20">
+                            <div class="center">
+                                <h3>{{ $t('attrezzaggi.sureEdit') }}</h3>
+                                <h4 class="mag-warning">{{ $t('attrezzaggi.magWarning') }}</h4>
+                                <span class="pure-g">
+                                    <button class="pure-button-micromission specialCMD pure-u-1" @click="goEdit(row.pallet.ID)">
+                                        {{$t('attrezzaggi.edit')}}
+                                    </button>
+                                    <button class="btn-ghost pure-u-1" @click="pendingEdit=null">
                                         EXIT
                                     </button>
                                 </span>
@@ -141,6 +180,18 @@
                 <span v-if="placeTarget.MAG_POS<0">({{ $t('fuori_magazzino') }})</span>
             </button>
 
+            <!-- (edit-remove-place, R-C) dichiarazione IN MACCHINA: voci dalla
+                 configurazione (MACHINE_POSITIONS, cantiere AS — con MC2 non
+                 configurata compare una voce sola). Guardia R-B sdoppiata:
+                 OCCUPATA nomina il pallet, AMBIGUA segnala il dato anomalo. -->
+            <button v-for="mpos in MACHINE_POSITIONS" :key="mpos.mc" class="mission-dialog-item"
+                :class="{ selected: placeSel==='mc'+mpos.n }"
+                :disabled="machineBlock(mpos.n) != ''"
+                @click="placeSel='mc'+mpos.n">
+                {{ $t('attrezzaggi.inMachine', { mc: $t(mpos.labelKey) }) }}
+                <span v-if="machineBlock(mpos.n)" class="cell-empty">{{ machineBlock(mpos.n) }}</span>
+            </button>
+
             <div class="pure-g">
               <div class="pure-u-1-2">
                 <button style="width:100%" class="button_pressed"
@@ -170,6 +221,8 @@ export default {
             fop:[],          // righe FIXTURE_ON_PALLET
             wpallet:[],      // righe [POSITION] WPALLET (per gli slot disabilitati, AD)
             pending:null,    // {type:'vice'|'fixture', palletID, id} in attesa di conferma
+            pendingEdit:null,// palletID in attesa di conferma RAFFORZATA della Modifica
+            orders:[],       // WORKORDERS per la guardia D1 (ordine attivo)
             // AC: dialog posizione a magazzino.
             // magPositions = 20: layout fisico della cella, magazzino pallet
             // a 5 file x 4 posti. placeSel: null | -1 (fuori magazzino,
@@ -194,6 +247,9 @@ export default {
             get('api/conf/fixture/show/all', d => this.fixtures = d || []);
             get('api/conf/fixture/showFixtureOnPallet/all', d => this.fop = d || []);
             get('api/conf/position/showWarehouse/WPALLET', d => this.wpallet = d || []);
+            // (edit-remove-place) guardia D1: ordini per PALLET_ID+Status,
+            // stessa cadenza del poll 3s gia' in casa
+            get('api/order/show/all', d => this.orders = d || []);
         },
         // AE: decodifica portata a utility condivisa (riuso non copia)
         getPosition(pal){
@@ -208,7 +264,66 @@ export default {
         rowState(row){
             return rigState(row);
         },
+        // ===== (edit-remove-place) GUARDIE D1 =====
+        // ordine ATTIVO = Status 3 (contratto PLC; stesso riconoscimento
+        // ratificato del guardrail grigliati) che referenzia il pallet
+        activeOrderOf(palletID){
+            return (this.orders || []).find(o => o.PALLET_ID == palletID && o.STATUS == 3) || null;
+        },
+        // pallet DICHIARATO in macchina: fascia 100 <= x < 1000 (1000=Robot
+        // escluso; il legacy POS_PLANT=2 e' fuori fascia: dato valido in sola
+        // lettura, azioni permesse — D5)
+        palletInMachine(p){
+            return p.POS_PLANT >= 100 && p.POS_PLANT < 1000;
+        },
+        // motivo di blocco riga per Modifica/Smonta ('' = azione permessa).
+        // D1: il bottone resta visibile, il motivo e' SEMPRE esposto.
+        rowBlockReason(row){
+            const ord = this.activeOrderOf(row.pallet.ID);
+            if (ord) return this.$t('attrezzaggi.blockedOrder', { id: ord.ID });
+            if (this.palletInMachine(row.pallet)) return this.$t('attrezzaggi.blockedInMachine');
+            return '';
+        },
+        // contenuto REALE della riga per il popup smonta
+        pendingDetail(row){
+            if (!this.pending) return '';
+            if (this.pending.type == 'vice' && row.vice)
+                return (row.vice.FAMILY || '').trim() + ' ' + (row.vice.DESCR || '').trim() + ' (ID ' + row.vice.ID + ')';
+            return this.fixtureName(this.pending.id) + ' (ID ' + this.pending.id + ')';
+        },
+        // (D1) Modifica: conferma RAFFORZATA solo col pallet a magazzino
+        askEdit(row){
+            if (this.rowBlockReason(row) != '') return;   // difesa: bottone gia' disabled
+            if (row.pallet.MAG_POS > 0) {
+                this.pendingEdit = row.pallet.ID;
+                return;
+            }
+            this.goEdit(row.pallet.ID);
+        },
+        goEdit(palletID){
+            this.pendingEdit = null;
+            this.$router.push('/conf/Attrezzaggio?edit=' + palletID);
+        },
+        // (R-B) guardia voce macchina, SDOPPIATA:
+        //  OCCUPATA: un ALTRO pallet esattamente a POS_PLANT == 100+n -> hint
+        //  che lo NOMINA;
+        //  AMBIGUA: un ALTRO pallet in fascia macchina (100 <= x < 1000,
+        //  1000=Robot escluso) il cui valore NON mappa a NESSUNA macchina
+        //  configurata (incluso 100 esatto) -> blocco conservativo con hint
+        //  dedicato. Regge all'abilitazione di MC2 senza modifiche.
+        machineBlock(n){
+            if (!this.placeTarget) return '';
+            const others = this.pallets.filter(p => p.ID != this.placeTarget.ID);
+            const occ = others.find(p => p.POS_PLANT == 100 + n);
+            if (occ) return this.$t('attrezzaggi.machineOccupied', { id: occ.ID });
+            const amb = others.find(p => p.POS_PLANT >= 100 && p.POS_PLANT < 1000 &&
+                !MACHINE_POSITIONS.some(m => m.n === p.POS_PLANT - 100));
+            if (amb) return this.$t('attrezzaggi.machineAmbiguous', { id: amb.ID });
+            return '';
+        },
         askUnmount(type, palletID, id){
+            const row = this.rows.find(r => r.pallet.ID == palletID);
+            if (row && this.rowBlockReason(row) != '') return;   // difesa D1
             this.pending = { type, palletID, id };
         },
         confirmUnmount(){
@@ -262,6 +377,10 @@ export default {
             const t = this.placeTarget;
             const sel = this.placeSel;
             if (!t || sel == null) return;
+            // (R-C) tre destinazioni: casella (sel>0), Rimuovi (-1),
+            // In macchina ('mc'+n)
+            const isMachine = typeof sel === 'string' && sel.indexOf('mc') === 0;
+            const machineN = isMachine ? parseInt(sel.slice(2)) : 0;
             if (sel > 0) {
                 const occ = this.pallets.find(p => p.MAG_POS == sel && p.ID != t.ID);
                 if (occ) {
@@ -272,13 +391,26 @@ export default {
                     return;
                 }
             }
+            // (R-B/D4) re-check FRESCO della guardia macchina alla conferma
+            if (isMachine && this.machineBlock(machineN) != '') {
+                this.closePlace();
+                dataStored.alert.title = this.$t('WARNING');
+                dataStored.alert.desc = 'robot.dialog.stateChanged';
+                dataStored.alert.type = 'warning';
+                return;
+            }
             // TRAPPOLA NOTA (incidente storico form Pallet, 396000->396):
             // update PASS-THROUGH — la riga viene rimandata ESATTAMENTE come
-            // letta da show/all (X/Y/Z/CORR/FAMILY/DESCR/MAG/POS_PLANT mai
-            // toccati ne' convertiti: updatePallet scrive i valori raw cosi'
-            // come arrivano); cambia SOLO MAG_POS.
+            // letta da show/all (X/Y/Z/CORR/FAMILY/DESCR/MAG mai toccati ne'
+            // convertiti). (R-C) il dialog ora scrive SEMPRE anche POS_PLANT:
+            //   casella   -> MAG_POS=sel, POS_PLANT=0
+            //   Rimuovi   -> MAG_POS=-1,  POS_PLANT=0 (chiude il buco del
+            //                pallet a 101 rimosso che restava a 101)
+            //   macchina  -> MAG_POS=-1,  POS_PLANT=100+n (canone D2)
             const row = this.pallets.find(p => p.ID == t.ID);
             if (!row) { this.closePlace(); return; }
+            // casella di PROVENIENZA (per il trasferimento del flag D3)
+            const fromSlot = row.MAG_POS > 0 ? row.MAG_POS : 0;
             const params = new URLSearchParams({
                 ID: row.ID,
                 FAMILY: row.FAMILY,
@@ -287,7 +419,7 @@ export default {
                 X_CORR: row.X_CORR, Y_CORR: row.Y_CORR, Z_CORR: row.Z_CORR,
                 MAG: row.MAG,
                 MAG_POS: sel > 0 ? sel : -1,   // -1 = fuori magazzino (decodifica PalletsView)
-                POS_PLANT: row.POS_PLANT
+                POS_PLANT: isMachine ? (100 + machineN) : 0
             });
             // AD (chiusura finestra nota): l'endpoint ora rifiuta con codici
             // KO_OCCUPIED/KO_DISABLED (HTTP 200, body = codice) — qui si
@@ -310,8 +442,25 @@ export default {
                         this.getDataTable();
                         return;
                     }
-                    this.closePlace();
-                    this.getDataTable();
+                    // (D3) trasferimento del flag casella [POSITION] WPALLET
+                    // via endpoint warehouseSlot (transizioni STRETTE lato
+                    // server: occupy 2->4, free 4->2, mai toccato 9):
+                    //   verso casella  -> occupy(destinazione) + free(provenienza)
+                    //   verso -1 (macchina o Rimuovi) -> free(provenienza)
+                    const slotCalls = [];
+                    const slotUrl = (action, n) =>
+                        fetch(dataStored.server+'api/conf/position/warehouseSlot/'+action+'/WPALLET/'+n, { method: 'GET' })
+                            .catch(e => { console.info(e); });
+                    if (sel > 0) {
+                        slotCalls.push(slotUrl('occupy', sel));
+                        if (fromSlot > 0 && fromSlot != sel) slotCalls.push(slotUrl('free', fromSlot));
+                    } else if (fromSlot > 0) {
+                        slotCalls.push(slotUrl('free', fromSlot));
+                    }
+                    Promise.all(slotCalls).then(() => {
+                        this.closePlace();
+                        this.getDataTable();
+                    });
                 })
                 .catch(error => { console.info(error); });
         },
@@ -546,5 +695,27 @@ export default {
         border-radius: var(--radius-md);
         padding: var(--space-2) var(--space-4);
         font-size: var(--font-size-sm);
+    }
+
+    /* (edit-remove-place) motivo di blocco riga (D1: mai bottoni muti) */
+    .action-hint {
+        color: var(--text-muted);
+        font-size: var(--font-size-xs);
+        font-style: italic;
+        margin-top: var(--space-1);
+    }
+
+    .unmount-detail {
+        color: var(--text-secondary);
+        font-weight: var(--font-weight-normal);
+    }
+
+    .mag-warning {
+        background: var(--color-warning-bg);
+        color: var(--color-warning);
+        border-radius: var(--radius-md);
+        padding: var(--space-2) var(--space-4);
+        font-size: var(--font-size-sm);
+        font-weight: var(--font-weight-normal);
     }
 </style>
