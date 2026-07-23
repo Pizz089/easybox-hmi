@@ -3,6 +3,8 @@ import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { dataStored } from '../data.js'
+// (machines-gating) con UNA sola macchina lo step machine non esiste
+import { singleMachine } from '../util/machineBrands'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -61,20 +63,21 @@ const steps = computed(() => {
     })
   }
 
-  list.push(
-    {
+  // (machines-gating) step machine SOLO con piu' macchine configurate:
+  // col singolo selectMC auto-seleziona e salta, la barra non lo mostra
+  if (!singleMachine())
+    list.push({
       key: 'machine',
       route: '/selectMC',
       value: wo.machineID > 0 ? t('wizard.value.machine', { id: wo.machineID }) : null,
       state: getState(wo.machineID > 0, currentRoute === 'selectMC'),
-    },
-    {
-      key: 'final',
-      route: '/lastData',
-      value: null,
-      state: currentRoute === 'lastData' ? 'current' : 'pending',
-    }
-  )
+    })
+  list.push({
+    key: 'final',
+    route: '/lastData',
+    value: null,
+    state: currentRoute === 'lastData' ? 'current' : 'pending',
+  })
   return list
 })
 </script>

@@ -3,6 +3,8 @@
   // (collaudo) campo numerico condiviso a contratto "emette sempre numeri
   // interi clampati" (AL 2c) — per la scelta subpos nei comandi 31/32
   import numericField from '../../components/numericField.vue'
+  // (machines-gating) destinazioni macchina dinamiche dalla configurazione
+  import { MACHINE_POSITIONS } from '../../util/machineBrands'
 </script>
 
 <template>
@@ -186,18 +188,14 @@
               {{ $t('Easybox') }}
             </button>
           </div>
-          <div class="pure-u-1-3">
+          <!-- (machines-gating) destinazioni macchina DINAMICHE dalla
+               configurazione (contratto 15;(10+n)): con una sola macchina
+               resta il solo bottone MC1, mai bottoni per macchine fantasma -->
+          <div class="pure-u-1-3" v-for="pos in MACHINE_POSITIONS" :key="pos.mc">
             <button style="width:100%" class="button_pressed"
-              :class="[dataStored.cmdActive==0? 'pure-button-disable' : 'pure-button-micromission', {'btn-mission-running': missionRunning=='dest-mc1'}]"
-              @click="dataStored.cmdActive==1?sendMission('dest-mc1','15;11'):''">
-              {{ $t('MC1') }}
-            </button>
-          </div>
-          <div class="pure-u-1-3">
-            <button style="width:100%" class="button_pressed"
-              :class="[dataStored.cmdActive==0? 'pure-button-disable' : 'pure-button-micromission', {'btn-mission-running': missionRunning=='dest-mc2'}]"
-              @click="dataStored.cmdActive==1?sendMission('dest-mc2','15;12'):''">
-              {{ $t('MC2') }}
+              :class="[dataStored.cmdActive==0? 'pure-button-disable' : 'pure-button-micromission', {'btn-mission-running': missionRunning=='dest-'+pos.mc.toLowerCase()}]"
+              @click="dataStored.cmdActive==1?sendMission('dest-'+pos.mc.toLowerCase(),'15;'+(10+pos.n)):''">
+              {{ $t(pos.labelKey) }}
             </button>
           </div>
         </div>

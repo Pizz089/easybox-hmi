@@ -2,6 +2,9 @@ import { createRouter, createWebHistory } from "vue-router";
 import HomeView from "../views/HomeView.vue";
 import dashView from "../views/DashboardView.vue";
 import StandardMenu from "../layout/StandardMenu.vue";
+// (machines-gating) guardie di route: l'URL diretto non deve mostrare
+// macchine fantasma — se la macchina non e' configurata si torna in dashboard
+import { isMachineConfigured } from "../util/machineBrands";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -52,12 +55,14 @@ const router = createRouter({
       path: "/unit/CNC1",
       name: "unit_CNC1",
       meta: { layout: StandardMenu },
+      beforeEnter: () => isMachineConfigured(1) || "/dashboard",
       component: () => import("../views/unit/CNC1View.vue"),
     },
     {
       path: "/unit/CNC2",
       name: "unit_CNC2",
       meta: { layout: StandardMenu },
+      beforeEnter: () => isMachineConfigured(2) || "/dashboard",
       component: () => import("../views/unit/CNC2View.vue"),
     },
     {

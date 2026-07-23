@@ -7,6 +7,11 @@
 import { RouterLink } from "vue-router";
 import { dataStored } from "../../../data.js";
 import { ref } from "vue";
+// (machines-gating) vincoli "solo per MC..." limitati alle macchine
+// configurate; con UNA sola macchina l'intera sezione sparisce (un vincolo
+// "solo MC1" con una macchina sola e' ridondante). Le colonne DB restano.
+import { MACHINE_POSITIONS, isMachineConfigured } from "../../../util/machineBrands";
+const multiMachine = MACHINE_POSITIONS.length > 1;
 
 const el = ref();
 </script>
@@ -55,12 +60,12 @@ const el = ref();
           />
         </div>
 
-        <div class="pure-control-group mc-group">
+        <div class="pure-control-group mc-group" v-if="multiMachine">
           <label class="mc-label">
 
           </label>
           <div class="mc-switches">
-            <label class="mc-toggle">
+            <label class="mc-toggle" v-if="isMachineConfigured(1)">
               <input
                 type="checkbox"
                 name="MC1_ONLY"
@@ -72,7 +77,7 @@ const el = ref();
               <span class="mc-text">{{ $t("piece.MC1_ONLY") }}</span>
             </label>
 
-            <label class="mc-toggle">
+            <label class="mc-toggle" v-if="isMachineConfigured(2)">
               <input
                 type="checkbox"
                 name="MC2_ONLY"
@@ -84,7 +89,7 @@ const el = ref();
               <span class="mc-text">{{ $t("piece.MC2_ONLY") }}</span>
             </label>
 
-            <label class="mc-toggle">
+            <label class="mc-toggle" v-if="isMachineConfigured(3)">
               <input
                 type="checkbox"
                 name="MC3_ONLY"
@@ -918,20 +923,20 @@ const el = ref();
           />
         </div>
 
-        <div class="pure-control-group mc-group">
+        <div class="pure-control-group mc-group" v-if="multiMachine">
           <label class="mc-label">
             {{ $t("piece.onlyFor") || "Solo per" }}
           </label>
           <div class="mc-switches">
-            <label>
+            <label v-if="isMachineConfigured(1)">
               {{ $t("piece.MC1_ONLY") }}
               <input type="checkbox" name="MC1_ONLY" v-model="piece.MC1_ONLY" />
             </label>
-            <label>
+            <label v-if="isMachineConfigured(2)">
               {{ $t("piece.MC2_ONLY") }}
               <input type="checkbox" name="MC2_ONLY" v-model="piece.MC2_ONLY" />
             </label>
-            <label>
+            <label v-if="isMachineConfigured(3)">
               {{ $t("piece.MC3_ONLY") }}
               <input type="checkbox" name="MC3_ONLY" v-model="piece.MC3_ONLY" />
             </label>

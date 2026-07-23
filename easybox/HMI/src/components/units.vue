@@ -1,5 +1,7 @@
 <script setup>
 import { dataStored } from '../data.js'
+// (machines-gating) card CNC solo per le macchine configurate
+import { isMachineConfigured } from '../util/machineBrands'
 </script>
 
 
@@ -100,7 +102,7 @@ import { dataStored } from '../data.js'
         </div>
     </div>
 
-    <div class="container_card pure-u-1 pure-u-md-1-2 pure-u-lg-1-4">
+    <div class="container_card pure-u-1 pure-u-md-1-2 pure-u-lg-1-4" v-if="isMachineConfigured(1)">
         <div class="card link" style="--tile-w:220px; --tile-h:150px; --img-max:95px;"
             @click="$router.push('/unit/cnc1');">
             <div class="img-wrapper" :class="getStatus(mc1_status)">
@@ -113,7 +115,8 @@ import { dataStored } from '../data.js'
         </div>
     </div>
 
-    <div class="container_card pure-u-1 pure-u-md-1-2 pure-u-lg-1-4">
+    <!-- (machines-gating) macchina 2 solo se configurata: niente card fantasma -->
+    <div class="container_card pure-u-1 pure-u-md-1-2 pure-u-lg-1-4" v-if="isMachineConfigured(2)">
         <div class="card link" style="--tile-w:220px; --tile-h:150px; --img-max:95px;"
             @click="$router.push('/unit/cnc2');">
             <div class="img-wrapper" :class="getStatus(mc2_status)">

@@ -23,10 +23,29 @@ export const BRAND_ID_MAX = 16;
 //             perche' il PLC e' sottoscritto solo a TO_PLANT/CMD/#)
 //   ricevo -> socket event '<mc>/BRAND'
 // labelKey = chiave i18n del nome posizione (top-level, come in CNC1View).
+// (machines-gating) n = numero macchina (MACHINE_ID/contratti robot),
+// unit = nome vista stato. UNA riga qui accende/spegne la macchina in TUTTO
+// il pannello: config marca, wizard ordini, dashboard unita', destinazioni
+// robot, vincoli pezzo, guardie di route.
 export const MACHINE_POSITIONS = [
-  { mc: 'MC1', labelKey: 'MC1' },
-  //{ mc: 'MC2', labelKey: 'MC2' },  // abilitare quando esiste DB_MC2 lato PLC
+  { n: 1, mc: 'MC1', labelKey: 'MC1', unit: 'CNC1' },
+  //{ n: 2, mc: 'MC2', labelKey: 'MC2', unit: 'CNC2' },  // abilitare quando esiste DB_MC2 lato PLC
 ];
+
+// (machines-gating) helper di gating — le viste NON hardcodano mai MC2.
+export function configuredMachineNumbers() {
+  return MACHINE_POSITIONS.map((p) => p.n);
+}
+
+export function isMachineConfigured(n) {
+  return MACHINE_POSITIONS.some((p) => p.n === Number(n));
+}
+
+// La sola macchina configurata, o null se 0 o >1 (il wizard salta lo step
+// SOLO col singolo; a lista vuota lo step resta e URLA il difetto di config).
+export function singleMachine() {
+  return MACHINE_POSITIONS.length === 1 ? MACHINE_POSITIONS[0] : null;
+}
 
 export function isValidBrandId(id) {
   return Number.isInteger(id) && id >= BRAND_ID_MIN && id <= BRAND_ID_MAX;

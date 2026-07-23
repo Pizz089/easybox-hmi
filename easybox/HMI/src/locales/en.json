@@ -679,6 +679,7 @@
       "title": "Choose the rig (pallet)",
       "noneSelectable": "No selectable rigged pallet: rig a pallet in Configuration → Rigs"
     },
+    "noMachines": "No machine configured: check the configuration (Machines menu)",
     "piece": {
       "title": "Piece type",
       "declaredTitle": "Part mounted on the pallet (declaration)"

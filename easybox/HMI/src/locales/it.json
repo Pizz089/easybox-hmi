@@ -679,6 +679,7 @@
       "title": "Scegli l'attrezzaggio (pallet)",
       "noneSelectable": "Nessun pallet attrezzato selezionabile: attrezza un pallet da Configurazione → Attrezzaggi"
     },
+    "noMachines": "Nessuna macchina configurata: verificare la configurazione (menu Macchine)",
     "piece": {
       "title": "Tipo pezzo",
       "declaredTitle": "Pezzo montato sul pallet (dichiarazione)"
