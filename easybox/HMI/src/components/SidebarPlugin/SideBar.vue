@@ -3,6 +3,9 @@ import { computed, reactive, watch } from "vue";
 import { RouterLink, useRoute } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { dataStored } from "@/data";
+// (machines-gating-2) voci unita' CNC solo per macchine configurate —
+// stessa fonte machineBrands del resto del pannello
+import { isMachineConfigured } from "@/util/machineBrands";
 
 const props = defineProps({
   open: {
@@ -27,8 +30,8 @@ const menuItems = [
 
 const unitItems = [
   { key: "menu.robot", fallback: "Robot", path: "/unit/robot" },
-  { key: "menu.cnc1", fallback: "CNC 1", path: "/unit/CNC1" },
-  { key: "menu.cnc2", fallback: "CNC 2", path: "/unit/CNC2" },
+  { key: "menu.cnc1", fallback: "CNC 1", path: "/unit/CNC1", machine: 1 },
+  { key: "menu.cnc2", fallback: "CNC 2", path: "/unit/CNC2", machine: 2 },
   { key: "menu.smallbox", fallback: "EasyBox", path: "/unit/smallbox" },
 ];
 
@@ -72,10 +75,16 @@ const diagItems = [
 // Voci senza requiresLevel sono sempre visibili. Pattern riutilizzabile: per
 // nascondere una voce a utenti di basso livello, aggiungere requiresLevel alla
 // sua dichiarazione, niente codice ad hoc.
+// (machines-gating-2) il filtro dichiarativo copre anche il gating
+// macchina: una voce con `machine: n` esiste solo se la macchina n e'
+// configurata (pattern requiresLevel: si dichiara sulla voce, zero codice
+// ad hoc nelle sezioni).
 function filterByLevel(items) {
   return computed(() =>
     items.filter(
-      (i) => !i.requiresLevel || Number(dataStored.userLevel) >= i.requiresLevel
+      (i) =>
+        (!i.requiresLevel || Number(dataStored.userLevel) >= i.requiresLevel) &&
+        (i.machine == undefined || isMachineConfigured(i.machine))
     )
   );
 }

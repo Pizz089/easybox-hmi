@@ -1,7 +1,7 @@
 <script setup>
 import { dataStored } from '../data.js'
 // (machines-gating) card CNC solo per le macchine configurate
-import { isMachineConfigured } from '../util/machineBrands'
+import { isMachineConfigured, configuredMachineNumbers } from '../util/machineBrands'
 </script>
 
 
@@ -72,7 +72,10 @@ import { isMachineConfigured } from '../util/machineBrands'
         
 </template-->
 <template>
-    <div class="container_card pure-u-1 pure-u-md-1-2 pure-u-lg-1-4">
+    <!-- (machines-gating-2) larghezza colonna DINAMICA sul numero di card
+         visibili: con una macchina sola la griglia si riequilibra (3 card
+         -> 1/3), niente colonne fantasma ne' buchi -->
+    <div class="container_card pure-u-1 pure-u-md-1-2" :class="unitColClass">
         <div class="card link" style="--tile-w:220px; --tile-h:150px; --img-max:100px;"
             @click="$router.push('/unit/robot');">
             <div class="img-wrapper" :class="getStatus(robot_status)">
@@ -89,7 +92,7 @@ import { isMachineConfigured } from '../util/machineBrands'
 
 
 
-    <div class="container_card pure-u-1 pure-u-md-1-2 pure-u-lg-1-4">
+    <div class="container_card pure-u-1 pure-u-md-1-2" :class="unitColClass">
         <div class="card link" style="--tile-w:220px; --tile-h:200px; --img-max:300px;"
             @click="$router.push('/unit/smallbox');">
             <div class="img-wrapper" :class="getStatus(smallBox_status)">
@@ -102,7 +105,7 @@ import { isMachineConfigured } from '../util/machineBrands'
         </div>
     </div>
 
-    <div class="container_card pure-u-1 pure-u-md-1-2 pure-u-lg-1-4" v-if="isMachineConfigured(1)">
+    <div class="container_card pure-u-1 pure-u-md-1-2" :class="unitColClass" v-if="isMachineConfigured(1)">
         <div class="card link" style="--tile-w:220px; --tile-h:150px; --img-max:95px;"
             @click="$router.push('/unit/cnc1');">
             <div class="img-wrapper" :class="getStatus(mc1_status)">
@@ -116,7 +119,7 @@ import { isMachineConfigured } from '../util/machineBrands'
     </div>
 
     <!-- (machines-gating) macchina 2 solo se configurata: niente card fantasma -->
-    <div class="container_card pure-u-1 pure-u-md-1-2 pure-u-lg-1-4" v-if="isMachineConfigured(2)">
+    <div class="container_card pure-u-1 pure-u-md-1-2" :class="unitColClass" v-if="isMachineConfigured(2)">
         <div class="card link" style="--tile-w:220px; --tile-h:150px; --img-max:95px;"
             @click="$router.push('/unit/cnc2');">
             <div class="img-wrapper" :class="getStatus(mc2_status)">
@@ -250,6 +253,17 @@ export default {
                 case dataStored.status_hold: return "HOLD"; break;
             }
             return "normal";
+        }
+    },
+    computed: {
+        // (machines-gating-2) card visibili = robot + easybox + macchine
+        // configurate: la larghezza lg segue il conteggio reale
+        unitColClass() {
+            const visible = 2 + configuredMachineNumbers().length;
+            if (visible >= 4) return 'pure-u-lg-1-4';
+            if (visible == 3) return 'pure-u-lg-1-3';
+            if (visible == 2) return 'pure-u-lg-1-2';
+            return 'pure-u-1';
         }
     },
     mounted() {

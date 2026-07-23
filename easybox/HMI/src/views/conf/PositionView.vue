@@ -4,6 +4,9 @@
     
     import { ref, onMounted } from 'vue'
     import { dataStored } from '../../data';
+    // (machines-gating-2) filtro CLIENT delle posizioni di macchine non
+    // configurate: i DATI restano a DB intatti, la vista non li mostra
+    import { isMachineConfigured } from '../../util/machineBrands';
     const el = ref()
 </script>
 
@@ -265,6 +268,16 @@ export default {
             const n = i>0 ? parseInt(parent.substring(i+1)) : NaN;
             return isNaN(n) ? 0 : n;
         },
+        // (machines-gating-2) righe PARENT 'MC*_N' con N NON configurato:
+        // NASCOSTE (filtro client, nessuna cancellazione a DB). N=0 (PARENT
+        // MC senza numero riconoscibile) = riga non classificabile: si
+        // MOSTRA — mai nascondere dati ambigui in silenzio.
+        machineRowVisible(parent){
+            if (!parent.startsWith("MC")) return true;
+            const n = this.getMcNumber(parent);
+            if (n === 0) return true;
+            return isMachineConfigured(n);
+        },
         setSort(field){
             if (this.sortField==field)
                 this.sortDir = -this.sortDir;
@@ -403,7 +416,10 @@ export default {
         categoryOptions(){
             const seen = new Map();
             for (const dt of this.datiTab){
-                const cat = this.getCategory(dt.PARENT.trim());
+                const p = dt.PARENT.trim();
+                // (machines-gating-2) la tab non nasce da righe nascoste
+                if (!this.machineRowVisible(p)) continue;
+                const cat = this.getCategory(p);
                 if (!seen.has(cat.id))
                     seen.set(cat.id, cat);
             }
@@ -420,7 +436,11 @@ export default {
             // le righe hanno la stessa categoria, il sort per categoria e'
             // morto ed e' stato rimosso col suo ramo.
             let rows = this.datiTabFiltred
-                .filter(dt => this.getCategory(dt.PARENT.trim()).id==this.categoryFilter);
+                .filter(dt => {
+                    const p = dt.PARENT.trim();
+                    // (machines-gating-2) righe di macchine non configurate: fuori
+                    return this.machineRowVisible(p) && this.getCategory(p).id==this.categoryFilter;
+                });
             const dir = this.sortDir;
             rows = rows.slice().sort((a,b)=>{
                 // N-3: nella tab Macchine il primario e' il numero macchina
