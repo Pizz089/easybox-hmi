@@ -179,6 +179,15 @@
           {{ $t('MAINTENANCE') }}
         </button>
 
+        <!-- (fase B) Reimposta stato cella: dichiarazione manuale 35 dopo
+             un'emergenza, a homing completato. Gate = idle (HOLD) come gli
+             altri comandi manuali della card. -->
+        <button class="pure-u-1 button_pressed"
+          :class="[dataStored.cmdActive==0? 'pure-button-disable' : 'pure-button-micromission']"
+          @click="dataStored.cmdActive==1?openDeclDialog():''">
+          {{ $t('robot.decl.button') }}
+        </button>
+
         <h4 class="section-label">{{ $t('robot.section.destination') }}</h4>
         <div class="pure-g dest-grid">
           <div class="pure-u-1-3">
@@ -452,6 +461,118 @@
             </div>
           </div>
         </div>
+
+        <!-- (fase B) dialog "Reimposta stato cella": dichiarazione 35.
+             Stato mostrato SOLO dai sensori/echi PLC (mai optimistic).
+             Entra nell'invariante un-solo-overlay. -->
+        <div v-if="declDialog.open" class="mission-dialog-overlay">
+          <div class="mission-dialog">
+            <h3 class="command-section-title">{{ $t('robot.decl.title') }}</h3>
+            <div class="unload-info">{{ $t('robot.decl.hint') }}</div>
+
+            <!-- sensori LIVE (FROM_PLANT/GRIPPER/MOUNTED e /CLOSED1) -->
+            <div class="coherence-row">
+              <span class="coh-label">{{ $t('robot.decl.mounted') }}</span>
+              <span v-if="gripperMounted===null" class="coh-na">{{ $t('robot.coherence.na') }}</span>
+              <span v-else>{{ gripperMounted==1 ? $t('robot.coherence.mounted') : $t('robot.coherence.absent') }}</span>
+            </div>
+            <div class="coherence-row">
+              <span class="coh-label">{{ $t('robot.decl.closed1') }}</span>
+              <span v-if="gripperClosed1===null" class="coh-na">{{ $t('robot.coherence.na') }}</span>
+              <span v-else>{{ gripperClosed1==1 ? $t('robot.decl.closed') : $t('robot.decl.open') }}</span>
+            </div>
+
+            <!-- STEP 1: sensori -> flangia nuda o avanti -->
+            <template v-if="declDialog.step==1">
+              <div class="unload-info" v-if="gripperMounted===0">{{ $t('robot.decl.bareHint') }}</div>
+              <div class="pure-g">
+                <div class="pure-u-1-3" v-if="gripperMounted===0">
+                  <button style="width:100%" class="button_pressed pure-button-mission"
+                    :disabled="declDialog.waiting" @click="declareBare()">
+                    {{ $t('robot.decl.declareBare') }}
+                  </button>
+                </div>
+                <div class="pure-u-1-3" v-if="gripperMounted===1">
+                  <button style="width:100%" class="button_pressed pure-button-mission" @click="declDialog.step=2">
+                    {{ $t('tray.teach.next') }}
+                  </button>
+                </div>
+                <div class="pure-u-1-3">
+                  <button style="width:100%" class="btn-ghost" @click="closeDeclDialog()">
+                    {{ $t('robot.dialog.cancel') }}
+                  </button>
+                </div>
+              </div>
+            </template>
+
+            <!-- STEP 2: pinza + contenuti lati -->
+            <template v-if="declDialog.step==2">
+              <div class="decl-field">
+                <label>{{ $t('robot.decl.gripper') }}</label>
+                <select v-model.number="declDialog.gripperSel" class="decl-select">
+                  <option :value="0">-</option>
+                  <option v-for="g in declGrippers" :key="g.ID" :value="g.ID">
+                    #{{ g.ID }} {{ (g.FAMILY || '').trim() }}
+                  </option>
+                </select>
+              </div>
+              <div class="decl-field">
+                <label>{{ $t('robot.decl.side1') }}</label>
+                <!-- regola RATIFICATA: chele aperte (CLOSED1=0) = contenuto
+                     FORZATO a vuoto, sola lettura -->
+                <span v-if="gripperClosed1===0" class="coh-na">{{ $t('robot.decl.forcedEmpty') }}</span>
+                <template v-else>
+                  <select v-model.number="declDialog.cont1" class="decl-select">
+                    <option :value="0">{{ $t('status.empty') }}</option>
+                    <option :value="1">{{ $t('status.raw') }}</option>
+                    <option :value="2">{{ $t('status.finished') }}</option>
+                    <option :value="3">{{ $t('robot.decl.contPallet') }}</option>
+                  </select>
+                  <select v-if="declDialog.cont1==3" v-model.number="declDialog.id1" class="decl-select">
+                    <option :value="0">-</option>
+                    <option v-for="p in palletsList" :key="'d1'+p.ID" :value="p.ID">#{{ p.ID }} {{ (p.FAMILY || '').trim() }}</option>
+                  </select>
+                </template>
+              </div>
+              <div class="decl-field">
+                <label>{{ $t('robot.decl.side2') }}</label>
+                <!-- nessun sensore lato 2: scelta libera, la validazione
+                     lato-inesistente la fa il PLC (errore 944) -->
+                <select v-model.number="declDialog.cont2" class="decl-select">
+                  <option :value="0">{{ $t('status.empty') }}</option>
+                  <option :value="1">{{ $t('status.raw') }}</option>
+                  <option :value="2">{{ $t('status.finished') }}</option>
+                  <option :value="3">{{ $t('robot.decl.contPallet') }}</option>
+                </select>
+                <select v-if="declDialog.cont2==3" v-model.number="declDialog.id2" class="decl-select">
+                  <option :value="0">-</option>
+                  <option v-for="p in palletsList" :key="'d2'+p.ID" :value="p.ID">#{{ p.ID }} {{ (p.FAMILY || '').trim() }}</option>
+                </select>
+              </div>
+              <div class="pure-g">
+                <div class="pure-u-1-3">
+                  <button style="width:100%" class="btn-ghost" @click="declDialog.step=1">
+                    {{ $t('tray.teach.back') }}
+                  </button>
+                </div>
+                <div class="pure-u-1-3">
+                  <button style="width:100%" class="button_pressed"
+                    :class="[!(declDialog.gripperSel>0) || declDialog.waiting ? 'pure-button-disable' : 'pure-button-mission']"
+                    @click="(declDialog.gripperSel>0 && !declDialog.waiting) ? sendDeclare() : ''">
+                    {{ $t('robot.decl.send') }}
+                  </button>
+                </div>
+                <div class="pure-u-1-3">
+                  <button style="width:100%" class="btn-ghost" @click="closeDeclDialog()">
+                    {{ $t('robot.dialog.cancel') }}
+                  </button>
+                </div>
+              </div>
+            </template>
+
+            <small class="cmd-hint" v-if="declDialog.waiting">{{ $t('robot.decl.waiting') }}</small>
+          </div>
+        </div>
       </section>
     </div>
 
@@ -496,6 +617,20 @@ export default {
         subpos: 1,
         gripperSel: null
       },
+      // (fase B) dialog "Reimposta stato cella" (35): sensori LIVE + scelta
+      // pinza/contenuti; waiting = in attesa dell'eco DECLARE/ROBOT
+      declDialog: {
+        open: false,
+        step: 1,
+        gripperSel: 0,
+        cont1: 0, id1: 0,
+        cont2: 0, id2: 0,
+        waiting: false
+      },
+      declGrippers: [],        // anagrafica COMPLETA (inclusa l'eventuale a bordo)
+      declTimer: null,
+      gripperMounted: null,    // FROM_PLANT/GRIPPER/MOUNTED (0/1, null = mai visto)
+      gripperClosed1: null,    // FROM_PLANT/GRIPPER/CLOSED1
       // R2-2: editing dell'input velocita' — col flag attivo l'eco PLC non
       // sovrascrive mentre si digita, e l'Enter (che fa blur) non produce
       // un secondo invio.
@@ -807,6 +942,7 @@ export default {
       this.unloadOpen = false;
       // (collaudo) l'invariante copre anche il terzo overlay
       this.closeTestDialog();
+      this.closeDeclDialog();
       this.dialog.type = type;
       this.dialog.selected = null;   // mai preselezionato
     },
@@ -832,6 +968,7 @@ export default {
       if (this.gripperOnBoardNow()) {
         this.closeDialog();          // (fix) esclusione reciproca: via ogni dialog missione residuo
         this.closeTestDialog();      // (collaudo) idem per il dialog di collaudo
+        this.closeDeclDialog();
         this.unloadOpen = true;
       } else
         this.openDialog('gripper');
@@ -859,6 +996,7 @@ export default {
     openTestDialog(type) {
       this.closeDialog();
       this.unloadOpen = false;
+      this.closeDeclDialog();
       this.testDialog.type = type;
       // default: 31 parte dalla posizione 1; 32 da 0 = prima posizione vuota
       this.testDialog.subpos = (type == 'placeTray') ? 0 : 1;
@@ -869,6 +1007,58 @@ export default {
     closeTestDialog() {
       this.testDialog.type = '';
       this.testDialog.gripperSel = null;
+    },
+    // ===== (fase B) Reimposta stato cella (35) =====
+    openDeclDialog() {
+      // un solo overlay: chiudo tutto il resto
+      this.closeDialog();
+      this.unloadOpen = false;
+      this.closeTestDialog();
+      this.declDialog.open = true;
+      this.declDialog.step = 1;
+      this.declDialog.gripperSel = 0;
+      this.declDialog.cont1 = 0; this.declDialog.id1 = 0;
+      this.declDialog.cont2 = 0; this.declDialog.id2 = 0;
+      this.declDialog.waiting = false;
+      // anagrafica pinze COMPLETA (senza il filtro POS_PLANT!=1000 della
+      // lista carico: la dichiarazione puo' riguardare la pinza gia' a bordo)
+      fetch(dataStored.server + 'api/conf/gripper/show/all', { method: 'GET' })
+        .then(r => { if (!r.ok) throw new Error('Network response was not ok'); return r.json(); })
+        .then(d => { this.declGrippers = d || []; })
+        .catch(e => { console.info(e); this.declGrippers = []; });
+    },
+    closeDeclDialog() {
+      this.declDialog.open = false;
+      this.declDialog.waiting = false;
+      clearTimeout(this.declTimer);
+    },
+    declareBare() {
+      // MOUNTED=0: flangia nuda dichiarata esplicitamente (35;0;0;0;0;0)
+      this.armDeclWait();
+      this.sendToRobot('35;0;0;0;0;0');
+    },
+    sendDeclare() {
+      const d = this.declDialog;
+      if (!(d.gripperSel > 0) || d.waiting) return;
+      // regola RATIFICATA: chele aperte (CLOSED1=0) = lato 1 FORZATO vuoto;
+      // id != 0 solo con contenuto pallet (3)
+      const c1 = this.gripperClosed1 === 0 ? 0 : d.cont1;
+      const cmd = '35;' + d.gripperSel + ';' + c1 + ';' + (c1 == 3 ? d.id1 : 0) +
+                  ';' + d.cont2 + ';' + (d.cont2 == 3 ? d.id2 : 0);
+      this.armDeclWait();
+      this.sendToRobot(cmd);
+    },
+    armDeclWait() {
+      this.declDialog.waiting = true;
+      clearTimeout(this.declTimer);
+      this.declTimer = setTimeout(() => {
+        // nessun eco: il dialog resta aperto, l'operatore decide (gli errori
+        // 944/945/946 arrivano comunque come allarme robot via fix P3)
+        this.declDialog.waiting = false;
+        dataStored.alert.title = this.$t('WARNING');
+        dataStored.alert.desc = 'robot.decl.noEcho';
+        dataStored.alert.type = 'warning';
+      }, 5000);
     },
     confirmTestDialog() {
       const t = this.testDialog.type;
@@ -1284,6 +1474,23 @@ export default {
       // l'evidenziazione e la conferma vanno per ID.
       this.getGrippersList();
     };
+    // (fase B) sensori pinza LIVE + eco dichiarazione 35: l'eco chiude il
+    // dialog (successo); gli errori arrivano come allarme robot (fix P3)
+    this.gripperMountedHandler = v => { const n = parseInt(v, 10); if (Number.isInteger(n)) this.gripperMounted = n; };
+    this.gripperClosed1Handler = v => { const n = parseInt(v, 10); if (Number.isInteger(n)) this.gripperClosed1 = n; };
+    this.declRobotHandler = () => {
+      if (!this.declDialog.open || !this.declDialog.waiting) return;
+      clearTimeout(this.declTimer);
+      this.closeDeclDialog();
+      dataStored.alert.title = 'INFO';
+      dataStored.alert.desc = 'robot.decl.done';
+      dataStored.alert.type = 'message';
+      this.getRobotData();
+      this.getGrippersList();
+    };
+    dataStored.WS.socket.on('GRIPPER/MOUNTED', this.gripperMountedHandler);
+    dataStored.WS.socket.on('GRIPPER/CLOSED1', this.gripperClosed1Handler);
+    dataStored.WS.socket.on('DECLARE/ROBOT', this.declRobotHandler);
     dataStored.WS.socket.on('GRIPPER/SENSOR', this.gripperSensorHandler);
     dataStored.WS.socket.on('GRIPPER/CODE', this.gripperCodeHandler);
     dataStored.WS.socket.on('GRIPPER/REGISTERED', this.gripperRegisteredHandler);
@@ -1294,6 +1501,10 @@ export default {
     // staccherebbe anche i listener di altri componenti (es. units.vue).
     dataStored.WS.socket.off('ROBOT/STATUS', this.statusHandler);
     dataStored.WS.socket.off('BOX/STATUS', this.boxStatusHandler);
+    dataStored.WS.socket.off('GRIPPER/MOUNTED', this.gripperMountedHandler);
+    dataStored.WS.socket.off('GRIPPER/CLOSED1', this.gripperClosed1Handler);
+    dataStored.WS.socket.off('DECLARE/ROBOT', this.declRobotHandler);
+    clearTimeout(this.declTimer);
     dataStored.WS.socket.off('GRIPPER/SENSOR', this.gripperSensorHandler);
     dataStored.WS.socket.off('GRIPPER/CODE', this.gripperCodeHandler);
     dataStored.WS.socket.off('GRIPPER/REGISTERED', this.gripperRegisteredHandler);
@@ -1559,5 +1770,32 @@ h6 {
   letter-spacing: 0.05em;
   color: var(--text-secondary);
   margin-bottom: var(--space-2);
+}
+
+/* (fase B) campi del dialog Reimposta stato cella */
+.decl-field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  text-align: left;
+}
+
+.decl-field label {
+  min-width: 7em;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.decl-select {
+  min-height: 44px;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--font-size-base);
 }
 </style>

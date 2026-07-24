@@ -25,6 +25,15 @@ const safetyAuxHandler = v => {
   if (Number.isInteger(n)) dataStored.safetyAux = n
 }
 
+// (fase B) ALARM/MC1 (es. 947: dichiarazione macchina rifiutata): toast
+// globale con chiave i18n robot.alarm_<codice> (fallback codice grezzo)
+const alarmMc1Handler = payload => {
+  const code = parseInt(payload, 10)
+  dataStored.alert.title = 'MC1'
+  dataStored.alert.desc = Number.isInteger(code) && code > 0 ? 'robot.alarm_' + code : String(payload)
+  dataStored.alert.type = 'warning'
+}
+
 const plcAlarmGenericHandler = payload => {
   dataStored.alert.title = 'GENERIC_ERROR'
   dataStored.alert.desc = payload
@@ -36,6 +45,7 @@ onMounted(() => {
     dataStored.WS.socket.on('PLC/ALARM/ROBOT', plcAlarmRobotHandler)
     dataStored.WS.socket.on('PLC/ALARM/GENERIC', plcAlarmGenericHandler)
     dataStored.WS.socket.on('SAFETY/AUX', safetyAuxHandler)
+    dataStored.WS.socket.on('ALARM/MC1', alarmMc1Handler)
     // replay dalla cache backend (risponde anche SAFETY/AUX)
     dataStored.WS.socket.emit('GRIPPER/REQUEST_SNAPSHOT')
   }
@@ -48,6 +58,7 @@ onUnmounted(() => {
     dataStored.WS.socket.off('PLC/ALARM/ROBOT', plcAlarmRobotHandler)
     dataStored.WS.socket.off('PLC/ALARM/GENERIC', plcAlarmGenericHandler)
     dataStored.WS.socket.off('SAFETY/AUX', safetyAuxHandler)
+    dataStored.WS.socket.off('ALARM/MC1', alarmMc1Handler)
   }
 })
 </script>

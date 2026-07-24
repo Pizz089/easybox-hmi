@@ -56,6 +56,11 @@ const gripperStateCache = {};
 // richiesta client per tutto lo stato pinza/safety).
 const safetyCache = {};
 
+// Dichiarazioni FASE B (fonte di verita' = echi PLC, ripubblicati a power-on
+// e su refresh 90): MC1 = "pallet;manualVice", ROBOT = "gripper;cont1;cont2".
+// Stessa famiglia di cache: replay incluso in GRIPPER/REQUEST_SNAPSHOT.
+const declareCache = {};
+
 client.on('error', function (err){
 	DBf.io.emit('PLC/ALARM/GENERIC', 'Impossible to connect to broker!    ['+err+']');
 	// Topic con prefisso "_" indicano eventi interni del backend,
@@ -82,6 +87,11 @@ const BROKER_URL_DISPLAY = `${client.options.protocol}://${client.options.hostna
 
 client.on('connect', function () {
 	reconnectLogged = false;
+	// (fase B) refresh all'avvio: il PLC ripubblica TUTTO (brand, AUX, stati,
+	// dispatcher, DECLARE) — chiude la classe "publish perso" quando il
+	// backend (ri)parte dopo il PLC. Una volta per connessione (l'evento
+	// 'connect' del client mqtt scatta anche a ogni riconnessione).
+	client.publish('TO_PLANT/CMD/ROBOT', '90');
 	try {
 		const payloadStr = "connected to " + BROKER_URL_DISPLAY;
 		diag.publish({
@@ -218,6 +228,33 @@ client.on('message', function (topic, message, packet) {
 			insertLog( 'MISSION: '+message.toString(), 'PLC', param[3] )
 			return;
 		}	
+	}
+	// ===== FASE B: dichiarazioni stato cella =====
+	// FROM_PLANT/DECLARE/MC1 ("pallet;manualVice") e /ROBOT ("gripper;c1;c2")
+	if (param[1] == "DECLARE" && (param[2] == "MC1" || param[2] == "ROBOT")) {
+		declareCache[param[2]] = message.toString();
+		DBf.io.emit('DECLARE/' + param[2], message.toString());
+		insertLog('DECLARE/' + param[2] + ': ' + message.toString(), 'PLC', 'DECLARE');
+		return;
+	}
+	// FROM_PLANT/GRIPPER/MOUNTED|CLOSED1: sensori pinza on-change (0/1)
+	if (param[1] == "GRIPPER" && (param[2] == "MOUNTED" || param[2] == "CLOSED1")) {
+		const v = parseInt(message.toString(), 10);
+		if (!Number.isInteger(v)) {
+			log.standard("GRIPPER/" + param[2] + ": payload non intero [" + message.toString() + "] — ignorato");
+			return;
+		}
+		if (param[2] == "MOUNTED") gripperStateCache.mounted = v;
+		else gripperStateCache.closed1 = v;
+		DBf.io.emit('GRIPPER/' + param[2], v);
+		return;
+	}
+	// FROM_PLANT/ALARM/MC1 (es. 947, dichiarazione macchina rifiutata):
+	// DEVE stare PRIMA del ramo ALARM generico, che catturerebbe il topic
+	if (param[1] == "ALARM" && param[2] == "MC1") {
+		insertLog('ALARM MC1: ' + message.toString(), 'PLC', 'ALARM');
+		DBf.io.emit('ALARM/MC1', message.toString());
+		return;
 	}
 	if (param[1] =="ALARM") {		//es: FROM_PLANT/ALARM
 		insertLog( message.toString(), 'PLC', 'ALARM' )
@@ -538,6 +575,15 @@ DBf.io.on('connection', (socket) => {
 		socket.emit('GRIPPER/REGISTERED', gripperStateCache.registered);
 	if (safetyCache.aux !== undefined)
 		socket.emit('SAFETY/AUX', safetyCache.aux);
+	// FASE B: sensori pinza + dichiarazioni (stessa richiesta client)
+	if (gripperStateCache.mounted !== undefined)
+		socket.emit('GRIPPER/MOUNTED', gripperStateCache.mounted);
+	if (gripperStateCache.closed1 !== undefined)
+		socket.emit('GRIPPER/CLOSED1', gripperStateCache.closed1);
+	if (declareCache.MC1 !== undefined)
+		socket.emit('DECLARE/MC1', declareCache.MC1);
+	if (declareCache.ROBOT !== undefined)
+		socket.emit('DECLARE/ROBOT', declareCache.ROBOT);
   });
   
 //  socket.on('TO_PLANT/CMD/ORDER', (data) => {
@@ -638,6 +684,8 @@ function getCMD(cmd){
 		case 21  : return cmd + " -> To Maintenance Pos		";
 		case 25  : return cmd + " -> Extract Tray			";
 		case 26  : return cmd + " -> Release Tray			";
+		case 35  : return cmd + " -> Declare cell state	";
+		case 90  : return cmd + " -> Refresh republish	";
 		case 81  : return cmd + " -> Remote Mode			";
 		case 82  : return cmd + " -> Local Mode				";
 		case 83  : return cmd + " -> Reset Object on Gripper";
