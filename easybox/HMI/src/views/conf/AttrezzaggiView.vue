@@ -402,15 +402,29 @@ export default {
             // TRAPPOLA NOTA (incidente storico form Pallet, 396000->396):
             // update PASS-THROUGH — la riga viene rimandata ESATTAMENTE come
             // letta da show/all (X/Y/Z/CORR/FAMILY/DESCR/MAG mai toccati ne'
-            // convertiti). (R-C) il dialog ora scrive SEMPRE anche POS_PLANT:
-            //   casella   -> MAG_POS=sel, POS_PLANT=0
-            //   Rimuovi   -> MAG_POS=-1,  POS_PLANT=0 (chiude il buco del
-            //                pallet a 101 rimosso che restava a 101)
-            //   macchina  -> MAG_POS=-1,  POS_PLANT=100+n (canone D2)
+            // convertiti).
             const row = this.pallets.find(p => p.ID == t.ID);
             if (!row) { this.closePlace(); return; }
             // casella di PROVENIENZA (per il trasferimento del flag D3)
             const fromSlot = row.MAG_POS > 0 ? row.MAG_POS : 0;
+            // (am-casella-magpos) POS_PLANT e MAG_POS ESPLICITI per ramo
+            // (tabella ratificata — la vista COORDINATES_FOR_PALLET_WAREHOUSE
+            // e le gambe automatiche di deposito/prelievo vivono di MAG_POS):
+            //   casella N   -> MAG_POS=N,         POS_PLANT=0
+            //   In macchina -> MAG_POS INVARIATO (la CASA resta), POS_PLANT=100+n
+            //   Rimuovi     -> MAG_POS=-1,        POS_PLANT=0 (chiude il buco
+            //                  del pallet a 101 rimosso che restava a 101)
+            let newMagPos, newPosPlant;
+            if (isMachine) {
+                newMagPos = row.MAG_POS;          // la casa resta (pass-through fresh)
+                newPosPlant = 100 + machineN;     // canone D2
+            } else if (sel > 0) {
+                newMagPos = sel;
+                newPosPlant = 0;
+            } else {
+                newMagPos = -1;                   // -1 = fuori magazzino (decodifica PalletsView)
+                newPosPlant = 0;
+            }
             const params = new URLSearchParams({
                 ID: row.ID,
                 FAMILY: row.FAMILY,
@@ -418,8 +432,8 @@ export default {
                 X: row.X, Y: row.Y, Z: row.Z,
                 X_CORR: row.X_CORR, Y_CORR: row.Y_CORR, Z_CORR: row.Z_CORR,
                 MAG: row.MAG,
-                MAG_POS: sel > 0 ? sel : -1,   // -1 = fuori magazzino (decodifica PalletsView)
-                POS_PLANT: isMachine ? (100 + machineN) : 0
+                MAG_POS: newMagPos,
+                POS_PLANT: newPosPlant
             });
             // AD (chiusura finestra nota): l'endpoint ora rifiuta con codici
             // KO_OCCUPIED/KO_DISABLED (HTTP 200, body = codice) — qui si
@@ -442,11 +456,14 @@ export default {
                         this.getDataTable();
                         return;
                     }
-                    // (D3) trasferimento del flag casella [POSITION] WPALLET
-                    // via endpoint warehouseSlot (transizioni STRETTE lato
-                    // server: occupy 2->4, free 4->2, mai toccato 9):
-                    //   verso casella  -> occupy(destinazione) + free(provenienza)
-                    //   verso -1 (macchina o Rimuovi) -> free(provenienza)
+                    // (D3, aggiornato am-casella-magpos) flag casella
+                    // [POSITION] WPALLET via warehouseSlot (transizioni
+                    // STRETTE: occupy 2->4, free 4->2, mai toccato 9):
+                    //   verso casella   -> occupy(destinazione) + free(provenienza)
+                    //   In macchina     -> NIENTE free: la casa resta del
+                    //                      pallet (MAG_POS conservato, la
+                    //                      casella resta riservata)
+                    //   Rimuovi         -> free(provenienza)
                     const slotCalls = [];
                     const slotUrl = (action, n) =>
                         fetch(dataStored.server+'api/conf/position/warehouseSlot/'+action+'/WPALLET/'+n, { method: 'GET' })
@@ -454,7 +471,7 @@ export default {
                     if (sel > 0) {
                         slotCalls.push(slotUrl('occupy', sel));
                         if (fromSlot > 0 && fromSlot != sel) slotCalls.push(slotUrl('free', fromSlot));
-                    } else if (fromSlot > 0) {
+                    } else if (!isMachine && fromSlot > 0) {
                         slotCalls.push(slotUrl('free', fromSlot));
                     }
                     Promise.all(slotCalls).then(() => {

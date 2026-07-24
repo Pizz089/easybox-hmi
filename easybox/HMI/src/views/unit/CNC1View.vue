@@ -200,20 +200,22 @@ export default {
                 const row = (pallets || []).find(p => p.ID == id);
                 if (!row) return;   // niente riga fresca: nessuna scrittura cieca
                 const fromSlot = row.MAG_POS > 0 ? row.MAG_POS : 0;
+                // (am-casella-magpos) tabella ratificata: in macchina la
+                // CASA resta (MAG_POS invariato); il rimuovi (41) porta
+                // fuori magazzino (-1) come il ramo Rimuovi del dialog
                 const params = new URLSearchParams({
                     ID: row.ID, FAMILY: row.FAMILY, DESCR: row.DESCR,
                     X: row.X, Y: row.Y, Z: row.Z,
                     X_CORR: row.X_CORR, Y_CORR: row.Y_CORR, Z_CORR: row.Z_CORR,
                     MAG: row.MAG,
-                    MAG_POS: -1,
+                    MAG_POS: type == 'set' ? row.MAG_POS : -1,
                     POS_PLANT: type == 'set' ? 101 : 0
                 });
                 const body = await fetch(dataStored.server + 'api/conf/pallet/updatePallet?' + params.toString(), { method: 'GET' })
                     .then(r => { if (!r.ok) throw new Error('Network response was not ok'); return r.text(); });
                 if (body != 'OK') throw new Error(body);
-                if (type == 'set' && fromSlot > 0)
-                    await fetch(dataStored.server + 'api/conf/position/warehouseSlot/free/WPALLET/' + fromSlot, { method: 'GET' })
-                        .catch(e => { console.info(e); });
+                // (am-casella-magpos) NIENTE free al set: la casa resta del
+                // pallet dichiarato in macchina (casella riservata)
             } catch (e) {
                 console.info(e);
                 dataStored.alert.title = this.$t('WARNING');
