@@ -214,8 +214,13 @@ export default {
                 const body = await fetch(dataStored.server + 'api/conf/pallet/updatePallet?' + params.toString(), { method: 'GET' })
                     .then(r => { if (!r.ok) throw new Error('Network response was not ok'); return r.text(); });
                 if (body != 'OK') throw new Error(body);
-                // (am-casella-magpos) NIENTE free al set: la casa resta del
-                // pallet dichiarato in macchina (casella riservata)
+                // (am-inmacchina-free) al set la casa (MAG_POS) resta del
+                // pallet, ma la casella di provenienza va LIBERATA (4->2,
+                // idempotente): il rientro automatico PLC cerca la casa con
+                // STATUS=2 — palletSlotGuard la protegge comunque via MAG_POS
+                if (type == 'set' && fromSlot > 0)
+                    await fetch(dataStored.server + 'api/conf/position/warehouseSlot/free/WPALLET/' + fromSlot, { method: 'GET' })
+                        .catch(e => { console.info(e); });
             } catch (e) {
                 console.info(e);
                 dataStored.alert.title = this.$t('WARNING');

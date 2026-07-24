@@ -456,14 +456,18 @@ export default {
                         this.getDataTable();
                         return;
                     }
-                    // (D3, aggiornato am-casella-magpos) flag casella
-                    // [POSITION] WPALLET via warehouseSlot (transizioni
-                    // STRETTE: occupy 2->4, free 4->2, mai toccato 9):
-                    //   verso casella   -> occupy(destinazione) + free(provenienza)
-                    //   In macchina     -> NIENTE free: la casa resta del
-                    //                      pallet (MAG_POS conservato, la
-                    //                      casella resta riservata)
-                    //   Rimuovi         -> free(provenienza)
+                    // (D3, am-inmacchina-free) flag casella [POSITION] WPALLET
+                    // via warehouseSlot (transizioni STRETTE: occupy 2->4,
+                    // free 4->2, mai toccato 9):
+                    //   verso casella -> occupy(destinazione) + free(provenienza)
+                    //   In macchina   -> free(provenienza): il rientro
+                    //                    automatico PLC cerca la casa con
+                    //                    STATUS=2 — una casella lasciata a 4
+                    //                    = rientro senza destinazione. La
+                    //                    casa (MAG_POS) resta del pallet e
+                    //                    palletSlotGuard la protegge dalle
+                    //                    occupazioni altrui: liberare e' sicuro.
+                    //   Rimuovi       -> free(provenienza)
                     const slotCalls = [];
                     const slotUrl = (action, n) =>
                         fetch(dataStored.server+'api/conf/position/warehouseSlot/'+action+'/WPALLET/'+n, { method: 'GET' })
@@ -471,7 +475,7 @@ export default {
                     if (sel > 0) {
                         slotCalls.push(slotUrl('occupy', sel));
                         if (fromSlot > 0 && fromSlot != sel) slotCalls.push(slotUrl('free', fromSlot));
-                    } else if (!isMachine && fromSlot > 0) {
+                    } else if (fromSlot > 0) {
                         slotCalls.push(slotUrl('free', fromSlot));
                     }
                     Promise.all(slotCalls).then(() => {
