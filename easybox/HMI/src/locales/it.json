@@ -422,7 +422,7 @@
     "alarm_939": "Cambio pinza rifiutato: la pinza richiesta è già a bordo.",
     "alarm_943": "Cambio pinza: timeout di fase (deposito o prelievo). Verificare il robot e riprovare dopo il ripristino.",
     "alarm_991": "Robot: pezzo non trovato nel cassetto (verificare ordine e stato tasca a DB)",
-    "alarm_944": "Dichiarazione: contenuto indicato su un lato pinza inesistente",
+    "alarm_944": "Dichiarazione contenuto non valida: lato pinza inesistente o pallet su entrambi i lati",
     "alarm_945": "Dichiarazione incoerente col sensore: verificare la pinza montata",
     "alarm_946": "Errore database durante la dichiarazione dello stato",
     "alarm_947": "Dichiarazione macchina rifiutata: ciclo attivo o pallet già dichiarato",

@@ -422,7 +422,7 @@
     "alarm_939": "Gripper swap refused: requested gripper is already mounted.",
     "alarm_943": "Gripper swap: phase timeout (deposit or pick). Check the robot and retry after reset.",
     "alarm_991": "Robot: part not found in tray (check order and pocket status in DB)",
-    "alarm_944": "Declaration: content set on a non-existing gripper side",
+    "alarm_944": "Invalid content declaration: gripper side does not exist or pallet on both sides",
     "alarm_945": "Declaration inconsistent with the sensor: check the mounted gripper",
     "alarm_946": "Database error during state declaration",
     "alarm_947": "Machine declaration refused: cycle active or pallet already declared",
