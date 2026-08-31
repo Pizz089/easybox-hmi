@@ -214,6 +214,8 @@
     "confirmRegenerate": "The {n} positions of tray {floor} will be regenerated ({m} non-empty will be lost). Continue?",
     "saveBlockedOrder": "Regeneration blocked: a tray position is linked to an ACTIVE order. Close or abort the order before regenerating the grating.",
     "deleteBlockedOrder": "Deletion blocked: a tray position is linked to an ACTIVE order. Close or abort the order before deleting the grating.",
+    "outOfTray": "Grid OUTSIDE the tray contour: {detail}. Save cancelled, no pocket written.",
+    "outOfTrayAxis": "overflows by {mm} mm on axis {axis}",
     "saveIncomplete": "Regeneration incomplete: re-associate the grating (repeat the save).",
     "saveCheckFailed": "Position check failed: save cancelled (no blind deletion)."
   },

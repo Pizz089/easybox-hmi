@@ -2,6 +2,7 @@
     import { RouterLink, RouterView } from 'vue-router'
     import { dataStored } from '../../../data.js'
     import { KO_ACTIVE_ORDER } from '../../../util/errorCodes.js'
+    import { drawingToRobot, gridFit } from '../../../util/gratingAxes.js'
     import numericField from '../../../components/numericField.vue'
     import { ref, onMounted } from 'vue'
     //import layout from '../layoutView.vue'
@@ -380,19 +381,12 @@
 
 <script>
 // ============================================================================
-// (grating-axis-swap, 23/7 — TERZO giro sul generatore in un giorno)
-// CONVENZIONE ASSI ROBOT, validata sul ferro (TRAY 9, 91 tasche):
-//   - numerazione COLONNA PER COLONNA: loop INTERNO lungo l'asse Y robot
-//     (che corre lungo il lato LUNGO del cassetto = width del disegno),
-//     verso POSITIVO; loop ESTERNO lungo X robot (= height del disegno);
-//   - ORIGINE = tasca 1 ATTUALE, che NON si muove: l'origine ingloba il
-//     teaching del TRAY — un'origine diversa invaliderebbe la taratura dei
-//     cassetti gia' insegnati. Cambiano SOLO passi e versi delle successive.
-// Il vecchio mapping scriveva lungo-width in pos.X e lungo-height NEGATO in
-// pos.Y: assi scambiati per il robot (incidente di campo 23/7).
-// VERSI: un punto solo, QUI — ribaltare un asse = cambiare UN carattere.
-const DIR_X = +1;   // ASSUNTO — validazione ferro PENDENTE (tasca 14)
-const DIR_Y = +1;   // VALIDATO sul ferro il 23/7
+// (grating-axis-swap-2, 1/9) La CONVENZIONE ASSI ROBOT vive in UN punto solo:
+// util/gratingAxes.js (drawingToRobot: X lungo width positivo, Y lungo height
+// negata — validata sui dati DB di TRAY_9). Qui resta solo l'adapter dalla
+// forma di listPz ai centri {w,h} (pocketCentersWH). Il blocco DIR_X/DIR_Y
+// del 23/7 e' stato rimosso: invertiva i ruoli degli assi su numeri attesi
+// mai riscontrati sul ferro (incidente TRAY_8 dell'1/9).
 // ============================================================================
 
 function buildGratingDxf({ width, height, pieces, dimX, dimY, radius, flipY = true, profileD = null, holes = [] }) {
@@ -766,6 +760,10 @@ export default {
             }
         },
         async saveData() {
+            // (Task 3, 1/9) BLOCCO ingombro PRIMA di qualsiasi scrittura
+            // (header GRATING incluso): griglia fuori dal contorno = tasche
+            // sbagliate scritte in silenzio (incidente TRAY_8).
+            if (!this.checkGridFit()) return;
             // (grating-save) ramo grigliato ESISTENTE: guardrail e conferma
             // PRIMA di qualsiasi scrittura — annullare = zero modifiche,
             // anche sull'header GRATING (coerenza header/posizioni).
@@ -837,6 +835,36 @@ export default {
                 return false;
             }
         },
+        // Centri tasca in coordinate DISEGNO {w,h} (mm): w lungo width, h
+        // lungo height, ordine = SUB_POS. Adapter unico per drawingToRobot /
+        // gridFit (la convenzione assi sta in util/gratingAxes.js).
+        pocketCentersWH() {
+            return this.listPz.map(p => ({
+                w: p.prisma ? this.grating.width  - (p.x + this.dim_x/2) : this.grating.width  - p.x,
+                h: p.prisma ? this.grating.height - (p.y + this.dim_y/2) : this.grating.height - p.y,
+            }));
+        },
+        // (Task 3, 1/9) confronto ingombro griglia vs contorno TRAY.X/TRAY.Y.
+        // Nominale, CORR esclusi: nella vista 4Robot X_CORR/Y_CORR del TRAY
+        // sono un offset di teaching uguale per tutte le tasche (spostano il
+        // cassetto nel frame robot, non la griglia dentro il contorno).
+        checkGridFit() {
+            if (this.listPz.length === 0) return true;
+            const tray = this.trayList[this.grating.trayIndex-1];
+            if (!tray) return true;
+            const fit = gridFit(drawingToRobot(this.pocketCentersWH()), {
+                trayX: tray.X,
+                trayY: tray.Y,
+                halfW: (this.prismatic ? this.dim_x : this.x)/2 * 1000,
+                halfH: (this.prismatic ? this.dim_y : this.y)/2 * 1000,
+            });
+            if (fit.ok) return true;
+            const detail = [];
+            if (fit.overX > 0) detail.push(this.$t('grating.outOfTrayAxis', { mm: Math.ceil(fit.overX/1000), axis: 'X' }));
+            if (fit.overY > 0) detail.push(this.$t('grating.outOfTrayAxis', { mm: Math.ceil(fit.overY/1000), axis: 'Y' }));
+            alert(this.$t('grating.outOfTray', { detail: detail.join(', ') }));
+            return false;
+        },
         async savePositions() {
             // (grating-save) grigliato ESISTENTE: DELETE-THEN-INSERT.
             // L'update per SUB_POS non poteva ne' cancellare le righe
@@ -849,16 +877,11 @@ export default {
             // insert fallisce dopo la delete lo stato e' incompleto ma
             // RECUPERABILE ripetendo il salvataggio (alert esplicito).
             const floorMag = this.trayList[this.grating.trayIndex-1].FLOOR_MAG;
-            // (grating-axis-swap) origine = tasca 1 (prima della lista):
-            // le sue coordinate disegno definiscono w1/h1 per TUTTE le tasche
-            let w1 = 0, h1 = 0;
-            if (this.listPz.length > 0) {
-                const p1 = this.listPz[0];
-                w1 = p1.prisma ? this.grating.width - (p1.x + this.dim_x/2)
-                               : this.grating.width - p1.x;
-                h1 = p1.prisma ? this.grating.height - (p1.y + this.dim_y/2)
-                               : this.grating.height - p1.y;
-            }
+            // (grating-axis-swap-2) coordinate robot dall'adapter + util
+            // condivisa: origine = tasca 1, X lungo width, Y = -height.
+            // Riscontro TRAY_9 (DB cella): tasca1 (50000,-65000), tasca2
+            // (110000,-65000), tasca14 (50000,-145000), tasca91 (770000,-545000).
+            const robotPts = drawingToRobot(this.pocketCentersWH());
             if (!this.createNew) {
                 try {
                     const del = await fetch(dataStored.server+'api/conf/position/deletePositionsTray/'+floorMag ,{ method: 'delete'});
@@ -892,22 +915,8 @@ export default {
                 pos.SAFEX=this.grating.SAFEX
                 pos.SAFEY=this.grating.SAFEY
 
-                // (grating-axis-swap) coordinate DISEGNO della tasca:
-                // w = lungo width (lato lungo), h = lungo height
-                const w = this.listPz[i].prisma
-                    ? this.grating.width - (this.listPz[i].x + this.dim_x/2)
-                    : this.grating.width - this.listPz[i].x;
-                const h = this.listPz[i].prisma
-                    ? this.grating.height - (this.listPz[i].y + this.dim_y/2)
-                    : this.grating.height - this.listPz[i].y;
-                // assi ROBOT: origine = tasca 1 attuale (w1, -h1); da li'
-                // X avanza lungo height (DIR_X), Y lungo width (DIR_Y).
-                // Caso validato: tasca1 (50000,-65000), 2 (50000,-5000),
-                // 14 (130000,-65000), 91 (530000,655000).
-                pos.X = w1 + DIR_X * (h - h1);
-                pos.Y = -h1 + DIR_Y * (w - w1);
-                pos.X *= 1000;
-                pos.Y *= 1000;   // micron; il segno vive nei DIR_*, non qui
+                pos.X = robotPts[i].X;
+                pos.Y = robotPts[i].Y;   // micron, gia' in convenzione robot
 
                 pos.EASYBOX = dataStored.EasyBox;
 

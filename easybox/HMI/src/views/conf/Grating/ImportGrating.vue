@@ -175,20 +175,12 @@ const el = ref()
 
 <script>
 // ============================================================================
-// (grating-axis-swap, 23/7 — TERZO giro sul generatore in un giorno)
-// CONVENZIONE ASSI ROBOT, validata sul ferro (TRAY 9, 91 tasche):
-//   - numerazione COLONNA PER COLONNA: loop INTERNO lungo l'asse Y robot
-//     (che corre lungo il lato LUNGO del cassetto = width del disegno),
-//     verso POSITIVO; loop ESTERNO lungo X robot (= height del disegno);
-//   - ORIGINE = tasca 1 ATTUALE, che NON si muove: l'origine ingloba il
-//     teaching del TRAY — un'origine diversa invaliderebbe la taratura dei
-//     cassetti gia' insegnati. Cambiano SOLO passi e versi delle successive.
-// Il vecchio mapping scriveva lungo-width in pos.X e lungo-height NEGATO in
-// pos.Y: assi scambiati per il robot (incidente di campo 23/7).
-// VERSI: un punto solo, QUI — ribaltare un asse = cambiare UN carattere.
-const DIR_X = +1;   // ASSUNTO — validazione ferro PENDENTE (tasca 14)
-const DIR_Y = +1;   // VALIDATO sul ferro il 23/7
+// (grating-axis-swap-2, 1/9) La CONVENZIONE ASSI ROBOT vive in UN punto solo:
+// util/gratingAxes.js (drawingToRobot: X lungo width positivo, Y lungo height
+// negata — validata sui dati DB di TRAY_9). Qui resta solo l'adapter dalla
+// forma di listPz (cx/cy sui prismi) ai centri {w,h}.
 // ============================================================================
+import { drawingToRobot, gridFit } from '../../../util/gratingAxes.js';
 
 export default {
   name: 'ImportGrating',
@@ -466,12 +458,25 @@ export default {
 
     savePositions() {
       var cmd = ""
-      // (grating-axis-swap) origine = tasca 1: definisce w1/h1 per tutte
-      let w1 = 0, h1 = 0;
-      if (this.listPz.length > 0) {
-        const p1 = this.listPz[0];
-        w1 = p1.prisma ? this.grating.width - p1.cx : this.grating.width - p1.x;
-        h1 = p1.prisma ? this.grating.height - p1.cy : this.grating.height - p1.y;
+      // (grating-axis-swap-2) adapter -> centri {w,h} disegno, poi
+      // convenzione robot dalla util condivisa (origine = tasca 1)
+      const centers = this.listPz.map(p => ({
+        w: p.prisma ? this.grating.width  - p.cx : this.grating.width  - p.x,
+        h: p.prisma ? this.grating.height - p.cy : this.grating.height - p.y,
+      }));
+      const robotPts = drawingToRobot(centers);
+      // (Task 3, 1/9) BLOCCO ingombro prima di scrivere. L'ingombro tasca
+      // dal DXF importato non e' noto: check sui SOLI centri (halfW/halfH 0).
+      const tray = this.trayList[this.grating.trayIndex - 1];
+      if (tray) {
+        const fit = gridFit(robotPts, { trayX: tray.X, trayY: tray.Y, halfW: 0, halfH: 0 });
+        if (!fit.ok) {
+          const detail = [];
+          if (fit.overX > 0) detail.push(this.$t('grating.outOfTrayAxis', { mm: Math.ceil(fit.overX/1000), axis: 'X' }));
+          if (fit.overY > 0) detail.push(this.$t('grating.outOfTrayAxis', { mm: Math.ceil(fit.overY/1000), axis: 'Y' }));
+          alert(this.$t('grating.outOfTray', { detail: detail.join(', ') }));
+          return;
+        }
       }
       for (let i=0; i<this.listPz.length; i++){
         let pos={};
@@ -483,18 +488,8 @@ export default {
         pos.SAFEX     = this.grating.SAFEX;
         pos.SAFEY     = this.grating.SAFEY;
 
-        // (grating-axis-swap) coordinate DISEGNO (stessi termini storici:
-        // prisma -> cx/cy, altrimenti x/y) -> assi ROBOT via origine tasca 1
-        const w = this.listPz[i].prisma
-          ? this.grating.width - this.listPz[i].cx
-          : this.grating.width - this.listPz[i].x;
-        const h = this.listPz[i].prisma
-          ? this.grating.height - this.listPz[i].cy
-          : this.grating.height - this.listPz[i].y;
-        pos.X = w1 + DIR_X * (h - h1);
-        pos.Y = -h1 + DIR_Y * (w - w1);
-        pos.X *= 1000;
-        pos.Y *= 1000;   // micron; il segno vive nei DIR_*, non qui
+        pos.X = robotPts[i].X;
+        pos.Y = robotPts[i].Y;   // micron, gia' in convenzione robot
 
         if (this.createNew)
           cmd = dataStored.server+'api/conf/position/insertPositionTray?' + new URLSearchParams( pos ).toString();
