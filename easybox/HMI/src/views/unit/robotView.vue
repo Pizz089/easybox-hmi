@@ -865,6 +865,14 @@ export default {
       if (clamped == this.displaySpeed) return;
       this.updateSpeed(clamped);
     },
+    // Snapshot dalle cache backend: il PLC pubblica STATUS/pinza solo
+    // on-change, senza questa richiesta una view montata dopo l'ultimo
+    // cambio resterebbe sullo stato di default. Su cache vuota il backend
+    // risponde SNAPSHOT/MISS (vedi snapshotMissHandler).
+    requestSnapshots() {
+      dataStored.WS.socket.emit('UNIT/STATUS/REQUEST', 'ROBOT');
+      dataStored.WS.socket.emit('GRIPPER/REQUEST_SNAPSHOT');
+    },
     // PLC muto (vedi snapshotMissHandler): timer 8 s armato sul MISS, azzerato
     // dal primo ROBOT/STATUS; Riprova rifa' il giro via PLC/REFRESH_REQUEST.
     armPlcSilentTimer() {
@@ -1486,9 +1494,6 @@ export default {
       this.armPlcSilentTimer();
     };
     dataStored.WS.socket.on('SNAPSHOT/MISS', this.snapshotMissHandler);
-    // Snapshot: il PLC pubblica STATUS solo on-change, senza questa richiesta
-    // una view montata dopo l'ultimo cambio resta sullo stato di default.
-    dataStored.WS.socket.emit('UNIT/STATUS/REQUEST', 'ROBOT');
     dataStored.WS.socket.on('ROBOT/DESCR', payload => {
       this.dataRobot.DESCR = payload;
     });
@@ -1538,11 +1543,17 @@ export default {
     dataStored.WS.socket.on('GRIPPER/SENSOR', this.gripperSensorHandler);
     dataStored.WS.socket.on('GRIPPER/CODE', this.gripperCodeHandler);
     dataStored.WS.socket.on('GRIPPER/REGISTERED', this.gripperRegisteredHandler);
-    dataStored.WS.socket.emit('GRIPPER/REQUEST_SNAPSHOT');
+    // Snapshot al mount e a ogni reconnect del socket (pattern
+    // MachineConfigView): se il backend si riavvia a pannello aperto le sue
+    // cache sono vuote e senza nuova richiesta non arriverebbe ne' lo stato
+    // ne' il SNAPSHOT/MISS che accende il banner.
+    this.requestSnapshots();
+    dataStored.WS.socket.on('connect', this.requestSnapshots);
   },
   unmounted() {
     // off SPECIFICO (evento + callback): un off('ROBOT/STATUS') nudo
     // staccherebbe anche i listener di altri componenti (es. units.vue).
+    dataStored.WS.socket.off('connect', this.requestSnapshots);
     dataStored.WS.socket.off('ROBOT/STATUS', this.statusHandler);
     dataStored.WS.socket.off('SNAPSHOT/MISS', this.snapshotMissHandler);
     clearTimeout(this.plcSilentTimer);

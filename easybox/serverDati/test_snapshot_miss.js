@@ -112,6 +112,18 @@ check(count90() === before + 1, 'una sola publish 90 per la raffica di miss');
 check(sockB.emitted.every(e => e[0] === 'SNAPSHOT/MISS'), 'su miss nessun altro evento al socket');
 check(logLines.some(l => l.includes('cache miss BRAND')), 'reason "cache miss BRAND" loggata');
 
+console.log('\n3-bis) safetyCache popolata, gripperStateCache vuota: replay safety + MISS GRIPPER');
+fakeNow += 6000;
+clientHandlers.message('FROM_PLANT/SAFETY/AUX', Buffer.from('1'), {});
+const beforeS = count90();
+const sockS = makeSocket();
+connectionHandler(sockS);
+sockS.handlers['GRIPPER/REQUEST_SNAPSHOT']();
+const missS = missOf(sockS);
+check(sockS.emitted.some(e => e[0] === 'SAFETY/AUX' && e[1] === 1), 'replay SAFETY/AUX');
+check(missS.length === 1 && missS[0].channel === 'GRIPPER' && missS[0].unit === '', 'MISS GRIPPER nonostante safety piena');
+check(count90() === beforeS + 1, 'refresh 90 sul miss pinza');
+
 console.log('\n4) cache piena: ramo hit invariato (nessun MISS, nessun 90)');
 fakeNow += 6000;
 clientHandlers.message('FROM_PLANT/STATUS/ROBOT', Buffer.from('17'), {});

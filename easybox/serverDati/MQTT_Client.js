@@ -608,14 +608,11 @@ DBf.io.on('connection', (socket) => {
   });
 
   // Snapshot stato pinza on-demand (cantiere AN, stesso pattern BRAND/UNIT).
-  // Miss = nessuna delle cache della famiglia pinza/safety/declare popolata.
+  // Replay SEMPRE di tutto cio' che ha un valore (pinza, safety, declare):
+  // le cache della famiglia si riempiono indipendentemente (safetyCache al
+  // primo cambio AUX), quindi il miss si giudica sulla SOLA gripperStateCache,
+  // dopo il replay — e' il canale che i comandi manuali aspettano.
   socket.on('GRIPPER/REQUEST_SNAPSHOT', () => {
-	if (Object.keys(gripperStateCache).length === 0
-		&& Object.keys(safetyCache).length === 0
-		&& Object.keys(declareCache).length === 0) {
-		snapshotMiss('GRIPPER', '');
-		return;
-	}
 	if (gripperStateCache.sensor !== undefined)
 		socket.emit('GRIPPER/SENSOR', gripperStateCache.sensor);
 	if (gripperStateCache.code !== undefined)
@@ -633,6 +630,8 @@ DBf.io.on('connection', (socket) => {
 		socket.emit('DECLARE/MC1', declareCache.MC1);
 	if (declareCache.ROBOT !== undefined)
 		socket.emit('DECLARE/ROBOT', declareCache.ROBOT);
+	if (Object.keys(gripperStateCache).length === 0)
+		snapshotMiss('GRIPPER', '');
   });
 
   // Bottone "Riprova" delle view quando il PLC non ha risposto al refresh
