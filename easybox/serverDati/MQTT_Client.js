@@ -85,13 +85,41 @@ client.on('error', function (err){
 let reconnectLogged = false;
 const BROKER_URL_DISPLAY = `${client.options.protocol}://${client.options.hostname}:${client.options.port}`;
 
+// Refresh 90: il PLC invalida tutti gli _old e ripubblica TUTTO (brand, AUX,
+// stati, dispatcher, DECLARE). Senza retained e' l'unico modo di riempire le
+// cache dopo un riavvio backend. Chiamata dal connect broker, dai cache-miss
+// degli snapshot e dal bottone Riprova della HMI: throttle a livello di
+// modulo perche' piu' client che montano piu' view arrivano in raffica e il
+// PLC potrebbe non essere ancora sottoscritto.
+const PLC_REFRESH_THROTTLE_MS = 5000;
+let lastPlcRefreshTs = 0;
+
+function requestPlcRefresh(reason) {
+	const now = Date.now();
+	if (now - lastPlcRefreshTs < PLC_REFRESH_THROTTLE_MS) return false;
+	lastPlcRefreshTs = now;
+	client.publish('TO_PLANT/CMD/ROBOT', '90');
+	log.standard("PLC refresh 90 (" + reason + ")");
+	try {
+		const payloadStr = '90';
+		diag.publish({
+			ts: now,
+			dir: "OUT",
+			topic: "TO_PLANT/CMD/ROBOT",
+			payload: payloadStr,
+			source: "BACKEND",
+			size: Buffer.byteLength(payloadStr)
+		});
+	} catch (_) {}
+	return true;
+}
+
 client.on('connect', function () {
 	reconnectLogged = false;
-	// (fase B) refresh all'avvio: il PLC ripubblica TUTTO (brand, AUX, stati,
-	// dispatcher, DECLARE) — chiude la classe "publish perso" quando il
+	// (fase B) refresh all'avvio — chiude la classe "publish perso" quando il
 	// backend (ri)parte dopo il PLC. Una volta per connessione (l'evento
 	// 'connect' del client mqtt scatta anche a ogni riconnessione).
-	client.publish('TO_PLANT/CMD/ROBOT', '90');
+	requestPlcRefresh('broker connect');
 	try {
 		const payloadStr = "connected to " + BROKER_URL_DISPLAY;
 		diag.publish({
@@ -550,7 +578,20 @@ DBf.io.on('connection', (socket) => {
   // la view di config macchine lo emette al mount e ad ogni reconnect, perche'
   // lo stato brand viaggia a eventi (niente polling frontend). Rispondo solo
   // al socket richiedente con gli stessi eventi '<MC>/BRAND' del flusso live.
+  // Cache-miss (tipicamente backend riavviato dopo il PLC): il richiedente
+  // riceve SNAPSHOT/MISS {channel, unit} cosi' la view distingue "non ancora"
+  // da "PLC muto", e si chiede al PLC di ripubblicare (refresh 90, throttlato).
+  // Il ramo cache-hit resta invariato.
+  const snapshotMiss = (channel, unit) => {
+	socket.emit('SNAPSHOT/MISS', JSON.stringify({ channel: channel, unit: unit }));
+	requestPlcRefresh('cache miss ' + channel);
+  };
+
   socket.on('BRAND/REQUEST_SNAPSHOT', () => {
+	if (Object.keys(brandStateCache).length === 0) {
+		snapshotMiss('BRAND', '');
+		return;
+	}
 	for (const mcName of Object.keys(brandStateCache)) {
 		socket.emit(mcName + '/BRAND', brandStateCache[mcName]);
 	}
@@ -558,15 +599,23 @@ DBf.io.on('connection', (socket) => {
 
   // Snapshot STATUS on-demand: le view lo chiedono al mount perche' il PLC
   // pubblica solo on-change. Risposta solo al socket richiedente, stesso
-  // evento del flusso live ('<UNIT>/STATUS'). Limite noto: cache vuota dopo
-  // un riavvio backend finche' il PLC non ripubblica (come brandStateCache).
+  // evento del flusso live ('<UNIT>/STATUS').
   socket.on('UNIT/STATUS/REQUEST', unit => {
 	if (unitStatusCache[unit] !== undefined)
 		socket.emit(unit + '/STATUS', unitStatusCache[unit]);
+	else
+		snapshotMiss('STATUS', String(unit));
   });
 
-  // Snapshot stato pinza on-demand (cantiere AN, stesso pattern BRAND/UNIT)
+  // Snapshot stato pinza on-demand (cantiere AN, stesso pattern BRAND/UNIT).
+  // Miss = nessuna delle cache della famiglia pinza/safety/declare popolata.
   socket.on('GRIPPER/REQUEST_SNAPSHOT', () => {
+	if (Object.keys(gripperStateCache).length === 0
+		&& Object.keys(safetyCache).length === 0
+		&& Object.keys(declareCache).length === 0) {
+		snapshotMiss('GRIPPER', '');
+		return;
+	}
 	if (gripperStateCache.sensor !== undefined)
 		socket.emit('GRIPPER/SENSOR', gripperStateCache.sensor);
 	if (gripperStateCache.code !== undefined)
@@ -585,7 +634,14 @@ DBf.io.on('connection', (socket) => {
 	if (declareCache.ROBOT !== undefined)
 		socket.emit('DECLARE/ROBOT', declareCache.ROBOT);
   });
-  
+
+  // Bottone "Riprova" delle view quando il PLC non ha risposto al refresh
+  // (SNAPSHOT/MISS + timeout lato HMI). Nessun payload, nessuna risposta:
+  // se il PLC ripubblica, lo stato arriva dagli eventi live.
+  socket.on('PLC/REFRESH_REQUEST', () => {
+	requestPlcRefresh('richiesta utente');
+  });
+
 //  socket.on('TO_PLANT/CMD/ORDER', (data) => {
 //	insertLog( "Sent CMD: "+JSON.stringify(data,null,4), 'HMI', 'ORDER' );
 //	

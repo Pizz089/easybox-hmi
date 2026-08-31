@@ -1,5 +1,5 @@
 <script setup>
-import { reactive, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { dataStored } from '@/data'
 import {
@@ -79,12 +79,56 @@ function onBrandPayload(mc, payload) {
   st.lastError = parseInt(obj.lastError, 10) || 0
   st.lastErrorBrand = parseInt(obj.lastErrorBrand, 10) || 0
   st.known = true
+  clearPlcSilent()
   // Prefill select con il brand richiesto (o attivo) finche' l'utente
   // non fa una scelta sua.
   if (!st.touched) {
     const pre = isValidBrandId(st.req) ? st.req : (isValidBrandId(st.act) ? st.act : 0)
     st.selected = pre ? String(pre) : ''
   }
+}
+
+// ============================================================================
+// PLC MUTO: "non ancora" vs "nessuna risposta"
+// ============================================================================
+// Su cache vuota il backend risponde SNAPSHOT/MISS e chiede al PLC il refresh
+// 90. Se entro PLC_SILENT_MS nessun payload '<MC>/BRAND' arriva, il PLC non
+// ha risposto: la view lo dice e offre Riprova (nuovo refresh 90 via backend).
+const PLC_SILENT_MS = 8000
+const plcSilent = ref(false)
+let plcSilentTimer = null
+
+function armPlcSilentTimer() {
+  clearTimeout(plcSilentTimer)
+  plcSilentTimer = setTimeout(() => {
+    plcSilentTimer = null
+    const stillUnknown = MACHINE_POSITIONS.some(pos => !machines[pos.mc].known)
+    if (stillUnknown) plcSilent.value = true
+  }, PLC_SILENT_MS)
+}
+
+function clearPlcSilent() {
+  clearTimeout(plcSilentTimer)
+  plcSilentTimer = null
+  plcSilent.value = false
+}
+
+function onSnapshotMiss(payload) {
+  let obj
+  try {
+    obj = JSON.parse(payload)
+  } catch (error) {
+    console.info('SNAPSHOT/MISS: payload non valido', error)
+    return
+  }
+  if (obj.channel !== 'BRAND') return
+  armPlcSilentTimer()
+}
+
+function retryPlcRefresh() {
+  plcSilent.value = false
+  dataStored.WS.socket.emit('PLC/REFRESH_REQUEST')
+  armPlcSilentTimer()
 }
 
 function askConfirm(pos) {
@@ -119,10 +163,14 @@ onMounted(() => {
   }
   socketHandlers['connect'] = requestSnapshot
   socket.on('connect', requestSnapshot)
+  socketHandlers['SNAPSHOT/MISS'] = onSnapshotMiss
+  socket.on('SNAPSHOT/MISS', onSnapshotMiss)
   if (dataStored.WS.connected) requestSnapshot()
 })
 
 onBeforeUnmount(() => {
+  clearTimeout(plcSilentTimer)
+  plcSilentTimer = null
   const socket = dataStored.WS.socket
   if (!socket) return
   for (const [ev, handler] of Object.entries(socketHandlers)) {
@@ -157,8 +205,17 @@ onBeforeUnmount(() => {
         {{ $t('machine.pending') }}
       </div>
 
-      <div v-if="!m(pos).known" class="waiting">
+      <div v-if="!m(pos).known && !plcSilent" class="waiting">
         {{ $t('machine.waiting') }}
+      </div>
+
+      <!-- PLC muto: SNAPSHOT/MISS ricevuto e nessun payload BRAND entro il
+           timeout. Riprova = nuovo refresh 90 tramite backend. -->
+      <div v-else-if="!m(pos).known" class="banner banner-pending plc-silent">
+        <span>{{ $t('machine.plcSilent') }}</span>
+        <button class="btn-ghost" @click="retryPlcRefresh">
+          {{ $t('common.retry') }}
+        </button>
       </div>
 
       <template v-else>
@@ -257,6 +314,10 @@ onBeforeUnmount(() => {
   color: var(--text-muted);
   font-size: var(--font-size-base);
   padding: var(--space-2) 0;
+}
+
+.plc-silent {
+  align-items: flex-start;
 }
 
 .brand-row {

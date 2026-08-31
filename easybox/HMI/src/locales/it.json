@@ -56,7 +56,8 @@
   "bordo di sicurezza y": "Bordo di sicurezza Y",
   "Modello creato e disponibile nella cartella predefinita del pannello": "Modello creato e disponibile nella cartella predefinita del pannello",
   "common": {
-    "cancel": "Annulla"
+    "cancel": "Annulla",
+    "retry": "Riprova"
   },
   "fixture": {
     "welcome": "Elenco attrezzature",
@@ -364,6 +365,7 @@
       "position": "Posizione"
     },
     "auxBanner": "Ausiliari non ripristinati — premere il ripristino prima di comandare missioni",
+    "plcSilent": "Stato del robot sconosciuto: il PLC non risponde. I comandi manuali restano disabilitati fino al ripristino.",
     "hint": {
       "auxNotReset": "Ausiliari non ripristinati: premere il ripristino",
       "notHold": "Robot non in HOLD: premere HOLD per abilitare i comandi",
@@ -563,6 +565,7 @@
     "confirmTitle": "Confermare il cambio marca?",
     "confirmText": "Il cambio marca riconfigura gli I/O della macchina: {from} → {to}. Il PLC applica la richiesta solo a macchina ferma.",
     "waiting": "In attesa dei dati dal PLC ...",
+    "plcSilent": "Il PLC non ha risposto alla richiesta di stato. Verificare che l'impianto sia acceso, poi riprovare.",
     "unknown": "Sconosciuta"
   },
   "vice": {

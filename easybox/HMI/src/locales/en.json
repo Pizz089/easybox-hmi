@@ -56,7 +56,8 @@
   "bordo di sicurezza y": "Safety margin Y",
   "Modello creato e disponibile nella cartella predefinita del pannello": "Model created and available in the panel default folder",
   "common": {
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "retry": "Retry"
   },
   "fixture": {
     "welcome": "Fixtures list",
@@ -364,6 +365,7 @@
       "position": "Position"
     },
     "auxBanner": "Auxiliaries not reset — press the reset before commanding missions",
+    "plcSilent": "Robot state unknown: the PLC is not responding. Manual commands stay disabled until it recovers.",
     "hint": {
       "auxNotReset": "Auxiliaries not reset: press the reset",
       "notHold": "Robot not in HOLD: press HOLD to enable commands",
@@ -563,6 +565,7 @@
     "confirmTitle": "Confirm brand change?",
     "confirmText": "Changing the brand reconfigures the machine I/O: {from} → {to}. The PLC applies the request only when the machine is idle.",
     "waiting": "Waiting for PLC data ...",
+    "plcSilent": "The PLC did not answer the state request. Check that the plant is powered on, then retry.",
     "unknown": "Unknown"
   },
   "vice": {

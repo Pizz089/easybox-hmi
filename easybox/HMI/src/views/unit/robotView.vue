@@ -123,6 +123,16 @@
         {{ $t('robot.auxBanner') }}
       </div>
 
+      <!-- PLC muto: SNAPSHOT/MISS su STATUS/ROBOT e nessun ROBOT/STATUS entro
+           il timeout. I comandi restano gated da CMD_enabled(): qui si spiega
+           solo il perche'. Riprova = nuovo refresh 90 tramite backend. -->
+      <div class="aux-banner plc-silent-banner" v-if="plcSilent">
+        <span>{{ $t('robot.plcSilent') }}</span>
+        <button class="btn-ghost" @click="retryPlcRefresh">
+          {{ $t('common.retry') }}
+        </button>
+      </div>
+
       <!-- ===== CARD 1: Comandi critici (RESET / HOLD-START / RESTART) ===== -->
       <section class="command-section">
         <h3 class="section-label">{{ $t('robot.section.critical') }}</h3>
@@ -648,7 +658,11 @@ export default {
       missionRunning: '',     // '' | 'gripper'|'pallet'|'tray'|'home'|'maintenance'|'dest-easybox'|'dest-mc1'|'dest-mc2'
       missionPhase: '',       // '' | 'armed' | 'active'
       missionArmTimer: null,  // ~5s: STATUS mai uscito da HOLD -> missione rifiutata
-      missionMaxTimer: null   // 180s: timeout assoluto di sicurezza
+      missionMaxTimer: null,  // 180s: timeout assoluto di sicurezza
+      // PLC muto: SNAPSHOT/MISS (cache backend vuota) senza ROBOT/STATUS
+      // entro il timeout -> banner + Riprova. Non tocca CMD_enabled().
+      plcSilent: false,
+      plcSilentTimer: null
     }
   },
   methods: {
@@ -850,6 +864,25 @@ export default {
       const clamped = Math.min(100, Math.max(1, v));
       if (clamped == this.displaySpeed) return;
       this.updateSpeed(clamped);
+    },
+    // PLC muto (vedi snapshotMissHandler): timer 8 s armato sul MISS, azzerato
+    // dal primo ROBOT/STATUS; Riprova rifa' il giro via PLC/REFRESH_REQUEST.
+    armPlcSilentTimer() {
+      clearTimeout(this.plcSilentTimer);
+      this.plcSilentTimer = setTimeout(() => {
+        this.plcSilentTimer = null;
+        this.plcSilent = true;
+      }, 8000);
+    },
+    clearPlcSilent() {
+      clearTimeout(this.plcSilentTimer);
+      this.plcSilentTimer = null;
+      this.plcSilent = false;
+    },
+    retryPlcRefresh() {
+      this.plcSilent = false;
+      dataStored.WS.socket.emit('PLC/REFRESH_REQUEST');
+      this.armPlcSilentTimer();
     },
     CMD_enabled(){
       dataStored.cmdActive = (this.dataRobot.STATUS == dataStored.status_hold);
@@ -1424,6 +1457,7 @@ export default {
     this.getTraysList();
     this.statusHandler = payload => {
       this.dataRobot.STATUS = parseInt(payload);
+      this.clearPlcSilent();
       this.CMD_enabled();
       this.Mission_enabled();
       if (payload == dataStored.status_alarm){
@@ -1442,6 +1476,16 @@ export default {
       }
     };
     dataStored.WS.socket.on('ROBOT/STATUS', this.statusHandler);
+    // Cache backend vuota (riavvio backend): il backend risponde con
+    // SNAPSHOT/MISS e chiede il refresh 90 al PLC; se il PLC non ripubblica
+    // entro il timeout, il pannello lo dice invece di restare grigio.
+    this.snapshotMissHandler = payload => {
+      let obj;
+      try { obj = JSON.parse(payload); } catch (_) { return; }
+      if (obj.channel !== 'STATUS' || obj.unit !== 'ROBOT') return;
+      this.armPlcSilentTimer();
+    };
+    dataStored.WS.socket.on('SNAPSHOT/MISS', this.snapshotMissHandler);
     // Snapshot: il PLC pubblica STATUS solo on-change, senza questa richiesta
     // una view montata dopo l'ultimo cambio resta sullo stato di default.
     dataStored.WS.socket.emit('UNIT/STATUS/REQUEST', 'ROBOT');
@@ -1500,6 +1544,8 @@ export default {
     // off SPECIFICO (evento + callback): un off('ROBOT/STATUS') nudo
     // staccherebbe anche i listener di altri componenti (es. units.vue).
     dataStored.WS.socket.off('ROBOT/STATUS', this.statusHandler);
+    dataStored.WS.socket.off('SNAPSHOT/MISS', this.snapshotMissHandler);
+    clearTimeout(this.plcSilentTimer);
     dataStored.WS.socket.off('BOX/STATUS', this.boxStatusHandler);
     dataStored.WS.socket.off('GRIPPER/MOUNTED', this.gripperMountedHandler);
     dataStored.WS.socket.off('GRIPPER/CLOSED1', this.gripperClosed1Handler);
@@ -1517,6 +1563,14 @@ export default {
 </script>
 
 <style scoped>
+/* PLC muto: stesso banner warning degli ausiliari + bottone Riprova a destra */
+.plc-silent-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
 /* (AN) hint motivo comando disabilitato (pattern min-hint 2c) */
 .cmd-hint {
   display: block;
