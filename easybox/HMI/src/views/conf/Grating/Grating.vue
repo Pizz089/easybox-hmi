@@ -1,6 +1,7 @@
 <script setup>
     import { RouterLink, RouterView } from 'vue-router'
     import { dataStored } from '../../../data.js'
+    import { KO_ACTIVE_ORDER } from '../../../util/errorCodes.js'
     import numericField from '../../../components/numericField.vue'
     import { ref, onMounted } from 'vue'
     //import layout from '../layoutView.vue'
@@ -804,8 +805,8 @@ export default {
         //  - BLOCCO se una posizione referenzia un ordine ATTIVO
         //    (Order_ID != 0 con WORKORDERS.STATUS == 3);
         //  - altrimenti conferma esplicita SEMPRE, con conteggi REALI delle
-        //    righe a DB del cassetto — perimetro = QUALUNQUE PARENT del
-        //    floor (stesso like 'TRAY_{floor} %' della delete backend),
+        //    righe a DB del cassetto — perimetro = PARENT del floor (stesso
+        //    PARENT = 'TRAY_{floor}' della delete backend, helper trayParent),
         //    incluse le orfane con POS/PARENT divergenti (bug D2): dopo il
         //    save il cassetto avra' SOLO le N righe nuove;
         //  - verifica impossibile -> annulla (MAI cancellare alla cieca).
@@ -816,7 +817,7 @@ export default {
             try {
                 const positions = await fetch(dataStored.server+'api/conf/position/show/all',{ method: 'GET'})
                     .then(r => { if (!r.ok) throw new Error('Network response was not ok'); return r.json(); });
-                // equivalente client del like 'TRAY_{floor} %' (PARENT nchar
+                // equivalente client di PARENT = 'TRAY_{floor}' (PARENT nchar
                 // paddato: il primo token trim-mato e' 'TRAY_{floor}')
                 const mine = (positions || []).filter(p => ((p.PARENT || '').trim().split(' ')[0]) == 'TRAY_'+floor);
                 if (mine.length == 0) return true;
@@ -841,9 +842,9 @@ export default {
             // L'update per SUB_POS non poteva ne' cancellare le righe
             // eccedenti ne' creare le nuove, e con PARENT/POS storici
             // divergenti era un no-op TOTALE con risposta OK (bug 91@60).
-            // La delete usa deletePositionsTray (riuso GratingsView): like
-            // 'TRAY_{floor} %' — sparisce OGNI riga del cassetto, orfane
-            // incluse; poi SOLO insert delle N posizioni correnti.
+            // La delete usa deletePositionsTray: PARENT = 'TRAY_{floor}'
+            // (helper trayParent backend) — sparisce OGNI riga del cassetto;
+            // poi SOLO insert delle N posizioni correnti.
             // LIMITE DICHIARATO — NON ATOMICO (due endpoint distinti): se un
             // insert fallisce dopo la delete lo stato e' incompleto ma
             // RECUPERABILE ripetendo il salvataggio (alert esplicito).
@@ -862,6 +863,18 @@ export default {
                 try {
                     const del = await fetch(dataStored.server+'api/conf/position/deletePositionsTray/'+floorMag ,{ method: 'delete'});
                     if (!del.ok) throw new Error('Network response was not ok');
+                    // (tray-parent-predicate) la route ora RISPONDE: prima
+                    // restava muta (res.send commentati) e questo await non
+                    // tornava MAI — il ciclo di insert qui sotto era
+                    // irraggiungibile e il cassetto restava senza tasche.
+                    // Body = error contract: la guardia server-side puo'
+                    // bloccare su ordine attivo.
+                    const esito = (await del.text()).trim();
+                    if (esito == KO_ACTIVE_ORDER) {
+                        alert(this.$t('grating.saveBlockedOrder'));
+                        return;
+                    }
+                    if (esito != 'OK') throw new Error('delete posizioni ['+esito+']');
                 } catch (e) {
                     console.info(e);
                     alert(this.$t('grating.saveIncomplete'));

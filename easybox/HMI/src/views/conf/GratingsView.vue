@@ -5,6 +5,7 @@
 
     import { ref, onMounted } from 'vue'
     import { dataStored } from '../../data';
+    import { KO_ACTIVE_ORDER } from '../../util/errorCodes';
 
     const el = ref()
 </script>
@@ -129,32 +130,30 @@ export default {
         },
 		deleteGrating(id) {
 			this.showPopUp=0
+            // (tray-parent-predicate) la route server cancella GIA' in un
+            // colpo solo GRATING + tasche [POSITION] del cassetto associato
+            // (con guardia ordine attivo). La vecchia chiamata concatenata
+            // deletePositionsTray(id) e' stata rimossa: passava l'ID del
+            // GRIGLIATO come numero di cassetto (chiave sbagliata).
             fetch(dataStored.server+'api/conf/grating/'+id ,{ method: 'delete'})
-                .then(response => {
+                .then(async response => {
                     if (!response.ok) {
                         alert('Network response was not ok');
                         throw new Error('Network response was not ok');
                     }
-                    this.deletePositionsFromTray(id);
+                    const esito = (await response.text()).trim();
+                    if (esito == KO_ACTIVE_ORDER) {
+                        alert(this.$t('grating.deleteBlockedOrder'));
+                        return;
+                    }
+                    if (esito != 'OK')
+                        alert('KO ['+esito+']');
                 })
                 .catch(error => {
                     console.info(error);
 					alert(error);
                 });
         },
-		deletePositionsFromTray(id) {
-            fetch(dataStored.server+'api/conf/position/deletePositionsTray/'+id ,{ method: 'delete'})
-                .then(response => {
-                    if (!response.ok) {
-                        alert('Network response was not ok');
-                        throw new Error('Network response was not ok');
-                    }
-                })
-                .catch(error => {
-                    console.info(error);
-					alert(error);
-                });
-		},
         goToLayout(Tray_ID,TraySTATUS,floor_MAG){
             if (TraySTATUS==dataStored.status_working) 
                 this.$router.push('/layout/'+Tray_ID+'/0/'+floor_MAG);

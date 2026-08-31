@@ -4,6 +4,8 @@ const DBf 	= require('../DBFunct');
 var sql 	= require('mssql')
 var router 	= express.Router();
 const log 	= require('../LogFunct');
+const errorCodes = require('../errorCodes');
+const { trayParentPredicate } = require('../trayParent');
 
 var templatePATH = '.';
 
@@ -39,6 +41,10 @@ router.get('/show/:ID', (req, res) => {
 
 router.get('/updatePositionStatus/:tray_ID/:position/:status', (req, res) => {
 	//console.log(">>>"+JSON.stringify(req,null,4));
+	// (tray-parent-predicate) predicato PARENT via helper condiviso
+	// (valida anche il numero cassetto: niente path param raw in query)
+	const pred = trayParentPredicate(req.params.tray_ID);
+	if (!pred) { res.send("KO_BAD_INPUT"); return; }
 	sql.connect(DBf.configDB, function (err) {
         if (err) {
             log.error("err updatePositionStatus: " + err);
@@ -46,13 +52,13 @@ router.get('/updatePositionStatus/:tray_ID/:position/:status', (req, res) => {
         }
 
 		//console.log("---"+JSON.stringify(req.query,null,4));
-		
+
         // create Request object
         var request = new sql.Request();
 
-        let query = `UPDATE [POSITION] SET 
+        let query = `UPDATE [POSITION] SET
 					STATUS=${req.params.status}
-					WHERE PARENT='TRAY_${req.params.tray_ID}' and SUB_POS=${req.params.position};`
+					WHERE ${pred} and SUB_POS=${req.params.position};`
 					
         log.info('query ' + query);
 		//log.standard('query ' + query);
@@ -115,7 +121,10 @@ router.get('/insertPositionTray', (req, res) => {
 //TODO: da testare
 router.get('/updatePositionTray', (req, res) => {
 	//log.info("updatePositionTray ---> "+JSON.stringify(req.query,null,4));
-	
+
+	// (tray-parent-predicate) via il LIKE 'TRAY_n %': predicato dall'helper
+	const pred = trayParentPredicate(req.query.TRAY_ID);
+	if (!pred) { res.send("KO_BAD_INPUT"); return; }
 	sql.connect(DBf.configDB, function (err) {
         if (err) {
             log.error("err insertPosition: " + err); 
@@ -137,9 +146,9 @@ router.get('/updatePositionTray', (req, res) => {
 					Y=${req.query.Y},
 					Part_Type=${req.query.PIECE_TYPE},
 					Z=0
-					WHERE 
-						PARENT like 'TRAY_${req.query.TRAY_ID} %' AND 
-						POS=${req.query.POS} AND 
+					WHERE
+						${pred} AND
+						POS=${req.query.POS} AND
 						SUB_POS=${req.query.SUB_POS};`
 
         log.info('query ' + query);
@@ -329,24 +338,40 @@ router.delete('/:ID', (req, res) => {
 
 router.delete('/deletePositionsTray/:ID', (req, res) => {
      console.log("delete TRAY's position "+req.params.ID);
+	// (tray-parent-predicate) :ID = numero cassetto (FLOOR_MAG), validato
+	// dall'helper. NB: questa route ora RISPONDE sempre (prima i res.send
+	// erano commentati: il fetch della HMI restava appeso e il ciclo di
+	// insert di savePositions non partiva mai — bug provato in cella 1/9).
+	const pred  = trayParentPredicate(req.params.ID);
+	const predP = trayParentPredicate(req.params.ID, 'p.PARENT');
+	if (!pred) { res.send("KO_BAD_INPUT"); return; }
 	sql.connect(DBf.configDB, function (err) {
         if (err) {
             log.error("err delete position: " + err);
+            res.send("KO");
             return;
         }
-		
+
 		var request = new sql.Request();
-        let query = `DELETE FROM POSITION WHERE PARENT like 'TRAY_${req.params.ID} %';`
-					
+		// Guardia ordine attivo PRIMA della delete (vincolo di sicurezza):
+		// nessuna cancellazione su un cassetto con posizione legata a un
+		// ordine WORKORDERS.STATUS=3. Esito nel body (error contract).
+        let query = `SET NOCOUNT ON;
+					IF EXISTS (SELECT 1 FROM [POSITION] p JOIN WORKORDERS w ON w.ID = p.Order_ID WHERE ${predP} AND w.STATUS = 3)
+						SELECT '${errorCodes.KO_ACTIVE_ORDER}' AS ris;
+					ELSE BEGIN
+						DELETE FROM [POSITION] WHERE ${pred};
+						SELECT 'OK' AS ris;
+					END`
+
         log.info('query ' + query);
         // query to the database and get the records
-        request.query(query, function (err, recordset) {
+        request.query(query, function (err, result) {
             if (err) {
                 log.error("Err query: " + err)
-                //res.send("KO")
-            }
-			//else
-			//	res.send("OK")
+                res.send("KO")
+            }else
+				res.send(result.recordset && result.recordset[0] ? result.recordset[0].ris : "KO")
         });
 	});
 });

@@ -213,6 +213,7 @@
     "redistribute": "Ridistribuisci le posizioni",
     "confirmRegenerate": "Le {n} posizioni del cassetto {floor} verranno rigenerate ({m} non vuote andranno perse). Continuare?",
     "saveBlockedOrder": "Rigenerazione bloccata: una posizione del cassetto è legata a un ordine ATTIVO. Chiudere o abortire l'ordine prima di rigenerare il grigliato.",
+    "deleteBlockedOrder": "Cancellazione bloccata: una posizione del cassetto è legata a un ordine ATTIVO. Chiudere o abortire l'ordine prima di cancellare il grigliato.",
     "saveIncomplete": "Rigenerazione incompleta: ri-associare il grigliato (ripetere il salvataggio).",
     "saveCheckFailed": "Verifica posizioni non riuscita: salvataggio annullato (nessuna cancellazione alla cieca)."
   },

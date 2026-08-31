@@ -2,6 +2,7 @@
 var express = require('express');
 const DBf 	= require('../DBFunct');
 var sql 	= require('mssql')
+const errorCodes = require('../errorCodes');
 var router 	= express.Router();
 const log 	= require('../LogFunct');
 
@@ -158,33 +159,51 @@ router.get('/insertGrating', (req, res) => {
 })
 
 
-//TODO:da testare
 router.delete('/:ID', (req, res) => {
     //console.log('delete GRATING '+req.params.ID);
+	// (tray-parent-predicate) ID validato a intero: niente param raw in query.
+	// La route ora RISPONDE sempre (prima i res.send erano commentati e il
+	// fetch della HMI restava appeso).
+	const gratingId = Number(req.params.ID);
+	if (!Number.isInteger(gratingId) || gratingId < 1) { res.send("KO_BAD_INPUT"); return; }
 	sql.connect(DBf.configDB, function (err) {
         if (err) {
             log.error("err delete grating: " + err);
+            res.send("KO");
             return;
         }
-		
+
 		var request = new sql.Request();
-        let query = `DECLARE @tray as INTEGER;
+		// Predicato tasche = canone dell'helper trayParent (PARENT = 'TRAY_<n>',
+		// uguaglianza: l'nchar paddato ignora gli spazi finali, niente jolly
+		// '_' del LIKE); qui il numero cassetto e' noto solo in SQL (@tray),
+		// quindi il canone e' riprodotto con CONCAT. @tray NULL (nessun
+		// cassetto associato) -> CONCAT = 'TRAY_' e non matcha nulla.
+		// Guardia ordine attivo PRIMA di qualunque scrittura (vincolo di
+		// sicurezza): con ordine WORKORDERS.STATUS=3 sul cassetto non si
+		// tocca ne' TRAY ne' POSITION ne' GRATING.
+        let query = `SET NOCOUNT ON;
+                     DECLARE @tray as INTEGER;
                      DECLARE @name as varchar(100);
-                     SET @name = (select name from grating where id=${req.params.ID});
+                     SET @name = (select name from grating where id=${gratingId});
                      SET @tray = (select floor_mag from tray where FAMILY like concat(@name,'%'));
-                     UPDATE TRAY SET STATUS=2, FAMILY='' WHERE FAMILY like concat(@name,'%');
-                     DELETE FROM [POSITION] WHERE parent like concat('TRAY_',@tray,' %');
-                     DELETE FROM GRATING WHERE ID=${req.params.ID};`
-        
+                     IF EXISTS (SELECT 1 FROM [POSITION] p JOIN WORKORDERS w ON w.ID = p.Order_ID WHERE p.PARENT = CONCAT('TRAY_', @tray) AND w.STATUS = 3)
+                         SELECT '${errorCodes.KO_ACTIVE_ORDER}' AS ris;
+                     ELSE BEGIN
+                         UPDATE TRAY SET STATUS=2, FAMILY='' WHERE FAMILY like concat(@name,'%');
+                         DELETE FROM [POSITION] WHERE PARENT = CONCAT('TRAY_', @tray);
+                         DELETE FROM GRATING WHERE ID=${gratingId};
+                         SELECT 'OK' AS ris;
+                     END`
+
         log.info('query ' + query);
         // query to the database and get the records
-        request.query(query, function (err, recordset) {
+        request.query(query, function (err, result) {
             if (err) {
                 log.error("Err query: " + err)
-                //res.send("KO")
-            }
-			//else
-			//	res.send("OK")
+                res.send("KO")
+            }else
+				res.send(result.recordset && result.recordset[0] ? result.recordset[0].ris : "KO")
         });
 	});
 });

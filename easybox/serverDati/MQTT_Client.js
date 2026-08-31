@@ -6,6 +6,7 @@ const mqtt 	= require("mqtt");
 var HEIDENHAIN		= require('./CN/HEIDENHAIN');
 var HAAS			= require('./CN/HAAS');
 const diag			= require('./MQTTDiag');
+const { trayParentPredicate } = require('./trayParent');
 console.log("DEBUG MQTT_BROKER_URL=", JSON.stringify(process.env.MQTT_BROKER_URL));
 console.log("DEBUG CN_TYPE_MC1=", JSON.stringify(process.env.CN_TYPE_MC1));
 console.log("DEBUG HAAS_MC1_IP=", JSON.stringify(process.env.HAAS_MC1_IP));
@@ -1173,16 +1174,24 @@ function setDescrOnDB(_unit, _descr){
 }
 
 function setPositionStatus(_status, _TrayID, _subPos){
+	// (tray-parent-predicate) il vecchio LIKE 'TRAY_<n>%' (senza spazio)
+	// agganciava anche TRAY_10 sui messaggi del tray 1 ('_' jolly + prefisso):
+	// stato tasca corrotto sul cassetto sbagliato. Uguaglianza via helper,
+	// che valida anche il numero arrivato dal topic PLC.
+	const pred = trayParentPredicate(_TrayID);
+	if (!pred) {
+		log.standard("setPositionStatus: tray non valido [" + _TrayID + "] — ignorato");
+		return;
+	}
 	sql.connect(DBf.configDB, function (err) {
         if (err) {
             log.standard("err getUnitData: " + err);
             return;
         }
 
-		let query=`UPDATE [POSITION] SET STATUS=@STATUS@ WHERE PARENT like 'TRAY_@TRAY_ID@%' and SUB_POS=@SUBPOS@;` 
-		
+		let query=`UPDATE [POSITION] SET STATUS=@STATUS@ WHERE ${pred} and SUB_POS=@SUBPOS@;`
+
 		query = query.replace("@STATUS@",_status);
-		query = query.replace("@TRAY_ID@",_TrayID);
 		query = query.replace("@SUBPOS@",_subPos);
 		
 		log.info("query: "+query)

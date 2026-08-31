@@ -2,6 +2,7 @@
 var express = require('express');
 const DBf 	= require('../DBFunct');
 var sql 	= require('mssql')
+const { trayParentPredicate } = require('../trayParent');
 var router 	= express.Router();
 const log 	= require('../LogFunct');
 
@@ -458,7 +459,7 @@ router.get('/extractCoords', (req, res) => {
 // annulla TUTTO — o si scrive tutta la cassettiera o niente):
 //   1. UPDATE TRAY (CORR+ROT) WHERE FLOOR_MAG=tray (piano senza riga TRAY:
 //      no-op, non errore — il pannello lo annota in anteprima);
-//   2. UPDATE [POSITION] ROT + Z=0 WHERE PARENT like 'TRAY_n %'.
+//   2. UPDATE [POSITION] ROT + Z=0 WHERE PARENT = 'TRAY_n' (helper trayParent).
 //      Z=0 = migrazione alla CONVENZIONE (vedi Position.js): le righe
 //      vecchio-regime con Z=interasse vengono azzerate QUI, nella stessa
 //      transazione del teaching che mette la quota assoluta in TRAY.Z_CORR.
@@ -486,7 +487,7 @@ router.get('/teachTrays', (req, res) => {
 			const t = Math.round(Number(r.tray));
 			const v = f => Math.round(Number(r[f]));
 			query += ` UPDATE TRAY SET X_CORR=${v('xCorr')}, Y_CORR=${v('yCorr')}, Z_CORR=${v('zCorr')}, X_ROT=${v('xRot')}, Y_ROT=${v('yRot')}, Z_ROT=${v('zRot')} WHERE FLOOR_MAG=${t};`;
-			query += ` UPDATE [POSITION] SET X_ROT=${v('xRot')}, Y_ROT=${v('yRot')}, Z_ROT=${v('zRot')}, Z=0 WHERE PARENT like 'TRAY_${t} %';`;
+			query += ` UPDATE [POSITION] SET X_ROT=${v('xRot')}, Y_ROT=${v('yRot')}, Z_ROT=${v('zRot')}, Z=0 WHERE ${trayParentPredicate(t)};`;
 		}
 		query += " COMMIT TRAN;";
 		var request = new sql.Request();
@@ -522,10 +523,12 @@ router.get('/propagateTeaching', (req, res) => {
 		// (POSITION_trig) i cui conteggi finiscono in rowsAffected PRIMA di
 		// quello dell'UPDATE — il numero per la conferma a video va contato
 		// a parte, non letto da rowsAffected.
+		// (tray-parent-predicate) floor gia' validato 1..12 sopra
+		const pred = trayParentPredicate(floor);
 		let query = `SET NOCOUNT ON; UPDATE [POSITION] SET ` +
 			COLS.map(c => `${c}=${Math.round(num(c))}`).join(', ') +
-			` WHERE PARENT like 'TRAY_${floor} %';` +
-			` SELECT COUNT(*) as n FROM [POSITION] WHERE PARENT like 'TRAY_${floor} %';`;
+			` WHERE ${pred};` +
+			` SELECT COUNT(*) as n FROM [POSITION] WHERE ${pred};`;
 		var request = new sql.Request();
 		log.info('query ' + query);
 		request.query(query, function (err, result) {
