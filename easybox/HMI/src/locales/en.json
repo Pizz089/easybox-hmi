@@ -86,6 +86,7 @@
     "posPlant": "Plant position"
   },
   "gripper": {
+    "twinBadge": "double (ID {ids})",
     "welcome": "Grippers list",
     "add_gripper": "Add Gripper",
     "name": "Name",

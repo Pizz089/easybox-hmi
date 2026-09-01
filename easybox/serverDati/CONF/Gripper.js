@@ -178,9 +178,12 @@ router.get('/updateGripper', (req, res) => {
 					Z_CLAW='${req.query.Z_CLAW}',
 					STATUS='${req.query.STATUS}',
 					POS_MAG='${req.query.POS_MAG}',
-					SUB_POS=0,
 					POS_PLANT='${req.query.POS_PLANT}'
 					where ID='${req.query.ID}'`
+		// (gripper-twins, 1/9) SUB_POS NON viene piu' azzerato dall'update: e'
+		// la chiave delle righe gemelle della pinza doppia (26/37 -> 3) usata
+		// dal PLC ("SUB_POS in (select SUB_POS from GRIPPER where ID=<g>)");
+		// il vecchio SUB_POS=0 di ogni modifica da form l'avrebbe rotta.
 		if (guarded)
 			query += ` AND ${shelfSlotGuard(posMag, gripperID)}`;
 		query += ';'

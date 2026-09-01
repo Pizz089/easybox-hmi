@@ -4,6 +4,7 @@
     import { KO_ACTIVE_ORDER } from '../../../util/errorCodes.js'
     import { drawingToRobot, gridFit, ROBOT_AXIS_ALONG } from '../../../util/gratingAxes.js'
     import { cavityRect, cavityRadius, applyCavityClearanceToSvg } from '../../../util/cavityClearance.js'
+    import { dedupeGrippers } from '../../../util/grippers.js'
     import numericField from '../../../components/numericField.vue'
     import { ref, onMounted } from 'vue'
     //import layout from '../layoutView.vue'
@@ -94,11 +95,14 @@
                     <select class="pure-u-1" name="gripperList" v-model="grating.gripperIndex" @change="onChangeGripper($event)" 
                         :readonly="dataStored.userLevel<0 || (!gratingAssociated && createNew)">
                         <option value="0"> </option>
+                        <!-- (gripper-twins) gripperList e' gia' UNA voce per pinza
+                             fisica (util/grippers.js): via il filtro legacy
+                             SUB_POS<=1 che escludeva la doppia -->
                         <template v-for="(g,index) in gripperList" :key="g.ID">
-                            <option :value="index+1" v-if="g.SUB_POS<=1" :selected="grating.gripperIndex==index+1">
-                               {{ g.POS_MAG>0?g.POS_MAG:'OUT' }} {{ g.FAMILY }} - {{ g.DESCR }} 
+                            <option :value="index+1" :selected="grating.gripperIndex==index+1">
+                               {{ g.POS_MAG>0?g.POS_MAG:'OUT' }} {{ g.FAMILY }} - {{ g.DESCR }}
                             </option>
-                        </template>                  
+                        </template>
                     </select>
                 </div>
                 <!--div class="pure-u-1" >
@@ -546,7 +550,8 @@ export default {
                     return response.json()
                 })
                 .then(data => {
-                    this.gripperList=data;                    
+                    // (gripper-twins) una voce per pinza fisica, ID canonico
+                    this.gripperList = dedupeGrippers(data);
                 })
                 .catch(error => {
                     console.info(error);
@@ -600,11 +605,9 @@ export default {
                         index++;
                     });
                     index=1;
+                    // (gripper-twins) niente piu' decodifica dell'ID composito
+                    // legacy (ID*1000+subID): GRATING.GRIPPER_ID e' l'ID canonico
                     this.gripperList.forEach(gripper => {
-                        //console.log(this.grating.GRIPPER_ID +" - "+gripper.ID)
-                        if (this.grating.GRIPPER_ID>1000){
-                            this.grating.GRIPPER_ID = Math.trunc(this.grating.GRIPPER_ID/1000)
-                        }
                         if (gripper.ID == this.grating.GRIPPER_ID){
                             this.grating.gripperIndex = index;
                             //console.log("this.grating.gripperIndex: "+this.grating.gripperIndex)

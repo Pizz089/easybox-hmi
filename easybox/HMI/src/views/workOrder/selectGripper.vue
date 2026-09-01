@@ -2,6 +2,7 @@
     //import { RouterLink, RouterView } from 'vue-router'
     import { dataStored } from '../../data.js'
     import  workOrderStep  from '../../components/workOrder_step.vue'
+    import { dedupeGrippers } from '../../util/grippers.js'
 </script>
 
 <template>
@@ -32,35 +33,11 @@
 </template>
 
 <script>
-// (order-gripper-onboard, 1/9) UNA voce per pinza fisica. La pinza doppia e'
-// modellata come righe gemelle con lo stesso slot (POS_MAG) e lo stesso
-// SUB_POS (in cella: 26 e 37, SUB_POS 3, entrambe POS_PLANT 1000): si tiene
-// la riga con ID MINORE, che e' il riferimento canonico della pinza
-// (GRATING.GRIPPER_ID usa 26). La chiave e' (POS_MAG, SUB_POS) e vale solo
-// per slot reali (POS_MAG > 0): due pinze diverse fuori magazzino (POS_MAG
-// <= 0, SUB_POS 0) restano due voci. Le pinze a bordo (POS_PLANT 1000) sono
-// selezionabili: il PLC salta il cambio se coincide con quella montata.
-// La vecchia fusione "SUB_POS > 1 -> ID*1000 + subID sulla card precedente"
-// e' stata rimossa: con le gemelle a SUB_POS 3 incollava la doppia dentro
-// la card della pinza pallet (ID 1026037) e la doppia spariva dall'elenco.
-export function dedupeGrippers(rows) {
-    const out = [];
-    const byKey = new Map();
-    for (const r of rows || []) {
-        const item = Object.assign({}, r, { onBoard: r.POS_PLANT == 1000 });
-        const key = r.POS_MAG > 0 ? r.POS_MAG + '|' + r.SUB_POS : null;
-        if (key === null || !byKey.has(key)) {
-            if (key !== null) byKey.set(key, out.length);
-            out.push(item);
-            continue;
-        }
-        const idx = byKey.get(key);
-        if (Number(item.ID) < Number(out[idx].ID)) out[idx] = item;
-        else if (item.onBoard) out[idx].onBoard = true;
-    }
-    return out;
-}
-
+// (order-gripper-onboard, 1/9) UNA voce per pinza fisica, riga canonica =
+// ID minore, pinze a bordo selezionabili (il PLC salta il cambio): tutto in
+// util/grippers.js (dedupeGrippers). La vecchia fusione "SUB_POS > 1 ->
+// ID*1000 + subID sulla card precedente" e' stata rimossa: con le gemelle a
+// SUB_POS 3 incollava la doppia nella card della pinza pallet (ID 1026037).
 export default {
     data(){
         return {

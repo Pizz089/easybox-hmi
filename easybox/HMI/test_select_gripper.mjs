@@ -15,8 +15,8 @@ import { readFileSync } from 'node:fs';
 const { createServer } = await import('vite');
 const server = await createServer({ root: process.cwd(), logLevel: 'error', server: { middlewareMode: true }, appType: 'custom' });
 const { dataStored } = await server.ssrLoadModule('/src/data.js');
-const mod = await server.ssrLoadModule('/src/views/workOrder/selectGripper.vue');
-const comp = mod.default, { dedupeGrippers } = mod;
+const comp = (await server.ssrLoadModule('/src/views/workOrder/selectGripper.vue')).default;
+const { dedupeGrippers } = await server.ssrLoadModule('/src/util/grippers.js');
 const src = readFileSync('src/views/workOrder/selectGripper.vue', 'utf8');
 
 let failed = 0;

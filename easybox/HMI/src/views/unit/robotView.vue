@@ -5,6 +5,7 @@
   import numericField from '../../components/numericField.vue'
   // (machines-gating) destinazioni macchina dinamiche dalla configurazione
   import { MACHINE_POSITIONS } from '../../util/machineBrands'
+  import { dedupeGrippers } from '../../util/grippers.js'
 </script>
 
 <template>
@@ -1399,6 +1400,13 @@ export default {
     clawSide2Available() {
       return Array.isArray(this.dataGripper) && this.dataGripper.length > 1;
     },
+    // (gripper-twins) CARICA PINZA: una voce per pinza fisica (riga canonica,
+    // ID minore -> "11;<id>", il PLC trova la gemella via SUB_POS), sempre
+    // senza la pinza a bordo (POS_PLANT 1000, filtro in getGrippersList).
+    // grippersList resta COMPLETA per il dialog di collaudo (voluto).
+    loadGrippersList() {
+      return dedupeGrippers(this.grippersList);
+    },
     // ========================================================================
     // (AN) MOTIVI leggibili dei comandi disabilitati — '' quando abilitato.
     // Stesse condizioni dei rispettivi *BranchEnabled, in ordine di priorita'.
@@ -1551,7 +1559,7 @@ export default {
     },
     dialogItems() {
       switch (this.dialog.type) {
-        case 'gripper':     return this.grippersList;
+        case 'gripper':     return this.loadGrippersList;
         case 'tray':        return this.traysList;
         case 'trayRelease': return [];
       }

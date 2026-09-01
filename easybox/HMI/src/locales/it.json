@@ -86,6 +86,7 @@
     "posPlant": "Posizione in impianto"
   },
   "gripper": {
+    "twinBadge": "doppia (ID {ids})",
     "welcome": "Elenco Pinze disponibili",
     "add_gripper": "Agg. Pinza",
     "name": "ID",

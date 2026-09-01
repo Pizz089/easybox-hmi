@@ -3,6 +3,7 @@
     import { dataStored } from '../../../data.js'
     import numericField from '../../../components/numericField.vue'
     import { ref, onMounted } from 'vue'
+    import { dedupeGrippers } from '../../../util/grippers.js'
     //import layout from '../layoutView.vue'
 
     import prisma from '../../../components/layout/prisma.vue'
@@ -87,9 +88,10 @@
                     <select class="pure-u-1" name="gripperList" v-model="grating.gripperIndex" @change="onChangeGripper($event)" 
                         :readonly="dataStored.userLevel<0 || (!gratingAssociated && createNew)">
                         <option value="0"> </option>
+                        <!-- (gripper-twins) una voce per pinza fisica (util/grippers.js) -->
                         <template v-for="(g,index) in gripperList" :key="g.ID">
-                            <option :value="index+1" v-if="g.SUB_POS<=1" :selected="grating.gripperIndex==index+1">
-                               {{ g.POS_MAG>0?g.POS_MAG:'OUT' }} {{ g.FAMILY }} - {{ g.DESCR }} 
+                            <option :value="index+1" :selected="grating.gripperIndex==index+1">
+                               {{ g.POS_MAG>0?g.POS_MAG:'OUT' }} {{ g.FAMILY }} - {{ g.DESCR }}
                             </option>
                         </template>                  
                     </select>
@@ -361,7 +363,7 @@ export default {
                     return response.json()
                 })
                 .then(data => {
-                    this.gripperList=data;                 
+                    this.gripperList = dedupeGrippers(data);
                 })
                 .catch(error => {
                     console.info(error);

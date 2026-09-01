@@ -4,6 +4,7 @@
 
     import { ref, onMounted } from 'vue'
     import { dataStored } from '../../data';
+    import { dedupeGrippers, isTwinGripper } from '../../util/grippers.js';
     const el = ref()
 </script>
 
@@ -32,25 +33,23 @@
                 <template v-for="(dt, index) in datiTab" :key="dt.ID" >
                     <tr :class="{'pure-table-odd':(index%2==1)}" >
                         <!--td>{{dt.ID}} </td-->
-                        <!--<td v-if="dt.SUB_POS<=1" :rowspan="getSpan(dt.SUB_POS)"-->
-                        <td v-if="dt.SUB_POS==0"  >
-                            {{dt.FAMILY.trim()}} 
-                        </td>
-                        <td v-if="dt.SUB_POS==1" class="cell-joined-top">
+                        <!-- (gripper-twins) UNA riga per pinza fisica (util/grippers.js,
+                             riga canonica = ID minore): via le celle unite del
+                             modello legacy SUB_POS 0/1/>1 che lasciavano la
+                             FAMILY vuota sulla doppia (gemelle a SUB_POS 3) -->
+                        <td>
                             {{dt.FAMILY.trim()}}
-                        </td>
-                        <td v-if="dt.SUB_POS>1" class="cell-joined-bottom">
-                            &nbsp;
+                            <span v-if="isTwinGripper(dt)" class="twin-badge">{{ $t('gripper.twinBadge', { ids: dt.twinIDs.join('+') }) }}</span>
                         </td>
                         <td class="cell-descr">{{dt.DESCR.trim()}}</td>
                         <td>{{ $t(dt.STATUS_DESC.trim()) }}</td>
                         <td v-html="calculatePos(index)" class="cell-pos"> </td>
-                        <td>  
-                            <buttonsCMD  :reference="createLink( dt.ID )" 
+                        <td>
+                            <buttonsCMD  :reference="createLink( dt.ID )"
                                        :index="toStr(dt.ID)"
                                        modify=true                      @cmdModify="modifyGripper(dt.ID)"
                                        del=true                         @cmdDel="deleteGripper(dt.ID)"
-                                       :move="dt.POS_PLANT>=0 && dt.SUB_POS<=1 && (!gripperOnRobot || (gripperOnRobot && dt.POS_PLANT==1000))"   @cmdMove="PickReleaseGripper(dt.ID)"
+                                       :move="dt.POS_PLANT>=0 && (!gripperOnRobot || (gripperOnRobot && dt.POS_PLANT==1000))"   @cmdMove="PickReleaseGripper(dt.ID)"
                                        :moveDisable="!dataStored.cmdActive" >
                                        <!--:move="dt.POS_PLANT!=1000 || !gripperOnRobot"   @cmdMove="PickReleaseGripper(dt.ID)"-->
                             </buttonsCMD>
@@ -84,9 +83,11 @@ export default {
                 })
                 .then(pinze => {
                     //console.log(JSON.stringify(order,null,4))
-                    console.log("ricevo dati per "+pinze.length+" pinze")  
-                    if (JSON.stringify(this.datiTab) !== JSON.stringify(pinze)){
-                        this.datiTab=pinze
+                    console.log("ricevo dati per "+pinze.length+" pinze")
+                    // (gripper-twins) una riga per pinza fisica
+                    const rows = dedupeGrippers(pinze);
+                    if (JSON.stringify(this.datiTab) !== JSON.stringify(rows)){
+                        this.datiTab=rows
 						//this.gripperOnRobot=false
 						//for (let i=0; i<this.datiTab.length; i++){
                         //    if (this.datiTab[i].POS_PLANT > 1000)
@@ -117,8 +118,8 @@ export default {
                 return '<strong>ROBOT<strong>';
             if (this.datiTab[i].POS_PLANT<0)
                 return this.$t('OUT');
-            if (this.datiTab[i].SUB_POS>0)
-                return this.datiTab[i].POS_MAG+"."+this.datiTab[i].SUB_POS;
+            // (gripper-twins) SUB_POS non e' una sotto-posizione di scaffale ma
+            // la chiave delle gemelle: la posizione e' il solo POS_MAG
             return this.datiTab[i].POS_MAG;
         },
         PickReleaseGripper(ID){
@@ -152,10 +153,6 @@ export default {
         },
         sendToRobot(val) {
             dataStored.WS.socket.emit("TO_PLANT/CMD/ROBOT", val);
-        },
-        getSpan(subpos){
-            if (subpos>=1)
-                return 2
         }
     },
     computed:{
@@ -194,13 +191,17 @@ export default {
         width: inherit;
     }
 
-    /* Ex inline style (LV9): celle FAMILY unite tra righe SUB_POS
-       (bordo soppresso per simulare il rowspan) + larghezze colonna. */
-    .cell-joined-top {
-        border-bottom: 0;
-    }
-    .cell-joined-bottom {
-        border-top: 0;
+    /* (gripper-twins) badge "doppia" sulla riga canonica */
+    .twin-badge {
+        display: inline-block;
+        margin-left: var(--space-2);
+        padding: 0 var(--space-2);
+        border: 1px solid var(--accent);
+        border-radius: var(--radius-sm);
+        color: var(--accent);
+        font-size: var(--font-size-xs);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
     }
     .cell-descr {
         max-width: 20%;
