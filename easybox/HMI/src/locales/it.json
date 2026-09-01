@@ -223,7 +223,7 @@
     "modelOnly": "Crea modello",
     "cavity": {
       "title": "Franco cavità per il file di fabbricazione",
-      "hint": "Gioco TOTALE aggiunto alla misura di ogni cavità (metà per lato, centro fermo). Default {def} mm; 0 = nessun franco; massimo {max} mm. Vale solo per il file esportato, non per il grigliato salvato.",
+      "hint": "Gioco TOTALE aggiunto alla misura di ogni cavità (metà per lato, centro fermo). Default {def} mm; 0 = nessun franco; massimo {max} mm. Vale solo per DXF e stampa: il grigliato salvato e il modello SVG restano nominali.",
       "label": "Franco cavità",
       "rangeError": "Valore non valido: inserire un numero fra 0 e {max} mm (un decimale).",
       "confirm": "Esporta"

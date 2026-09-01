@@ -161,11 +161,13 @@
                     <input type="text" class="pitch-field" :value="pitchYLabel" readonly tabindex="-1" />
                 </div> 
                 <div class="pure-u-1 btn-group row-spaced grating-actions">
-                    <!-- (cavity-clearance) OGNI uscita di fabbricazione (modello SVG,
-                         DXF, stampa) passa dal dialog del franco cavita': un solo
-                         punto di inserimento, valore in mm, default 0.1 a ogni
-                         apertura della pagina, mai salvato -->
-                    <button class="pure-button pure-button-primary" @click="saveData().then(() => askCavity('model'))"
+                    <!-- (cavity-clearance) il franco vale SOLO per i file di
+                         fabbricazione, DXF e stampa PDF (dialog askCavity: un solo
+                         punto di inserimento, mm, default 0.1 a ogni apertura della
+                         pagina, mai salvato). Il modello SVG in Grating_model_dir e'
+                         un file di RIFERIMENTO e resta NOMINALE: flusso diretto.
+                         saveData e' async: .then, mai '&&' (era sempre vero). -->
+                    <button class="pure-button pure-button-primary" @click="saveData().then(() => createModelFile())"
 							:disabled="dataStored.userLevel<0 || grating.SAFEX<minSafeX || grating.SAFEY<minSafeY ">
                         {{ $t("grating.saveAndModel") }}
                     </button>
@@ -180,7 +182,7 @@
                     <!--button class="pure-button pure-button-primary"  style="padding:20px">
                         <img src="../../../assets/pdf.png" width="15%"></img>
                     </button-->
-                    <button class="btn-ghost" @click="askCavity('model')">{{ $t("grating.modelOnly") }}</button>
+                    <button class="btn-ghost" @click="createModelFile()">{{ $t("grating.modelOnly") }}</button>
                     <button class="btn-ghost" @click="askCavity('dxf')" :disabled="listPz.length === 0">DXF</button>
                 </div>
 
@@ -1012,11 +1014,12 @@ export default {
                 });
         },
         // ===== (cavity-clearance) franco cavita' scelto all'export =====
-        // Un solo dialog per le tre uscite (modello SVG, DXF, stampa): mostra
-        // il valore corrente in mm (default CAVITY_CLEARANCE_UM a ogni
+        // Un solo dialog per le due uscite di FABBRICAZIONE (DXF, stampa PDF):
+        // mostra il valore corrente in mm (default CAVITY_CLEARANCE_UM a ogni
         // apertura della pagina, mai salvato), valida 0..max con un decimale
         // e poi lancia l'azione col valore in micron. La conversione mm<->um
-        // vive SOLO in util/cavityClearance.js.
+        // vive SOLO in util/cavityClearance.js. Il modello SVG (createModelFile
+        // / DownloadModel) e' di RIFERIMENTO e non passa di qui: nominale.
         askCavity(action) {
             this.cavityDialog.action = action;
             this.cavityDialog.value = String(clearanceUmToMm(this.cavityUm));
@@ -1043,11 +1046,9 @@ export default {
             switch (action) {
                 case 'dxf':      return this.esportaDXF(um);
                 case 'print':    return this.stampaDiv(um);
-                case 'download': return this.DownloadModel(um);
-                case 'model':    return this.createModelFile(um);
             }
         },
-        DownloadModel(clearanceUm = CAVITY_CLEARANCE_UM){
+        DownloadModel(){
             //con la pagina a tutto schermo, il download NON VIENE VISUALIZZATO
             const svgElement = document.getElementById('trayLayout');
 
@@ -1058,9 +1059,9 @@ export default {
 
             //Serializzazione dello SVG in una stringa XML.
             const serializer = new XMLSerializer();
-            // file di fabbricazione: franco cavita' sulla STRINGA serializzata,
-            // l'anteprima a schermo resta nominale (util/cavityClearance.js)
-            let svgString = applyCavityClearanceToSvg(serializer.serializeToString(svgElement), clearanceUm);
+            // stesso modello SVG di createModelFile: file di RIFERIMENTO,
+            // cavita' NOMINALI come nell'anteprima (niente franco)
+            let svgString = serializer.serializeToString(svgElement);
 
             //Creazione di un Blob e un URL per il file.
             const blob = new Blob([svgString], { type: 'image/svg+xml' });
@@ -1138,13 +1139,14 @@ export default {
             // Opzionale: ricarica la pagina per reinizializzare tutti gli script, ecc.
             window.location.reload();
         },
-        createModelFile(clearanceUm = CAVITY_CLEARANCE_UM) {  //genera il file SVG da scaricare nella cartella del pannello operatore
+        createModelFile() {  //genera il file SVG da scaricare nella cartella del pannello operatore
             var contenutoOriginale = document.body.innerHTML;
             var contenutoStampa = document.getElementById('trayLayout');
             const serializer = new XMLSerializer();
-            // modello SVG in Grating_model_dir = file di fabbricazione: franco
-            // cavita' sulla stringa inviata al backend, anteprima nominale
-            let svgString = applyCavityClearanceToSvg(serializer.serializeToString(contenutoStampa), clearanceUm);
+            // modello SVG in Grating_model_dir = file di RIFERIMENTO, non di
+            // fabbricazione: cavita' NOMINALI, identiche all'anteprima (il
+            // franco vale solo per DXF e stampa PDF — confermato dal cliente 1/9)
+            let svgString = serializer.serializeToString(contenutoStampa);
 
             document.body.innerHTML = svgString ;
 

@@ -1,6 +1,8 @@
 // ============================================================================
-// cavityClearance.js — franco delle cavita' nei SOLI file di fabbricazione
-// (DXF, SVG modello / stampa / download del grigliato).
+// cavityClearance.js — franco delle cavita' nei SOLI file di fabbricazione:
+// DXF (esportaDXF) e stampa PDF (stampaDiv). Il modello SVG scritto in
+// Grating_model_dir (createModelFile/DownloadModel) e' un file di RIFERIMENTO
+// e resta NOMINALE (confermato dal cliente 1/9): non passa di qui.
 //
 // CAVITY_CLEARANCE_UM e' il DEFAULT del TOTALE aggiunto alla MISURA della
 // cavita' su ciascun asse, ripartito simmetricamente rispetto al centro:
@@ -56,11 +58,11 @@ export function cavityRadius(r, clearanceUm = CAVITY_CLEARANCE_UM) {
 	return Number(r) + halfMm(clearanceUm);
 }
 
-// Post-processing dell'SVG SERIALIZZATO dall'anteprima (#trayLayout): allarga
-// le sole sagome tasca — il <rect> principale di ogni <g id="prisma_obj">
-// (escluso l'alone diffOrder lightcyan) e il <circle> maggiore di ogni
-// <g id="cylinder_obj"> (escluso il marker di centro r=4). Il DOM a schermo
-// non viene toccato: si lavora sulla stringa che va nel file.
+// Post-processing dell'SVG SERIALIZZATO dall'anteprima (#trayLayout) per la
+// STAMPA PDF: allarga le sole sagome tasca — il <rect> principale di ogni
+// <g id="prisma_obj"> (escluso l'alone diffOrder lightcyan) e il <circle>
+// maggiore di ogni <g id="cylinder_obj"> (escluso il marker di centro r=4).
+// Il DOM a schermo non viene toccato: si lavora sulla stringa che va in stampa.
 const NUM = v => String(Math.round(Number(v) * 1e6) / 1e6);
 const ATTR = (tag, name) => {
 	const m = tag.match(new RegExp('\\s' + name + '="([^"]*)"'));

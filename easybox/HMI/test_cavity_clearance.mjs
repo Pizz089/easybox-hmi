@@ -108,7 +108,7 @@ const before = JSON.stringify(vm.listPz);
 buildGratingDxf({ width: 820, height: 610, pieces: vm.listPz, dimX: vm.dim_x, dimY: vm.dim_y, radius: vm.radius, clearanceUm: 1500 });
 check(JSON.stringify(vm.listPz) === before && vm.dim_x === 40 && vm.dim_y === 70, 'dopo un DXF a 1.5 mm: listPz e dim invariati');
 
-console.log('\n5) dialog di export: un punto solo, default 0.1 a ogni pagina, range 0..2');
+console.log('\n5) dialog di export SOLO per DXF e stampa: un punto solo, default 0.1 a ogni pagina, range 0..2');
 const runs = [];
 vm.esportaDXF = um => runs.push(['dxf', um]);
 vm.stampaDiv = um => runs.push(['print', um]);
@@ -120,20 +120,52 @@ vm.closeCavityDialog();
 check(!vm.cavityDialog.open && runs.length === 0, 'annulla: niente esportato');
 vm.askCavity('dxf'); vm.cavityDialog.value = '0.3'; vm.confirmCavity();
 check(runs.length === 1 && runs[0][0] === 'dxf' && runs[0][1] === 300 && !vm.cavityDialog.open, 'conferma 0.3 -> esportaDXF(300)');
-vm.askCavity('model');
-check(vm.cavityDialog.value === '0.3', 'lo stesso valore vale per la prossima uscita di questa pagina (modello)');
+vm.askCavity('print');
+check(vm.cavityDialog.value === '0.3', 'lo stesso valore vale per la prossima uscita di questa pagina (stampa)');
 vm.confirmCavity();
-check(runs[1][0] === 'model' && runs[1][1] === 300, 'modello SVG -> createModelFile(300)');
+check(runs[1][0] === 'print' && runs[1][1] === 300, 'stampa PDF -> stampaDiv(300)');
 vm.askCavity('print'); vm.cavityDialog.value = '0'; vm.confirmCavity();
 check(runs[2][0] === 'print' && runs[2][1] === 0, 'stampa con 0 -> stampaDiv(0): zero valido = nessun franco');
 vm.askCavity('dxf'); vm.cavityDialog.value = '2'; vm.confirmCavity();
 check(runs[3][1] === 2000, '2 mm (limite) accettato -> 2000 um');
+vm.askCavity('model'); vm.cavityDialog.value = '0.5'; const nBefore = runs.length; vm.confirmCavity();
+check(runs.length === nBefore, "'model' non e' un'azione del dialog: nessun export (il modello non passa dal franco)");
 for (const bad of ['2.1', '-0.1', 'abc', '']) {
 	vm.askCavity('dxf'); vm.cavityDialog.value = bad; const n = runs.length; vm.confirmCavity();
 	check(vm.cavityDialog.open && vm.cavityDialog.error === 'grating.cavity.rangeError' && runs.length === n, 'valore "' + bad + '": rifiutato con messaggio, niente esportato');
 	vm.closeCavityDialog();
 }
 check(makeVm().cavityUm === 100, 'nuova apertura della pagina: torna il default (nessuna persistenza)');
+
+console.log('\n6) modello SVG (createModelFile / DownloadModel): NOMINALE, identico all\'anteprima');
+const fs = await import('node:fs');
+const src = fs.readFileSync('src/views/conf/Grating/Grating.vue', 'utf8');
+const code = src.replace(/<!--[\s\S]*?-->/g, '').replace(/\/\/[^\n]*/g, '');
+// corpo del METODO (definizione a 8 spazi di indentazione, non le chiamate)
+const fnBody = name => { const i = code.search(new RegExp('\\n {8}' + name + '\\(')); if (i < 0) throw new Error('metodo ' + name + ' non trovato'); return code.slice(i, code.indexOf('\n        }', i + 1)); };
+check(!/applyCavityClearanceToSvg/.test(fnBody('createModelFile')), 'createModelFile: nessun franco (serializzazione nominale)');
+check(!/applyCavityClearanceToSvg/.test(fnBody('DownloadModel')), 'DownloadModel: nessun franco (stesso modello)');
+check(/applyCavityClearanceToSvg\(serializer\.serializeToString\(contenutoStampa\), clearanceUm\)/.test(fnBody('stampaDiv')), 'stampaDiv: franco applicato con il valore scelto');
+check(/clearanceUm,/.test(fnBody('esportaDXF')), 'esportaDXF: franco passato a buildGratingDxf');
+const tpl = src.slice(0, src.lastIndexOf('</template>')).replace(/<!--[\s\S]*?-->/g, '');
+check(/@click="createModelFile\(\)"/.test(tpl) && /saveData\(\)\.then\(\(\) => createModelFile\(\)\)/.test(tpl), 'Crea modello / Salva e crea modello: flusso diretto (then, non &&)');
+check(!/askCavity\('model'\)/.test(tpl) && /askCavity\('dxf'\)/.test(tpl) && /askCavity\('print'\)/.test(tpl), 'dialog del franco solo su DXF e stampa');
+// la serializzazione DOM dell'anteprima e' per costruzione nominale: le
+// dimensioni scritte nel modello sono dim_x/dim_y del componente
+const fakeDom = { innerHTML: '', };
+globalThis.document = {
+	body: fakeDom,
+	getElementById: () => ({ tag: 'svg' }),
+};
+let posted = null;
+globalThis.fetch = async (url, opt) => { posted = { url: String(url), body: opt && opt.body }; return { ok: true }; };
+globalThis.XMLSerializer = function () { this.serializeToString = () => svgIn; };
+globalThis.alert = () => {};
+const vmM = makeVm();
+vmM.createModelFile();
+await new Promise(r => setTimeout(r, 10));
+check(posted && posted.url.includes('api/conf/grating/saveModel/') && JSON.parse(posted.body).xml === svgIn, 'modello inviato al backend = SVG dell\'anteprima, byte-identico (rect 40x70, cerchio r 20)');
+check(JSON.parse(posted.body).xml.includes('<rect x="100" y="200" width="40" height="70"') && !JSON.parse(posted.body).xml.includes('40.1'), 'nel modello la cavita\' e\' 40x70 nominale, non 40.1x70.1');
 
 await server.close();
 console.log('\n' + (failed ? failed + ' CHECK FALLITI' : 'TUTTI I CHECK PASSATI'));
