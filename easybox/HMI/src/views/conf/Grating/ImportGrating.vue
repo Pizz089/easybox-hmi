@@ -175,12 +175,12 @@ const el = ref()
 
 <script>
 // ============================================================================
-// (grating-axis-swap-2, 1/9) La CONVENZIONE ASSI ROBOT vive in UN punto solo:
-// util/gratingAxes.js (drawingToRobot: X lungo width positivo, Y lungo height
-// negata — validata sui dati DB di TRAY_9). Qui resta solo l'adapter dalla
-// forma di listPz (cx/cy sui prismi) ai centri {w,h}.
+// (grating-axis-swap-3, 1/9) La CONVENZIONE ASSI ROBOT vive in UN punto solo:
+// util/gratingAxes.js (drawingToRobot: Y lungo width positivo = SUB_POS,
+// X lungo height = colonne, origine tasca 1 — validata sul robot). Qui resta
+// solo l'adapter dalla forma di listPz (cx/cy sui prismi) ai centri {w,h}.
 // ============================================================================
-import { drawingToRobot, gridFit } from '../../../util/gratingAxes.js';
+import { drawingToRobot, gridFit, ROBOT_AXIS_ALONG } from '../../../util/gratingAxes.js';
 
 export default {
   name: 'ImportGrating',
@@ -465,18 +465,22 @@ export default {
         h: p.prisma ? this.grating.height - p.cy : this.grating.height - p.y,
       }));
       const robotPts = drawingToRobot(centers);
-      // (Task 3, 1/9) BLOCCO ingombro prima di scrivere. L'ingombro tasca
-      // dal DXF importato non e' noto: check sui SOLI centri (halfW/halfH 0).
+      // (Task 3, 1/9) BLOCCO ingombro prima di scrivere, in coordinate
+      // DISEGNO (width -> asse robot Y, height -> asse robot X, vedi
+      // ROBOT_AXIS_ALONG). L'ingombro tasca dal DXF importato non e' noto:
+      // check sui SOLI centri (halfW/halfH 0).
       const tray = this.trayList[this.grating.trayIndex - 1];
-      if (tray) {
-        const fit = gridFit(robotPts, { trayX: tray.X, trayY: tray.Y, halfW: 0, halfH: 0 });
-        if (!fit.ok) {
-          const detail = [];
-          if (fit.overX > 0) detail.push(this.$t('grating.outOfTrayAxis', { mm: Math.ceil(fit.overX/1000), axis: 'X' }));
-          if (fit.overY > 0) detail.push(this.$t('grating.outOfTrayAxis', { mm: Math.ceil(fit.overY/1000), axis: 'Y' }));
-          alert(this.$t('grating.outOfTray', { detail: detail.join(', ') }));
-          return;
-        }
+      const fit = gridFit(centers, {
+        width:  tray && tray.X > 0 ? tray.X/1000 : this.grating.width,
+        height: tray && tray.Y > 0 ? tray.Y/1000 : this.grating.height,
+        halfW: 0, halfH: 0,
+      });
+      if (!fit.ok) {
+        const detail = [];
+        if (fit.overW > 0) detail.push(this.$t('grating.outOfTrayAxis', { mm: Math.ceil(fit.overW), axis: ROBOT_AXIS_ALONG.width }));
+        if (fit.overH > 0) detail.push(this.$t('grating.outOfTrayAxis', { mm: Math.ceil(fit.overH), axis: ROBOT_AXIS_ALONG.height }));
+        alert(this.$t('grating.outOfTray', { detail: detail.join(', ') }));
+        return;
       }
       for (let i=0; i<this.listPz.length; i++){
         let pos={};

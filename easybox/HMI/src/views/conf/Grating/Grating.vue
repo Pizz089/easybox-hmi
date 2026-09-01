@@ -2,7 +2,7 @@
     import { RouterLink, RouterView } from 'vue-router'
     import { dataStored } from '../../../data.js'
     import { KO_ACTIVE_ORDER } from '../../../util/errorCodes.js'
-    import { drawingToRobot, gridFit } from '../../../util/gratingAxes.js'
+    import { drawingToRobot, gridFit, ROBOT_AXIS_ALONG } from '../../../util/gratingAxes.js'
     import { cavityRect, cavityRadius, applyCavityClearanceToSvg } from '../../../util/cavityClearance.js'
     import numericField from '../../../components/numericField.vue'
     import { ref, onMounted } from 'vue'
@@ -382,12 +382,11 @@
 
 <script>
 // ============================================================================
-// (grating-axis-swap-2, 1/9) La CONVENZIONE ASSI ROBOT vive in UN punto solo:
-// util/gratingAxes.js (drawingToRobot: X lungo width positivo, Y lungo height
-// negata — validata sui dati DB di TRAY_9). Qui resta solo l'adapter dalla
-// forma di listPz ai centri {w,h} (pocketCentersWH). Il blocco DIR_X/DIR_Y
-// del 23/7 e' stato rimosso: invertiva i ruoli degli assi su numeri attesi
-// mai riscontrati sul ferro (incidente TRAY_8 dell'1/9).
+// (grating-axis-swap-3, 1/9) La CONVENZIONE ASSI ROBOT vive in UN punto solo:
+// util/gratingAxes.js (drawingToRobot: Y lungo width positivo = asse di
+// SUB_POS, X lungo height = colonne, origine tasca 1 — validata sul robot
+// con TRAY_9 corretto a DB). Qui resta solo l'adapter dalla forma di listPz
+// ai centri {w,h} (pocketCentersWH).
 // ============================================================================
 
 // DXF di fabbricazione (R12, mm). pieces/dimX/dimY/radius arrivano NOMINALI
@@ -855,24 +854,26 @@ export default {
                 h: p.prisma ? this.grating.height - (p.y + this.dim_y/2) : this.grating.height - p.y,
             }));
         },
-        // (Task 3, 1/9) confronto ingombro griglia vs contorno TRAY.X/TRAY.Y.
-        // Nominale, CORR esclusi: nella vista 4Robot X_CORR/Y_CORR del TRAY
-        // sono un offset di teaching uguale per tutte le tasche (spostano il
-        // cassetto nel frame robot, non la griglia dentro il contorno).
+        // (Task 3, 1/9) ingombro griglia vs contorno, in coordinate DISEGNO
+        // (finestra fissa [0,width] x [0,height], mm): lo sforo lungo width e'
+        // sull'asse robot Y (TRAY.X lo limita), lungo height sull'asse X
+        // (TRAY.Y) — vedi ROBOT_AXIS_ALONG. Contorno = TRAY.X/Y del cassetto
+        // selezionato (fresco da trayList). CORR esclusi: nella vista 4Robot
+        // X_CORR/Y_CORR del TRAY sono un offset di teaching uguale per tutte
+        // le tasche (spostano il cassetto nel frame robot, non la griglia).
         checkGridFit() {
             if (this.listPz.length === 0) return true;
             const tray = this.trayList[this.grating.trayIndex-1];
-            if (!tray) return true;
-            const fit = gridFit(drawingToRobot(this.pocketCentersWH()), {
-                trayX: tray.X,
-                trayY: tray.Y,
-                halfW: (this.prismatic ? this.dim_x : this.x)/2 * 1000,
-                halfH: (this.prismatic ? this.dim_y : this.y)/2 * 1000,
+            const fit = gridFit(this.pocketCentersWH(), {
+                width:  tray && tray.X > 0 ? tray.X/1000 : this.grating.width,
+                height: tray && tray.Y > 0 ? tray.Y/1000 : this.grating.height,
+                halfW: (this.prismatic ? this.dim_x : this.x)/2,
+                halfH: (this.prismatic ? this.dim_y : this.y)/2,
             });
             if (fit.ok) return true;
             const detail = [];
-            if (fit.overX > 0) detail.push(this.$t('grating.outOfTrayAxis', { mm: Math.ceil(fit.overX/1000), axis: 'X' }));
-            if (fit.overY > 0) detail.push(this.$t('grating.outOfTrayAxis', { mm: Math.ceil(fit.overY/1000), axis: 'Y' }));
+            if (fit.overW > 0) detail.push(this.$t('grating.outOfTrayAxis', { mm: Math.ceil(fit.overW), axis: ROBOT_AXIS_ALONG.width }));
+            if (fit.overH > 0) detail.push(this.$t('grating.outOfTrayAxis', { mm: Math.ceil(fit.overH), axis: ROBOT_AXIS_ALONG.height }));
             alert(this.$t('grating.outOfTray', { detail: detail.join(', ') }));
             return false;
         },
@@ -888,10 +889,11 @@ export default {
             // insert fallisce dopo la delete lo stato e' incompleto ma
             // RECUPERABILE ripetendo il salvataggio (alert esplicito).
             const floorMag = this.trayList[this.grating.trayIndex-1].FLOOR_MAG;
-            // (grating-axis-swap-2) coordinate robot dall'adapter + util
-            // condivisa: origine = tasca 1, X lungo width, Y = -height.
-            // Riscontro TRAY_9 (DB cella): tasca1 (50000,-65000), tasca2
-            // (110000,-65000), tasca14 (50000,-145000), tasca91 (770000,-545000).
+            // (grating-axis-swap-3) coordinate robot dall'adapter + util
+            // condivisa: origine = tasca 1, Y lungo width (SUB_POS), X lungo
+            // height (colonne). Riscontro TRAY_9 validato sul robot (1/9):
+            // tasca1 (50000,-65000), 2 (50000,-5000), 13 (50000,655000),
+            // 14 (130000,-65000), 91 (530000,655000).
             const robotPts = drawingToRobot(this.pocketCentersWH());
             if (!this.createNew) {
                 try {

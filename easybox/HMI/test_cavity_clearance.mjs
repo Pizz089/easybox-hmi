@@ -86,7 +86,7 @@ vm.calculateData();
 check(vm.dim_x === 40 && vm.dim_y === 70, 'dim_x/dim_y a schermo = 40x70 nominali');
 check(vm.listPz.length === 91, '91 tasche');
 const p = drawingToRobot(vm.pocketCentersWH());
-check(p[0].X === 50000 && p[0].Y === -65000 && p[1].X === 110000 && p[90].X === 770000 && p[90].Y === -545000, 'coordinate robot [POSITION] identiche a TRAY_9 (passo 60000/80000 invariato)');
+check(p[0].X === 50000 && p[0].Y === -65000 && p[1].Y === -5000 && p[13].X === 130000 && p[90].X === 530000 && p[90].Y === 655000, 'coordinate robot [POSITION] identiche al riferimento TRAY_9 (passi 60000 su Y / 80000 su X invariati)');
 // il DXF dagli stessi dati: cavita' 40.1 x 70.1, centri = centri nominali
 const dxf9 = buildGratingDxf({ width: 820, height: 610, pieces: vm.listPz, dimX: vm.dim_x, dimY: vm.dim_y, radius: vm.radius });
 const l9 = dxf9.split('\n');
