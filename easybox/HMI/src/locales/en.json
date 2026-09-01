@@ -221,6 +221,13 @@
     "tray": "Tray",
     "saveAndModel": "Save & create model",
     "modelOnly": "Create model",
+    "cavity": {
+      "title": "Cavity clearance for the manufacturing file",
+      "hint": "TOTAL play added to the size of each cavity (half per side, centre unchanged). Default {def} mm; 0 = no clearance; maximum {max} mm. Applies only to the exported file, not to the saved grating.",
+      "label": "Cavity clearance",
+      "rangeError": "Invalid value: enter a number between 0 and {max} mm (one decimal).",
+      "confirm": "Export"
+    },
     "rowsCols": "{rows} rows × {cols} columns = {tot} pcs",
     "generatedOn": "Generated on:",
     "print": "Print PDF",

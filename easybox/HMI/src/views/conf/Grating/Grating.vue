@@ -3,7 +3,8 @@
     import { dataStored } from '../../../data.js'
     import { KO_ACTIVE_ORDER } from '../../../util/errorCodes.js'
     import { drawingToRobot, gridFit, ROBOT_AXIS_ALONG } from '../../../util/gratingAxes.js'
-    import { cavityRect, cavityRadius, applyCavityClearanceToSvg } from '../../../util/cavityClearance.js'
+    import { cavityRect, cavityRadius, applyCavityClearanceToSvg,
+             CAVITY_CLEARANCE_UM, CAVITY_CLEARANCE_MAX_UM, clearanceMmToUm, clearanceUmToMm, isValidClearanceUm } from '../../../util/cavityClearance.js'
     import { dedupeGrippers } from '../../../util/grippers.js'
     import numericField from '../../../components/numericField.vue'
     import { ref, onMounted } from 'vue'
@@ -160,7 +161,11 @@
                     <input type="text" class="pitch-field" :value="pitchYLabel" readonly tabindex="-1" />
                 </div> 
                 <div class="pure-u-1 btn-group row-spaced grating-actions">
-                    <button class="pure-button pure-button-primary" @click="saveData() && createModelFile()"
+                    <!-- (cavity-clearance) OGNI uscita di fabbricazione (modello SVG,
+                         DXF, stampa) passa dal dialog del franco cavita': un solo
+                         punto di inserimento, valore in mm, default 0.1 a ogni
+                         apertura della pagina, mai salvato -->
+                    <button class="pure-button pure-button-primary" @click="saveData().then(() => askCavity('model'))"
 							:disabled="dataStored.userLevel<0 || grating.SAFEX<minSafeX || grating.SAFEY<minSafeY ">
                         {{ $t("grating.saveAndModel") }}
                     </button>
@@ -175,12 +180,41 @@
                     <!--button class="pure-button pure-button-primary"  style="padding:20px">
                         <img src="../../../assets/pdf.png" width="15%"></img>
                     </button-->
-                    <button class="btn-ghost" @click="createModelFile()">{{ $t("grating.modelOnly") }}</button>
-                    <button class="btn-ghost" @click="esportaDXF()" :disabled="listPz.length === 0">DXF</button>
+                    <button class="btn-ghost" @click="askCavity('model')">{{ $t("grating.modelOnly") }}</button>
+                    <button class="btn-ghost" @click="askCavity('dxf')" :disabled="listPz.length === 0">DXF</button>
+                </div>
+
+                <!-- dialog franco cavita' (comune a modello/DXF/stampa) -->
+                <div v-if="cavityDialog.open" class="mission-dialog-overlay">
+                    <div class="mission-dialog">
+                        <h3 class="command-section-title">{{ $t('grating.cavity.title') }}</h3>
+                        <div class="cavity-hint">{{ $t('grating.cavity.hint', { def: clearanceUmToMm(CAVITY_CLEARANCE_UM), max: clearanceUmToMm(CAVITY_CLEARANCE_MAX_UM) }) }}</div>
+                        <label class="cavity-row">
+                            <span>{{ $t('grating.cavity.label') }}</span>
+                            <input type="number" class="cavity-input" inputmode="decimal"
+                                   step="0.1" :min="0" :max="clearanceUmToMm(CAVITY_CLEARANCE_MAX_UM)"
+                                   v-model="cavityDialog.value"
+                                   @keyup.enter="confirmCavity()" />
+                            <span>mm</span>
+                        </label>
+                        <div class="cavity-error" v-if="cavityDialog.error">{{ $t(cavityDialog.error, { max: clearanceUmToMm(CAVITY_CLEARANCE_MAX_UM) }) }}</div>
+                        <div class="pure-g">
+                            <div class="pure-u-1-2">
+                                <button style="width:100%" class="button_pressed pure-button-mission" @click="confirmCavity()">
+                                    {{ $t('grating.cavity.confirm') }}
+                                </button>
+                            </div>
+                            <div class="pure-u-1-2">
+                                <button style="width:100%" class="btn-ghost" @click="closeCavityDialog()">
+                                    {{ $t('robot.dialog.cancel') }}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="pure-u-1 row-spaced">
                     <!-- img nuda -> bottone canonico touch (handler 1:1) -->
-                    <button type="button" class="btn-icon scene-iconbtn" @click="stampaDiv()"
+                    <button type="button" class="btn-icon scene-iconbtn" @click="askCavity('print')"
                         :aria-label="$t('grating.print')" :title="$t('grating.print')">
                         <!-- PNG a glifo scuro invisibile su fondo scuro: SVG inline
                              stroke=currentColor, segue il colore del bottone -->
@@ -394,10 +428,11 @@
 // ============================================================================
 
 // DXF di fabbricazione (R12, mm). pieces/dimX/dimY/radius arrivano NOMINALI
-// (gli stessi dell'anteprima): il franco cavita' (util/cavityClearance.js)
-// viene applicato SOLO qui, sul layer PIECES, a centro invariato.
+// (gli stessi dell'anteprima): il franco cavita' (util/cavityClearance.js,
+// clearanceUm scelto all'export, default la costante) viene applicato SOLO
+// qui, sul layer PIECES, a centro invariato.
 // Export nominato per il test (test_cavity_clearance.mjs).
-export function buildGratingDxf({ width, height, pieces, dimX, dimY, radius, flipY = true, profileD = null, holes = [] }) {
+export function buildGratingDxf({ width, height, pieces, dimX, dimY, radius, flipY = true, profileD = null, holes = [], clearanceUm = CAVITY_CLEARANCE_UM }) {
   const W = Number(width), H = Number(height);
   const fy = (y) => (flipY ? H - Number(y) : Number(y));
   // quote emesse arrotondate al micron: niente rumore binario (es. 40.10000000000001)
@@ -450,10 +485,10 @@ export function buildGratingDxf({ width, height, pieces, dimX, dimY, radius, fli
   }
   for (const p of pieces) {
     if (p.prisma) {
-      const c = cavityRect(p.x, p.y, dimX, dimY);
+      const c = cavityRect(p.x, p.y, dimX, dimY, clearanceUm);
       polyRect('PIECES', c.x, c.y, c.w, c.h);
     } else {
-      e('0','CIRCLE','8','PIECES','10', q(p.x), '20', q(fy(p.y)), '40', q(cavityRadius(radius)));
+      e('0','CIRCLE','8','PIECES','10', q(p.x), '20', q(fy(p.y)), '40', q(cavityRadius(radius, clearanceUm)));
     }
   }
   e('0','ENDSEC','0','EOF');
@@ -495,7 +530,11 @@ export default {
             minSafeX:0,             //il minimo raggiungibile in base ai dati della pinza
             minSafeY:0,             //il minimo raggiungibile in base ai dati della pinza
             minBordoX:20,           //bordo minimo dx/sx — (2b-2) diventerà derivato dalle chele  
-            minBordoY:20,           //bordo minimo sopra/sotto — (2b-2) diventerà derivato dalle chele 
+            minBordoY:20,           //bordo minimo sopra/sotto — (2b-2) diventerà derivato dalle chele
+            // (cavity-clearance) franco cavita' per le uscite di fabbricazione:
+            // micron, default la costante a ogni apertura, mai persistito
+            cavityUm: CAVITY_CLEARANCE_UM,
+            cavityDialog: { open: false, action: null, value: '', error: '' }, 
             readyToDownload:false   //activa il download del file di progetto svg
         }
     },
@@ -972,7 +1011,43 @@ export default {
                     alert(error)
                 });
         },
-        DownloadModel(){
+        // ===== (cavity-clearance) franco cavita' scelto all'export =====
+        // Un solo dialog per le tre uscite (modello SVG, DXF, stampa): mostra
+        // il valore corrente in mm (default CAVITY_CLEARANCE_UM a ogni
+        // apertura della pagina, mai salvato), valida 0..max con un decimale
+        // e poi lancia l'azione col valore in micron. La conversione mm<->um
+        // vive SOLO in util/cavityClearance.js.
+        askCavity(action) {
+            this.cavityDialog.action = action;
+            this.cavityDialog.value = String(clearanceUmToMm(this.cavityUm));
+            this.cavityDialog.error = '';
+            this.cavityDialog.open = true;
+        },
+        closeCavityDialog() {
+            this.cavityDialog.open = false;
+            this.cavityDialog.action = null;
+            this.cavityDialog.error = '';
+        },
+        confirmCavity() {
+            const um = clearanceMmToUm(this.cavityDialog.value);
+            if (!isValidClearanceUm(um)) {
+                this.cavityDialog.error = 'grating.cavity.rangeError';
+                return;
+            }
+            this.cavityUm = um;   // resta per le prossime uscite di QUESTA pagina
+            const action = this.cavityDialog.action;
+            this.closeCavityDialog();
+            this.runCavityAction(action, um);
+        },
+        runCavityAction(action, um) {
+            switch (action) {
+                case 'dxf':      return this.esportaDXF(um);
+                case 'print':    return this.stampaDiv(um);
+                case 'download': return this.DownloadModel(um);
+                case 'model':    return this.createModelFile(um);
+            }
+        },
+        DownloadModel(clearanceUm = CAVITY_CLEARANCE_UM){
             //con la pagina a tutto schermo, il download NON VIENE VISUALIZZATO
             const svgElement = document.getElementById('trayLayout');
 
@@ -985,7 +1060,7 @@ export default {
             const serializer = new XMLSerializer();
             // file di fabbricazione: franco cavita' sulla STRINGA serializzata,
             // l'anteprima a schermo resta nominale (util/cavityClearance.js)
-            let svgString = applyCavityClearanceToSvg(serializer.serializeToString(svgElement));
+            let svgString = applyCavityClearanceToSvg(serializer.serializeToString(svgElement), clearanceUm);
 
             //Creazione di un Blob e un URL per il file.
             const blob = new Blob([svgString], { type: 'image/svg+xml' });
@@ -1004,7 +1079,7 @@ export default {
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
         },
-        esportaDXF() {
+        esportaDXF(clearanceUm = CAVITY_CLEARANCE_UM) {
             if (!this.listPz || this.listPz.length === 0) {
                 alert('Nessun pezzo distribuito: niente da esportare.');
                 return;
@@ -1029,6 +1104,7 @@ export default {
               flipY: true,
               profileD,
               holes,
+              clearanceUm,
             });
             const blob = new Blob([dxf], { type: 'application/dxf' });
             const url = URL.createObjectURL(blob);
@@ -1040,14 +1116,14 @@ export default {
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
         },
-        stampaDiv() {
-            //aprendo la finestra di stampa, posso stampare il modello o salvarlo come PDF 
+        stampaDiv(clearanceUm = CAVITY_CLEARANCE_UM) {
+            //aprendo la finestra di stampa, posso stampare il modello o salvarlo come PDF
             var contenutoOriginale = document.body.innerHTML;
             var contenutoStampa = document.getElementById('trayLayout');
             const serializer = new XMLSerializer();
             // stampa/PDF = file di fabbricazione: franco cavita' sulla stringa,
             // il DOM dell'anteprima non viene toccato (util/cavityClearance.js)
-            let svgString = applyCavityClearanceToSvg(serializer.serializeToString(contenutoStampa));
+            let svgString = applyCavityClearanceToSvg(serializer.serializeToString(contenutoStampa), clearanceUm);
 
             //console.log(svgString)
 
@@ -1062,13 +1138,13 @@ export default {
             // Opzionale: ricarica la pagina per reinizializzare tutti gli script, ecc.
             window.location.reload();
         },
-        createModelFile() {  //genera il file SVG da scaricare nella cartella del pannello operatore
+        createModelFile(clearanceUm = CAVITY_CLEARANCE_UM) {  //genera il file SVG da scaricare nella cartella del pannello operatore
             var contenutoOriginale = document.body.innerHTML;
             var contenutoStampa = document.getElementById('trayLayout');
             const serializer = new XMLSerializer();
             // modello SVG in Grating_model_dir = file di fabbricazione: franco
             // cavita' sulla stringa inviata al backend, anteprima nominale
-            let svgString = applyCavityClearanceToSvg(serializer.serializeToString(contenutoStampa));
+            let svgString = applyCavityClearanceToSvg(serializer.serializeToString(contenutoStampa), clearanceUm);
 
             document.body.innerHTML = svgString ;
 
@@ -1147,6 +1223,57 @@ export default {
 </script>
 
 <style scoped>
+/* (cavity-clearance) dialog franco cavita': stesso overlay delle view missione */
+.mission-dialog-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--bg-backdrop);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.mission-dialog {
+    background: var(--bg-surface);
+    border: var(--border-card);
+    border-radius: var(--radius-md);
+    box-shadow: var(--elevation-3);
+    padding: var(--space-4);
+    width: min(480px, 92vw);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+.cavity-hint {
+    color: var(--text-muted);
+    font-size: var(--font-size-sm);
+}
+.cavity-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--font-size-base);
+}
+.cavity-input {
+    width: 7em;
+    min-height: 44px;
+    background: var(--bg-input);
+    color: var(--text-primary);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    padding: var(--space-2) var(--space-4);
+    font-size: var(--font-size-md);
+    text-align: right;
+}
+.cavity-error {
+    background: var(--color-danger-bg);
+    color: var(--color-danger);
+    border: 1px solid var(--color-danger);
+    border-radius: var(--radius-md);
+    padding: var(--space-2) var(--space-4);
+    font-weight: var(--font-weight-semibold);
+}
+
     /* Cantiere AL: form a norma design system (pattern del form Particolare) */
     .grating-form-card{
         background: var(--bg-card);
