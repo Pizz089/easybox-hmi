@@ -578,7 +578,10 @@
     "confirmText": "Changing the brand reconfigures the machine I/O: {from} → {to}. The PLC applies the request only when the machine is idle.",
     "waiting": "Waiting for PLC data ...",
     "plcSilent": "The PLC did not answer the state request. Check that the plant is powered on, then retry.",
-    "unknown": "Unknown"
+    "unknown": "Unknown",
+    "viceLock": "LOCK VICE",
+    "viceLockConfirm": "Lock the vice?",
+    "viceLockWarn": "The vice WILL CLOSE. Nobody must have their hands inside the machine."
   },
   "vice": {
     "welcome": "List vices",

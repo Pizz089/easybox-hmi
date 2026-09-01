@@ -52,6 +52,35 @@
                 SBLOCCO MORSA
         </button>
       </div>
+      <!-- BLOCCO MORSA (11): gemello dello sblocco, stesso invio e stesso
+           (non-)gating dei comandi macchina della pagina; passa SOLO dal
+           dialog di conferma perche' la morsa si chiude. Nessun fallback ne'
+           timeout: il pannello manda e basta, come gli altri comandi. -->
+      <div class="pure-u-1-2">
+        <button class="pure-button-micromission pure-u-1 button_pressed"
+                @click="openViceLockDialog()">
+                {{ $t('machine.viceLock') }}
+        </button>
+      </div>
+
+      <div v-if="viceLockOpen" class="mission-dialog-overlay">
+        <div class="mission-dialog">
+          <h3 class="command-section-title">{{ $t('machine.viceLockConfirm') }}</h3>
+          <div class="vice-lock-warn">{{ $t('machine.viceLockWarn') }}</div>
+          <div class="pure-g">
+            <div class="pure-u-1-2">
+              <button style="width:100%" class="button_pressed pure-button-mission" @click="confirmViceLock()">
+                {{ $t('robot.dialog.confirm') }}
+              </button>
+            </div>
+            <div class="pure-u-1-2">
+              <button style="width:100%" class="btn-ghost" @click="closeViceLockDialog()">
+                {{ $t('robot.dialog.cancel') }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <!-- ===== FASE B: Attrezzaggio macchina (DECLARE/MC1) =====
            Lo stato mostrato viene SOLO dagli echi PLC (niente optimistic
@@ -109,6 +138,7 @@ export default {
         return {
           dataFixture:{},
             polling:true,
+            viceLockOpen: false,   // dialog conferma BLOCCO MORSA (unico overlay della pagina)
             // ===== FASE B: attrezzaggio macchina (echi DECLARE/MC1) =====
             declKnown: false,      // primo eco ricevuto
             declPallet: 0,
@@ -127,6 +157,19 @@ export default {
     methods: {
       sendToPLC(val) {
         dataStored.WS.socket.emit("TO_PLANT/CMD/MC1", val);
+      },
+      // ===== BLOCCO MORSA (11) =====
+      // La pagina non ha altri overlay (gli alert passano dal popup globale
+      // dataStored.alert): questo e' l'unico, l'invariante vale per costruzione.
+      openViceLockDialog() {
+        this.viceLockOpen = true;
+      },
+      closeViceLockDialog() {
+        this.viceLockOpen = false;
+      },
+      confirmViceLock() {
+        this.viceLockOpen = false;
+        this.sendToPLC('11');
       },
         // ===== FASE B =====
         getRigLists() {
@@ -338,5 +381,40 @@ export default {
         font-size: var(--font-size-sm);
         font-style: italic;
         margin-top: var(--space-1);
+    }
+
+    /* dialog conferma BLOCCO MORSA: stesso overlay delle view missione */
+    .mission-dialog-overlay {
+        position: fixed;
+        inset: 0;
+        background: var(--bg-backdrop);
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .mission-dialog {
+        background: var(--bg-surface);
+        border: var(--border-card);
+        border-radius: var(--radius-md);
+        box-shadow: var(--elevation-3);
+        padding: var(--space-4);
+        width: min(520px, 92vw);
+        max-height: 80vh;
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-4);
+    }
+
+    /* avviso di sicurezza: la morsa si chiude (status warning, non muted) */
+    .vice-lock-warn {
+        background: var(--color-warning-bg);
+        color: var(--color-warning);
+        border: 1px solid var(--color-warning);
+        border-radius: var(--radius-md);
+        padding: var(--space-2) var(--space-4);
+        font-size: var(--font-size-base);
+        font-weight: var(--font-weight-semibold);
     }
 </style>

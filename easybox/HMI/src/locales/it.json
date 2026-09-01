@@ -578,7 +578,10 @@
     "confirmText": "Il cambio marca riconfigura gli I/O della macchina: {from} → {to}. Il PLC applica la richiesta solo a macchina ferma.",
     "waiting": "In attesa dei dati dal PLC ...",
     "plcSilent": "Il PLC non ha risposto alla richiesta di stato. Verificare che l'impianto sia acceso, poi riprovare.",
-    "unknown": "Sconosciuta"
+    "unknown": "Sconosciuta",
+    "viceLock": "BLOCCO MORSA",
+    "viceLockConfirm": "Bloccare la morsa?",
+    "viceLockWarn": "La morsa SI CHIUDE. Nessuno deve avere le mani in macchina."
   },
   "vice": {
     "welcome": "Elenco morse",
