@@ -96,3 +96,52 @@ easybox/serverDati/PartProgram/*
 
 # Cartella log della HMI (lowercase, oltre a *.log e LOG/ già presenti sopra)
 easybox/serverDati/log/
+
+# ============================================================================
+# PROGETTO TIA PORTAL (PLC S7-1500) — NON versionare mai il progetto:
+# e' binario, cambia a ogni apertura, i diff sono illeggibili e si corrompe
+# se toccato fuori da TIA. Nel repo vanno SOLO i sorgenti testuali esportati
+# in plc/ (vedi plc/README.md). La fonte di verita' resta TIA.
+# ============================================================================
+# file di progetto (tutte le versioni) e archivi di progetto
+*.ap20
+*.ap19
+*.ap18
+*.ap17
+*.ap16
+*.ap15_1
+*.ap15
+*.ap14
+*.ap13
+*.zap20
+*.zap19
+*.zap18
+*.zap17
+*.zap16
+*.zap15_1
+*.zap15
+*.al20
+*.al19
+*.al18
+*.al17
+*.al16
+*.al15_1
+*.al15
+# librerie globali TIA
+*.al20_1
+*.alh
+# albero di cartelle che TIA crea accanto al .ap20
+**/IM/
+**/System/
+**/XRef/
+**/UserFiles/
+**/AdditionalFiles/
+**/Vci/
+**/TMP/
+**/Logs/
+# lock / cache di TIA
+*.lck
+*.ap20.lock
+# esportazione tabelle variabili in Excel (binario): in plc/tags/ vanno i .csv
+plc/**/*.xlsx
+plc/**/*.xls
