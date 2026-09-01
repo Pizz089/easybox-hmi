@@ -3,6 +3,7 @@
     import { dataStored } from '../../../data.js'
     import { KO_ACTIVE_ORDER } from '../../../util/errorCodes.js'
     import { drawingToRobot, gridFit } from '../../../util/gratingAxes.js'
+    import { cavityRect, cavityRadius, applyCavityClearanceToSvg } from '../../../util/cavityClearance.js'
     import numericField from '../../../components/numericField.vue'
     import { ref, onMounted } from 'vue'
     //import layout from '../layoutView.vue'
@@ -389,9 +390,15 @@
 // mai riscontrati sul ferro (incidente TRAY_8 dell'1/9).
 // ============================================================================
 
-function buildGratingDxf({ width, height, pieces, dimX, dimY, radius, flipY = true, profileD = null, holes = [] }) {
+// DXF di fabbricazione (R12, mm). pieces/dimX/dimY/radius arrivano NOMINALI
+// (gli stessi dell'anteprima): il franco cavita' (util/cavityClearance.js)
+// viene applicato SOLO qui, sul layer PIECES, a centro invariato.
+// Export nominato per il test (test_cavity_clearance.mjs).
+export function buildGratingDxf({ width, height, pieces, dimX, dimY, radius, flipY = true, profileD = null, holes = [] }) {
   const W = Number(width), H = Number(height);
   const fy = (y) => (flipY ? H - Number(y) : Number(y));
+  // quote emesse arrotondate al micron: niente rumore binario (es. 40.10000000000001)
+  const q = (v) => String(Math.round(Number(v) * 1e6) / 1e6);
   const out = [];
   const e = (...v) => out.push(...v);
   const pathToPts = (d) => {
@@ -427,7 +434,7 @@ function buildGratingDxf({ width, height, pieces, dimX, dimY, radius, flipY = tr
   e('0','SECTION','2','ENTITIES');
   const polyClosed = (layer, pts) => {
     e('0','POLYLINE','8',layer,'66','1','70','1');
-    for (const [px, py] of pts) e('0','VERTEX','8',layer,'10',String(px),'20',String(fy(py)));
+    for (const [px, py] of pts) e('0','VERTEX','8',layer,'10',q(px),'20',q(fy(py)));
     e('0','SEQEND','8',layer);
   };
   const polyRect = (layer, x, y, w, h) => {
@@ -436,11 +443,15 @@ function buildGratingDxf({ width, height, pieces, dimX, dimY, radius, flipY = tr
   };
   if (profileD) polyClosed('PROFILE', pathToPts(profileD));
   for (const hh of holes) {
-    e('0','CIRCLE','8','HOLES','10', String(Number(hh.cx)), '20', String(fy(hh.cy)), '40', String(Number(hh.r)));
+    e('0','CIRCLE','8','HOLES','10', q(hh.cx), '20', q(fy(hh.cy)), '40', q(hh.r));
   }
   for (const p of pieces) {
-    if (p.prisma) polyRect('PIECES', p.x, p.y, dimX, dimY);
-    else e('0','CIRCLE','8','PIECES','10', String(Number(p.x)), '20', String(fy(p.y)), '40', String(Number(radius)));
+    if (p.prisma) {
+      const c = cavityRect(p.x, p.y, dimX, dimY);
+      polyRect('PIECES', c.x, c.y, c.w, c.h);
+    } else {
+      e('0','CIRCLE','8','PIECES','10', q(p.x), '20', q(fy(p.y)), '40', q(cavityRadius(radius)));
+    }
   }
   e('0','ENDSEC','0','EOF');
   return out.join('\n') + '\n';
@@ -967,7 +978,9 @@ export default {
 
             //Serializzazione dello SVG in una stringa XML.
             const serializer = new XMLSerializer();
-            let svgString = serializer.serializeToString(svgElement);
+            // file di fabbricazione: franco cavita' sulla STRINGA serializzata,
+            // l'anteprima a schermo resta nominale (util/cavityClearance.js)
+            let svgString = applyCavityClearanceToSvg(serializer.serializeToString(svgElement));
 
             //Creazione di un Blob e un URL per il file.
             const blob = new Blob([svgString], { type: 'image/svg+xml' });
@@ -1027,10 +1040,12 @@ export default {
             var contenutoOriginale = document.body.innerHTML;
             var contenutoStampa = document.getElementById('trayLayout');
             const serializer = new XMLSerializer();
-            let svgString = serializer.serializeToString(contenutoStampa);
+            // stampa/PDF = file di fabbricazione: franco cavita' sulla stringa,
+            // il DOM dell'anteprima non viene toccato (util/cavityClearance.js)
+            let svgString = applyCavityClearanceToSvg(serializer.serializeToString(contenutoStampa));
 
             //console.log(svgString)
-            
+
             svgString = svgString.replaceAll("@@width@@",this.dim_x);
             svgString = svgString.replaceAll("@@height@@",this.dim_y);
 
@@ -1046,7 +1061,9 @@ export default {
             var contenutoOriginale = document.body.innerHTML;
             var contenutoStampa = document.getElementById('trayLayout');
             const serializer = new XMLSerializer();
-            let svgString = serializer.serializeToString(contenutoStampa);
+            // modello SVG in Grating_model_dir = file di fabbricazione: franco
+            // cavita' sulla stringa inviata al backend, anteprima nominale
+            let svgString = applyCavityClearanceToSvg(serializer.serializeToString(contenutoStampa));
 
             document.body.innerHTML = svgString ;
 
