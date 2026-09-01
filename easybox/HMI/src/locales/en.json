@@ -750,6 +750,9 @@
       "title": "Piece type",
       "declaredTitle": "Part mounted on the pallet (declaration)"
     },
+    "gripper": {
+      "onBoard": "already on the robot"
+    },
     "value": {
       "rig": "Pallet {id}",
       "piece": "Piece {id}",
