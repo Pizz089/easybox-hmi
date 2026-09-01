@@ -4,6 +4,7 @@
 
     import prisma from '../components/layout/prisma.vue'
     import cylinder from '../components/layout/cylinder.vue'
+    import { DIR_X, DIR_Y, ROBOT_AXIS_ALONG } from '../util/gratingAxes.js'
 </script>
 
 
@@ -20,19 +21,25 @@
             <image v-if="!robotSide" href="../assets/centro.png" x="-20" y="-20" width="40px"/>
             <image v-if="robotSide" href="../assets/centro.png" x="800" y="595" width="40px"/>
             
-            <g v-for="(p, index) in listPz" :key="index" >
-                <prisma v-if="p.prisma && p.x>0 && p.y<0"
-                        :x="p.x-dim_x/2" :y="-p.y-dim_y/2" 
-                        :width="dim_x" :height="dim_y" 
+            <!-- (layout-axes, 1/9) tasche in coordinate DISEGNO {w,h} ricavate
+                 dalle coordinate robot con l'inversa di gratingAxes (vedi
+                 drawPz): w = orizzontale (lato lungo, asse robot Y), h =
+                 verticale (asse robot X). Prima: x<-X, y<- -Y e filtro
+                 p.y<0 — con la convenzione corretta (Y positive) restavano
+                 disegnate solo le 7 tasche a Y=-65: strisce in un angolo. -->
+            <g v-for="(p, index) in drawPz" :key="index" >
+                <prisma v-if="p.prisma"
+                        :x="p.w-dim_x/2" :y="p.h-dim_y/2"
+                        :width="dim_x" :height="dim_y"
                         :status="p.status"
                         :diffOrder="checkIfOrderChanged(index)"
                         @click_obj="clickPiece(index)" >
                         {{ index+1 }}
                 </prisma>
-                <cylinder v-if="!p.prisma && p.x>0 && p.y>0"
-                        :x="p.x" :y="p.y" 
+                <cylinder v-if="!p.prisma"
+                        :x="p.w" :y="p.h"
                         :width="radius"
-                        :status="p.status" 
+                        :status="p.status"
                         :diffOrder="checkIfOrderChanged(index)"
                         @click_obj="clickPiece(index)" >
                         {{ index+1 }}
@@ -156,18 +163,17 @@
                                     return response.json()
                                 })
                                 .then(dim => {
-                                    console.log("ricevo dati sulla dimensione "+dim.length)  
-                                    this.dim_x=this.listPz[1].x-this.listPz[0].x-dim[0].SAFEX;
-                                    let found=false;
-                                    for(let index=0; index<this.listPz.length; index++){
-                                        if (!found && (-this.listPz[index].y+this.listPz[0].y) > 0) {
-                                            //console.log("index "+index +" -> "+this.listPz[index].y)
-                                            this.dim_y=-this.listPz[index].y+this.listPz[0].y-dim[0].SAFEY;
-                                            found = true;
-                                        }
-                                    }
-                                    this.radius=Math.round((this.listPz[1].x-this.listPz[0].x-dim[0].SAFEX)/2);
-                                    //console.log(this.dim_x + " - "+this.dim_y)
+                                    console.log("ricevo dati sulla dimensione "+dim.length)
+                                    // (layout-axes) passo dedotto dalle tasche: SUB_POS
+                                    // consecutive avanzano sull'asse robot Y (= lungo
+                                    // width -> dim_x); la prima tasca con X diversa da'
+                                    // il passo lungo height (-> dim_y). Versi
+                                    // ininfluenti: ampiezze in valore assoluto.
+                                    const d = this.listPz;
+                                    this.dim_x = (d.length > 1 ? Math.abs(d[1].y - d[0].y) : 0) - dim[0].SAFEX;
+                                    const other = d.find(p => p.x != d[0].x);
+                                    this.dim_y = (other ? Math.abs(other.x - d[0].x) : 0) - dim[0].SAFEY;
+                                    this.radius=Math.round(this.dim_x/2);
                                  })
                                 .catch(error => {
                                     console.info("-------------")
@@ -317,6 +323,26 @@
                 }
                 this.getDataTable();
             }
+        },
+        computed: {
+            // (layout-axes, 1/9) INVERSA di gratingAxes.drawingToRobot, con i
+            // suoi stessi DIR_X/DIR_Y (nessuna costante duplicata):
+            //   X = w1 + DIR_X*(h - h1),  Y = -h1 + DIR_Y*(w - w1)
+            // con origine = tasca 1 (w1 = X1, h1 = -Y1), quindi
+            //   h = -Y1 + DIR_X*(X - X1),  w = X1 + DIR_Y*(Y - Y1).
+            // w e h sono le distanze disegno dai bordi (lato lungo / corto):
+            // qui vanno dritte su x/y schermo, come faceva gia' il layout
+            // (vista ruotata di 180 gradi rispetto all'anteprima Grigliati).
+            // ROBOT_AXIS_ALONG documenta l'accoppiamento: width <-> Y, height <-> X.
+            drawPz() {
+                if (!this.listPz || this.listPz.length === 0) return [];
+                const X1 = Number(this.listPz[0].x), Y1 = Number(this.listPz[0].y);
+                return this.listPz.map(p => Object.assign({}, p, {
+                    w: X1 + DIR_Y * (Number(p.y) - Y1),
+                    h: -Y1 + DIR_X * (Number(p.x) - X1),
+                }));
+            },
+            robotAxisAlong() { return ROBOT_AXIS_ALONG; }
         },
         mounted(){
             this.getDataTable()
