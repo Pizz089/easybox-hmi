@@ -166,8 +166,9 @@ router.get('/updateOrder', (req, res) => {
 		const declaredSql = (Number.isInteger(declared) && declared > 0) ? declared : 'NULL';
 
 		// SCRITTURA sulla base table WORKORDER (la view WORKORDERS non e'
-		// aggiornabile). Riparati gli apici rotti storici (B1) e il refuso
-		// Y_PLACE_DECENTRATED_TRAY che riceveva il valore X.
+		// aggiornabile). Riparati gli apici rotti storici (B1).
+		// (1/9) gli 8 decentramenti X/Y sono 0 FISSI: la regolazione della
+		// presa e' SOLO in Z, via PIECE.Z_PICK / Z_PLACE (vedi insertOrder).
 		let query = `UPDATE WORKORDER SET
 					PIECE_ID='${req.query.pieceID}',
 					GRIPPER_ID='${req.query.gripperID}',
@@ -177,14 +178,14 @@ router.get('/updateOrder', (req, res) => {
 					STATUS='${req.query.status}',
 					MACHINE_ID='${req.query.machineID}',
 					QUANTITY='${req.query.quantity}',
-					X_PICK_DECENTRATED_TRAY='${req.query.decentrated_tray_x_pick}',
-					X_PLACE_DECENTRATED_TRAY='${req.query.decentrated_tray_x_place}',
-					Y_PICK_DECENTRATED_TRAY='${req.query.decentrated_tray_y_pick}',
-					Y_PLACE_DECENTRATED_TRAY='${req.query.decentrated_tray_y_place}',
-					X_PICK_DECENTRATED_MC='${req.query.decentrated_MC_x_pick}',
-					X_PLACE_DECENTRATED_MC='${req.query.decentrated_MC_x_place}',
-					Y_PICK_DECENTRATED_MC='${req.query.decentrated_MC_y_pick}',
-					Y_PLACE_DECENTRATED_MC='${req.query.decentrated_MC_y_place}',
+					X_PICK_DECENTRATED_TRAY=0,
+					X_PLACE_DECENTRATED_TRAY=0,
+					Y_PICK_DECENTRATED_TRAY=0,
+					Y_PLACE_DECENTRATED_TRAY=0,
+					X_PICK_DECENTRATED_MC=0,
+					X_PLACE_DECENTRATED_MC=0,
+					Y_PICK_DECENTRATED_MC=0,
+					Y_PLACE_DECENTRATED_MC=0,
 					PartProg_ID=${req.query.PP},
 					DECLARED_PIECE_ID=${declaredSql}
 					WHERE ID='${req.query.ID}';`
@@ -214,11 +215,14 @@ router.get('/insertOrder', (req, res) => {
 		
 		var request = new sql.Request();
         // SCRITTURA sulla base table WORKORDER (la view WORKORDERS non e' aggiornabile).
-        // Sfalsamento storico X_PLACE_TRAY<->Y_PICK_TRAY corretto (cantiere AG
-        // C2, ratificato: tutti i valori storici a DB erano 0, rischio zero).
         // DECLARED_PIECE_ID: pezzo dichiarato del ramo attrezzatura (solo uso
         // HMI, NULL nel ramo morsa) — colonna aggiunta da
         // scripts/workorder-declared-piece.sql.
+        // (1/9) DECENTRAMENTI X/Y = 0 FISSI, NON piu' letti dal payload: la
+        // regolazione della presa avviene ESCLUSIVAMENTE in Z, tramite
+        // PIECE.Z_PICK / PIECE.Z_PLACE dell'anagrafica pezzo. Le 8 colonne
+        // restano nello schema (la vista 4Robot le somma a X/Y di [POSITION]:
+        // a 0 sono neutre) ma nessun valore diverso da zero puo' entrare.
         const declared = parseInt(req.query.declaredPieceID, 10);
         const declaredSql = (Number.isInteger(declared) && declared > 0) ? declared : 'NULL';
         let query = `INSERT INTO WORKORDER
@@ -232,14 +236,8 @@ router.get('/insertOrder', (req, res) => {
 					 4,
 					'${req.query.machineID}',
 					'${req.query.quantity}',
-					'${req.query.decentrated_tray_x_pick}',
-					'${req.query.decentrated_tray_x_place}',
-					'${req.query.decentrated_tray_y_pick}',
-					'${req.query.decentrated_tray_y_place}',
-					'${req.query.decentrated_MC_x_pick}',
-					'${req.query.decentrated_MC_x_place}',
-					'${req.query.decentrated_MC_y_pick}',
-					'${req.query.decentrated_MC_y_place}',
+					 0, 0, 0, 0,
+					 0, 0, 0, 0,
 					 ${req.query.PP},
 					 ${declaredSql}
 					);`

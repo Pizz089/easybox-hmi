@@ -654,16 +654,6 @@
     "Z_Corr": "Correction Z",
     "positionHint": "Position is set from Rigs (Place)"
   },
-  "decentrated_tray": {
-    "pick": "Pick from ",
-    "place": "Place on ",
-    "tray": "Tray",
-    "macchina": "Machine",
-    "x_pick": "X",
-    "y_pick": "Y",
-    "x_place": "X",
-    "y_place": "Y"
-  },
   "position": {
     "position": "Position",
     "Pos": "Pos",
@@ -800,12 +790,6 @@
     "lastData": {
       "title": "Order details",
       "setupSection": "Setup",
-      "positioningSection": "POSITIONING",
-      "positioningUnit": "(values in hundredths of mm)",
-      "trayColumn": "Tray",
-      "machineColumn": "Machine",
-      "pickup": "Pickup",
-      "deposit": "Deposit",
       "partProgram": "Part Program",
       "partProgramFromPiece": "(from part master data)",
       "partProgramMissing": "The part has no part program: set it in the part master data before creating the order",

@@ -654,16 +654,6 @@
     "Z_Corr": "Correzione in Z",
     "positionHint": "La posizione si imposta da Attrezzaggi (Posiziona)"
   },
-  "decentrated_tray": {
-    "pick": "Prelievo da ",
-    "place": "Deposito in ",
-    "tray": "Cassetto",
-    "macchina": "Macchina",
-    "x_pick": "X",
-    "y_pick": "Y",
-    "x_place": "X",
-    "y_place": "Y"
-  },
   "position": {
     "position": "Pos",
     "Pos": "Pos",
@@ -800,12 +790,6 @@
     "lastData": {
       "title": "Dettagli ordine",
       "setupSection": "Setup",
-      "positioningSection": "POSIZIONAMENTO",
-      "positioningUnit": "(valori in centesimi di mm)",
-      "trayColumn": "Cassetto",
-      "machineColumn": "Macchina",
-      "pickup": "Prelievo",
-      "deposit": "Deposito",
       "partProgram": "Part Program",
       "partProgramFromPiece": "(dal particolare)",
       "partProgramMissing": "Il particolare non ha un part program: impostalo nell'anagrafica pezzo prima di creare l'ordine",

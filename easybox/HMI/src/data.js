@@ -68,14 +68,9 @@ export const dataStored = reactive({
       viceID    :0,
       machineID :0,
       quantity  :0,
-      decentrated_tray_x_pick :0,
-      decentrated_tray_y_pick :0,
-      decentrated_tray_x_place:0,
-      decentrated_tray_y_place:0,
-      decentrated_MC_x_pick   :0,
-      decentrated_MC_y_pick   :0,
-      decentrated_MC_x_place  :0,
-      decentrated_MC_y_place  :0,
+      // (1/9) gli 8 decentramenti X/Y (decentrated_tray_*/decentrated_MC_*)
+      // NON esistono piu' nel payload: la regolazione della presa e' solo
+      // in Z (PIECE.Z_PICK/Z_PLACE); il backend scrive le colonne a 0 fisso.
       option                  :0,
       unloadType              :0,
       approach_type_MC_pick   :0,
@@ -93,14 +88,6 @@ export const dataStored = reactive({
       dataStored.createWorkOrder.viceID                   =0;   //convenzione PLC: mai -1
       dataStored.createWorkOrder.machineID                =0;
       dataStored.createWorkOrder.quantity                 =0;
-      dataStored.createWorkOrder.decentrated_tray_x_pick  =0;
-      dataStored.createWorkOrder.decentrated_tray_y_pick  =0;
-      dataStored.createWorkOrder.decentrated_tray_x_place =0;
-      dataStored.createWorkOrder.decentrated_tray_y_place =0;
-      dataStored.createWorkOrder.decentrated_MC_x_pick    =0;
-      dataStored.createWorkOrder.decentrated_MC_y_pick    =0;
-      dataStored.createWorkOrder.decentrated_MC_x_place   =0;
-      dataStored.createWorkOrder.decentrated_MC_y_place   =0;       
     },
 
     PartPart         : 1,
