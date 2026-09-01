@@ -18,8 +18,85 @@ const DBf 	= require('../DBFunct');
 var sql 	= require('mssql')
 var router 	= express.Router();
 const log 	= require('../LogFunct');
+const errorCodes = require('../errorCodes');
 
 var templatePATH = '.';
+
+// ============================================================================
+// AZZERA PRODUZIONE (1/9) — ripristino operatore, prima solo via SQL a mano.
+// In UNA transazione: gli ordini STATUS=3 della macchina passano a STATUS=7
+// (annullato, resta la traccia: niente delete) e le righe [POSITION] che li
+// puntavano tornano a Order_ID=0. NON tocca lo stato fisico (pinza, pezzo in
+// macchina, pallet): quello si dichiara col 35 dalla pagina Robot.
+// GUARDIA lato backend (il PLC legge questi dati in tempo reale): la cella
+// deve essere FERMA — UNIT_STATUS del ROBOT non in missione (WORKING 3 /
+// PAUSED 6, codici di HMI/src/data.js) e conosciuto. NB: la guardia "nessun
+// ordine STATUS=3" qui sarebbe autocontraddittoria (il comando annulla
+// proprio quelli).
+// ============================================================================
+const ROBOT_BUSY_STATUS = [3, 6];
+const cellRunningGuard = () =>
+	`(SELECT COUNT(*) FROM UNIT_STATUS WHERE UNIT='ROBOT' AND STATUS IS NOT NULL AND STATUS NOT IN (${ROBOT_BUSY_STATUS.join(',')})) = 0`;
+
+// Anteprima con NUMERI VERI per il dialog di conferma: ordini (ID, pezzo)
+// che verranno annullati e righe POSITION che verranno svincolate.
+router.get('/resetProduction/preview/:machineId', (req, res) => {
+	const machineId = Number(req.params.machineId);
+	if (!Number.isInteger(machineId) || machineId < 1) { res.send("KO_BAD_INPUT"); return; }
+	sql.connect(DBf.configDB, function (err) {
+		if (err) { log.error("err resetProduction preview: " + err); res.send("KO"); return; }
+		const query = `SET NOCOUNT ON;
+			SELECT ID, PIECE_ID, PIECE FROM WORKORDERS WHERE STATUS=3 AND MACHINE_ID=${machineId} ORDER BY ID;
+			SELECT COUNT(*) AS n FROM [POSITION] WHERE Order_ID IN (SELECT ID FROM WORKORDERS WHERE STATUS=3 AND MACHINE_ID=${machineId});
+			SELECT STATUS FROM UNIT_STATUS WHERE UNIT='ROBOT';`;
+		log.info('query ' + query);
+		new sql.Request().query(query, function (err, result) {
+			if (err) { log.error("Err query: " + err); res.send("KO"); return; }
+			const rs = result.recordsets || [];
+			const robot = rs[2] && rs[2][0] ? rs[2][0].STATUS : null;
+			res.json({
+				orders: rs[0] || [],
+				positions: rs[1] && rs[1][0] ? rs[1][0].n : 0,
+				robotStatus: robot,
+				blocked: (robot === null || ROBOT_BUSY_STATUS.includes(Number(robot))) ? errorCodes.KO_CELL_RUNNING : null
+			});
+		});
+	});
+});
+
+router.post('/resetProduction/:machineId', (req, res) => {
+	const machineId = Number(req.params.machineId);
+	if (!Number.isInteger(machineId) || machineId < 1) { res.send("KO_BAD_INPUT"); return; }
+	sql.connect(DBf.configDB, function (err) {
+		if (err) { log.error("err resetProduction: " + err); res.send("KO"); return; }
+		// conteggi PRIMA delle scritture (il trigger su [POSITION] sporca
+		// rowsAffected/@@ROWCOUNT), guardia e scritture nello STESSO batch:
+		// SET XACT_ABORT ON + BEGIN TRAN = o tutto o niente.
+		const query = `SET NOCOUNT ON;
+			IF ${cellRunningGuard()}
+				SELECT '${errorCodes.KO_CELL_RUNNING}' AS ris, 0 AS orders, 0 AS positions;
+			ELSE BEGIN
+				SET XACT_ABORT ON;
+				BEGIN TRAN;
+				DECLARE @o INT = (SELECT COUNT(*) FROM WORKORDER WHERE STATUS=3 AND MACHINE_ID=${machineId});
+				DECLARE @p INT = (SELECT COUNT(*) FROM [POSITION] WHERE Order_ID IN (SELECT ID FROM WORKORDER WHERE STATUS=3 AND MACHINE_ID=${machineId}));
+				UPDATE [POSITION] SET Order_ID=0 WHERE Order_ID IN (SELECT ID FROM WORKORDER WHERE STATUS=3 AND MACHINE_ID=${machineId});
+				UPDATE WORKORDER SET STATUS=7 WHERE STATUS=3 AND MACHINE_ID=${machineId};
+				COMMIT TRAN;
+				SELECT 'OK' AS ris, @o AS orders, @p AS positions;
+			END`;
+		log.info('query ' + query);
+		new sql.Request().query(query, function (err, result) {
+			if (err) { log.error("Err query: " + err); res.send("KO"); return; }
+			const row = result.recordset && result.recordset[0] ? result.recordset[0] : { ris: "KO" };
+			res.json(row);
+			if (row.ris === 'OK') {
+				log.standard("AZZERA PRODUZIONE MC" + machineId + ": " + row.orders + " ordini -> 7, " + row.positions + " posizioni svincolate");
+				DBf.io.emit('PRODUCTION/CHANGED');
+			}
+		});
+	});
+});
 
 //TODO:NON SERVE PIU
 router.get('/data/:ID', (req, res) => {

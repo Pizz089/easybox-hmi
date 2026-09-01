@@ -59,6 +59,18 @@
     "cancel": "Cancel",
     "retry": "Retry"
   },
+  "layout": {
+    "reset": {
+      "button": "Reset tray state",
+      "title": "Reset the state of tray {floor}?",
+      "what": "All {n} positions of the tray are set to RAW PRESENT (status 4) and released from any order (Order_ID = 0).",
+      "warn": "This DECLARES the tray full of raw parts: use it ONLY after physically reloading it. If the positions are empty, the robot will try to pick where there is nothing.",
+      "confirm": "Reset",
+      "done": "Tray state reset: {n} positions set to raw, orders released.",
+      "activeOrder": "An order is in progress: stop production before resetting the tray.",
+      "failed": "Reset NOT executed: backend error."
+    }
+  },
   "fixture": {
     "welcome": "Fixtures list",
     "data": "Fixture's data",
@@ -336,6 +348,20 @@
     "onlyFor": "Only for"
   },
   "production": {
+    "reset": {
+      "button": "Reset production",
+      "title": "Reset production on MC{mc}?",
+      "loading": "Reading data…",
+      "ordersLabel": "Orders that will be CANCELLED (status 7, kept in the list): {n}",
+      "noOrders": "No order in progress on this machine: nothing to reset.",
+      "positionsLabel": "Tray positions that will be released (Order_ID = 0): {n}",
+      "notPhysical": "Does NOT touch the physical cell state (gripper on board, part in machine, pallet): declare that with \"Reset cell state\" from the Robot page.",
+      "cellRunning": "Cell is running: the robot is on a mission (or its state is unknown). Stop production before resetting.",
+      "previewFailed": "Cannot read data from the backend: reset unavailable.",
+      "confirm": "Reset",
+      "done": "Production reset: {orders} orders cancelled, {positions} positions released.",
+      "failed": "Reset NOT executed: backend error."
+    },
     "welcome": "Production Table",
     "addOrder": "Add order",
     "order": "Order",

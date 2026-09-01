@@ -336,6 +336,35 @@ router.delete('/:ID', (req, res) => {
 	});
 });
 
+// AZZERA STATO CASSETTO (1/9): tutte le tasche del cassetto a STATUS=4
+// (grezzo presente) e Order_ID=0. DICHIARA il cassetto pieno di grezzi: va
+// usato solo dopo averlo ricaricato fisicamente. GUARDIA lato backend: nessun
+// ordine in STATUS=3 (prima si ferma la produzione — il PLC legge [POSITION]
+// in tempo reale). Conteggio PRIMA dell'update (trigger su [POSITION]).
+router.post('/resetTray/:floor', (req, res) => {
+	const pred = trayParentPredicate(req.params.floor);
+	if (!pred) { res.send("KO_BAD_INPUT"); return; }
+	sql.connect(DBf.configDB, function (err) {
+		if (err) { log.error("err resetTray: " + err); res.send("KO"); return; }
+		const query = `SET NOCOUNT ON;
+			IF EXISTS (SELECT 1 FROM WORKORDERS WHERE STATUS=3)
+				SELECT '${errorCodes.KO_ACTIVE_ORDER}' AS ris, 0 AS positions;
+			ELSE BEGIN
+				DECLARE @n INT = (SELECT COUNT(*) FROM [POSITION] WHERE ${pred});
+				UPDATE [POSITION] SET STATUS=4, Order_ID=0 WHERE ${pred};
+				SELECT 'OK' AS ris, @n AS positions;
+			END`;
+		log.info('query ' + query);
+		new sql.Request().query(query, function (err, result) {
+			if (err) { log.error("Err query: " + err); res.send("KO"); return; }
+			const row = result.recordset && result.recordset[0] ? result.recordset[0] : { ris: "KO" };
+			res.json(row);
+			if (row.ris === 'OK')
+				log.standard("AZZERA STATO CASSETTO " + req.params.floor + ": " + row.positions + " tasche -> grezzo, Order_ID 0");
+		});
+	});
+});
+
 router.delete('/deletePositionsTray/:ID', (req, res) => {
      console.log("delete TRAY's position "+req.params.ID);
 	// (tray-parent-predicate) :ID = numero cassetto (FLOOR_MAG), validato

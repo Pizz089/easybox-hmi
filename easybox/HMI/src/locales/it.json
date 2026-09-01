@@ -59,6 +59,18 @@
     "cancel": "Annulla",
     "retry": "Riprova"
   },
+  "layout": {
+    "reset": {
+      "button": "Azzera stato cassetto",
+      "title": "Azzerare lo stato del cassetto {floor}?",
+      "what": "Tutte le {n} tasche del cassetto passano a GREZZO PRESENTE (stato 4) e vengono svincolate da qualsiasi ordine (Order_ID = 0).",
+      "warn": "Questo DICHIARA il cassetto pieno di grezzi: usarlo SOLO dopo averlo ricaricato fisicamente. Se le tasche sono vuote, il robot andrà a prelevare dove non c'è niente.",
+      "confirm": "Azzera",
+      "done": "Stato cassetto azzerato: {n} tasche a grezzo, ordini svincolati.",
+      "activeOrder": "C'è un ordine in lavorazione: fermare la produzione prima di azzerare il cassetto.",
+      "failed": "Azzeramento NON eseguito: errore dal backend."
+    }
+  },
   "fixture": {
     "welcome": "Elenco attrezzature",
     "data": "Dati attrezzatura",
@@ -336,6 +348,20 @@
     "onlyFor": "Solo per"
   },
   "production": {
+    "reset": {
+      "button": "Azzera produzione",
+      "title": "Azzerare la produzione su MC{mc}?",
+      "loading": "Lettura dati in corso…",
+      "ordersLabel": "Ordini che verranno ANNULLATI (stato 7, restano in elenco): {n}",
+      "noOrders": "Nessun ordine in lavorazione su questa macchina: niente da azzerare.",
+      "positionsLabel": "Posizioni cassetto che verranno svincolate (Order_ID = 0): {n}",
+      "notPhysical": "NON tocca lo stato fisico della cella (pinza a bordo, pezzo in macchina, pallet): quello va dichiarato col comando \"Reimposta stato cella\" dalla pagina Robot.",
+      "cellRunning": "Cella in lavorazione: il robot è in missione (o il suo stato non è noto). Fermare la produzione prima di azzerare.",
+      "previewFailed": "Impossibile leggere i dati dal backend: azzeramento non disponibile.",
+      "confirm": "Azzera",
+      "done": "Produzione azzerata: {orders} ordini annullati, {positions} posizioni svincolate.",
+      "failed": "Azzeramento NON eseguito: errore dal backend."
+    },
     "welcome": "Tabella della produzione",
     "addOrder": "Aggiungi ordine",
     "order": "Ordine",

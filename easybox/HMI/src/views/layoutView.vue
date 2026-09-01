@@ -5,6 +5,7 @@
     import prisma from '../components/layout/prisma.vue'
     import cylinder from '../components/layout/cylinder.vue'
     import { DIR_X, DIR_Y, ROBOT_AXIS_ALONG } from '../util/gratingAxes.js'
+    import { KO_ACTIVE_ORDER } from '../util/errorCodes.js'
 </script>
 
 
@@ -107,6 +108,36 @@
         <div class="btn-group">
             <button class="btn-ghost" @click="allRaugh()">Tutti grezzi </button>
             <button class="btn-ghost" @click="allEmpty()">Tutti vuoti </button>
+            <!-- AZZERA STATO CASSETTO (1/9): a differenza di "Tutti grezzi"
+                 (modifica LOCALE, scritta solo col Save! tasca per tasca e
+                 senza toccare Order_ID) e' un ripristino IMMEDIATO e atomico
+                 lato backend: STATUS=4 + Order_ID=0 su tutte le tasche, con
+                 guardia ordine attivo e conferma esplicita -->
+            <button class="pure-button-micromission specialCMD" @click="openTrayReset()">
+                {{ $t('layout.reset.button') }}
+            </button>
+        </div>
+
+        <div v-if="trayReset.open" class="mission-dialog-overlay">
+            <div class="mission-dialog">
+                <h3 class="command-section-title">{{ $t('layout.reset.title', { floor: $route.params.floorMag }) }}</h3>
+                <div class="reset-text">{{ $t('layout.reset.what', { n: listPz.length }) }}</div>
+                <div class="reset-warn">{{ $t('layout.reset.warn') }}</div>
+                <div class="pure-g">
+                    <div class="pure-u-1-2">
+                        <button style="width:100%" class="button_pressed"
+                            :class="[trayReset.busy ? 'pure-button-disable' : 'pure-button-mission']"
+                            @click="trayReset.busy ? '' : confirmTrayReset()">
+                            {{ $t('layout.reset.confirm') }}
+                        </button>
+                    </div>
+                    <div class="pure-u-1-2">
+                        <button style="width:100%" class="btn-ghost" @click="trayReset.open=false">
+                            {{ $t('robot.dialog.cancel') }}
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
         <div class="btn-group save-row">
             <button class="pure-button-primary" @click="saveAllData()">
@@ -132,7 +163,8 @@
                 dim_y:0,
                 radius:0,
                 robotSide:false,   //visualizzazione del layout da parte del robot o dell'operatore
-                avanzamento:0
+                avanzamento:0,
+                trayReset: { open: false, busy: false }   // dialog AZZERA STATO CASSETTO
             }
         },
         methods: {
@@ -297,6 +329,44 @@
                 else 
                     return true
             },
+            // AZZERA STATO CASSETTO: solo via dialog; l'esecuzione e' del
+            // backend (POST resetTray/:floor, guardia ordine attivo inclusa)
+            openTrayReset() {
+                this.trayReset.open = true;
+            },
+            confirmTrayReset() {
+                if (this.trayReset.busy) return;
+                this.trayReset.busy = true;
+                fetch(dataStored.server + 'api/conf/position/resetTray/' + this.$route.params.floorMag, { method: 'POST' })
+                    .then(r => { if (!r.ok) throw new Error('Network response was not ok'); return r.text(); })
+                    .then(body => {
+                        let row = null;
+                        try { row = JSON.parse(body); } catch (_) { row = { ris: body.trim() }; }
+                        this.trayReset.open = false;
+                        if (row.ris === 'OK') {
+                            dataStored.alert.title = 'INFO';
+                            dataStored.alert.desc = this.$t('layout.reset.done', { n: row.positions });
+                            dataStored.alert.type = 'message';
+                            this.getDataTable();
+                        } else if (row.ris === KO_ACTIVE_ORDER) {
+                            dataStored.alert.title = this.$t('WARNING');
+                            dataStored.alert.desc = 'layout.reset.activeOrder';
+                            dataStored.alert.type = 'warning';
+                        } else {
+                            dataStored.alert.title = this.$t('WARNING');
+                            dataStored.alert.desc = 'layout.reset.failed';
+                            dataStored.alert.type = 'warning';
+                        }
+                    })
+                    .catch(e => {
+                        console.info(e);
+                        this.trayReset.open = false;
+                        dataStored.alert.title = this.$t('WARNING');
+                        dataStored.alert.desc = 'layout.reset.failed';
+                        dataStored.alert.type = 'warning';
+                    })
+                    .finally(() => { this.trayReset.busy = false; });
+            },
             allRaugh(){
                 for (let i=0; i<this.listPz.length; i++){
                     this.listPz[i].status = 4;
@@ -372,5 +442,38 @@
     /* Spaziatura extra della riga Save sotto i bulk (il resto dal .btn-group). */
     .save-row {
         margin-top: var(--space-2);
+    }
+
+    /* dialog AZZERA STATO CASSETTO: stesso overlay delle view missione */
+    .mission-dialog-overlay {
+        position: fixed;
+        inset: 0;
+        background: var(--bg-backdrop);
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .mission-dialog {
+        background: var(--bg-surface);
+        border: var(--border-card);
+        border-radius: var(--radius-md);
+        box-shadow: var(--elevation-3);
+        padding: var(--space-4);
+        width: min(520px, 92vw);
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-4);
+    }
+    .reset-text {
+        color: var(--text-primary);
+    }
+    .reset-warn {
+        background: var(--color-warning-bg);
+        color: var(--color-warning);
+        border: 1px solid var(--color-warning);
+        border-radius: var(--radius-md);
+        padding: var(--space-2) var(--space-4);
+        font-weight: var(--font-weight-semibold);
     }
 </style>

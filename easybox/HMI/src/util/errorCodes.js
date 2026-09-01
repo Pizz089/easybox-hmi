@@ -4,3 +4,4 @@
 export const KO_OCCUPIED = "KO_OCCUPIED";   // posizione gia' occupata da un altro elemento
 export const KO_DISABLED = "KO_DISABLED";   // posizione disabilitata (POSITION.STATUS=9)
 export const KO_ACTIVE_ORDER = "KO_ACTIVE_ORDER";   // il cassetto ha una posizione legata a un ordine ATTIVO (WORKORDERS.STATUS=3)
+export const KO_CELL_RUNNING = "KO_CELL_RUNNING";   // la cella sta lavorando (robot in missione o stato sconosciuto)

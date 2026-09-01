@@ -8,3 +8,5 @@ exports.KO_OCCUPIED = "KO_OCCUPIED";   // posizione gia' occupata da un altro el
 exports.KO_DISABLED = "KO_DISABLED";   // posizione disabilitata (POSITION.STATUS=9)
 // Fix tray-parent-predicate (guardia server-side sulle delete cassetto):
 exports.KO_ACTIVE_ORDER = "KO_ACTIVE_ORDER";   // il cassetto ha una posizione legata a un ordine ATTIVO (WORKORDERS.STATUS=3)
+// Comandi di ripristino (1/9): la cella sta lavorando (UNIT_STATUS ROBOT in missione o sconosciuto)
+exports.KO_CELL_RUNNING = "KO_CELL_RUNNING";
