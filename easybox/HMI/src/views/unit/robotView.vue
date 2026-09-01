@@ -584,12 +584,67 @@
           </div>
         </div>
       </section>
+
+      <!-- ===== CARD 5: Comandi pinza (chele lato 1/2: 240..243) =====
+           Missioni PLC senza parametri, stesso gate dei comandi manuali
+           (dataStored.cmdActive, CMD_enabled invariata) e stesso feedback
+           sendMission. APERTURA = dialog di conferma (con un pezzo in presa
+           cade); CHIUSURA diretta. Lato 2: gate su dataGripper[1] (seconda
+           riga GRIPPERS con POS_PLANT=1000, stessa fonte del riquadro
+           "Stato GRIPPER 2"): senza lato 2 il PLC rifiuterebbe con 944. -->
+      <section class="command-section">
+        <h3 class="section-label">{{ $t('robot.section.claw') }}</h3>
+        <div class="pure-g claw-grid">
+          <div class="pure-u-1-2 claw-side" v-for="side in [1, 2]" :key="side">
+            <h4 class="section-label">{{ $t('robot.claw.side', { side: side }) }}</h4>
+            <button class="pure-u-1 button_pressed"
+              :class="[clawEnabled(side) ? 'pure-button-micromission' : 'pure-button-disable', {'btn-mission-running': missionRunning=='claw-open-'+side}]"
+              @click="clawEnabled(side) ? openClawDialog(side) : ''">
+              {{ $t('robot.claw.open') }}
+            </button>
+            <button class="pure-u-1 button_pressed"
+              :class="[clawEnabled(side) ? 'pure-button-micromission' : 'pure-button-disable', {'btn-mission-running': missionRunning=='claw-close-'+side}]"
+              @click="clawEnabled(side) ? sendClaw(side, false) : ''">
+              {{ $t('robot.claw.close') }}
+            </button>
+            <small class="cmd-hint" v-if="side==2 && dataStored.cmdActive==1 && !clawSide2Available">{{ $t('robot.claw.noSide2') }}</small>
+          </div>
+        </div>
+
+        <!-- dialog conferma APERTURA chela (240/242): la chiusura non passa
+             di qui. Entra nell'invariante "un solo overlay". -->
+        <div v-if="clawDialog.side" class="mission-dialog-overlay">
+          <div class="mission-dialog">
+            <h3 class="command-section-title">{{ $t('robot.claw.confirmOpen', { side: clawDialog.side }) }}</h3>
+            <small class="cmd-hint">{{ $t('robot.claw.confirmOpenWarn') }}</small>
+            <div class="pure-g">
+              <div class="pure-u-1-2">
+                <button style="width:100%" class="button_pressed pure-button-mission" @click="confirmClawOpen()">
+                  {{ $t('robot.dialog.confirm') }}
+                </button>
+              </div>
+              <div class="pure-u-1-2">
+                <button style="width:100%" class="btn-ghost" @click="closeClawDialog()">
+                  {{ $t('robot.dialog.cancel') }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
 
   </div>
 </template>
 
 <script>
+// Comandi chele (CARD 5): missioni PLC senza parametri su TO_PLANT/CMD/ROBOT.
+// Un punto solo per i codici; lato -> {open, close}.
+const CLAW_CMD = {
+  1: { open: '240', close: '241' },
+  2: { open: '242', close: '243' },
+};
+
 export default {
   data() {
     return {
@@ -605,6 +660,8 @@ export default {
         selected: null    // riga selezionata; nessuna preselezione
       },
       unloadOpen: false,  // M: dialog conferma scarico pinza (blocco separato)
+      // (chele) dialog conferma APERTURA: side 0 = chiuso, 1|2 = lato in conferma
+      clawDialog: { side: 0 },
       // M2: stato estrazione cassetti (colonna TRAY.EXTRACT, appendice audit):
       // extractedTray = riga con EXTRACT==1 (conferma PLC) o null;
       // trayBusy = manovra in corso (EXTRACT 1000 richiesta estrazione /
@@ -984,8 +1041,44 @@ export default {
       // (collaudo) l'invariante copre anche il terzo overlay
       this.closeTestDialog();
       this.closeDeclDialog();
+      this.closeClawDialog();
       this.dialog.type = type;
       this.dialog.selected = null;   // mai preselezionato
+    },
+    // ===== (chele) CARD 5: apertura/chiusura chela lato 1/2 =====
+    // Gate = stesso dei comandi manuali (cmdActive, CMD_enabled invariata);
+    // il lato 2 richiede anche la seconda riga di dataGripper (vedi computed
+    // clawSide2Available). Unica fonte per :class e @click dei 4 bottoni.
+    clawEnabled(side) {
+      if (dataStored.cmdActive != 1) return false;
+      return side == 1 || this.clawSide2Available;
+    },
+    // Chiusura (241/243) diretta; apertura (240/242) solo via dialog.
+    // Passa da sendMission: sono missioni PLC, lo STATUS esce da HOLD e
+    // rientra -> feedback sul bottone; se l'attuazione non muove lo STATUS
+    // il feedback si spegne da solo entro 5 s (missionArmTimer).
+    sendClaw(side, open) {
+      const cmd = CLAW_CMD[side];
+      if (!cmd) return;
+      this.sendMission((open ? 'claw-open-' : 'claw-close-') + side, open ? cmd.open : cmd.close);
+    },
+    openClawDialog(side) {
+      // un solo overlay: chiudo tutto il resto
+      this.closeDialog();
+      this.unloadOpen = false;
+      this.closeTestDialog();
+      this.closeDeclDialog();
+      this.clawDialog.side = side;
+    },
+    closeClawDialog() {
+      this.clawDialog.side = 0;
+    },
+    confirmClawOpen() {
+      const side = this.clawDialog.side;
+      this.closeClawDialog();
+      // re-check fresco: lo stato puo' essere decaduto a dialog aperto
+      if (!side || !this.clawEnabled(side)) return;
+      this.sendClaw(side, true);
     },
     // M: stato discriminante letto fresco (stessa espressione di
     // Mission_enabled), per apertura e re-check alla conferma.
@@ -1010,6 +1103,7 @@ export default {
         this.closeDialog();          // (fix) esclusione reciproca: via ogni dialog missione residuo
         this.closeTestDialog();      // (collaudo) idem per il dialog di collaudo
         this.closeDeclDialog();
+        this.closeClawDialog();
         this.unloadOpen = true;
       } else
         this.openDialog('gripper');
@@ -1038,6 +1132,7 @@ export default {
       this.closeDialog();
       this.unloadOpen = false;
       this.closeDeclDialog();
+      this.closeClawDialog();
       this.testDialog.type = type;
       // default: 31 parte dalla posizione 1; 32 da 0 = prima posizione vuota
       this.testDialog.subpos = (type == 'placeTray') ? 0 : 1;
@@ -1055,6 +1150,7 @@ export default {
       this.closeDialog();
       this.unloadOpen = false;
       this.closeTestDialog();
+      this.closeClawDialog();
       this.declDialog.open = true;
       this.declDialog.step = 1;
       this.declDialog.gripperSel = 0;
@@ -1295,6 +1391,14 @@ export default {
     'dataRobot.STATUS'() { this.checkMissionPhase(); }
   },
   computed: {
+    // (chele) lato 2 disponibile = seconda riga di dataGripper: onRobot
+    // ritorna le righe GRIPPERS con POS_PLANT=1000 ordinate per sub_pos e la
+    // pinza doppia e' modellata come due righe (es. ID 26 + ID 37 "lato 2").
+    // Stessa fonte del riquadro "Stato GRIPPER 2". NB: POS_PLANT lo scrive
+    // il PLC via DB (il topic FROM_PLANT/GRIPPER/ROBOT porta un solo ID).
+    clawSide2Available() {
+      return Array.isArray(this.dataGripper) && this.dataGripper.length > 1;
+    },
     // ========================================================================
     // (AN) MOTIVI leggibili dei comandi disabilitati — '' quando abilitato.
     // Stesse condizioni dei rispettivi *BranchEnabled, in ordine di priorita'.
@@ -1676,6 +1780,18 @@ h6 {
    a 33.33% con un gap andrebbero in overflow -> flex:1 con width auto,
    larghezze uguali tra loro come prima, gap allineato al gap 8 della card. */
 .dest-grid {
+  gap: var(--space-2);
+}
+
+/* (chele) due colonne lato 1 / lato 2, bottoni impilati per colonna */
+.claw-grid {
+  gap: var(--space-2);
+}
+.claw-grid .claw-side {
+  flex: 1;
+  width: auto;
+  display: flex;
+  flex-direction: column;
   gap: var(--space-2);
 }
 

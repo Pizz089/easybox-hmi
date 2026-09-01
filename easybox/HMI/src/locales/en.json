@@ -471,12 +471,21 @@
       "movement": "Movements",
       "destination": "Destinations",
       "mission": "Missions",
-      "test": "Mission testing"
+      "test": "Mission testing",
+      "claw": "Gripper commands"
     },
     "mission": {
       "gripper": "Gripper handling",
       "tray": "Tray handling",
       "pallet": "Pallet handling"
+    },
+    "claw": {
+      "side": "Side {side}",
+      "open": "Open claw",
+      "close": "Close claw",
+      "noSide2": "The on-board gripper has no side 2",
+      "confirmOpen": "Open the claw on side {side}?",
+      "confirmOpenWarn": "With a part gripped, opening the claw drops it."
     },
     "test": {
       "pickTray": "Pick piece from tray",

@@ -471,12 +471,21 @@
       "movement": "Movimenti",
       "destination": "Punti di destinazione",
       "mission": "Missioni",
-      "test": "Collaudo missioni"
+      "test": "Collaudo missioni",
+      "claw": "Comandi pinza"
     },
     "mission": {
       "gripper": "Gestione pinza",
       "tray": "Gestione cassetto",
       "pallet": "Gestione pallet"
+    },
+    "claw": {
+      "side": "Lato {side}",
+      "open": "Apri chela",
+      "close": "Chiudi chela",
+      "noSide2": "La pinza a bordo non ha un lato 2",
+      "confirmOpen": "Aprire la chela del lato {side}?",
+      "confirmOpenWarn": "Con un pezzo in presa, aprendo la chela il pezzo cade."
     },
     "test": {
       "pickTray": "Preleva pezzo da cassetto",
