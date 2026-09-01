@@ -40,6 +40,15 @@
                         <td>
                             {{dt.FAMILY.trim()}}
                             <span v-if="isTwinGripper(dt)" class="twin-badge">{{ $t('gripper.twinBadge', { ids: dt.twinIDs.join('+') }) }}</span>
+                            <!-- (gripper-twins) la gemella non ha una riga sua ma la
+                                 geometria del lato 2 vive SOLO li': accesso diretto al
+                                 form di modifica (stesso modifyGripper, per ID) -->
+                            <button v-for="tid in dt.twinIDs.filter(i => i != dt.ID)" :key="tid"
+                                    type="button" class="twin-link"
+                                    :title="$t('gripper.twinOpen', { id: tid })"
+                                    @click="modifyGripper(tid)">
+                                &#9998; {{ $t('gripper.twinOpen', { id: tid }) }}
+                            </button>
                         </td>
                         <td class="cell-descr">{{dt.DESCR.trim()}}</td>
                         <td>{{ $t(dt.STATUS_DESC.trim()) }}</td>
@@ -189,6 +198,24 @@ export default {
     }
     .pure-table{
         width: inherit;
+    }
+
+    /* (gripper-twins) link alla gemella: stessa misura touch dei bottoni ghost */
+    .twin-link {
+        display: inline-block;
+        margin-left: var(--space-2);
+        min-height: 32px;
+        padding: 0 var(--space-2);
+        background: transparent;
+        border: 1px dashed var(--border-strong);
+        border-radius: var(--radius-sm);
+        color: var(--text-secondary);
+        font-size: var(--font-size-xs);
+        cursor: pointer;
+    }
+    .twin-link:hover {
+        color: var(--accent);
+        border-color: var(--accent);
     }
 
     /* (gripper-twins) badge "doppia" sulla riga canonica */

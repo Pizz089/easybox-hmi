@@ -128,17 +128,29 @@ router.get('/showType/:ID', (req, res) => {
 // niente scrittura se lo slot POS_MAG (0<posMag<1000 = a magazzino, la
 // stessa semantica di showWarehousePos) e' occupato da un'ALTRA pinza o
 // disabilitato ([POSITION] SHELF STATUS=9). Il PLC non passa da qui.
-function shelfSlotGuard(posMag, excludeID) {
+// (gripper-twins, 1/9) le righe GEMELLE di una pinza doppia (stesso
+// SUB_POS > 0 della pinza in scrittura) sono la STESSA pinza fisica e
+// convivono nello slot: escluse dal conteggio. Due pinze DIVERSE (SUB_POS
+// diverso, o 0) nello stesso slot restano vietate. Vale solo per l'update
+// (l'ID della pinza in scrittura e' noto); l'insert da form nasce con
+// SUB_POS 0 e resta strettamente esclusivo.
+function shelfOccupiedFilter(posMag, excludeID) {
 	const idFilter = excludeID !== '' ? ` and g2.ID<>${excludeID}` : '';
-	return ` NOT EXISTS (select 1 from GRIPPER g2 where g2.POS_MAG=${posMag} and g2.POS_MAG<1000 and g2.POS_PLANT>=0${idFilter})
+	const twinFilter = excludeID !== ''
+		? ` and not (g2.SUB_POS>0 and g2.SUB_POS=(select SUB_POS from GRIPPER where ID=${excludeID}))`
+		: '';
+	return `g2.POS_MAG=${posMag} and g2.POS_MAG<1000 and g2.POS_PLANT>=0${idFilter}${twinFilter}`;
+}
+
+function shelfSlotGuard(posMag, excludeID) {
+	return ` NOT EXISTS (select 1 from GRIPPER g2 where ${shelfOccupiedFilter(posMag, excludeID)})
 			 AND NOT EXISTS (select 1 from [POSITION] where PARENT like 'SHELF%' and SUB_POS=${posMag} and STATUS=9)`;
 }
 
 // Diagnosi post-hoc del rifiuto (solo messaggio: l'atomicita' e' del guard).
 function shelfSlotReason(posMag, excludeID, cb) {
-	const idFilter = excludeID !== '' ? ` and g2.ID<>${excludeID}` : '';
 	let check = `select
-		(select count(*) from GRIPPER g2 where g2.POS_MAG=${posMag} and g2.POS_MAG<1000 and g2.POS_PLANT>=0${idFilter}) as occ,
+		(select count(*) from GRIPPER g2 where ${shelfOccupiedFilter(posMag, excludeID)}) as occ,
 		(select count(*) from [POSITION] where PARENT like 'SHELF%' and SUB_POS=${posMag} and STATUS=9) as dis;`
 	new sql.Request().query(check, function (err, rs) {
 		if (err || rs.recordset.length == 0) { cb("KO"); return; }

@@ -102,6 +102,19 @@ console.log('\n6) selectGripper importa dalla util (un punto solo)');
 const sg = readFileSync('src/views/workOrder/selectGripper.vue', 'utf8');
 check(/import \{ dedupeGrippers \} from '\.\.\/\.\.\/util\/grippers\.js'/.test(sg) && !/export function dedupeGrippers/.test(sg), 'nessuna copia locale di dedupeGrippers');
 
+console.log('\n7) rotta /conf/Gratingtest rimossa, gemella raggiungibile da GrippersView');
+const routerSrc = readFileSync('src/router/index.js', 'utf8').replace(/\/\/[^\n]*/g, '');
+check(!/Gratingtest|GratingTest\.vue/i.test(routerSrc), 'nessuna rotta ne\' import di GratingTest nel router attivo');
+// (createWebHistory richiede window.history: verifica statica delle path)
+const paths = [...routerSrc.matchAll(/path:\s*["']([^"']+)["']/g)].map(m => m[1].toLowerCase());
+check(!paths.includes('/conf/gratingtest') && paths.includes('/conf/importgrating') && paths.includes('/conf/gratings'), '/conf/gratingtest non e\' tra le rotte (importGrating e Gratings si\')');
+check(/twin-link/.test(gvTpl2()) && /modifyGripper\(tid\)/.test(gvTpl2()) && /gripper\.twinOpen/.test(gvTpl2()), 'GrippersView: link per aprire la gemella (modifyGripper per ID)');
+function gvTpl2() { const s = readFileSync('src/views/conf/GrippersView.vue', 'utf8'); return s.slice(0, s.lastIndexOf('</template>')); }
+let pushedTo = '';
+gv.$router = { push: p => { pushedTo = p; } };
+gv.modifyGripper(37);
+check(pushedTo === '/conf/gripper/gripper?gripperID=37', 'apre il form della gemella 37');
+
 await server.close();
 console.log('\n' + (failed ? failed + ' CHECK FALLITI' : 'TUTTI I CHECK PASSATI'));
 process.exit(failed ? 1 : 0);

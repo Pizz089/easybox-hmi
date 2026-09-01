@@ -101,11 +101,11 @@ const router = createRouter({
       meta: { layout: StandardMenu },
       component: () => import("../views/conf/GratingsView.vue"),
     },
-    {
-      path: "/conf/Gratingtest",
-      meta: { layout: StandardMenu },
-      component: () => import("../views/conf/Grating/GratingTest.vue"),
-    },
+    // (1/9) rotta /conf/Gratingtest RIMOSSA: GratingTest.vue scrive ancora
+    // [POSITION] col mapping pre-luglio (pos.X = width - x, pos.Y = height - y,
+    // senza origine tasca 1) e con le delete operative corromperebbe un
+    // grigliato in silenzio. Il file resta nel repo: prima di ripristinare la
+    // rotta va riallineato a util/gratingAxes.js (drawingToRobot).
     {
       path: "/conf/importGrating",
       meta: { layout: StandardMenu },

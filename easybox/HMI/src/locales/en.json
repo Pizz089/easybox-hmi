@@ -87,6 +87,7 @@
   },
   "gripper": {
     "twinBadge": "double (ID {ids})",
+    "twinOpen": "side 2, ID {id}",
     "welcome": "Grippers list",
     "add_gripper": "Add Gripper",
     "name": "Name",

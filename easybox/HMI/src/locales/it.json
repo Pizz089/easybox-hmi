@@ -87,6 +87,7 @@
   },
   "gripper": {
     "twinBadge": "doppia (ID {ids})",
+    "twinOpen": "lato 2, ID {id}",
     "welcome": "Elenco Pinze disponibili",
     "add_gripper": "Agg. Pinza",
     "name": "ID",
