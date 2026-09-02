@@ -262,6 +262,50 @@
         </button>
         <small class="cmd-hint" v-if="!trayBranchEnabled && trayDisabledReason">{{ $t(trayDisabledReason) }}</small>
 
+        <!-- (244) Preleva finito e deposita grezzo in UN solo ingresso in MC1
+             (PLC: MISSION_PickPlacePart_MC 135, master 1400) — MISSIONE con
+             movimento in macchina: sta qui con le altre, non tra i comandi
+             elementari delle chele. Precondizioni PLC rispecchiate nel gate:
+             cmdActive + GREZZO sul lato 1 (STATUS RAW, chele 1 non aperte) +
+             lato 2 LIBERO; ordine attivo su MC1 e pinza dell'ordine
+             verificati FRESCHI all'apertura del dialog. -->
+        <button class="pure-u-1 button_pressed"
+          :class="[pickPlaceEnabled() ? 'pure-button-mission' : 'pure-button-disable', {'btn-mission-running': missionRunning=='pickplace-mc1'}]"
+          @click="pickPlaceEnabled() ? openPickPlaceDialog() : ''">
+          {{ $t('robot.pickPlace.button') }}
+        </button>
+        <small class="cmd-hint" v-if="dataStored.cmdActive==1 && pickPlaceDisabledReason()">{{ $t(pickPlaceDisabledReason()) }}</small>
+
+        <!-- dialog conferma missione 244: mostra l'ordine attivo trovato o il
+             motivo per cui la conferma resta spenta. Un solo overlay. -->
+        <div v-if="pickPlaceDialog.open" class="mission-dialog-overlay">
+          <div class="mission-dialog">
+            <h3 class="command-section-title">{{ $t('robot.pickPlace.confirmTitle') }}</h3>
+            <small class="cmd-hint">{{ $t('robot.pickPlace.confirmWarn') }}</small>
+            <div class="unload-info" v-if="pickPlaceDialog.loading">{{ $t('robot.pickPlace.checking') }}</div>
+            <template v-else>
+              <div class="unload-info" v-if="pickPlaceDialog.order">
+                {{ $t('robot.pickPlace.orderInfo', { id: pickPlaceDialog.order.ID, piece: (pickPlaceDialog.order.PIECE || '').trim() }) }}
+              </div>
+              <div class="aux-banner" v-if="pickPlaceDialog.error">{{ $t(pickPlaceDialog.error) }}</div>
+            </template>
+            <div class="pure-g">
+              <div class="pure-u-1-2">
+                <button style="width:100%" class="button_pressed"
+                  :class="[pickPlaceConfirmEnabled ? 'pure-button-mission' : 'pure-button-disable']"
+                  @click="pickPlaceConfirmEnabled ? confirmPickPlace() : ''">
+                  {{ $t('robot.dialog.confirm') }}
+                </button>
+              </div>
+              <div class="pure-u-1-2">
+                <button style="width:100%" class="btn-ghost" @click="closePickPlaceDialog()">
+                  {{ $t('robot.dialog.cancel') }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Dialog scelta elemento missione: nessuna preselezione, la conferma
              si attiva solo con una voce selezionata esplicitamente. -->
         <div v-if="dialog.type!=''" class="mission-dialog-overlay">
@@ -609,48 +653,6 @@
               {{ $t('robot.claw.close') }}
             </button>
             <small class="cmd-hint" v-if="side==2 && dataStored.cmdActive==1 && !clawSide2Available">{{ $t('robot.claw.noSide2') }}</small>
-          </div>
-        </div>
-
-        <!-- (244) Preleva finito e deposita grezzo in UN solo ingresso in MC1
-             (PLC: MISSION_PickPlacePart_MC 135, master 1400). Precondizioni
-             PLC rispecchiate nel gate: cmdActive + GREZZO sul lato 1 (STATUS
-             RAW, chele 1 non aperte) + lato 2 LIBERO; ordine attivo su MC1 e
-             pinza dell'ordine verificati FRESCHI all'apertura del dialog. -->
-        <button class="pure-u-1 button_pressed"
-          :class="[pickPlaceEnabled() ? 'pure-button-mission' : 'pure-button-disable', {'btn-mission-running': missionRunning=='pickplace-mc1'}]"
-          @click="pickPlaceEnabled() ? openPickPlaceDialog() : ''">
-          {{ $t('robot.pickPlace.button') }}
-        </button>
-        <small class="cmd-hint" v-if="dataStored.cmdActive==1 && pickPlaceDisabledReason()">{{ $t(pickPlaceDisabledReason()) }}</small>
-
-        <!-- dialog conferma missione 244: mostra l'ordine attivo trovato o il
-             motivo per cui la conferma resta spenta. Un solo overlay. -->
-        <div v-if="pickPlaceDialog.open" class="mission-dialog-overlay">
-          <div class="mission-dialog">
-            <h3 class="command-section-title">{{ $t('robot.pickPlace.confirmTitle') }}</h3>
-            <small class="cmd-hint">{{ $t('robot.pickPlace.confirmWarn') }}</small>
-            <div class="unload-info" v-if="pickPlaceDialog.loading">{{ $t('robot.pickPlace.checking') }}</div>
-            <template v-else>
-              <div class="unload-info" v-if="pickPlaceDialog.order">
-                {{ $t('robot.pickPlace.orderInfo', { id: pickPlaceDialog.order.ID, piece: (pickPlaceDialog.order.PIECE || '').trim() }) }}
-              </div>
-              <div class="aux-banner" v-if="pickPlaceDialog.error">{{ $t(pickPlaceDialog.error) }}</div>
-            </template>
-            <div class="pure-g">
-              <div class="pure-u-1-2">
-                <button style="width:100%" class="button_pressed"
-                  :class="[pickPlaceConfirmEnabled ? 'pure-button-mission' : 'pure-button-disable']"
-                  @click="pickPlaceConfirmEnabled ? confirmPickPlace() : ''">
-                  {{ $t('robot.dialog.confirm') }}
-                </button>
-              </div>
-              <div class="pure-u-1-2">
-                <button style="width:100%" class="btn-ghost" @click="closePickPlaceDialog()">
-                  {{ $t('robot.dialog.cancel') }}
-                </button>
-              </div>
-            </div>
           </div>
         </div>
 

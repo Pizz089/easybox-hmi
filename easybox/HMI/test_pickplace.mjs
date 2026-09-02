@@ -124,6 +124,14 @@ check(cmds().join() === '241,243,240,242', 'aperture 240/242 via dialog invariat
 const src = readFileSync('src/views/unit/robotView.vue', 'utf8');
 check(/const PICKPLACE_CMD = '244';/.test(src), 'codice 244 in un punto solo (PICKPLACE_CMD)');
 
+console.log('\n6) posizione: il bottone 244 sta nella card MISSIONI, non fra le chele');
+const tpl = src.slice(0, src.lastIndexOf('</template>'));
+const missionCard = tpl.slice(tpl.indexOf('CARD 3'), tpl.indexOf('CARD 4'));
+const clawCard = tpl.slice(tpl.indexOf('CARD 5'));
+check(missionCard.includes("robot.pickPlace.button") && missionCard.includes('pickPlaceDialog.open'), 'bottone e dialog 244 dentro la CARD 3 Missioni');
+check(!clawCard.includes('pickPlace'), 'nessuna traccia del 244 nella CARD 5 Comandi pinza');
+check((clawCard.match(/clawEnabled\(side\) \?/g) || []).length === 4, 'i 4 bottoni chela restano al loro posto, invariati');
+
 await server.close();
 console.log('\n' + (failed ? failed + ' CHECK FALLITI' : 'TUTTI I CHECK PASSATI'));
 process.exit(failed ? 1 : 0);
