@@ -514,6 +514,18 @@
       "tray": "Gestione cassetto",
       "pallet": "Gestione pallet"
     },
+    "pickPlace": {
+      "button": "Preleva finito e deposita grezzo",
+      "confirmTitle": "Prelevare il FINITO dalla morsa e depositare il GREZZO a bordo?",
+      "confirmWarn": "Missione con ingresso in macchina (MC1), in un solo viaggio: il robot entra col grezzo sul lato 1 ed esce col finito sul lato 2.",
+      "checking": "Verifica dell'ordine attivo in corso…",
+      "orderInfo": "Ordine attivo #{id} — {piece}",
+      "noOrder": "Nessun ordine ATTIVO su MC1: la missione non può partire.",
+      "wrongGripper": "La pinza a bordo non è quella dell'ordine attivo.",
+      "checkFailed": "Verifica dell'ordine non riuscita: chiudere e riprovare.",
+      "hintSide1": "Serve un GREZZO sul lato 1 (chela 1 chiusa sul pezzo)",
+      "hintSide2": "Il lato 2 (finito) deve essere LIBERO"
+    },
     "claw": {
       "side": "Lato {side}",
       "open": "Apri chela",
