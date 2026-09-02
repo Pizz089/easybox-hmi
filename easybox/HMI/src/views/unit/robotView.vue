@@ -265,10 +265,10 @@
         <!-- (244) Preleva finito e deposita grezzo in UN solo ingresso in MC1
              (PLC: MISSION_PickPlacePart_MC 135, master 1400) — MISSIONE con
              movimento in macchina: sta qui con le altre, non tra i comandi
-             elementari delle chele. Precondizioni PLC rispecchiate nel gate:
-             cmdActive + GREZZO sul lato 1 (STATUS RAW, chele 1 non aperte) +
-             lato 2 LIBERO; ordine attivo su MC1 e pinza dell'ordine
-             verificati FRESCHI all'apertura del dialog. -->
+             elementari delle chele. Gate = cmdActive + GREZZO sul lato 1
+             (STATUS RAW, chele 1 non aperte) + lato 2 LIBERO. NESSUN vincolo
+             sull'ordine: il PLC usa le quote dell'ULTIMO ordine registrato
+             (funziona anche a tabella produzione vuota). -->
         <button class="pure-u-1 button_pressed"
           :class="[pickPlaceEnabled() ? 'pure-button-mission' : 'pure-button-disable', {'btn-mission-running': missionRunning=='pickplace-mc1'}]"
           @click="pickPlaceEnabled() ? openPickPlaceDialog() : ''">
@@ -276,19 +276,13 @@
         </button>
         <small class="cmd-hint" v-if="dataStored.cmdActive==1 && pickPlaceDisabledReason()">{{ $t(pickPlaceDisabledReason()) }}</small>
 
-        <!-- dialog conferma missione 244: mostra l'ordine attivo trovato o il
-             motivo per cui la conferma resta spenta. Un solo overlay. -->
+        <!-- dialog conferma missione 244: nota sulle quote dell'ultimo
+             ordine registrato al posto della verifica ordine. Un solo overlay. -->
         <div v-if="pickPlaceDialog.open" class="mission-dialog-overlay">
           <div class="mission-dialog">
             <h3 class="command-section-title">{{ $t('robot.pickPlace.confirmTitle') }}</h3>
             <small class="cmd-hint">{{ $t('robot.pickPlace.confirmWarn') }}</small>
-            <div class="unload-info" v-if="pickPlaceDialog.loading">{{ $t('robot.pickPlace.checking') }}</div>
-            <template v-else>
-              <div class="unload-info" v-if="pickPlaceDialog.order">
-                {{ $t('robot.pickPlace.orderInfo', { id: pickPlaceDialog.order.ID, piece: (pickPlaceDialog.order.PIECE || '').trim() }) }}
-              </div>
-              <div class="aux-banner" v-if="pickPlaceDialog.error">{{ $t(pickPlaceDialog.error) }}</div>
-            </template>
+            <div class="aux-banner">{{ $t('robot.pickPlace.lastOrderNote') }}</div>
             <div class="pure-g">
               <div class="pure-u-1-2">
                 <button style="width:100%" class="button_pressed"
@@ -709,9 +703,9 @@ export default {
       unloadOpen: false,  // M: dialog conferma scarico pinza (blocco separato)
       // (chele) dialog conferma APERTURA: side 0 = chiuso, 1|2 = lato in conferma
       clawDialog: { side: 0 },
-      // (244) dialog conferma preleva-finito/deposita-grezzo: l'ordine attivo
-      // su MC1 e la pinza dell'ordine si verificano FRESCHI all'apertura
-      pickPlaceDialog: { open: false, loading: false, order: null, error: '' },
+      // (244) dialog conferma preleva-finito/deposita-grezzo: nessuna
+      // verifica ordine (il PLC usa le quote dell'ULTIMO ordine registrato)
+      pickPlaceDialog: { open: false },
       // M2: stato estrazione cassetti (colonna TRAY.EXTRACT, appendice audit):
       // extractedTray = riga con EXTRACT==1 (conferma PLC) o null;
       // trayBusy = manovra in corso (EXTRACT 1000 richiesta estrazione /
@@ -1109,8 +1103,9 @@ export default {
     //    chele 1 APERTE (CLOSED1=0) = lato 1 forzato vuoto -> blocco
     //    (CLOSED1 null = sensore mai visto: non blocca);
     //  - lato 2 LIBERO: riga lato 2 presente e STATUS EMPTY.
-    // Ordine attivo su MC1 + pinza dell'ordine: verifica FRESCA nel dialog
-    // (la vista robot non tiene gli ordini). Il PLC resta l'ultima difesa.
+    // NESSUN vincolo sull'ordine: il PLC usa le quote dell'ULTIMO ordine
+    // registrato (il dialog lo dice con lastOrderNote); funziona anche con
+    // la tabella produzione vuota. Il PLC resta l'ultima difesa.
     pickPlaceSide1Raw() {
       return !!(this.dataGripper && this.dataGripper[0] &&
                 this.dataGripper[0].STATUS == dataStored.status_raw) &&
@@ -1137,35 +1132,9 @@ export default {
       this.closeDeclDialog();
       this.closeClawDialog();
       this.pickPlaceDialog.open = true;
-      this.pickPlaceDialog.loading = true;
-      this.pickPlaceDialog.order = null;
-      this.pickPlaceDialog.error = '';
-      fetch(dataStored.server + 'api/order/show/all', { method: 'GET' })
-        .then(r => { if (!r.ok) throw new Error('Network response was not ok'); return r.json(); })
-        .then(orders => {
-          const ord = (orders || []).find(o => o.STATUS == 3 && o.MACHINE_ID == 1);
-          if (!ord) {
-            this.pickPlaceDialog.error = 'robot.pickPlace.noOrder';
-            return;
-          }
-          const onBoard = (Array.isArray(this.dataGripper) ? this.dataGripper : []).map(g => Number(g.ID));
-          if (!onBoard.includes(Number(ord.GRIPPER_ID))) {
-            this.pickPlaceDialog.order = ord;
-            this.pickPlaceDialog.error = 'robot.pickPlace.wrongGripper';
-            return;
-          }
-          this.pickPlaceDialog.order = ord;
-        })
-        .catch(e => {
-          console.info(e);
-          this.pickPlaceDialog.error = 'robot.pickPlace.checkFailed';
-        })
-        .finally(() => { this.pickPlaceDialog.loading = false; });
     },
     closePickPlaceDialog() {
       this.pickPlaceDialog.open = false;
-      this.pickPlaceDialog.order = null;
-      this.pickPlaceDialog.error = '';
     },
     confirmPickPlace() {
       // re-check fresco: lo stato puo' essere decaduto a dialog aperto
@@ -1531,12 +1500,9 @@ export default {
     clawSide2Available() {
       return Array.isArray(this.dataGripper) && this.dataGripper.length > 1;
     },
-    // (244) conferma del dialog: verifica fresca fatta, ordine trovato,
-    // nessun motivo di blocco, gate del bottone ancora valido
+    // (244) conferma del dialog: gate del bottone ancora valido
     pickPlaceConfirmEnabled() {
-      return !!(this.pickPlaceDialog.open && !this.pickPlaceDialog.loading &&
-                !this.pickPlaceDialog.error && this.pickPlaceDialog.order &&
-                this.pickPlaceEnabled());
+      return !!(this.pickPlaceDialog.open && this.pickPlaceEnabled());
     },
     // (gripper-twins) CARICA PINZA: una voce per pinza fisica (riga canonica,
     // ID minore -> "11;<id>", il PLC trova la gemella via SUB_POS), sempre

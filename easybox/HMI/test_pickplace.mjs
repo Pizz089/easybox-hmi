@@ -26,9 +26,10 @@ const emitted = [];
 dataStored.WS.socket = { on: () => {}, off: () => {}, emit: (ev, p) => emitted.push([ev, p]) };
 const cmds = () => emitted.filter(e => e[0] === 'TO_PLANT/CMD/ROBOT').map(e => String(e[1]));
 
-let orders = [{ ID: 12, STATUS: 3, MACHINE_ID: 1, GRIPPER_ID: 26, PIECE: 'Pezzo di prova Rizzo' }];
-let fetchFails = false;
-globalThis.fetch = async () => { if (fetchFails) throw new Error('net'); return { ok: true, json: async () => orders, text: async () => '' }; };
+// (rev. quote-ultimo-ordine) il dialog NON verifica piu' l'ordine: nessuna
+// fetch deve partire dall'apertura/conferma. Contatore per provarlo.
+let fetchCalls = 0;
+globalThis.fetch = async () => { fetchCalls++; return { ok: true, json: async () => [], text: async () => '' }; };
 
 function makeVm() {
 	const vm = Object.assign({}, comp.data.call({}));
@@ -61,43 +62,36 @@ check(!vm.pickPlaceEnabled() && vm.pickPlaceDisabledReason() === 'robot.pickPlac
 vm.gripperClosed1 = null;
 check(vm.pickPlaceEnabled(), 'CLOSED1 mai visto (null): non blocca');
 
-console.log('\n2) dialog: verifica fresca ordine, niente invio senza conferma');
+console.log('\n2) dialog: nota quote ultimo ordine, niente invio senza conferma');
 emitted.length = 0;
 const vm2 = makeVm();
+fetchCalls = 0;
 vm2.openPickPlaceDialog(); await tick();
-check(vm2.pickPlaceDialog.open && !vm2.pickPlaceDialog.loading && cmds().length === 0, 'apertura: dialog su, niente inviato');
-check(vm2.pickPlaceDialog.order && vm2.pickPlaceDialog.order.ID === 12 && vm2.pickPlaceDialog.error === '', 'ordine attivo #12 trovato, pinza 26 coerente');
-check(vm2.pickPlaceConfirmEnabled === true, 'conferma abilitata');
+check(vm2.pickPlaceDialog.open && cmds().length === 0, 'apertura: dialog su, niente inviato');
+check(fetchCalls === 0, 'nessuna verifica ordine: zero chiamate REST all\'apertura');
+check(vm2.pickPlaceConfirmEnabled === true, 'conferma abilitata (gate lati pinza soddisfatto)');
 vm2.closePickPlaceDialog();
 check(!vm2.pickPlaceDialog.open && cmds().length === 0, 'annulla: niente inviato');
 vm2.openPickPlaceDialog(); await tick();
 vm2.confirmPickPlace();
 check(cmds().join() === '244' && !vm2.pickPlaceDialog.open, 'conferma -> TO_PLANT/CMD/ROBOT "244", dialog chiuso');
+check(fetchCalls === 0, 'zero ordini in tabella: il 244 parte lo stesso (quote dell\'ultimo ordine registrato)');
 check(vm2.missionRunning === 'pickplace-mc1' && vm2.missionPhase === 'armed', 'feedback missione armato');
 vm2.clearMission();
 
-console.log('\n3) rifiuti: senza ordine, pinza sbagliata, verifica fallita');
+console.log('\n3) rifiuto SOLO dal gate lati pinza (l\'ordine non conta piu\')');
 emitted.length = 0;
-orders = [];
 const vm3 = makeVm();
+vm3.dataGripper = [{ ID: 26, STATUS: 2 }, { ID: 37, STATUS: 2 }];   // lato 1 vuoto
 vm3.openPickPlaceDialog(); await tick();
-check(vm3.pickPlaceDialog.error === 'robot.pickPlace.noOrder' && vm3.pickPlaceConfirmEnabled === false, 'nessun ordine attivo su MC1: conferma spenta');
+check(vm3.pickPlaceConfirmEnabled === false, 'gate decaduto a dialog aperto: conferma spenta');
 vm3.confirmPickPlace();
 check(cmds().length === 0, 'conferma forzata: niente inviato');
-orders = [{ ID: 13, STATUS: 3, MACHINE_ID: 1, GRIPPER_ID: 1, PIECE: 'x' }];
-vm3.openPickPlaceDialog(); await tick();
-check(vm3.pickPlaceDialog.error === 'robot.pickPlace.wrongGripper' && !vm3.pickPlaceConfirmEnabled, 'pinza dell\'ordine (1) diversa da quella a bordo (26/37): conferma spenta');
-orders = [{ ID: 14, STATUS: 3, MACHINE_ID: 2, GRIPPER_ID: 26, PIECE: 'x' }];
-vm3.openPickPlaceDialog(); await tick();
-check(vm3.pickPlaceDialog.error === 'robot.pickPlace.noOrder', 'ordine attivo su MC2 non conta: serve MC1');
-fetchFails = true;
-vm3.openPickPlaceDialog(); await tick();
-check(vm3.pickPlaceDialog.error === 'robot.pickPlace.checkFailed' && !vm3.pickPlaceConfirmEnabled, 'REST giu\': conferma spenta (mai partire alla cieca)');
-fetchFails = false;
-check(cmds().length === 0, 'in tutti i rifiuti: zero comandi inviati');
+const tplSrc = readFileSync('src/views/unit/robotView.vue', 'utf8');
+check(/robot\.pickPlace\.lastOrderNote/.test(tplSrc), 'il dialog mostra la nota sulle quote dell\'ultimo ordine');
+check(!/robot\.pickPlace\.(noOrder|wrongGripper|checkFailed|orderInfo|checking)/.test(tplSrc), 'via le righe di verifica ordine dal componente');
 
 console.log('\n4) esclusione reciproca overlay');
-orders = [{ ID: 12, STATUS: 3, MACHINE_ID: 1, GRIPPER_ID: 26, PIECE: 'p' }];
 const vm4 = makeVm();
 vm4.openPickPlaceDialog(); await tick();
 vm4.openClawDialog(1);

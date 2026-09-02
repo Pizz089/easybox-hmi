@@ -518,11 +518,7 @@
       "button": "Pick finished & place raw",
       "confirmTitle": "Pick the FINISHED part from the vice and place the on-board RAW part?",
       "confirmWarn": "Mission entering the machine (MC1), in a single trip: the robot enters with the raw part on side 1 and leaves with the finished part on side 2.",
-      "checking": "Checking the active order…",
-      "orderInfo": "Active order #{id} — {piece}",
-      "noOrder": "No ACTIVE order on MC1: the mission cannot start.",
-      "wrongGripper": "The on-board gripper is not the one of the active order.",
-      "checkFailed": "Order check failed: close and retry.",
+      "lastOrderNote": "The command uses the dimensions of the LAST registered order (part and part program): check they match the raw part on board before confirming.",
       "hintSide1": "A RAW part is required on side 1 (claw 1 closed on the part)",
       "hintSide2": "Side 2 (finished) must be FREE"
     },
