@@ -173,6 +173,15 @@ export default {
     mounted(){
         this.getTrayData()
         this.getStatus();
+        // (oneshot-refresh, 3/9) stato BOX e AUX (banner ausiliari) sono
+        // one-shot: replay dalla cache backend + refresh 90 (throttle 5 s
+        // lato backend) al mount e a ogni riconnessione del socket.
+        this.requestSnapshots = () => {
+          dataStored.WS.socket.emit('UNIT/STATUS/REQUEST', 'BOX');
+          dataStored.WS.socket.emit('PLC/REFRESH_REQUEST');
+        };
+        dataStored.WS.socket.on('connect', this.requestSnapshots);
+        this.requestSnapshots();
         dataStored.WS.socket.on('BOX/STATUS', () =>{
           this.getTrayData()
           this.getStatus();
@@ -182,6 +191,9 @@ export default {
         });
     },
     unmounted(){
+        // off del solo handler nominato; i due listener BOX/* anonimi sopra
+        // restano senza off (debito preesistente, censito in P3)
+        dataStored.WS.socket.off('connect', this.requestSnapshots);
     },
     computed: {
       cmdActiveMission(){

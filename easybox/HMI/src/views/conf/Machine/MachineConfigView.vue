@@ -149,6 +149,10 @@ function sendBrand(pos) {
 // 'request-snapshot' del diag MQTT): al mount e ad ogni reconnect.
 function requestSnapshot() {
   dataStored.WS.socket.emit('BRAND/REQUEST_SNAPSHOT')
+  // (oneshot-refresh, 3/9) anche il brand e' one-shot: oltre al replay della
+  // cache backend (che puo' essere stantia) si chiede il refresh 90 al PLC
+  // (throttle 5 s lato backend)
+  dataStored.WS.socket.emit('PLC/REFRESH_REQUEST')
 }
 
 const socketHandlers = {}

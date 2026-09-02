@@ -40,14 +40,26 @@ const plcAlarmGenericHandler = payload => {
   dataStored.alert.type = 'warning'
 }
 
+// (oneshot-refresh, 3/9) rete di sicurezza GLOBALE per gli stati one-shot:
+// StandardMenu e' sempre montato, quindi al primo mount e a OGNI riconnessione
+// del socket si rigioca la cache (GRIPPER/REQUEST_SNAPSHOT risponde anche
+// SAFETY/AUX e DECLARE) e si chiede il refresh 90 al PLC (PLC/REFRESH_REQUEST,
+// throttle 5 s lato backend). Incidente del 3/9: AUX ricevuto 0 e mai piu'
+// aggiornato (publish on-change perso) bloccava le missioni con Aux_OK vero
+// nel PLC; l'unica uscita era il 90 a mano via mosquitto_pub.
+const requestOneShotStates = () => {
+  dataStored.WS.socket.emit('GRIPPER/REQUEST_SNAPSHOT')
+  dataStored.WS.socket.emit('PLC/REFRESH_REQUEST')
+}
+
 onMounted(() => {
   if (dataStored.WS && dataStored.WS.socket) {
     dataStored.WS.socket.on('PLC/ALARM/ROBOT', plcAlarmRobotHandler)
     dataStored.WS.socket.on('PLC/ALARM/GENERIC', plcAlarmGenericHandler)
     dataStored.WS.socket.on('SAFETY/AUX', safetyAuxHandler)
     dataStored.WS.socket.on('ALARM/MC1', alarmMc1Handler)
-    // replay dalla cache backend (risponde anche SAFETY/AUX)
-    dataStored.WS.socket.emit('GRIPPER/REQUEST_SNAPSHOT')
+    dataStored.WS.socket.on('connect', requestOneShotStates)
+    requestOneShotStates()
   }
 })
 
@@ -59,6 +71,7 @@ onUnmounted(() => {
     dataStored.WS.socket.off('PLC/ALARM/GENERIC', plcAlarmGenericHandler)
     dataStored.WS.socket.off('SAFETY/AUX', safetyAuxHandler)
     dataStored.WS.socket.off('ALARM/MC1', alarmMc1Handler)
+    dataStored.WS.socket.off('connect', requestOneShotStates)
   }
 })
 </script>

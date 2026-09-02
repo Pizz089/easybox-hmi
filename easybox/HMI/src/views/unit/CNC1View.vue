@@ -323,12 +323,21 @@ export default {
         // handler nominato + snapshot (il backend replaya anche DECLARE/MC1)
         this.mc1DeclHandler = p => this.declareMc1Handler(p);
         dataStored.WS.socket.on('DECLARE/MC1', this.mc1DeclHandler);
-        dataStored.WS.socket.emit('GRIPPER/REQUEST_SNAPSHOT');
+        // (oneshot-refresh, 3/9) la dichiarazione DECLARE/MC1 e' one-shot:
+        // replay dalla cache backend + refresh 90 (throttle 5 s lato
+        // backend) al mount e a ogni riconnessione del socket.
+        this.requestSnapshots = () => {
+            dataStored.WS.socket.emit('GRIPPER/REQUEST_SNAPSHOT');
+            dataStored.WS.socket.emit('PLC/REFRESH_REQUEST');
+        };
+        dataStored.WS.socket.on('connect', this.requestSnapshots);
+        this.requestSnapshots();
     },
     unmounted(){
         this.polling=false;
         clearInterval(this.pollTimer);
         clearTimeout(this.declTimer);
+        dataStored.WS.socket.off('connect', this.requestSnapshots);
         dataStored.WS.socket.off('DECLARE/MC1', this.mc1DeclHandler);
     }
   }

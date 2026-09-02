@@ -930,6 +930,12 @@ export default {
     requestSnapshots() {
       dataStored.WS.socket.emit('UNIT/STATUS/REQUEST', 'ROBOT');
       dataStored.WS.socket.emit('GRIPPER/REQUEST_SNAPSHOT');
+      // (oneshot-refresh, 3/9) lo snapshot rigioca la CACHE del backend, ma
+      // la cache puo' essere STANTIA (publish on-change perso per singhiozzo
+      // broker: incidente AUX del 3/9). Si chiede anche il refresh 90 al PLC
+      // (requestPlcRefresh, throttle 5 s lato backend): gli stati one-shot
+      // vengono ripubblicati e lo stantio si corregge da solo.
+      dataStored.WS.socket.emit('PLC/REFRESH_REQUEST');
     },
     // PLC muto (vedi snapshotMissHandler): timer 8 s armato sul MISS, azzerato
     // dal primo ROBOT/STATUS; Riprova rifa' il giro via PLC/REFRESH_REQUEST.

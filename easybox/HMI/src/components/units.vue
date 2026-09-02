@@ -269,6 +269,17 @@ export default {
     mounted() {
         this.getStatusList()
 
+        // (oneshot-refresh, 3/9) gli STATUS delle unita' sono one-shot
+        // (publish PLC on-change): replay dalla cache backend + refresh 90
+        // (throttle 5 s lato backend) al mount e a ogni riconnessione.
+        this.requestSnapshots = () => {
+            for (const u of ['ROBOT', 'MC1', 'MC2', 'BOX'])
+                dataStored.WS.socket.emit('UNIT/STATUS/REQUEST', u);
+            dataStored.WS.socket.emit('PLC/REFRESH_REQUEST');
+        };
+        dataStored.WS.socket.on('connect', this.requestSnapshots);
+        this.requestSnapshots();
+
         this.robotStatusHandler = payload => {
             this.robot_status = parseInt(payload.toString());
             this.robot_desc = this.getStatusDesc("robot", this.robot_status);
@@ -305,6 +316,7 @@ export default {
         // off SPECIFICO (evento + callback), stesso pattern di robotView
         // (e4ab4e5): un off nudo staccherebbe anche i listener di altri
         // componenti sugli stessi eventi.
+        dataStored.WS.socket.off('connect', this.requestSnapshots);
         dataStored.WS.socket.off("ROBOT/STATUS", this.robotStatusHandler);
         dataStored.WS.socket.off("BOX/STATUS", this.boxStatusHandler);
         dataStored.WS.socket.off("MC1/STATUS", this.mc1StatusHandler);
