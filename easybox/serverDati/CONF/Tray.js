@@ -295,7 +295,10 @@ router.get('/layout/:trayID', (req, res) => {
         }
 
 		/*let query = `select partType,prisma,x_pick/1000 as x,Y_PICK/1000 as y, status from COORDINATES_PIECES_TRAYS where TRAY=${req.params.trayID};`*/
-		let query = `select partType,prisma,x_pick/1000 as x,Y_PICK/1000 as y, status, order_ID, FLOOR_MAG from COORDINATES_PIECES_TRAYS where TRAY = '${req.params.trayID}' order by SUB_POS;`
+		// (dup-guard 4/9) SUB_POS nella SELECT: la pagina layout mappa le tasche
+		// per SUB_POS reale, mai per indice (coi duplicati l'indice sfalsava
+		// etichette, click e salvataggi). Stessa vista, contratto PLC intatto.
+		let query = `select partType,prisma,x_pick/1000 as x,Y_PICK/1000 as y, status, order_ID, FLOOR_MAG, SUB_POS from COORDINATES_PIECES_TRAYS where TRAY = '${req.params.trayID}' order by SUB_POS;`
 		
 		//console.log("ricevo:" +String(req.params.ID))
 		

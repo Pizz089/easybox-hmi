@@ -28,14 +28,17 @@
                  verticale (asse robot X). Prima: x<-X, y<- -Y e filtro
                  p.y<0 — con la convenzione corretta (Y positive) restavano
                  disegnate solo le 7 tasche a Y=-65: strisce in un angolo. -->
-            <g v-for="(p, index) in drawPz" :key="index" >
+            <!-- (dup-guard 4/9) etichetta e chiave = SUB_POS REALE della riga,
+                 mai l'indice: con buchi o anomalie a DB i numeri restano
+                 quelli veri delle tasche -->
+            <g v-for="(p, index) in drawPz" :key="p.SUB_POS != null ? p.SUB_POS : index" >
                 <prisma v-if="p.prisma"
                         :x="p.w-dim_x/2" :y="p.h-dim_y/2"
                         :width="dim_x" :height="dim_y"
                         :status="p.status"
                         :diffOrder="checkIfOrderChanged(index)"
                         @click_obj="clickPiece(index)" >
-                        {{ index+1 }}
+                        {{ p.SUB_POS != null ? p.SUB_POS : index+1 }}
                 </prisma>
                 <cylinder v-if="!p.prisma"
                         :x="p.w" :y="p.h"
@@ -43,7 +46,7 @@
                         :status="p.status"
                         :diffOrder="checkIfOrderChanged(index)"
                         @click_obj="clickPiece(index)" >
-                        {{ index+1 }}
+                        {{ p.SUB_POS != null ? p.SUB_POS : index+1 }}
                 </cylinder>
             </g>
             
@@ -178,8 +181,25 @@
                         return response.json()
                     })
                     .then(pz => {
-                        console.log("ricevo dati per "+pz.length+"  posizioni")  
-                        this.listPz=pz;
+                        console.log("ricevo dati per "+pz.length+"  posizioni")
+                        // (dup-guard 4/9) dedup DIFENSIVO per SUB_POS: righe
+                        // duplicate a DB sfalserebbero etichette, click e
+                        // salvataggi (mappa per indice). Si tiene la prima e
+                        // si SEGNALA l'anomalia, mai disegnarla in silenzio.
+                        const seen = new Set();
+                        const rows = [];
+                        let dups = 0;
+                        for (const p of (pz || [])) {
+                            if (p.SUB_POS != null && seen.has(p.SUB_POS)) { dups++; continue; }
+                            seen.add(p.SUB_POS);
+                            rows.push(p);
+                        }
+                        if (dups > 0) {
+                            dataStored.alert.title = this.$t('WARNING');
+                            dataStored.alert.desc = this.$t('layout.dupRows', { n: dups, floor: this.$route.params.floorMag });
+                            dataStored.alert.type = 'warning';
+                        }
+                        this.listPz = rows;
                         //console.log(JSON.stringify(pz,null,4))
 
                         //alert(JSON.stringify(this.listPz,null,4))
@@ -379,7 +399,11 @@
             },
             saveAllData(){
                 for (let i=0; i<this.listPz.length; i++){
-                    fetch(dataStored.server+'api/conf/position/updatePositionStatus/'+this.$route.params.floorMag+"/"+(i+1)+"/"+this.listPz[i].status ,{ method: 'GET'})
+                    // (dup-guard 4/9) si scrive il SUB_POS REALE della riga,
+                    // non (i+1): con buchi/anomalie l'indice colpiva la tasca
+                    // sbagliata (e SUB_POS oltre il massimo, no-op silenziosi)
+                    const subPos = this.listPz[i].SUB_POS != null ? this.listPz[i].SUB_POS : (i+1);
+                    fetch(dataStored.server+'api/conf/position/updatePositionStatus/'+this.$route.params.floorMag+"/"+subPos+"/"+this.listPz[i].status ,{ method: 'GET'})
                         .then( response => {
                             if (!response.ok) {
                                 throw new Error('Network response was not ok');

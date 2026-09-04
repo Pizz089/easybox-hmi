@@ -75,12 +75,21 @@ router.get('/updatePositionStatus/:tray_ID/:position/:status', (req, res) => {
 
 router.get('/insertPositionTray', (req, res) => {
 
+	// (dup-guard 4/9) validazione cassetto/posizione + INSERT IDEMPOTENTE:
+	// se la riga (PARENT, SUB_POS) esiste gia' NON si inserisce (KO_DUP).
+	// Chiude i duplicati da salvataggi sovrapposti (doppio tap sul save del
+	// grigliato: la seconda DELETE passava mentre la prima sequenza stava
+	// ancora inserendo). La rigenerazione legittima non cambia: le righe
+	// sono appena state cancellate e la NOT EXISTS e' vera.
+	const dupPred = trayParentPredicate(req.query.TRAY_ID, 'px.PARENT');
+	const subPos = Number(req.query.SUB_POS);
+	if (!dupPred || !Number.isInteger(subPos) || subPos < 1) { res.send("KO_BAD_INPUT"); return; }
 	sql.connect(DBf.configDB, function (err) {
         if (err) {
-            log.error("err insertPosition: " + err); 
+            log.error("err insertPosition: " + err);
             return;
         }
-		
+
 		var request = new sql.Request();
 		// POSITION.Z dei cassetti = 0 per convenzione; l'origine Z è TRAY.Z_CORR
 		// (teaching); la componente pezzo viene dall'anagrafica (Z e Z_PICK del PIECE)
@@ -96,22 +105,29 @@ router.get('/insertPositionTray', (req, res) => {
 					(PARENT, POS, SUB_POS, STATUS, X, Y, Z, X_ROT, Y_ROT, Z_ROT, APPROACH_TYPE, APPROACH_X, APPROACH_Y, APPROACH_Z, Part_Type)
 					SELECT 'TRAY_${req.query.TRAY_ID}',
 						${req.query.POS},
-						${req.query.SUB_POS},
+						${subPos},
 						${req.query.STATUS},
 						${req.query.X}, ${req.query.Y}, 0,
 						COALESCE(t.X_ROT,0), COALESCE(t.Y_ROT,0), COALESCE(t.Z_ROT,0),
 						COALESCE(t.APPROACH_TYPE,3), COALESCE(t.APPROACH_X,100000), COALESCE(t.APPROACH_Y,100000), COALESCE(t.APPROACH_Z,100000),
 						${req.query.PIECE_TYPE}
 					FROM (SELECT TOP 1 X_ROT, Y_ROT, Z_ROT, APPROACH_TYPE, APPROACH_X, APPROACH_Y, APPROACH_Z
-						  FROM TRAY WHERE FLOOR_MAG=${req.query.TRAY_ID}) t;`;
+						  FROM TRAY WHERE FLOOR_MAG=${req.query.TRAY_ID}) t
+					WHERE NOT EXISTS (SELECT 1 FROM [POSITION] px WHERE ${dupPred} AND px.SUB_POS=${subPos});`;
 
         log.info('query ' + query);
         // query to the database and get the records
-        request.query(query, function (err, recordset) {
+        request.query(query, function (err, result) {
             if (err) {
                 log.error("Err query: " + err)
                 res.send("KO")
-            }else
+				return;
+            }
+			const n = result.rowsAffected && result.rowsAffected[0] ? result.rowsAffected[0] : 0;
+			if (n === 0) {
+				log.standard("insertPositionTray KO_DUP: TRAY_" + req.query.TRAY_ID + " SUB_POS " + subPos + " gia' presente");
+				res.send("KO_DUP");
+			} else
 				res.send("OK")
         });
 	});

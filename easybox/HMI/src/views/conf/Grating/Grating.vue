@@ -168,7 +168,7 @@
                          un file di RIFERIMENTO e resta NOMINALE: flusso diretto.
                          saveData e' async: .then, mai '&&' (era sempre vero). -->
                     <button class="pure-button pure-button-primary" @click="saveData().then(() => createModelFile())"
-							:disabled="dataStored.userLevel<0 || grating.SAFEX<minSafeX || grating.SAFEY<minSafeY ">
+							:disabled="dataStored.userLevel<0 || grating.SAFEX<minSafeX || grating.SAFEY<minSafeY || saving">
                         {{ $t("grating.saveAndModel") }}
                     </button>
                     <!--button
@@ -533,6 +533,8 @@ export default {
             minSafeY:0,             //il minimo raggiungibile in base ai dati della pinza
             minBordoX:20,           //bordo minimo dx/sx — (2b-2) diventerà derivato dalle chele  
             minBordoY:20,           //bordo minimo sopra/sotto — (2b-2) diventerà derivato dalle chele
+            // (dup-race 4/9) un solo salvataggio in volo (anti doppio-tap)
+            saving: false,
             // (cavity-clearance) franco cavita' per le uscite di fabbricazione:
             // micron, default la costante a ogni apertura, mai persistito
             cavityUm: CAVITY_CLEARANCE_UM,
@@ -814,44 +816,57 @@ export default {
             }
         },
         async saveData() {
+            // (dup-race 4/9) anti doppio-tap: UN solo salvataggio in volo.
+            // Il doppio tap sul touch faceva partire due delete-then-insert
+            // sovrapposti: la seconda DELETE passava mentre la prima sequenza
+            // stava ancora inserendo -> SUB_POS duplicati (93 righe su 91,
+            // TRAY_12). Il flag governa anche il :disabled dei bottoni.
+            if (this.saving) return;
             // (Task 3, 1/9) BLOCCO ingombro PRIMA di qualsiasi scrittura
             // (header GRATING incluso): griglia fuori dal contorno = tasche
             // sbagliate scritte in silenzio (incidente TRAY_8).
             if (!this.checkGridFit()) return;
-            // (grating-save) ramo grigliato ESISTENTE: guardrail e conferma
-            // PRIMA di qualsiasi scrittura — annullare = zero modifiche,
-            // anche sull'header GRATING (coerenza header/posizioni).
-            if (!this.createNew) {
-                const goAhead = await this.confirmRegenerate();
-                if (!goAhead) return;
-            }
+            this.saving = true;
+            try {
+                // (grating-save) ramo grigliato ESISTENTE: guardrail e conferma
+                // PRIMA di qualsiasi scrittura — annullare = zero modifiche,
+                // anche sull'header GRATING (coerenza header/posizioni).
+                if (!this.createNew) {
+                    const goAhead = await this.confirmRegenerate();
+                    if (!goAhead) return;
+                }
 
-            var cmd = ""
-            if (!this.createNew){
-                //eseguo aggiornamento -> update DB
-                cmd = dataStored.server+'api/conf/grating/updategrating?' + new URLSearchParams( this.grating ).toString();
-            }else{
-                //nuovo grigliato -> insert DB
-                cmd = dataStored.server+'api/conf/grating/insertgrating?' + new URLSearchParams( this.grating ).toString();
+                var cmd = ""
+                if (!this.createNew){
+                    //eseguo aggiornamento -> update DB
+                    cmd = dataStored.server+'api/conf/grating/updategrating?' + new URLSearchParams( this.grating ).toString();
+                }else{
+                    //nuovo grigliato -> insert DB
+                    cmd = dataStored.server+'api/conf/grating/insertgrating?' + new URLSearchParams( this.grating ).toString();
+                }
+                // AWAIT dell'intera catena: il flag saving resta alzato fino
+                // all'ultima insert (prima la funzione tornava subito)
+                await fetch( cmd ,{ method: 'GET'})
+                    .then(response => {
+                        if (!response.ok) {
+                            alert("errore")
+                            throw new Error('Network response was not ok');
+                        }
+                        // (grating-save) posizioni AWAITED prima di navigare via
+                        // (prima: fire-and-forget + push immediato)
+                        return this.savePositions();
+                    })
+                    .then(() => {
+                        this.updateGratingInTray();
+                        this.$router.push('/conf/Gratings');
+                    })
+                    .catch(error => {
+                        console.info(error);
+                        alert(error)
+                    });
+            } finally {
+                this.saving = false;
             }
-            fetch( cmd ,{ method: 'GET'})
-                .then(response => {
-                    if (!response.ok) {
-                        alert("errore")
-                        throw new Error('Network response was not ok');
-                    }
-                    // (grating-save) posizioni AWAITED prima di navigare via
-                    // (prima: fire-and-forget + push immediato)
-                    return this.savePositions();
-                })
-                .then(() => {
-                    this.updateGratingInTray();
-                    this.$router.push('/conf/Gratings');
-                })
-                .catch(error => {
-                    console.info(error);
-                    alert(error)
-                });
         },
         // (grating-save) guardrail pre-rigenerazione del cassetto:
         //  - BLOCCO se una posizione referenzia un ordine ATTIVO
@@ -880,6 +895,30 @@ export default {
                 if (busy) {
                     alert(this.$t('grating.saveBlockedOrder'));
                     return false;
+                }
+                // (taratura 4/9) le righe a DB possono essere state TARATE in
+                // cella misurando il cassetto (TRAY_12: passi reali 61/82 vs
+                // 60/80 dell'header). La rigenerazione le SOVRASCRIVEREBBE con
+                // i passi teorici del form: il robot lavora su quelle
+                // coordinate, un errore = COLLISIONE. Se i passi reali non
+                // coincidono con quelli che verranno generati -> conferma
+                // FORTE dedicata. Convenzione: SUB_POS consecutive avanzano
+                // sull'asse robot Y (passo = pezzo.X+SAFEX), le colonne su X
+                // (passo = pezzo.Y+SAFEY).
+                const sorted = mine.slice().sort((a, b) => a.SUB_POS - b.SUB_POS);
+                if (sorted.length > 1) {
+                    const realW = Math.abs(Number(sorted[1].Y) - Number(sorted[0].Y));
+                    const colRow = sorted.find(p => p.X != sorted[0].X);
+                    const realH = colRow ? Math.abs(Number(colRow.X) - Number(sorted[0].X)) : 0;
+                    const genW = Math.round((this.x + this.grating.SAFEX) * 1000);
+                    const genH = Math.round((this.y + this.grating.SAFEY) * 1000);
+                    const TOL = 500;   // 0.5 mm
+                    if (Math.abs(realW - genW) > TOL || (realH > 0 && Math.abs(realH - genH) > TOL)) {
+                        if (!confirm(this.$t('grating.taughtMismatch', {
+                            realW: realW / 1000, realH: realH / 1000,
+                            genW: genW / 1000, genH: genH / 1000,
+                        }))) return false;
+                    }
                 }
                 const notEmpty = mine.filter(p => p.STATUS != 2).length;
                 return confirm(this.$t('grating.confirmRegenerate', { n: mine.length, floor: floor, m: notEmpty }));

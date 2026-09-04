@@ -1,5 +1,29 @@
 # Appunti cella — interventi manuali da eseguire in impianto
 
+## [ ] 2026-09-04 — UNIQUE (PARENT, SUB_POS) su [POSITION] — A CELLA FERMA
+
+Script: `serverDati/scripts/position-parent-subpos-unique.sql` (idempotente,
+rollback commentato). Chiude alla radice i SUB_POS duplicati (93 righe per 91
+tasche sul TRAY_12: salvataggi grigliato sovrapposti; l'HMI ora ha insert
+idempotente + flag anti doppio-tap, l'indice e' la cintura).
+
+**ESEGUIRE SOLO A CELLA FERMA**: la CREATE INDEX prende un lock su [POSITION]
+e le scritture PLC in volo possono farla fallire o restarne bloccate.
+
+```
+sqlcmd -S .\SQLEXPRESS -E -d ADMG -i position-parent-subpos-unique.sql
+```
+
+Se lo script elenca duplicati: bonificare con la CTE commentata dentro lo
+script e rieseguire. Verifica post: `sp_helpindex 'dbo.POSITION'` deve
+mostrare `UX_POSITION_PARENT_SUBPOS`.
+
+Nota trigger (4/9, letto con -E): `POSITION_trig` e' solo logging AFTER
+UPDATE,DELETE verso [log] — non c'entra coi duplicati. Difetti noti, NON
+toccati: INNER JOIN inserted/deleted (i DELETE puri non vengono loggati) e
+una INSERT sincrona per ogni UPDATE del PLC (~7.000 righe/giorno in
+commissioning): da rivedere a parte.
+
 > Regola impianto: le modifiche allo schema DB della cella NON sono
 > automatizzate. Ogni voce qui sotto va eseguita a mano da Dario, spuntata
 > con data, e rimossa solo quando verificata.

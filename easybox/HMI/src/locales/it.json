@@ -60,6 +60,7 @@
     "retry": "Riprova"
   },
   "layout": {
+    "dupRows": "ANOMALIA sul cassetto {floor}: {n} righe duplicate a database (stesso SUB_POS). Mostrata una sola tasca per posizione — bonificare [POSITION] prima di produrre: i duplicati falsano il conteggio del PLC.",
     "reset": {
       "button": "Azzera stato cassetto",
       "title": "Azzerare lo stato del cassetto {floor}?",
@@ -234,6 +235,7 @@
     "redistribute": "Ridistribuisci le posizioni",
     "confirmRegenerate": "Le {n} posizioni del cassetto {floor} verranno rigenerate ({m} non vuote andranno perse). Continuare?",
     "saveBlockedOrder": "Rigenerazione bloccata: una posizione del cassetto è legata a un ordine ATTIVO. Chiudere o abortire l'ordine prima di rigenerare il grigliato.",
+    "taughtMismatch": "ATTENZIONE: le tasche a database risultano TARATE in cella (passi reali {realW} / {realH} mm) e NON coincidono con quelle che verranno rigenerate ({genW} / {genH} mm). Il robot lavora sulle coordinate attuali: sovrascriverle può causare una COLLISIONE. Rigenerare comunque?",
     "deleteBlockedOrder": "Cancellazione bloccata: una posizione del cassetto è legata a un ordine ATTIVO. Chiudere o abortire l'ordine prima di cancellare il grigliato.",
     "outOfTray": "Griglia FUORI dal contorno del cassetto: {detail}. Salvataggio annullato, nessuna tasca scritta.",
     "outOfTrayAxis": "sfora di {mm} mm sull'asse {axis}",
