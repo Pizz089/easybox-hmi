@@ -1,8 +1,11 @@
 <script setup>
     import { RouterLink, RouterView } from 'vue-router'
     import { dataStored } from '../../../data.js'
-    import { KO_ACTIVE_ORDER } from '../../../util/errorCodes.js'
-    import { drawingToRobot, gridFit, ROBOT_AXIS_ALONG } from '../../../util/gratingAxes.js'
+    import { KO_DUP_NAME } from '../../../util/errorCodes.js'
+    import { gridFit, ROBOT_AXIS_ALONG } from '../../../util/gratingAxes.js'
+    // (grating-model) griglia calcolata dalla util condivisa con la gestione
+    // cassetti: qui serve SOLO per l'anteprima del modello
+    import { buildGrid, gridCenters, gripperMinSafe } from '../../../util/gratingGrid.js'
     import { cavityRect, cavityRadius, applyCavityClearanceToSvg,
              CAVITY_CLEARANCE_UM, CAVITY_CLEARANCE_MAX_UM, clearanceMmToUm, clearanceUmToMm, isValidClearanceUm } from '../../../util/cavityClearance.js'
     import { dedupeGrippers } from '../../../util/grippers.js'
@@ -44,44 +47,24 @@
                     <label for="aligned-foo">{{$t('grating.height')}}</label>
                     <input type="number" id="aligned-foo" name="height" v-model="grating.height" placeholder="" :readonly="dataStored.userLevel<0" /> mm
                 </div-->
-                <div class="pure-u-1">
+                <!-- (grating-model) il grigliato e' un MODELLO: qui non si
+                     sceglie e non si associa nessun cassetto. L'anteprima usa
+                     le misure della cassettiera (cassetto di riferimento);
+                     l'associazione si fa dalla pagina Cassetti. -->
+                <div class="pure-u-1 model-info">
                     <label class="pure-u-1">{{$t('grating.tray')}}</label>
-                    <select class="pure-u-1" 
-                        name="trayList" 
-                        v-model="grating.trayIndex" 
-                        @change="onChangeTrayList($event)" 
-                        :readonly="dataStored.userLevel<0"
-                        :disabled="grating.trayIndex>0 && gratingAssociated">
-
-                        <option value="0"> </option>
-                        <template v-for="(t,index) in trayList" :key="t.ID">
-                            <option :value="index+1"
-                                    :selected="grating.trayIndex==index+1"
-                                    :disabled="(t.FAMILY.trim().length>0||t.FLOOR_MAG<=0)"
-                                    :class="{'optionDeleted':t.FAMILY.trim().length>0}"> 
-                                    {{ t.FLOOR_MAG>0?t.FLOOR_MAG:'OUT' }} - {{ t.DESCR }} 
-                                    <span v-if="t.FAMILY.trim().length>0">&nbsp;{{$t('alreadyAssociated')}}</span>
-                                    <!-- :class="{'optionDeleted':t.FAMILY.trim()!=''}"> -->
-                            </option>
-                        </template>                  
-                    </select>
-                    <button class="pure-button-primary pure-u-1 associate-btn"
-                        :disabled="grating.trayIndex==0 || grating.NAME.trim().length<=0 || gratingAssociated || !createNew"
-                        @click="setGratingAssociated()" > <!-- updateGratingInTray-->
-                        <span > <!-- v-if="!gratingAssociated"-->
-                            {{$t("grating.associate")}}
-                        </span>
-                    </button>
-                    <!--button v-if="grating.trayIndex>=0" @click="grating.trayIndex=-1">
-                            {{$t("grating.disassociate")}}
-                            //bisogna anche cancellare le posizioni
-                    </button-->
+                    <div class="model-hint">{{ $t('grating.modelHint', { w: grating.width, h: grating.height }) }}</div>
+                    <div class="model-hint" v-if="!createNew">
+                        <span v-if="usedByFloors.length">{{ $t('grating.usedBy', { floors: usedByFloors.join(', ') }) }}</span>
+                        <span v-else>{{ $t('grating.usedByNone') }}</span>
+                    </div>
+                    <div class="model-hint model-warn" v-if="traySizesDiffer">{{ $t('grating.traySizesDiffer') }}</div>
                 </div>
                 <!-- -----------------  -->
                 <div class="pure-u-1">
                     <label class="pure-u-1">{{$t('grating.part')}}</label>
-                    <select class="pure-u-1" name="partList" v-model="grating.pieceIndex" @change="onChange($event)" 
-                        :readonly="dataStored.userLevel<0 || (!gratingAssociated && createNew)">
+                    <select class="pure-u-1" name="partList" v-model="grating.pieceIndex" @change="onChange($event)"
+                        :readonly="dataStored.userLevel<0">
                         <option value="0"> </option>
                         <template v-for="(p,index) in partList" :key="p.ID">
                             <option :value="index+1" :selected="grating.pieceIndex==index+1">
@@ -93,8 +76,8 @@
                 <!--p>{{ partList[grating.partList] }}</p-->
                 <div class="pure-u-1">
                     <label class="pure-u-1">{{$t('Pinza')}}</label>
-                    <select class="pure-u-1" name="gripperList" v-model="grating.gripperIndex" @change="onChangeGripper($event)" 
-                        :readonly="dataStored.userLevel<0 || (!gratingAssociated && createNew)">
+                    <select class="pure-u-1" name="gripperList" v-model="grating.gripperIndex" @change="onChangeGripper($event)"
+                        :readonly="dataStored.userLevel<0">
                         <option value="0"> </option>
                         <!-- (gripper-twins) gripperList e' gia' UNA voce per pinza
                              fisica (util/grippers.js): via il filtro legacy
@@ -505,14 +488,16 @@ export default {
                 DESCR:'',
                 SAFEX:5,
                 SAFEY:5,
-				TRAY_ID:0, 
-				GRIPPER_ID:0, 
+				TRAY_ID:0,      // (grating-model) colonna morta: sempre 0, il legame e' TRAY.FAMILY
+				GRIPPER_ID:0,
 				PIECE_ID:0,
+                // (grating-model) trayIndex = cassetto di RIFERIMENTO per le
+                // misure dell'anteprima (1-based su trayList), scelto in
+                // automatico da getTrayList: NON e' un'associazione.
                 trayIndex:0,
                 gripperIndex:0,
                 pieceIndex:0
             },
-            gratingAssociated:false,
             createNew:false,
             n_cln:0,
             n_row:0,
@@ -610,7 +595,15 @@ export default {
                 })
                 .then(data => {
                     this.trayList=data;
-                    //console.log("trayList: "+JSON.stringify(this.trayList,null,4))
+                    // (grating-model) cassetto di RIFERIMENTO per le misure
+                    // dell'anteprima: il primo piano reale con misure valide
+                    // (la cassettiera e' uniforme: 820x610 su tutti i 12).
+                    const ref = (data || []).findIndex(t => t.FLOOR_MAG > 0 && t.X > 0 && t.Y > 0);
+                    if (ref >= 0) {
+                        this.grating.trayIndex = ref + 1;
+                        this.grating.width  = data[ref].X / 1000;
+                        this.grating.height = data[ref].Y / 1000;
+                    }
                 })
                 .catch(error => {
                     console.info(error);
@@ -630,24 +623,17 @@ export default {
                     //console.log(JSON.stringify(data,null,4))
                     this.gratingList=data;
                     //scritto cosi alle volte non riesco a riempire tutti i campi per un ritardo di risposta dal DB
-                    this.grating.TRAY_ID=data[0].TRAY_ID; 
-                    this.grating.PIECE_ID=data[0].PIECE_ID; 
-                    this.grating.GRIPPER_ID=data[0].GRIPPER_ID; 
-                    
-                    this.grating.SAFEX=data[0].SAFEX;  
+                    // (grating-model) TRAY_ID ignorato: il modello non ha cassetto;
+                    // le misure dell'anteprima vengono dal cassetto di riferimento
+                    // scelto in getTrayList.
+                    this.grating.TRAY_ID=0;
+                    this.grating.PIECE_ID=data[0].PIECE_ID;
+                    this.grating.GRIPPER_ID=data[0].GRIPPER_ID;
+
+                    this.grating.SAFEX=data[0].SAFEX;
                     this.grating.SAFEY=data[0].SAFEY;
-                    
-                    let index=0;
-                    this.trayList.forEach(tray => {
-                        //console.log(index +" : "+tray.FLOOR_MAG +" "+tray.ID +" - "+ this.grating.TRAY_ID)
-                        if (tray.ID == this.grating.TRAY_ID){
-                            // (2c) indice 1-based, allineato a select/onChange/savePositions
-                            this.grating.trayIndex = index+1;
-                            //console.log("--------- this.grating.trayIndex: "+this.grating.trayIndex)
-                        }
-                        index++;
-                    });
-                    index=1;
+
+                    let index=1;
                     // (gripper-twins) niente piu' decodifica dell'ID composito
                     // legacy (ID*1000+subID): GRATING.GRIPPER_ID e' l'ID canonico
                     this.gripperList.forEach(gripper => {
@@ -665,17 +651,6 @@ export default {
                         }
                         index++;
                     });
-                    if (this.grating.trayIndex > 0 && 
-                        typeof (this.trayList[this.grating.trayIndex-1].X) !== 'undefined'){
-                        if (this.trayList[this.grating.trayIndex-1].X>0)
-                            this.grating.width=this.trayList[this.grating.trayIndex-1].X/1000;
-                        if (this.trayList[this.grating.trayIndex-1].Y>0)
-                            this.grating.height=this.trayList[this.grating.trayIndex-1].Y/1000;
-                    }
-                    // (2c) il grigliato caricato con TRAY_ID e' gia' associato:
-                    // select cassetto bloccata e stato coerente col bottone
-                    if (this.grating.TRAY_ID > 0)
-                        this.gratingAssociated = true;
                     this.grating.DESCR=this.gratingList[0].DESCR;
                     this.grating.NAME=this.gratingList[0].NAME;
                     // (fase 2b, fix reattivita') ricalcolo ESPLICITO a valle
@@ -698,17 +673,26 @@ export default {
             this.x=this.partList[this.grating.pieceIndex-1].X/1000 ;
             this.y=this.partList[this.grating.pieceIndex-1].Y/1000 ;
             this.prismatic=this.partList[this.grating.pieceIndex-1].PRISMA;
-            if (this.prismatic)
-                this.calculatePrisma();
-            else
-                this.calculateCylinder();
- 
-            this.minSafeX=this.gripperList[this.grating.gripperIndex-1].STROKE_CLAW/1000+this.gripperList[this.grating.gripperIndex-1].TICKNESS_CLAW/1000;
-            if (this.prismatic){
-                this.minSafeY=this.gripperList[this.grating.gripperIndex-1].TICKNESS_CLAW/1000;
-            }else{
-                this.minSafeY=this.gripperList[this.grating.gripperIndex-1].STROKE_CLAW/1000+this.gripperList[this.grating.gripperIndex-1].TICKNESS_CLAW/1000;
-            }
+            // (grating-model) griglia dalla util condivisa (formula grating-
+            // pitch invariata: passo = pezzo + distanza, fencepost su area
+            // utile, residuo centrato). Stessa funzione che usa il dialog
+            // "Associa/Rigenera" della gestione cassetti: anteprima e tasche
+            // scritte NON possono divergere.
+            const g = buildGrid({
+                pieceX: this.x, pieceY: this.y, prismatic: this.prismatic,
+                safeX: this.grating.SAFEX, safeY: this.grating.SAFEY,
+                width: this.grating.width, height: this.grating.height,
+                minBorderX: this.minBordoX, minBorderY: this.minBordoY,
+            });
+            this.n_cln = g.n_cln; this.n_row = g.n_row;
+            this.spaceNullX = g.spaceNullX; this.spaceNullY = g.spaceNullY;
+            this.listPz = g.listPz;
+            if (this.prismatic) { this.dim_x = g.dim_x; this.dim_y = g.dim_y; }
+            else this.radius = g.radius;
+
+            const ms = gripperMinSafe(this.gripperList[this.grating.gripperIndex-1], this.prismatic);
+            this.minSafeX = ms.minSafeX;
+            this.minSafeY = ms.minSafeY;
             // (2c) pavimento post-calcolo dei minimi: il valore arrivato da DB
             // (o digitato prima che i minimi fossero noti) risale al minimo;
             // il set innesca il watcher che ricalcola con il valore corretto.
@@ -716,78 +700,10 @@ export default {
             if (this.grating.SAFEY < this.minSafeY) this.grating.SAFEY = this.minSafeY;
             this.grating.ID=this.$route.params.grating_ID;
         },
-        calculateCylinder(){
-            // (grating-pitch) FORMULA DICHIARATA:
-            //   passo X (centro-centro) = pezzo.x + SAFEX
-            //   passo Y (centro-centro) = pezzo.y + SAFEY
-            // SAFEX/SAFEY = DISTANZA TRA I PEZZI (riqualificata, gia'
-            // persistita a DB: zero cambi schema); la sicurezza pinza vive
-            // nel clamp min (minSafeX/minSafeY). Contributo chele ELIMINATO
-            // (era sempre 0: nessun input lo alimentava, e pesava 2x nel
-            // divisore ma 1x nel passo). n per asse = fencepost corretto:
-            // n pezzi occupano n*pezzo + (n-1)*distanza nell'area utile
-            // (width/height - 2*minBordo); il residuo centra la griglia
-            // (margini simmetrici, 2b). corrX/corrY morti rimossi.
-            const stepX = this.x + this.grating.SAFEX;
-            const stepY = this.y + this.grating.SAFEY;
-            const utilX = this.grating.width  - 2*this.minBordoX;
-            const utilY = this.grating.height - 2*this.minBordoY;
-            this.n_cln = (this.x>0 && stepX>0) ? Math.max(0, Math.floor((utilX + this.grating.SAFEX)/stepX)) : 0;
-            this.n_row = (this.y>0 && stepY>0) ? Math.max(0, Math.floor((utilY + this.grating.SAFEY)/stepY)) : 0;
-            this.spaceNullX = this.n_cln>0 ? utilX - this.n_cln*this.x - (this.n_cln-1)*this.grating.SAFEX : utilX;
-            this.spaceNullY = this.n_row>0 ? utilY - this.n_row*this.y - (this.n_row-1)*this.grating.SAFEY : utilY;
-
-            for (let r=1; r<=this.n_row; r++){
-                for (let c=1;c<=this.n_cln; c++){
-                    let obj = {}    // {prisma:false, x:700, y:500, status:2},
-                    obj.prisma = false;
-                    // centro cerchio: spigolo prisma equivalente + pezzo/2;
-                    // margini simmetrici: residuo/2 per lato
-                    obj.x=-this.minBordoX+this.grating.width+this.grating.SAFEX-stepX*c+this.x/2-this.spaceNullX/2;
-                    obj.y=-this.minBordoY+this.grating.height+this.grating.SAFEY-stepY*r+this.y/2-this.spaceNullY/2;
-                    obj.status=2;
-                    this.listPz.push(obj);
-                }
-            }
-            this.radius=this.x/2;
-        },
-        calculatePrisma(){
-            // (grating-pitch) stessa formula dichiarata di calculateCylinder:
-            //   passo = pezzo + distanza (SAFEX/SAFEY), fencepost su area
-            //   utile, residuo centrato. obj.x/y = spigolo del prisma.
-            const stepX = this.x + this.grating.SAFEX;
-            const stepY = this.y + this.grating.SAFEY;
-            const utilX = this.grating.width  - 2*this.minBordoX;
-            const utilY = this.grating.height - 2*this.minBordoY;
-            this.n_cln = (this.x>0 && stepX>0) ? Math.max(0, Math.floor((utilX + this.grating.SAFEX)/stepX)) : 0;
-            this.n_row = (this.y>0 && stepY>0) ? Math.max(0, Math.floor((utilY + this.grating.SAFEY)/stepY)) : 0;
-            this.spaceNullX = this.n_cln>0 ? utilX - this.n_cln*this.x - (this.n_cln-1)*this.grating.SAFEX : utilX;
-            this.spaceNullY = this.n_row>0 ? utilY - this.n_row*this.y - (this.n_row-1)*this.grating.SAFEY : utilY;
-
-            for (let r=1; r<=this.n_row; r++){
-                for (let c=1;c<=this.n_cln; c++){
-                    let obj = {}    // {prisma:true, x:700, y:500, status:2},
-                    obj.prisma = true;
-                    // margini simmetrici: residuo/2 per lato
-                    obj.x=-this.minBordoX+this.grating.width+this.grating.SAFEX-stepX*c-this.spaceNullX/2;
-                    obj.y=-this.minBordoY+this.grating.height+this.grating.SAFEY-stepY*r-this.spaceNullY/2;
-                    obj.status=2;
-                    this.listPz.push(obj);
-                }
-            }
-            this.dim_x=this.x;
-            this.dim_y=this.y;
-        },
         onChange(event) {
 			this.grating.PIECE_ID=this.partList[this.grating.pieceIndex-1].ID;
             this.calculateData();
             this.distribute();
-        },
-        onChangeTrayList(){
-            this.grating.width=this.trayList[this.grating.trayIndex-1].X/1000;
-            this.grating.height=this.trayList[this.grating.trayIndex-1].Y/1000;  
-			this.grating.TRAY_ID=this.trayList[this.grating.trayIndex-1].ID;			
-            this.calculateData();
         },
         onChangeGripper(){
             this.calculateData();
@@ -807,35 +723,20 @@ export default {
             // edita a mano se vuole piu' aria). Ricalcolo puro -> IDEMPOTENTE.
             this.calculateData();
         },
-        setGratingAssociated(){
-            this.gratingAssociated=!this.gratingAssociated;
-            if (!this.gratingAssociated) {
-                this.grating.pieceIndex=0;
-                this.grating.gripperIndex=0;
-                this.calculateData();
-            }
-        },
         async saveData() {
-            // (dup-race 4/9) anti doppio-tap: UN solo salvataggio in volo.
-            // Il doppio tap sul touch faceva partire due delete-then-insert
-            // sovrapposti: la seconda DELETE passava mentre la prima sequenza
-            // stava ancora inserendo -> SUB_POS duplicati (93 righe su 91,
-            // TRAY_12). Il flag governa anche il :disabled dei bottoni.
+            // (dup-race 4/9) anti doppio-tap: UN solo salvataggio in volo
+            // (governa anche il :disabled del bottone).
             if (this.saving) return;
-            // (Task 3, 1/9) BLOCCO ingombro PRIMA di qualsiasi scrittura
-            // (header GRATING incluso): griglia fuori dal contorno = tasche
-            // sbagliate scritte in silenzio (incidente TRAY_8).
+            // (grating-model) "Salva" scrive SOLO l'header del MODELLO
+            // (insert/update GRATING): NESSUNA tasca, NESSUN cassetto toccato.
+            // Le tasche nascono/muoiono solo dalla gestione cassetti
+            // (Associa / Sostituisci / Rigenera / Dissocia). Il check di
+            // ingombro resta come avviso sul cassetto di riferimento: un
+            // modello che non entra nella cassettiera non ha senso salvarlo.
             if (!this.checkGridFit()) return;
+            if (this.grating.NAME.trim().length == 0) { alert(this.$t('grating.nameRequired')); return; }
             this.saving = true;
             try {
-                // (grating-save) ramo grigliato ESISTENTE: guardrail e conferma
-                // PRIMA di qualsiasi scrittura — annullare = zero modifiche,
-                // anche sull'header GRATING (coerenza header/posizioni).
-                if (!this.createNew) {
-                    const goAhead = await this.confirmRegenerate();
-                    if (!goAhead) return;
-                }
-
                 var cmd = ""
                 if (!this.createNew){
                     //eseguo aggiornamento -> update DB
@@ -844,98 +745,26 @@ export default {
                     //nuovo grigliato -> insert DB
                     cmd = dataStored.server+'api/conf/grating/insertgrating?' + new URLSearchParams( this.grating ).toString();
                 }
-                // AWAIT dell'intera catena: il flag saving resta alzato fino
-                // all'ultima insert (prima la funzione tornava subito)
-                await fetch( cmd ,{ method: 'GET'})
-                    .then(response => {
-                        if (!response.ok) {
-                            alert("errore")
-                            throw new Error('Network response was not ok');
-                        }
-                        // (grating-save) posizioni AWAITED prima di navigare via
-                        // (prima: fire-and-forget + push immediato)
-                        return this.savePositions();
-                    })
-                    .then(() => {
-                        this.updateGratingInTray();
-                        this.$router.push('/conf/Gratings');
-                    })
-                    .catch(error => {
-                        console.info(error);
-                        alert(error)
-                    });
+                const r = await fetch( cmd ,{ method: 'GET'});
+                if (!r.ok) { alert("errore"); throw new Error('Network response was not ok'); }
+                // body = error contract (KO_DUP_NAME: NAME e' la chiave del
+                // legame TRAY.FAMILY, deve essere unico)
+                const esito = (await r.text()).trim();
+                if (esito == KO_DUP_NAME) { alert(this.$t('grating.dupName', { name: this.grating.NAME.trim() })); return; }
+                if (esito != 'OK') { alert('KO ['+esito+']'); return; }
+                this.$router.push('/conf/Gratings');
+            } catch (error) {
+                console.info(error);
+                alert(error)
             } finally {
                 this.saving = false;
-            }
-        },
-        // (grating-save) guardrail pre-rigenerazione del cassetto:
-        //  - BLOCCO se una posizione referenzia un ordine ATTIVO
-        //    (Order_ID != 0 con WORKORDERS.STATUS == 3);
-        //  - altrimenti conferma esplicita SEMPRE, con conteggi REALI delle
-        //    righe a DB del cassetto — perimetro = PARENT del floor (stesso
-        //    PARENT = 'TRAY_{floor}' della delete backend, helper trayParent),
-        //    incluse le orfane con POS/PARENT divergenti (bug D2): dopo il
-        //    save il cassetto avra' SOLO le N righe nuove;
-        //  - verifica impossibile -> annulla (MAI cancellare alla cieca).
-        async confirmRegenerate() {
-            const tray = this.trayList[this.grating.trayIndex-1];
-            const floor = tray ? tray.FLOOR_MAG : 0;
-            if (!(floor > 0)) return true;   // nessun cassetto: niente da rigenerare
-            try {
-                const positions = await fetch(dataStored.server+'api/conf/position/show/all',{ method: 'GET'})
-                    .then(r => { if (!r.ok) throw new Error('Network response was not ok'); return r.json(); });
-                // equivalente client di PARENT = 'TRAY_{floor}' (PARENT nchar
-                // paddato: il primo token trim-mato e' 'TRAY_{floor}')
-                const mine = (positions || []).filter(p => ((p.PARENT || '').trim().split(' ')[0]) == 'TRAY_'+floor);
-                if (mine.length == 0) return true;
-                const orders = await fetch(dataStored.server+'api/order/show/all',{ method: 'GET'})
-                    .then(r => { if (!r.ok) throw new Error('Network response was not ok'); return r.json(); });
-                const activeIds = new Set((orders || []).filter(o => o.STATUS == 3).map(o => o.ID));
-                const busy = mine.some(p => p.Order_ID && activeIds.has(p.Order_ID));
-                if (busy) {
-                    alert(this.$t('grating.saveBlockedOrder'));
-                    return false;
-                }
-                // (taratura 4/9) le righe a DB possono essere state TARATE in
-                // cella misurando il cassetto (TRAY_12: passi reali 61/82 vs
-                // 60/80 dell'header). La rigenerazione le SOVRASCRIVEREBBE con
-                // i passi teorici del form: il robot lavora su quelle
-                // coordinate, un errore = COLLISIONE. Se i passi reali non
-                // coincidono con quelli che verranno generati -> conferma
-                // FORTE dedicata. Convenzione: SUB_POS consecutive avanzano
-                // sull'asse robot Y (passo = pezzo.X+SAFEX), le colonne su X
-                // (passo = pezzo.Y+SAFEY).
-                const sorted = mine.slice().sort((a, b) => a.SUB_POS - b.SUB_POS);
-                if (sorted.length > 1) {
-                    const realW = Math.abs(Number(sorted[1].Y) - Number(sorted[0].Y));
-                    const colRow = sorted.find(p => p.X != sorted[0].X);
-                    const realH = colRow ? Math.abs(Number(colRow.X) - Number(sorted[0].X)) : 0;
-                    const genW = Math.round((this.x + this.grating.SAFEX) * 1000);
-                    const genH = Math.round((this.y + this.grating.SAFEY) * 1000);
-                    const TOL = 500;   // 0.5 mm
-                    if (Math.abs(realW - genW) > TOL || (realH > 0 && Math.abs(realH - genH) > TOL)) {
-                        if (!confirm(this.$t('grating.taughtMismatch', {
-                            realW: realW / 1000, realH: realH / 1000,
-                            genW: genW / 1000, genH: genH / 1000,
-                        }))) return false;
-                    }
-                }
-                const notEmpty = mine.filter(p => p.STATUS != 2).length;
-                return confirm(this.$t('grating.confirmRegenerate', { n: mine.length, floor: floor, m: notEmpty }));
-            } catch (e) {
-                console.info(e);
-                alert(this.$t('grating.saveCheckFailed'));
-                return false;
             }
         },
         // Centri tasca in coordinate DISEGNO {w,h} (mm): w lungo width, h
         // lungo height, ordine = SUB_POS. Adapter unico per drawingToRobot /
         // gridFit (la convenzione assi sta in util/gratingAxes.js).
         pocketCentersWH() {
-            return this.listPz.map(p => ({
-                w: p.prisma ? this.grating.width  - (p.x + this.dim_x/2) : this.grating.width  - p.x,
-                h: p.prisma ? this.grating.height - (p.y + this.dim_y/2) : this.grating.height - p.y,
-            }));
+            return gridCenters(this.listPz, { width: this.grating.width, height: this.grating.height, dim_x: this.dim_x, dim_y: this.dim_y });
         },
         // (Task 3, 1/9) ingombro griglia vs contorno, in coordinate DISEGNO
         // (finestra fissa [0,width] x [0,height], mm): lo sforo lungo width e'
@@ -959,98 +788,6 @@ export default {
             if (fit.overH > 0) detail.push(this.$t('grating.outOfTrayAxis', { mm: Math.ceil(fit.overH), axis: ROBOT_AXIS_ALONG.height }));
             alert(this.$t('grating.outOfTray', { detail: detail.join(', ') }));
             return false;
-        },
-        async savePositions() {
-            // (grating-save) grigliato ESISTENTE: DELETE-THEN-INSERT.
-            // L'update per SUB_POS non poteva ne' cancellare le righe
-            // eccedenti ne' creare le nuove, e con PARENT/POS storici
-            // divergenti era un no-op TOTALE con risposta OK (bug 91@60).
-            // La delete usa deletePositionsTray: PARENT = 'TRAY_{floor}'
-            // (helper trayParent backend) — sparisce OGNI riga del cassetto;
-            // poi SOLO insert delle N posizioni correnti.
-            // LIMITE DICHIARATO — NON ATOMICO (due endpoint distinti): se un
-            // insert fallisce dopo la delete lo stato e' incompleto ma
-            // RECUPERABILE ripetendo il salvataggio (alert esplicito).
-            const floorMag = this.trayList[this.grating.trayIndex-1].FLOOR_MAG;
-            // (grating-axis-swap-3) coordinate robot dall'adapter + util
-            // condivisa: origine = tasca 1, Y lungo width (SUB_POS), X lungo
-            // height (colonne). Riscontro TRAY_9 validato sul robot (1/9):
-            // tasca1 (50000,-65000), 2 (50000,-5000), 13 (50000,655000),
-            // 14 (130000,-65000), 91 (530000,655000).
-            const robotPts = drawingToRobot(this.pocketCentersWH());
-            if (!this.createNew) {
-                try {
-                    const del = await fetch(dataStored.server+'api/conf/position/deletePositionsTray/'+floorMag ,{ method: 'delete'});
-                    if (!del.ok) throw new Error('Network response was not ok');
-                    // (tray-parent-predicate) la route ora RISPONDE: prima
-                    // restava muta (res.send commentati) e questo await non
-                    // tornava MAI — il ciclo di insert qui sotto era
-                    // irraggiungibile e il cassetto restava senza tasche.
-                    // Body = error contract: la guardia server-side puo'
-                    // bloccare su ordine attivo.
-                    const esito = (await del.text()).trim();
-                    if (esito == KO_ACTIVE_ORDER) {
-                        alert(this.$t('grating.saveBlockedOrder'));
-                        return;
-                    }
-                    if (esito != 'OK') throw new Error('delete posizioni ['+esito+']');
-                } catch (e) {
-                    console.info(e);
-                    alert(this.$t('grating.saveIncomplete'));
-                    return;
-                }
-            }
-            let failed = 0;
-            for (let i=0; i<this.listPz.length; i++){
-                let pos={};
-                pos.SUB_POS=i+1;
-                pos.POS=this.trayList[this.grating.trayIndex-1].MAG;
-                pos.TRAY_ID=floorMag;
-                pos.PIECE_TYPE=this.partList[this.grating.pieceIndex-1].ID;
-                pos.STATUS=2;  //EMPTY
-                pos.SAFEX=this.grating.SAFEX
-                pos.SAFEY=this.grating.SAFEY
-
-                pos.X = robotPts[i].X;
-                pos.Y = robotPts[i].Y;   // micron, gia' in convenzione robot
-
-                pos.EASYBOX = dataStored.EasyBox;
-
-                // SEMPRE insert: dopo la delete non esistono righe da
-                // aggiornare (il vecchio ramo updatePositionTray muore qui;
-                // l'endpoint resta per GratingTest/ImportGrating)
-                const cmd = dataStored.server+'api/conf/position/insertPositionTray?' + new URLSearchParams( pos ).toString();
-                try {
-                    const r = await fetch( cmd ,{ method: 'GET'});
-                    const body = r.ok ? await r.text() : 'KO';
-                    if (body != 'OK') failed++;
-                } catch (e) {
-                    console.info(e);
-                    failed++;
-                }
-            }
-            if (failed > 0)
-                alert(this.$t('grating.saveIncomplete'));
-        },
-        updateGratingInTray() {
-            var cmd = dataStored.server+'api/conf/tray/updateGratingInTray?' + new URLSearchParams( 
-                { 
-                    ID      : this.grating.TRAY_ID,
-                    FAMILY  : this.grating.NAME
-                }
-             ).toString();
-            
-            fetch( cmd ,{ method: 'GET'})
-                .then(response => {
-                    if (!response.ok) {
-                        alert("Error: Network response was not ok")
-                        throw new Error('Network response was not ok');
-                    }
-                 })
-                .catch(error => {
-                    console.info(error);
-                    alert(error)
-                });
         },
         // ===== (cavity-clearance) franco cavita' scelto all'export =====
         // Un solo dialog per le due uscite di FABBRICAZIONE (DXF, stampa PDF):
@@ -1211,6 +948,24 @@ export default {
         }
     },
     computed:{
+        // (grating-model) cassetti che USANO questo modello (TRAY.FAMILY =
+        // NAME, uguaglianza): solo informativo, l'associazione vive nella
+        // pagina Cassetti.
+        usedByFloors(){
+            const name = (this.grating.NAME || '').trim();
+            if (!name || !Array.isArray(this.trayList)) return [];
+            return this.trayList
+                .filter(t => t.FLOOR_MAG > 0 && (t.FAMILY || '').trim() == name)
+                .map(t => t.FLOOR_MAG)
+                .sort((a, b) => a - b);
+        },
+        // cassettiera NON uniforme: l'anteprima vale solo per il cassetto di
+        // riferimento, il dialog di associazione ricalcola sul cassetto scelto
+        traySizesDiffer(){
+            if (!Array.isArray(this.trayList)) return false;
+            const real = this.trayList.filter(t => t.FLOOR_MAG > 0 && t.X > 0 && t.Y > 0);
+            return real.some(t => t.X != real[0].X || t.Y != real[0].Y);
+        },
         // (grating-pitch) interasse risultante (centro-centro) che finira'
         // a DB: pezzo + distanza, aggiornato live; null finche' manca il pezzo
         pitchX(){
@@ -1449,4 +1204,13 @@ export default {
         font-size: var(--font-size-base);
         cursor: default;
     }
+/* (grating-model) blocco informativo al posto del select cassetto */
+.model-hint {
+    color: var(--text-secondary);
+    font-size: 0.9em;
+    margin-top: var(--space-1);
+}
+.model-warn {
+    color: var(--color-danger);
+}
 </style>

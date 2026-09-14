@@ -1,0 +1,133 @@
+﻿FUNCTION_BLOCK "FB_ExecuteQuery"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      query : String;
+      params : Array[0..5] of Int;
+      exec : Bool;
+   END_VAR
+
+   VAR 
+      Dispatch : Array[0..3] of Int;
+      dataReady : Bool;
+      dataError : Bool;
+      noData : Bool;
+      readyForNextQuery : Bool;
+      queryCounter : Int;
+      timeoutConnection {InstructionName := 'TON_TIME'; LibVersion := '1.0'; S7_SetPoint := 'False'} : TON_TIME;
+      timeoutRetrayConnection {InstructionName := 'TON_TIME'; LibVersion := '1.0'} : TON_TIME;
+   END_VAR
+
+   VAR_TEMP 
+      queryTemp : String;
+      i : Int;
+   END_VAR
+
+
+BEGIN
+	//EXECUTE A QUERY AND WAIT THE RESULT!
+	
+	//check connection status 
+	//#timeoutConnection(IN := "InstLSql_Microsoft".status < 0 OR "InstLSql_Microsoft".status = 28672, //8602 / 7000
+	//                   PT := t#1s);
+	//"SqlConfig".enableLSql := #timeoutConnection.Q ;
+	
+	
+	//Check if is a SPECIAL QUERY
+	IF #query = 'coordinate4ExtractTray' THEN
+	    #queryTemp := CONCAT(IN1 := 'SELECT TRAY,X,Y,Z,X_ROT,Y_ROT,Z_ROT,APPROACH_TYPE,APPROACH_X,APPROACH_Y,APPROACH_Z from COORDINATES_FOR_EXTRACT where tray in (SELECT top(1) tray from COORDINATES_PIECES_TRAYS_4Robot where Order_ID=',
+	                         IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#params[0]),
+	                         IN3 := ' AND status=',
+	                         IN4 := "INT_TO_STRING_WITHOUT_SIGN"(#params[1]),
+	                         IN5 := ' group BY tray)');
+	    //--order BY tray desc
+	ELSIF #query = 'coordinate4ExtractTrayWithID' THEN
+	    #queryTemp := CONCAT(IN1 := 'SELECT TRAY,X,Y,Z,X_ROT,Y_ROT,Z_ROT from COORDINATES_FOR_EXTRACT where tray=',
+	                         IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#params[0]));
+	ELSIF #query = 'tcpData' THEN
+	    IF ("DB_Robot".Gripper_ID[1] <> 0 AND "DB_Robot".Gripper_ID[2] <> 0) THEN
+	        #queryTemp := CONCAT(IN1 := 'select X_BODY+X_CLAW as X,Y_BODY+Y_CLAW as Y,Z_BODY+Z_CLAW as Z, VALVES, X_ROT, Y_ROT, Z_ROT from grippers where id in (',
+	                             IN2 := "INT_TO_STRING_WITHOUT_SIGN"("DB_Robot".Gripper_ID[1]),
+	                             IN3 := ',',
+	                             IN4 := "INT_TO_STRING_WITHOUT_SIGN"("DB_Robot".Gripper_ID[2]),
+	                             IN5 := ')');
+	    ELSE
+	        #queryTemp := CONCAT(IN1 := 'select X_BODY+X_CLAW as X,Y_BODY+Y_CLAW as Y,Z_BODY+Z_CLAW as Z, VALVES, X_ROT, Y_ROT, Z_ROT from grippers where id=',
+	                             IN2 := "INT_TO_STRING_WITHOUT_SIGN"("DB_Robot".Gripper_ID[1]));
+	    END_IF;
+	ELSIF #query = 'coordinateMC' THEN
+	    ;
+	    (*SELECT SUB_POS ,X_PICK ,Y_PICK ,Z_PICK ,X_PLACE, Y_PLACE ,Z_PLACE ,X_ROT,Y_ROT,Z_ROT,APPROACh_type,APPROACH_X,APPROACH_Y,APPROACH_Z
+	    from SmallBOX.dbo.COORDINATES_PIECES_MC
+	    where MC =2
+	    *)
+	ELSIF #query = 'updateTrayExtract' THEN
+	    #queryTemp := CONCAT(IN1 := 'UPDATE TRAY SET [EXTRACT]=',
+	                         IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#params[0]),
+	                         IN3 := ' WHERE FLOOR_MAG=',
+	                         IN4 := "INT_TO_STRING_WITHOUT_SIGN"(#params[1]));
+	ELSE
+	    #queryTemp := #query;
+	END_IF;
+	
+	
+	CASE #Dispatch["_master"] OF
+	    0:  //nothing to do
+	        
+	(*        IF #readyForNextQuery THEN    #####secondo ma va riattivato!!
+	            #Dispatch["_master"] := 5;
+	        END_IF;
+	    5:
+	*)    
+	        IF #exec THEN
+	            #Dispatch["_master"] := 10;
+	            #readyForNextQuery := FALSE;
+	            #dataError := false;
+	            #noData := false;
+	            #dataReady := false;
+	            "SqlData".data.rowCount := 0;
+	        END_IF;
+	        
+	    10: // write query
+	        IF (LEN(#queryTemp) > 1 AND "SqlConfig".diagnostics.status >= 0 AND "SqlConfig".enableLSql) THEN
+	            "SqlCommands".sqlCommands[0] := #queryTemp;
+	            "SqlCommands".currentSqlCommand := 0;
+	            
+	            #Dispatch["_master"] := 20;
+	        END_IF;
+	    20: // execute query
+	        "SqlConfig".executeSqlCommand := TRUE;
+	        #Dispatch["_master"] := 30;
+	        
+	    30: // wait result 
+	        IF "SqlTdsReceive".tdsTelegramArrayLength > 0
+	            // AND "SqlData".data.rowCount>0
+	            AND NOT "SqlConfig".executeSqlCommand THEN
+	            #queryCounter := #queryCounter + 1;
+	            
+	            #Dispatch["_master"] := 35;
+	        END_IF;
+	        
+	    35: //wait syncro from cycle plc
+	        IF #readyForNextQuery THEN  
+	            //#readyForNextQuery := FALSE;
+	            
+	            //save last query into log
+	            FOR #i := 5 TO 1 BY -1 DO
+	                "SqlCommands".sqlCommands[#i] := "SqlCommands".sqlCommands[#i - 1];
+	            END_FOR;
+	            "SqlCommands".sqlCommands[0] := '';
+	            
+	            #Dispatch["_master"] := 0;
+	        END_IF;
+	END_CASE;
+	
+	
+	#dataReady := #Dispatch["_master"] = 0 OR #Dispatch["_master"] = 35;
+	#noData := "SqlData".data.rowCount = 0;
+	#dataError := (#dataReady AND #noData) OR
+	              ("SqlConfig".diagnostics.status > 8000) OR
+	              LEN(#queryTemp)=0; //altre condizioni???
+	
+END_FUNCTION_BLOCK
+

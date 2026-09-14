@@ -192,6 +192,54 @@
       "writeOk": "Teaching written to the whole tray rack",
       "writeErr": "Write FAILED: no change applied (transaction rolled back)",
       "applied": "Approach and rotations applied to {n} tray positions"
+    },
+    "assoc": {
+      "col": "Grating",
+      "associate": "Associate",
+      "replace": "Replace",
+      "regenerate": "Regenerate pockets",
+      "dissociate": "Dissociate",
+      "extractedHint": "Tray extracted or moving: operation not allowed",
+      "title": {
+        "associate": "Associate a grating to tray {n}",
+        "replace": "Replace the grating of tray {n}",
+        "regenerate": "Regenerate the pockets of tray {n}",
+        "dissociate": "Dissociate the grating from tray {n}"
+      },
+      "chooseGrating": "Grating model",
+      "currentGrating": "Current grating",
+      "sourceHint": "Pockets will be COPIED from a tray already taught with the same grating (suggested: the one with the most pockets in the database).",
+      "copyFrom": "Copy from tray {n} ({k} pockets)",
+      "suggested": "suggested",
+      "willCopy": "The {k} taught pockets of tray {n} will be copied.",
+      "generateHint": "No taught tray with this grating: pockets will be GENERATED from the model header on this tray size.",
+      "regenerateHint": "Pockets will be RECOMPUTED from the model header: the taught coordinates of this tray will be lost.",
+      "ackMismatch": "Understood: overwrite the taught coordinates",
+      "willDelete": "The {k} current pockets of tray {n} will be deleted.",
+      "confirm": {
+        "associate": "Associate",
+        "replace": "Replace",
+        "regenerate": "Regenerate",
+        "dissociate": "Dissociate"
+      },
+      "done": {
+        "associate": "Grating associated to the tray",
+        "replace": "Grating replaced",
+        "regenerate": "Pockets regenerated",
+        "dissociate": "Grating dissociated, pockets deleted"
+      },
+      "err": {
+        "load": "Data loading failed.",
+        "noModel": "The grating of this tray no longer exists in the catalog: use Replace.",
+        "noPiece": "The model has no valid piece: cannot generate the grid.",
+        "emptyGrid": "No pocket can be generated with these sizes.",
+        "outOfTray": "Grid OUTSIDE the tray outline (exceeds by {w} mm along Y, {h} mm along X): no pocket written.",
+        "extracted": "Refused: the tray appears extracted or moving (TRAY.EXTRACT). If it is inside, the PLC did not update the state.",
+        "activeOrder": "Refused: a pocket of the tray is linked to an ACTIVE order.",
+        "alreadyAssociated": "Refused: the tray already has a grating or pockets in the database. Use Replace.",
+        "sourceEmpty": "Refused: the source tray has no pockets or uses another grating.",
+        "generic": "Operation NOT performed: {code}"
+      }
     }
   },
   "grating": {
@@ -215,9 +263,7 @@
     "numColumn": "number of columns",
     "numLine": "number of lines",
     "generate": "Generates Grating",
-    "delete": "ALL DATA associated at this grating will be erased... ",
-    "associate": "Associate grating to tray",
-    "disassociate": "Disassociate grating from tray",
+    "delete": "The model will be deleted (no tray uses it).",
     "dimensioniPz": "Dimensions hole [mm]",
     "tray": "Tray",
     "saveAndModel": "Save & create model",
@@ -233,14 +279,19 @@
     "generatedOn": "Generated on:",
     "print": "Print PDF",
     "redistribute": "Redistribute positions",
-    "confirmRegenerate": "The {n} positions of tray {floor} will be regenerated ({m} non-empty will be lost). Continue?",
-    "saveBlockedOrder": "Regeneration blocked: a tray position is linked to an ACTIVE order. Close or abort the order before regenerating the grating.",
     "taughtMismatch": "WARNING: the tray positions in the database were TAUGHT in the cell (real pitches {realW} / {realH} mm) and do NOT match the ones that will be regenerated ({genW} / {genH} mm). The robot works on the current coordinates: overwriting them can cause a COLLISION. Regenerate anyway?",
-    "deleteBlockedOrder": "Deletion blocked: a tray position is linked to an ACTIVE order. Close or abort the order before deleting the grating.",
     "outOfTray": "Grid OUTSIDE the tray contour: {detail}. Save cancelled, no pocket written.",
     "outOfTrayAxis": "overflows by {mm} mm on axis {axis}",
-    "saveIncomplete": "Regeneration incomplete: re-associate the grating (repeat the save).",
-    "saveCheckFailed": "Position check failed: save cancelled (no blind deletion)."
+    "deleteInUse": "Grating used by trays {floors}: dissociate them first from the Trays page.",
+    "inUse": "Delete refused: the grating is used by at least one tray. Dissociate it first from the Trays page.",
+    "catalogHint": "Model catalog. A grating has no pockets: it is associated to trays from the Trays page.",
+    "usedByCol": "Trays",
+    "usedBy": "Used by trays: {floors}",
+    "usedByNone": "No tray uses this grating",
+    "modelHint": "Preview on the drawer unit size: {w} × {h} mm. Association to trays is done from the Trays page.",
+    "traySizesDiffer": "WARNING: trays do not all share the same size: the preview is valid for the reference tray only.",
+    "nameRequired": "Enter the grating name.",
+    "dupName": "A grating named \"{name}\" already exists: the name must be unique."
   },
   "menu": {
     "dashboard": "Dashboard",

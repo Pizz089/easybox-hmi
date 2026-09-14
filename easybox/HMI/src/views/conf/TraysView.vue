@@ -6,6 +6,11 @@
     import { dataStored } from '../../data';
     // (tray-teaching) campo numerico condiviso per i 6 valori pendant
     import numericField from '../../components/numericField.vue'
+    // (grating-model) associazione grigliato <-> cassetto: griglia dalla
+    // stessa util dell'anteprima modello, ingombro e avviso taratura
+    import { buildGrid, gridCenters, taughtMismatch } from '../../util/gratingGrid.js'
+    import { gridFit } from '../../util/gratingAxes.js'
+    import { KO_TRAY_EXTRACTED, KO_ACTIVE_ORDER, KO_ALREADY_ASSOCIATED, KO_SOURCE_EMPTY, KO_OUT_OF_TRAY } from '../../util/errorCodes.js'
     const el = ref()
 </script>
 
@@ -36,6 +41,7 @@
                     <th>{{$t('tray.family')}}</th>
                     <!--th>{{$t('tray.stato')}}</th-->
                     <th style='width:20%' id='hide'>{{$t('tray.descr')}}</th>
+                    <th>{{$t('tray.assoc.col')}}</th>
                     <!--th>{{$t('tray.num_posti')}}</th-->
                     
                     <!--th>{{$t('tray.num_grezzi')}}</th>
@@ -70,6 +76,26 @@
                         </td-->
 
                         <td  id='hide'>{{dt.DESCR.trim()}}</td>
+                        <!-- (grating-model) QUI, e solo qui, si associa/sostituisce/
+                             rigenera/dissocia il grigliato. Livello tecnico (2):
+                             cancellano tasche tarate. Cassetto estratto o in
+                             manovra (EXTRACT<>0): bottoni disabilitati, e il
+                             backend rifiuta comunque (guardia conservativa). -->
+                        <td v-if="dt.FLOOR_MAG>0" class="assoc-cell">
+                            <template v-if="(dt.FAMILY||'').trim().length==0">
+                                <button class="btn-ghost assoc-btn" :disabled="!assocAllowed(dt)" :title="assocTitle(dt)"
+                                        @click="openAssoc('associate', dt)">{{ $t('tray.assoc.associate') }}</button>
+                            </template>
+                            <template v-else>
+                                <button class="btn-ghost assoc-btn" :disabled="!assocAllowed(dt)" :title="assocTitle(dt)"
+                                        @click="openAssoc('replace', dt)">{{ $t('tray.assoc.replace') }}</button>
+                                <button class="btn-ghost assoc-btn" :disabled="!assocAllowed(dt)" :title="assocTitle(dt)"
+                                        @click="openAssoc('regenerate', dt)">{{ $t('tray.assoc.regenerate') }}</button>
+                                <button class="btn-ghost assoc-btn assoc-danger" :disabled="!assocAllowed(dt)" :title="assocTitle(dt)"
+                                        @click="openAssoc('dissociate', dt)">{{ $t('tray.assoc.dissociate') }}</button>
+                            </template>
+                        </td>
+                        <td v-else></td>
                         <!--td>{{dt.N_PLACE}}</td-->
                         <!--td>{{dt.N_RAW}}</td>
                         <td>{{dt.N_EMPTY}}</td>
@@ -250,6 +276,65 @@
             </template>
           </div>
         </div>
+        <!-- ===== (grating-model) dialog Associa / Sostituisci / Rigenera / Dissocia =====
+             Un solo dialog, 4 modi. Copia da cassetto tarato = default quando
+             esiste una sorgente (proposta = piu' tasche a DB, MOSTRATA e
+             modificabile); generazione dall'header SOLO senza sorgenti o in
+             "Rigenera" (con avviso taratura e spunta obbligatoria). -->
+        <div v-if="assoc.open" class="mission-dialog-overlay">
+          <div class="mission-dialog">
+            <h3 class="command-section-title">{{ $t('tray.assoc.title.'+assoc.mode, { n: assoc.floor }) }}</h3>
+
+            <template v-if="assoc.mode=='associate' || assoc.mode=='replace'">
+              <div class="teach-hint">{{ $t('tray.assoc.chooseGrating') }}</div>
+              <select class="pure-u-1" v-model="assoc.gratingId" @change="onAssocGratingChange()">
+                <option :value="0"> </option>
+                <option v-for="g in assoc.gratings" :key="g.ID" :value="g.ID">{{ (g.NAME||'').trim() }} - {{ (g.DESCR||'').trim() }}</option>
+              </select>
+            </template>
+            <div class="teach-hint" v-else>{{ $t('tray.assoc.currentGrating') }}: <strong>{{ assoc.currentName }}</strong></div>
+
+            <template v-if="assoc.mode!='dissociate' && assoc.gratingId>0">
+              <template v-if="assoc.mode!='regenerate' && assoc.candidates.length">
+                <div class="teach-hint">{{ $t('tray.assoc.sourceHint') }}</div>
+                <div class="teach-list">
+                  <button v-for="(c, i) in assoc.candidates" :key="c.floor" class="mission-dialog-item"
+                    :class="{ selected: assoc.sourceFloor===c.floor }" @click="assoc.sourceFloor=c.floor">
+                    <span>{{ $t('tray.assoc.copyFrom', { n: c.floor, k: c.n }) }}</span>
+                    <span v-if="i==0" class="teach-muted">{{ $t('tray.assoc.suggested') }}</span>
+                  </button>
+                </div>
+                <div class="teach-hint"><strong>{{ $t('tray.assoc.willCopy', { n: assoc.sourceFloor, k: candidateCount(assoc.sourceFloor) }) }}</strong></div>
+              </template>
+              <template v-else>
+                <div class="teach-hint">{{ $t(assoc.mode=='regenerate' ? 'tray.assoc.regenerateHint' : 'tray.assoc.generateHint') }}</div>
+                <div class="teach-hint" v-if="assoc.preview"><strong>{{ $t('grating.rowsCols', { rows: assoc.preview.n_row, cols: assoc.preview.n_cln, tot: assoc.preview.tot }) }}</strong></div>
+                <div class="teach-warning" v-if="assoc.mismatch">
+                  {{ $t('grating.taughtMismatch', { realW: assoc.mismatch.realW/1000, realH: assoc.mismatch.realH/1000, genW: assoc.mismatch.genW/1000, genH: assoc.mismatch.genH/1000 }) }}
+                  <label class="assoc-ack"><input type="checkbox" v-model="assoc.ack" /> {{ $t('tray.assoc.ackMismatch') }}</label>
+                </div>
+              </template>
+            </template>
+
+            <div class="teach-warning" v-if="assoc.mode!='associate' && assoc.currentCount>0">
+              {{ $t('tray.assoc.willDelete', { k: assoc.currentCount, n: assoc.floor }) }}
+            </div>
+            <div class="teach-warning" v-if="assoc.error">{{ $t(assoc.error, assoc.errorParams) }}</div>
+
+            <div class="pure-g">
+              <div class="pure-u-1-2">
+                <button style="width:100%" class="button_pressed"
+                  :class="[assocReady ? 'pure-button-mission' : 'pure-button-disable']"
+                  @click="assocReady ? confirmAssoc() : ''">
+                  {{ $t('tray.assoc.confirm.'+assoc.mode) }}
+                </button>
+              </div>
+              <div class="pure-u-1-2">
+                <button style="width:100%" class="btn-ghost" @click="closeAssoc()">{{ $t('robot.dialog.cancel') }}</button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 </template>
 
@@ -274,6 +359,27 @@ export default {
                 pieces: [],      // anagrafica PIECE (componente pezzo in Z)
                 calcError: '',   // chiave i18n del blocco calcolo (pezzo irrisolvibile)
                 preview: []      // 12 righe {tray, xCorr, yCorr, zCorr, hasTray}
+            },
+            // (grating-model) dialog associazione grigliato <-> cassetto
+            assoc: {
+                open: false,
+                mode: '',            // 'associate' | 'replace' | 'regenerate' | 'dissociate'
+                floor: 0,            // cassetto target (FLOOR_MAG)
+                tray: null,          // riga TRAYS del target (misure X/Y)
+                currentName: '',     // FAMILY attuale del target
+                currentCount: 0,     // tasche attuali del target
+                gratings: [],        // catalogo GRATING
+                gratingId: 0,        // modello scelto
+                positions: [],       // [POSITION] TRAY_% (conteggi sorgenti, avviso taratura)
+                pieces: [],          // anagrafica PIECE (ingombro per la generazione)
+                candidates: [],      // sorgenti [{floor, n}] ordinate per n DESC (prima = piu' completa)
+                sourceFloor: null,   // sorgente scelta; null = genera dall'header
+                preview: null,       // { n_row, n_cln, tot, centers } (generazione)
+                mismatch: null,      // avviso taratura { realW, realH, genW, genH } um (rigenera)
+                ack: false,          // spunta obbligatoria sull'avviso taratura
+                error: '',           // chiave i18n del blocco
+                errorParams: {},
+                busy: false
             }
         }
     },
@@ -358,6 +464,136 @@ export default {
         },
         createTray(){
             this.$router.push('/conf/tray');
+        },
+        // ===== (grating-model) associazione grigliato <-> cassetto =====
+        // Guardia client (visiva): livello tecnico + cassetto DENTRO
+        // (EXTRACT==0). Il backend ripete entrambe le guardie + ordine attivo.
+        assocAllowed(dt){
+            return dataStored.userLevel > 1 && Number(dt.EXTRACT || 0) == 0;
+        },
+        assocTitle(dt){
+            return Number(dt.EXTRACT || 0) != 0 ? this.$t('tray.assoc.extractedHint') : '';
+        },
+        // numero piano da PARENT 'TRAY_n' (nchar paddato: trim)
+        trayFloorOf(p){
+            const s = (p.PARENT || '').trim();
+            return s.indexOf('TRAY_') == 0 ? Number(s.slice(5)) : 0;
+        },
+        pocketsOf(floor){
+            return this.assoc.positions.filter(p => this.trayFloorOf(p) == floor);
+        },
+        candidateCount(floor){
+            const c = this.assoc.candidates.find(x => x.floor == floor);
+            return c ? c.n : 0;
+        },
+        openAssoc(mode, dt){
+            const a = this.assoc;
+            a.open = true; a.mode = mode; a.floor = dt.FLOOR_MAG; a.tray = dt;
+            a.currentName = (dt.FAMILY || '').trim(); a.currentCount = 0;
+            a.gratingId = 0; a.gratings = []; a.positions = []; a.pieces = [];
+            a.candidates = []; a.sourceFloor = null; a.preview = null; a.mismatch = null;
+            a.ack = false; a.error = ''; a.errorParams = {}; a.busy = false;
+            const get = url => fetch(dataStored.server + url, { method: 'GET' })
+                .then(r => { if (!r.ok) throw new Error('Network response was not ok'); return r.json(); });
+            return Promise.all([get('api/conf/grating/show/all'), get('api/conf/position/show/all'), get('api/conf/piece/show/all')])
+                .then(([gratings, positions, pieces]) => {
+                    a.gratings = gratings || [];
+                    a.positions = (positions || []).filter(p => this.trayFloorOf(p) > 0);
+                    a.pieces = pieces || [];
+                    a.currentCount = this.pocketsOf(a.floor).length;
+                    if (mode == 'regenerate' || mode == 'dissociate') {
+                        // modello FISSO = quello del cassetto (FAMILY = NAME)
+                        const g = a.gratings.find(x => (x.NAME || '').trim() == a.currentName);
+                        a.gratingId = g ? g.ID : 0;
+                        if (mode == 'regenerate' && !g) { a.error = 'tray.assoc.err.noModel'; return; }
+                    }
+                    this.onAssocGratingChange();
+                })
+                .catch(e => { console.info(e); a.error = 'tray.assoc.err.load'; });
+        },
+        closeAssoc(){
+            this.assoc.open = false;
+        },
+        // Sorgenti = cassetti con lo STESSO modello (FAMILY = NAME) e tasche a
+        // DB, escluso il target, ordinati per tasche DESC: la prima e' la
+        // proposta (piu' completa), MOSTRATA e modificabile. Senza sorgenti
+        // (o in "Rigenera"): generazione dall'header sulle misure del target.
+        onAssocGratingChange(){
+            const a = this.assoc;
+            a.candidates = []; a.sourceFloor = null; a.preview = null; a.mismatch = null; a.ack = false;
+            a.error = ''; a.errorParams = {};
+            const g = a.gratings.find(x => x.ID == a.gratingId);
+            if (!g || a.mode == 'dissociate') return;
+            if (a.mode != 'regenerate') {
+                const name = (g.NAME || '').trim();
+                a.candidates = this.datiTab
+                    .filter(t => t.FLOOR_MAG > 0 && t.FLOOR_MAG != a.floor && (t.FAMILY || '').trim() == name)
+                    .map(t => ({ floor: t.FLOOR_MAG, n: this.pocketsOf(t.FLOOR_MAG).length }))
+                    .filter(c => c.n > 0)
+                    .sort((x, y) => y.n - x.n || x.floor - y.floor);
+                if (a.candidates.length) { a.sourceFloor = a.candidates[0].floor; return; }
+            }
+            this.buildAssocPreview(g);
+        },
+        // Generazione dall'header sulle misure del cassetto TARGET (non del
+        // riferimento): anteprima righe x colonne, ingombro (il server lo
+        // ripete dal DB), avviso taratura in "Rigenera".
+        buildAssocPreview(g){
+            const a = this.assoc;
+            const piece = a.pieces.find(p => p.ID == g.PIECE_ID);
+            if (!piece || !(piece.X > 0) || !(piece.Y > 0)) { a.error = 'tray.assoc.err.noPiece'; return; }
+            const width = a.tray.X / 1000, height = a.tray.Y / 1000;
+            const grid = buildGrid({ pieceX: piece.X / 1000, pieceY: piece.Y / 1000, prismatic: !!piece.PRISMA,
+                                     safeX: g.SAFEX, safeY: g.SAFEY, width, height });
+            if (grid.listPz.length == 0) { a.error = 'tray.assoc.err.emptyGrid'; return; }
+            const centers = gridCenters(grid.listPz, { width, height, dim_x: grid.dim_x, dim_y: grid.dim_y });
+            const fit = gridFit(centers, { width, height, halfW: piece.X / 2000, halfH: piece.Y / 2000 });
+            if (!fit.ok) { a.error = 'tray.assoc.err.outOfTray'; a.errorParams = { w: Math.ceil(fit.overW), h: Math.ceil(fit.overH) }; return; }
+            a.preview = { n_row: grid.n_row, n_cln: grid.n_cln, tot: grid.listPz.length, centers };
+            if (a.mode == 'regenerate') {
+                const genW = Math.round((piece.X / 1000 + Number(g.SAFEX)) * 1000);
+                const genH = Math.round((piece.Y / 1000 + Number(g.SAFEY)) * 1000);
+                a.mismatch = taughtMismatch(this.pocketsOf(a.floor), genW, genH);
+            }
+        },
+        confirmAssoc(){
+            const a = this.assoc;
+            if (a.busy) return;
+            a.busy = true; a.error = ''; a.errorParams = {};
+            let url, body = null;
+            if (a.mode == 'dissociate') {
+                url = 'api/conf/tray/dissociateGrating/' + a.floor;
+            } else {
+                url = 'api/conf/tray/associateGrating/' + a.floor;
+                body = { gratingId: a.gratingId, replace: a.mode != 'associate',
+                         source: a.sourceFloor != null ? { floor: a.sourceFloor } : { centers: a.preview.centers } };
+            }
+            return fetch(dataStored.server + url, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                                    body: body ? JSON.stringify(body) : undefined })
+                .then(r => { if (!r.ok) throw new Error('Network response was not ok'); return r.json(); })
+                .then(out => {
+                    a.busy = false;
+                    if (out && out.ris == 'OK') {
+                        dataStored.alert.title = 'INFO';
+                        dataStored.alert.desc = 'tray.assoc.done.' + a.mode;
+                        dataStored.alert.type = 'message';
+                        this.closeAssoc();
+                        this.getDataTable();
+                        return;
+                    }
+                    const code = out ? out.ris : 'KO';
+                    const map = {};
+                    map[KO_TRAY_EXTRACTED] = 'tray.assoc.err.extracted';
+                    map[KO_ACTIVE_ORDER] = 'tray.assoc.err.activeOrder';
+                    map[KO_ALREADY_ASSOCIATED] = 'tray.assoc.err.alreadyAssociated';
+                    map[KO_SOURCE_EMPTY] = 'tray.assoc.err.sourceEmpty';
+                    map[KO_OUT_OF_TRAY] = 'tray.assoc.err.outOfTray';
+                    a.error = map[code] || 'tray.assoc.err.generic';
+                    a.errorParams = code == KO_OUT_OF_TRAY
+                        ? { w: Math.ceil(out.overW || 0), h: Math.ceil(out.overH || 0) }
+                        : { code: code };
+                })
+                .catch(e => { console.info(e); a.busy = false; a.error = 'tray.assoc.err.generic'; a.errorParams = { code: String(e) }; });
         },
         // ===== (tray-teaching) comando "0 CASSETTIERA" =====
         openTeach(){
@@ -480,6 +716,19 @@ export default {
 		}
     },
     computed:{
+        // (grating-model) il bottone di conferma del dialog si abilita solo con
+        // uno stato completo: modello scelto, sorgente scelta OPPURE anteprima
+        // valida, avviso taratura spuntato se presente, nessun errore.
+        assocReady(){
+            const a = this.assoc;
+            if (!a.open || a.busy || a.error) return false;
+            if (a.mode == 'dissociate') return true;
+            if (!(a.gratingId > 0)) return false;
+            if (a.sourceFloor != null) return true;
+            if (!a.preview) return false;
+            if (a.mismatch && !a.ack) return false;
+            return true;
+        },
         // (tray-teaching) piani eleggibili come campione: hanno la POSIZIONE 1
         // a DB (un cassetto senza grigliato associato non e' eleggibile)
         eligibleFloors(){
@@ -582,6 +831,18 @@ export default {
         width: 20%;
         border: 2px solid var(--color-critical);
         padding: var(--space-6);
+    }
+
+    /* (grating-model) colonna Grigliato: azioni per cassetto + spunta avviso */
+    .assoc-cell .assoc-btn {
+        margin: 0 var(--space-1) var(--space-1) 0;
+    }
+    .assoc-danger {
+        color: var(--color-danger);
+    }
+    .assoc-ack {
+        display: block;
+        margin-top: var(--space-2);
     }
 
 </style>

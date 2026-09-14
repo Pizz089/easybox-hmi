@@ -89,15 +89,15 @@ check(r.res.body === 'OK', 'senza ordine attivo -> body OK (delete consentita)')
 r = callRoute('DELETE /deletePositionsTray/:ID', { ID: '9; DROP' }, [{ ris: 'OK' }]);
 check(!r.ranQuery && r.res.body === 'KO_BAD_INPUT', 'ID non intero -> KO_BAD_INPUT senza query');
 
-console.log('\n4) delete grigliato (Grating /:ID): guardia ordine attivo');
-r = callRoute('DELETE /:ID', { ID: '5' }, [{ ris: errorCodes.KO_ACTIVE_ORDER }]);
+console.log('\n4) delete grigliato (Grating /:ID): solo il MODELLO, rifiuto se in uso (grating-model)');
+r = callRoute('DELETE /:ID', { ID: '5' }, [{ ris: errorCodes.KO_IN_USE, n: 3 }]);
 check(r.ranQuery, 'query eseguita');
-check(/IF EXISTS[\s\S]*STATUS = 3[\s\S]*ELSE BEGIN[\s\S]*UPDATE TRAY[\s\S]*DELETE FROM \[POSITION\][\s\S]*DELETE FROM GRATING/.test(r.query), 'guardia PRIMA di update/delete');
-check(r.query.includes("PARENT = CONCAT('TRAY_', @tray)"), 'predicato uguaglianza via CONCAT');
-check(!r.query.includes(" %'"), "niente LIKE ' %' residuo");
-check(r.res.body === errorCodes.KO_ACTIVE_ORDER, 'ordine attivo -> KO_ACTIVE_ORDER (nessuna scrittura)');
+check(/IF EXISTS \(SELECT 1 FROM TRAY WHERE FAMILY = @name\)[\s\S]*ELSE BEGIN[\s\S]*DELETE FROM GRATING/.test(r.query), 'guardia in-uso (TRAY.FAMILY = NAME, uguaglianza) PRIMA della delete');
+check(!/DELETE FROM \[POSITION\]|UPDATE TRAY/.test(r.query), 'NESSUNA cascata su tasche/TRAY (si dissocia dalla gestione cassetti)');
+check(!r.query.includes(" %'") && !/LIKE/i.test(r.query), "niente LIKE residuo (il jolly '_' agganciava G1 -> G10)");
+check(r.res.body === errorCodes.KO_IN_USE, 'in uso -> KO_IN_USE (nessuna scrittura)');
 r = callRoute('DELETE /:ID', { ID: '5' }, [{ ris: 'OK' }]);
-check(r.res.body === 'OK', 'senza ordine attivo -> OK');
+check(r.res.body === 'OK', 'senza cassetti -> OK');
 r = callRoute('DELETE /:ID', { ID: 'abc' }, [{ ris: 'OK' }]);
 check(!r.ranQuery && r.res.body === 'KO_BAD_INPUT', 'ID non intero -> KO_BAD_INPUT senza query');
 

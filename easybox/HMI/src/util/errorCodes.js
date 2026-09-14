@@ -5,3 +5,10 @@ export const KO_OCCUPIED = "KO_OCCUPIED";   // posizione gia' occupata da un alt
 export const KO_DISABLED = "KO_DISABLED";   // posizione disabilitata (POSITION.STATUS=9)
 export const KO_ACTIVE_ORDER = "KO_ACTIVE_ORDER";   // il cassetto ha una posizione legata a un ordine ATTIVO (WORKORDERS.STATUS=3)
 export const KO_CELL_RUNNING = "KO_CELL_RUNNING";   // la cella sta lavorando (robot in missione o stato sconosciuto)
+// (grating-model) associazione grigliato-cassetto dalla gestione cassetti
+export const KO_TRAY_EXTRACTED     = "KO_TRAY_EXTRACTED";     // cassetto fuori o in manovra (TRAY.EXTRACT<>0)
+export const KO_ALREADY_ASSOCIATED = "KO_ALREADY_ASSOCIATED"; // cassetto gia' associato / tasche presenti: usare Sostituisci
+export const KO_SOURCE_EMPTY       = "KO_SOURCE_EMPTY";       // sorgente senza tasche o con grigliato diverso
+export const KO_OUT_OF_TRAY        = "KO_OUT_OF_TRAY";        // griglia fuori ingombro (verifica lato server)
+export const KO_IN_USE             = "KO_IN_USE";             // grigliato in uso: cancellazione rifiutata
+export const KO_DUP_NAME           = "KO_DUP_NAME";           // nome grigliato duplicato

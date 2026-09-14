@@ -5,12 +5,17 @@
 
     import { ref, onMounted } from 'vue'
     import { dataStored } from '../../data';
-    import { KO_ACTIVE_ORDER } from '../../util/errorCodes';
+    import { KO_IN_USE } from '../../util/errorCodes';
 
     const el = ref()
 </script>
 
-<template>   
+<!-- (grating-model) CATALOGO dei modelli: il grigliato e' un'entita' a se',
+     senza cassetto. La colonna Cassetti e' SOLO informativa (TRAY.FAMILY =
+     NAME): associare, sostituire, rigenerare e dissociare si fa dalla
+     pagina Cassetti. La cancellazione e' rifiutata se un cassetto usa il
+     modello (KO_IN_USE). -->
+<template>
       <div class="view-shell view-shell--fill conf-card">
         <div class="view-header">
           <h3 class="view-title">{{$t('grating.welcome')}}</h3>
@@ -23,13 +28,14 @@
             </button>
           </div>
         </div>
+        <div class="model-note">{{ $t('grating.catalogHint') }}</div>
         <div class="table-scroll">
         <table class="pure-table pure-table-horizontal">
             <thead>
                 <tr>
                     <th>{{$t('grating.name')}}</th>
                     <th>{{$t('grating.descr')}}</th>
-                    <th>{{$t('TRAY')}}</th>
+                    <th>{{$t('grating.usedByCol')}}</th>
                     <th>{{$t('GRIPPER')}}</th>
                     <th>{{$t('PIECE')}}</th>
                     <th>{{$t('grating.comands')}}</th>
@@ -40,17 +46,19 @@
                     <tr :class="{'pure-table-odd':(dt.ID % 2==1)}">
                         <td>{{dt.NAME.trim()}} </td>
                         <td>{{dt.DESCR.trim()}}</td>
-                        <td @click="goToLayout(dt.TRAY_ID, dt.TraySTATUS, dt.FLOOR_MAG)">
-                            <span>
-                                <img src="../../assets/link.png" width="20em"/>
-                                &nbsp;
-                                {{ dt.FLOOR_MAG>=0?dt.FLOOR_MAG:'OUT' }}
-                            </span>
+                        <td>
+                            <template v-if="dt.trays.length">
+                                <button v-for="t in dt.trays" :key="t.TRAY_ID" class="btn-ghost tray-chip"
+                                        @click="goToLayout(t.TRAY_ID, t.TraySTATUS, t.FLOOR_MAG)">
+                                    <img src="../../assets/link.png" width="20em"/>&nbsp;{{ t.FLOOR_MAG }}
+                                </button>
+                            </template>
+                            <span v-else class="model-muted">{{ $t('grating.usedByNone') }}</span>
                         </td>
                         <td>{{ dt.GRIPPER_DESC }}</td>
                         <td>{{ dt.PIECE_ID }}</td>
                         <td>
-                            <orderCMD  :reference="createLink( dt.ID )" 
+                            <orderCMD  :reference="createLink( dt.ID )"
                                        :index="dt.ID"
                                        modify="true" @cmdModify="$router.push('/conf/grating/'+dt.ID);"
                                        del="true"	 @cmdDel="sicurezza(dt.ID)"
@@ -62,9 +70,10 @@
                         <td class="popUpOnLine" colspan="20" >
                             <div class="center">
                                 <h3>{{ $t('tray.sure') }}</h3>
-                                <h4>{{ $t('grating.delete') }}</h4>
+                                <h4 v-if="dt.trays.length">{{ $t('grating.deleteInUse', { floors: dt.trays.map(t => t.FLOOR_MAG).join(', ') }) }}</h4>
+                                <h4 v-else>{{ $t('grating.delete') }}</h4>
                                 <span class="pure-g">
-                                    <button class="pure-button-micromission specialCMD pure-u-1" @click="deleteGrating(dt.ID)">
+                                    <button class="pure-button-micromission specialCMD pure-u-1" :disabled="dt.trays.length>0" @click="deleteGrating(dt.ID)">
                                         DELETE
                                     </button>
                                     <button class="btn-ghost pure-u-1" @click="showPopUp=0">
@@ -82,6 +91,23 @@
 </template>
 
 <script>
+// (grating-model) l'endpoint torna UNA riga per coppia modello-cassetto:
+// qui si aggrega per ID -> { ...modello, trays: [{TRAY_ID, FLOOR_MAG, TraySTATUS}] }
+export function groupGratings(rows) {
+    const byId = new Map();
+    for (const r of rows || []) {
+        if (!byId.has(r.ID)) {
+            const { TRAY_ID, FLOOR_MAG, MAG, TraySTATUS, ...model } = r;
+            byId.set(r.ID, Object.assign(model, { trays: [] }));
+        }
+        if (r.FLOOR_MAG != null && r.FLOOR_MAG > 0)
+            byId.get(r.ID).trays.push({ TRAY_ID: r.TRAY_ID, FLOOR_MAG: r.FLOOR_MAG, TraySTATUS: r.TraySTATUS });
+    }
+    const out = Array.from(byId.values());
+    out.forEach(g => g.trays.sort((a, b) => a.FLOOR_MAG - b.FLOOR_MAG));
+    return out;
+}
+
 export default {
     data(){
         return {
@@ -100,10 +126,9 @@ export default {
                     }
                     return response.json()
                 })
-                .then(gratings => {
-                    //console.log(JSON.stringify(order,null,4))
-                    console.log("ricevo dati per "+gratings.length+" grigliati")  
-                    this.datiTab=gratings
+                .then(rows => {
+                    this.datiTab = groupGratings(rows);
+                    console.log("ricevo dati per "+this.datiTab.length+" grigliati")
                 })
                 .catch(error => {
                     console.info("-------------")
@@ -130,11 +155,9 @@ export default {
         },
 		deleteGrating(id) {
 			this.showPopUp=0
-            // (tray-parent-predicate) la route server cancella GIA' in un
-            // colpo solo GRATING + tasche [POSITION] del cassetto associato
-            // (con guardia ordine attivo). La vecchia chiamata concatenata
-            // deletePositionsTray(id) e' stata rimossa: passava l'ID del
-            // GRIGLIATO come numero di cassetto (chiave sbagliata).
+            // (grating-model) si cancella SOLO il modello: il backend rifiuta
+            // (KO_IN_USE) se un cassetto lo usa — prima si dissocia dalla
+            // pagina Cassetti. Nessuna cascata su tasche/TRAY.
             fetch(dataStored.server+'api/conf/grating/'+id ,{ method: 'delete'})
                 .then(async response => {
                     if (!response.ok) {
@@ -142,12 +165,13 @@ export default {
                         throw new Error('Network response was not ok');
                     }
                     const esito = (await response.text()).trim();
-                    if (esito == KO_ACTIVE_ORDER) {
-                        alert(this.$t('grating.deleteBlockedOrder'));
+                    if (esito == KO_IN_USE) {
+                        alert(this.$t('grating.inUse'));
                         return;
                     }
                     if (esito != 'OK')
                         alert('KO ['+esito+']');
+                    this.getDataTable();
                 })
                 .catch(error => {
                     console.info(error);
@@ -155,9 +179,9 @@ export default {
                 });
         },
         goToLayout(Tray_ID,TraySTATUS,floor_MAG){
-            if (TraySTATUS==dataStored.status_working) 
+            if (TraySTATUS==dataStored.status_working)
                 this.$router.push('/layout/'+Tray_ID+'/0/'+floor_MAG);
-            else    
+            else
                 this.$router.push('/layout/'+Tray_ID+'/1/'+floor_MAG);
         },
     },
@@ -191,6 +215,18 @@ export default {
     }
     .popUpOnLine .btn-ghost {
         margin-top: var(--space-2);
+    }
+    /* (grating-model) chip per cassetto che usa il modello (link al layout) */
+    .tray-chip {
+        margin: 0 var(--space-1) var(--space-1) 0;
+    }
+    .model-muted {
+        color: var(--text-muted);
+    }
+    .model-note {
+        color: var(--text-secondary);
+        font-size: 0.9em;
+        margin-bottom: var(--space-2);
     }
 
     /* Uniformato alle altre list view: 2px (non 1px --border-card), il popup

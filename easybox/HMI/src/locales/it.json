@@ -192,6 +192,54 @@
       "writeOk": "Teaching scritto su tutta la cassettiera",
       "writeErr": "Scrittura FALLITA: nessuna modifica applicata (transazione annullata)",
       "applied": "Avvicinamenti e rotazioni applicati a {n} posizioni del cassetto"
+    },
+    "assoc": {
+      "col": "Grigliato",
+      "associate": "Associa",
+      "replace": "Sostituisci",
+      "regenerate": "Rigenera tasche",
+      "dissociate": "Dissocia",
+      "extractedHint": "Cassetto estratto o in manovra: operazione non consentita",
+      "title": {
+        "associate": "Associa un grigliato al cassetto {n}",
+        "replace": "Sostituisci il grigliato del cassetto {n}",
+        "regenerate": "Rigenera le tasche del cassetto {n}",
+        "dissociate": "Dissocia il grigliato dal cassetto {n}"
+      },
+      "chooseGrating": "Modello di grigliato",
+      "currentGrating": "Grigliato attuale",
+      "sourceHint": "Le tasche verranno COPIATE da un cassetto già tarato con lo stesso grigliato (proposto: quello con più tasche a database).",
+      "copyFrom": "Copia da cassetto {n} ({k} tasche)",
+      "suggested": "proposto",
+      "willCopy": "Verranno copiate le {k} tasche tarate del cassetto {n}.",
+      "generateHint": "Nessun cassetto tarato con questo grigliato: le tasche verranno GENERATE dall'header del modello sulle misure di questo cassetto.",
+      "regenerateHint": "Le tasche verranno RICALCOLATE dall'header del modello: le quote tarate di questo cassetto andranno perse.",
+      "ackMismatch": "Ho capito: sovrascrivo le quote tarate",
+      "willDelete": "Le {k} tasche attuali del cassetto {n} verranno cancellate.",
+      "confirm": {
+        "associate": "Associa",
+        "replace": "Sostituisci",
+        "regenerate": "Rigenera",
+        "dissociate": "Dissocia"
+      },
+      "done": {
+        "associate": "Grigliato associato al cassetto",
+        "replace": "Grigliato sostituito",
+        "regenerate": "Tasche rigenerate",
+        "dissociate": "Grigliato dissociato, tasche cancellate"
+      },
+      "err": {
+        "load": "Caricamento dati non riuscito.",
+        "noModel": "Il grigliato di questo cassetto non esiste più nel catalogo: usare Sostituisci.",
+        "noPiece": "Il modello non ha un pezzo valido: impossibile generare la griglia.",
+        "emptyGrid": "Nessuna tasca generabile con queste misure.",
+        "outOfTray": "Griglia FUORI dal contorno del cassetto (sfora {w} mm lungo Y, {h} mm lungo X): nessuna tasca scritta.",
+        "extracted": "Rifiutato: il cassetto risulta estratto o in manovra (TRAY.EXTRACT). Se è dentro, il PLC non ha aggiornato lo stato.",
+        "activeOrder": "Rifiutato: una tasca del cassetto è legata a un ordine ATTIVO.",
+        "alreadyAssociated": "Rifiutato: il cassetto ha già un grigliato o tasche a database. Usare Sostituisci.",
+        "sourceEmpty": "Rifiutato: il cassetto sorgente non ha tasche o usa un altro grigliato.",
+        "generic": "Operazione NON eseguita: {code}"
+      }
     }
   },
   "grating": {
@@ -215,9 +263,7 @@
     "numColumn": "numero colonne",
     "numLine": "numero righe",
     "generate":"Genera Grigliato",
-    "delete": "Verranno cancellati tutti i dati associati a questo grigliato ... ",
-    "associate": "Associa grigliato al cassetto",
-    "disassociate": "Disassocia grigliato dal cassetto",
+    "delete": "Il modello verrà cancellato (nessun cassetto lo usa).",
     "dimensioniPz": "Dimensioni scasso [mm]",
     "tray": "Cassetto",
     "saveAndModel": "Salva e crea modello",
@@ -233,14 +279,19 @@
     "generatedOn": "Generato il:",
     "print": "Stampa PDF",
     "redistribute": "Ridistribuisci le posizioni",
-    "confirmRegenerate": "Le {n} posizioni del cassetto {floor} verranno rigenerate ({m} non vuote andranno perse). Continuare?",
-    "saveBlockedOrder": "Rigenerazione bloccata: una posizione del cassetto è legata a un ordine ATTIVO. Chiudere o abortire l'ordine prima di rigenerare il grigliato.",
     "taughtMismatch": "ATTENZIONE: le tasche a database risultano TARATE in cella (passi reali {realW} / {realH} mm) e NON coincidono con quelle che verranno rigenerate ({genW} / {genH} mm). Il robot lavora sulle coordinate attuali: sovrascriverle può causare una COLLISIONE. Rigenerare comunque?",
-    "deleteBlockedOrder": "Cancellazione bloccata: una posizione del cassetto è legata a un ordine ATTIVO. Chiudere o abortire l'ordine prima di cancellare il grigliato.",
     "outOfTray": "Griglia FUORI dal contorno del cassetto: {detail}. Salvataggio annullato, nessuna tasca scritta.",
     "outOfTrayAxis": "sfora di {mm} mm sull'asse {axis}",
-    "saveIncomplete": "Rigenerazione incompleta: ri-associare il grigliato (ripetere il salvataggio).",
-    "saveCheckFailed": "Verifica posizioni non riuscita: salvataggio annullato (nessuna cancellazione alla cieca)."
+    "deleteInUse": "Grigliato in uso dai cassetti {floors}: dissociarli prima dalla pagina Cassetti.",
+    "inUse": "Cancellazione rifiutata: il grigliato è usato da almeno un cassetto. Dissociarlo prima dalla pagina Cassetti.",
+    "catalogHint": "Catalogo dei modelli. Un grigliato non ha tasche: si associa ai cassetti dalla pagina Cassetti.",
+    "usedByCol": "Cassetti",
+    "usedBy": "Usato dai cassetti: {floors}",
+    "usedByNone": "Nessun cassetto usa questo grigliato",
+    "modelHint": "Anteprima sulle misure della cassettiera: {w} × {h} mm. L'associazione ai cassetti si fa dalla pagina Cassetti.",
+    "traySizesDiffer": "ATTENZIONE: i cassetti non hanno tutti le stesse misure: l'anteprima vale solo per il cassetto di riferimento.",
+    "nameRequired": "Inserire il nome del grigliato.",
+    "dupName": "Esiste già un grigliato con nome \"{name}\": il nome deve essere unico."
   },
   "menu": {
     "dashboard": "Dashboard",

@@ -82,27 +82,21 @@ const gsrc = readFileSync('src/views/conf/Grating/Grating.vue', 'utf8');
 check(/\|\| saving">/.test(gsrc), 'bottone Salva disabilitato durante il salvataggio');
 check(/finally \{\s*this\.saving = false;/.test(gsrc), 'il flag si abbassa SEMPRE (finally), anche su errore');
 
-console.log('\n4) Grating: avviso taratura se i passi reali non coincidono');
-const confirms = [];
-globalThis.confirm = m => { confirms.push(String(m)); return confirms.length > 90; };   // rifiuta il primo confirm
-globalThis.alert = () => {};
+console.log('\n4) avviso taratura (grating-model: util gratingGrid + "Rigenera tasche" in TraysView)');
+// (grating-model) "Salva" del grigliato NON rigenera piu' nulla: l'avviso
+// taratura vive nel dialog "Rigenera tasche" della gestione cassetti, sul
+// confronto passi reali (righe [POSITION]) / passi teorici (pezzo+distanza).
+const { taughtMismatch } = await server.ssrLoadModule('/src/util/gratingGrid.js');
 // righe DB del cassetto 12: passi REALI 61000 (Y, SUB_POS consecutive) e 82000 (X)
 const dbRows = rows.map(r => ({ PARENT: 'TRAY_12', SUB_POS: r.SUB_POS, X: r.x * 1000, Y: r.y * 1000, STATUS: 2, Order_ID: 0 }));
-globalThis.fetch = async (url) => ({ ok: true, json: async () => String(url).includes('position/show') ? dbRows : [] });
-const g2 = vmOf(Grating, { $route: { params: { grating_ID: 2096 } } });
-g2.trayList = [{ ID: 24, FLOOR_MAG: 12, X: 820000, Y: 610000, MAG: 1 }];
-g2.grating.trayIndex = 1; g2.grating.SAFEX = 20; g2.grating.SAFEY = 10;
-g2.x = 40; g2.y = 70;   // pezzo 40x70 -> passi generati 60000/80000 != 61000/82000
-let ok = await g2.confirmRegenerate();
-check(confirms.length === 1 && confirms[0].includes('grating.taughtMismatch'), 'passi 61/82 vs 60/80: conferma FORTE dedicata mostrata');
-check(confirms[0].includes('realW=61') && confirms[0].includes('genW=60') && confirms[0].includes('realH=82') && confirms[0].includes('genH=80'), 'il messaggio riporta i passi reali e quelli che verrebbero generati');
-check(ok === false, 'rifiutando l\'avviso la rigenerazione NON parte');
-// passi coincidenti (entro 0.5 mm): nessun avviso taratura, solo la conferma standard
-confirms.length = 0;
-globalThis.confirm = m => { confirms.push(String(m)); return true; };
-g2.grating.SAFEX = 21; g2.grating.SAFEY = 12;   // 40+21=61, 70+12=82 = passi reali
-ok = await g2.confirmRegenerate();
-check(ok === true && confirms.length === 1 && confirms[0].includes('grating.confirmRegenerate'), 'passi coincidenti: solo la conferma standard di rigenerazione');
+let mm = taughtMismatch(dbRows, 60000, 80000);   // pezzo 40x70 + SAFEX 20 / SAFEY 10
+check(mm && mm.realW === 61000 && mm.realH === 82000 && mm.genW === 60000 && mm.genH === 80000, 'passi 61/82 vs 60/80: avviso con passi reali e teorici');
+check(taughtMismatch(dbRows, 61000, 82000) === null, 'passi coincidenti (40+21 / 70+12): nessun avviso');
+check(taughtMismatch(dbRows, 61400, 82400) === null, 'entro la tolleranza di 0.5 mm: nessun avviso');
+const gsrc2 = readFileSync('src/views/conf/Grating/Grating.vue', 'utf8');
+check(!/insertPositionTray|deletePositionsTray|updateGratingInTray|confirmRegenerate/.test(gsrc2), 'Grating.vue: "Salva" non tocca tasche ne\' cassetti (nessuna chiamata di scrittura tasche)');
+const tsrc = readFileSync('src/views/conf/TraysView.vue', 'utf8');
+check(/taughtMismatch\(this\.pocketsOf\(a\.floor\), genW, genH\)/.test(tsrc) && /a\.mismatch && !a\.ack/.test(tsrc), 'TraysView "Rigenera": avviso taratura calcolato e conferma bloccata senza spunta esplicita');
 
 await server.close();
 console.log('\n' + (failed ? failed + ' CHECK FALLITI' : 'TUTTI I CHECK PASSATI'));

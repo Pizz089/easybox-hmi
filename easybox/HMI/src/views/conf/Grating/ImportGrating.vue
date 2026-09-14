@@ -1,4 +1,14 @@
 <script setup>
+// ============================================================================
+// LEGACY (grating-model, 14/9): "grigliato dal vero" = tasche MISURATE una
+// per una su UN cassetto fisico. E' per natura legato al cassetto (scrive
+// GRATING + TRAY.FAMILY via updateGratingInTray) e resta l'UNICO modo di
+// creare un grigliato da misure reali: il cassetto che ne esce e' la
+// SORGENTE migliore per la copia (pagina Cassetti > Associa > "copia da").
+// Fuori dal flusso modello->associazione: NON estendere, NON usare come
+// riferimento per nuove pagine. GRATING.TRAY_ID che invia viene ignorato
+// dal backend (scritto 0).
+// ============================================================================
 import { RouterLink, RouterView } from 'vue-router'
 import { dataStored } from '../../../data.js'
 import numericField from '../../../components/numericField.vue'
