@@ -18,13 +18,18 @@ const DIR_X = +1;   // X robot lungo height (TRAY.Y) — validato sul robot (TRA
 const DIR_Y = +1;   // Y robot lungo width  (TRAY.X)
 
 // centers = [{w, h}] mm (coordinate DISEGNO del centro tasca, ordine SUB_POS)
-// -> [{X, Y}] micron, origine = primo elemento (tasca 1).
+// -> [{X, Y}] micron nel frame cassetto: X lungo height, Y lungo width,
+// origine = angolo del cassetto (tasca 1 = (h1, w1), i suoi margini).
+// (origin-fix 14/9) prima la costante era (w1, -h1): componenti scambiate e
+// Y negativa, ereditate dalla convenzione pre-1/9. Verificato sul pendant
+// su TRAY_1: (83.8, 108.5) calcolati vs (84.0, 102.5) reali con X_CORR 0.2
+// e Y_CORR -6.0. Stessa formula di gratingAxes.js (test di parita').
 exports.drawingToRobot = function (centers) {
 	if (!centers || centers.length === 0) return [];
 	const w1 = centers[0].w, h1 = centers[0].h;
 	return centers.map(c => ({
-		X: Math.round((w1 + DIR_X * (c.h - h1)) * 1000),
-		Y: Math.round((-h1 + DIR_Y * (c.w - w1)) * 1000),
+		X: Math.round((h1 + DIR_X * (c.h - h1)) * 1000),
+		Y: Math.round((w1 + DIR_Y * (c.w - w1)) * 1000),
 	}));
 };
 

@@ -1,5 +1,42 @@
 # Appunti cella — interventi manuali da eseguire in impianto
 
+## [ ] 2026-09-14 — origine tasche + significato Z_PICK: vista 4Robot v3 e bonifica
+
+Riscontro pendant TRAY_1 tasca 1 (pezzo 1033, 100.6x100.6x15): reale
+X 84.0 / Y 102.5 / Z 7.5 contro 118.5 / 16.2 / 45 mandati dal PLC.
+Due difetti, due rimedi nello stesso commit:
+- ORIGINE delle tasche (`drawingToRobot`, util + replica server): la costante
+  era (w1, -h1) della convenzione pre-1/9; ora X = h, Y = w (tasca 1 = i suoi
+  margini dai bordi). Le correzioni di piano attuali X_CORR 10 / Y_CORR 100
+  compensavano l'errore: vanno RI-INSEGNATE.
+- Z_PICK/Z_PLACE del PEZZO = QUOTA DI PRESA DAL FONDO del cassetto (mezzeria:
+  7.5 su un pezzo di 15). Vista 4Robot v3: Z = TRAY.Z_CORR + PIECE.Z_PICK.
+  TRAY.Z_CORR = fondo del cassetto (teaching = pendant - Z_PICK).
+
+**NON si tocca `COORDINATES_MC`** (macchina) finche' non c'e' la misura in
+morsa: oggi somma anche PIECE.Z, col nuovo significato manderebbe il robot
+15 mm sopra. Lo script v3 modifica SOLO la vista cassetti.
+
+Sequenza obbligata (il teaching legge la tasca 1 a DB per calcolare i CORR):
+```
+-- 1) anagrafica pezzi: Z_PICK e Z_PLACE riscritti col nuovo significato
+--    (1033 -> 7500 / 7500). Il form ora rifiuta 0 e valori > Z.
+-- 2) DDL a CELLA FERMA (login plc senza ALTER):
+sqlcmd -S .\SQLEXPRESS -E -d ADMG -i robot-tray-view-v3.sql
+-- 3) deploy codice (git pull in D:\Prog) + riavvio backend
+-- 4) Cassetti > "Rigenera tasche" su 1 e 12 (grigliato 2097, nessuna
+--    taratura da conservare). Il 9 esce dal piano: Dissocia.
+-- 5) Cassetti > "0 CASSETTIERA": campione 1, pendant X 84 / Y 102.5 / Z 7.5
+--    -> X_CORR 0.2, Y_CORR -6.0, Z_CORR piano 1 = 0; gli altri piani derivati
+--    da COORDINATES_FOR_EXTRACT.
+-- 6) PRIMA di fidarsi del piano 12: pendant sulla sua tasca 1 (gli Z_CORR
+--    832/1130 non sono derivati in modo uniforme: 800/1092 teorici).
+-- 7) morsa: misura in presa vs COORDINATES_MC, poi si decide la vista MC.
+```
+Verifica post DDL+teaching: `SELECT TRAY, SUB_POS, X_PICK, Y_PICK, Z_PICK
+FROM COORDINATES_PIECES_TRAYS_4Robot WHERE TRAY='1' AND SUB_POS=1` ->
+84000 / 102500 / 7500.
+
 ## [ ] 2026-09-04 — UNIQUE (PARENT, SUB_POS) su [POSITION] — A CELLA FERMA
 
 Script: `serverDati/scripts/position-parent-subpos-unique.sql` (idempotente,

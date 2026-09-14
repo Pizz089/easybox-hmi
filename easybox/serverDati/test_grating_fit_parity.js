@@ -40,7 +40,7 @@ const check = (c, l) => { console.log((c ? '  ok   ' : '  FAIL ') + l); if (!c) 
 		check(JSON.stringify(a) === JSON.stringify(b), c.name + ' (' + a.length + ' punti)');
 	}
 	const p = srv.drawingToRobot(grid);
-	check(p[0].X === 50000 && p[0].Y === -45000 && p[1].Y === 15000 && p[13].X === 130000 && p[90].X === 530000, 'convenzione validata sul robot: SUB_POS 2 = +60000 su Y, SUB_POS 14 = +80000 su X');
+	check(p[0].X === 45000 && p[0].Y === 50000 && p[1].Y === 110000 && p[13].X === 125000 && p[90].X === 525000 && p[90].Y === 770000, 'origine angolo cassetto (origin-fix 14/9): tasca 1 = (h1, w1) = (45000, 50000); SUB_POS 2 = +60000 su Y, SUB_POS 14 = +80000 su X');
 
 	console.log('\n3) parseCenters: validazione payload');
 	check(srv.parseCenters([{ w: '1', h: 2 }]).length === 1 && srv.parseCenters([{ w: '1', h: 2 }])[0].w === 1, 'stringhe numeriche normalizzate a Number');

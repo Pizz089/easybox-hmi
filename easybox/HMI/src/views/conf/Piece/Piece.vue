@@ -340,6 +340,18 @@ export default {
       this.piece.PARTPROGRAM = pp;
       if (!this.piece.PRISMA) this.piece.Y = this.piece.X;
 
+      // (z-pick 14/9) Z_PICK e Z_PLACE sono QUOTE DAL FONDO del cassetto
+      // (vista 4Robot v3: Z = TRAY.Z_CORR + Z_PICK): devono stare fra 0
+      // escluso e l'altezza del pezzo inclusa. Zero = chiusura sul fondo,
+      // mai corretto per una pinza a ganasce: rifiutato PRIMA di scrivere.
+      const hZ = Number(this.piece.Z), zp = Number(this.piece.Z_PICK), zl = Number(this.piece.Z_PLACE);
+      if (!(hZ > 0) || !(zp > 0) || zp > hZ || !(zl > 0) || zl > hZ) {
+        dataStored.alert.title = this.$t("WARNING");
+        dataStored.alert.desc = this.$t("piece.zPickRange", { h: hZ });
+        dataStored.alert.type = "warning";
+        return;
+      }
+
       this.piece.X *= 1000;
       this.piece.Y *= 1000;
       this.piece.Z *= 1000;

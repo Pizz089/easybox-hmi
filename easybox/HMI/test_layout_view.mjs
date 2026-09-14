@@ -26,9 +26,9 @@ const check = (c, l) => { console.log((c ? '  ok   ' : '  FAIL ') + l); if (!c) 
 const rows = [];
 for (let i = 0; i < 91; i++) {
 	const col = Math.floor(i / 13), row = i % 13;
-	rows.push({ partType: 1030, prisma: 1, x: (50000 + 80000 * col) / 1000, y: (-65000 + 60000 * row) / 1000, status: 5, order_ID: 0, FLOOR_MAG: 9 });
+	rows.push({ partType: 1030, prisma: 1, x: (65000 + 80000 * col) / 1000, y: (50000 + 60000 * row) / 1000, status: 5, order_ID: 0, FLOOR_MAG: 9 });
 }
-check(rows[0].x === 50 && rows[0].y === -65 && rows[1].y === -5 && rows[13].x === 130 && rows[90].x === 530 && rows[90].y === 655, 'dataset = riferimento (1:(50,-65) 2:(50,-5) 14:(130,-65) 91:(530,655))');
+check(rows[0].x === 65 && rows[0].y === 50 && rows[1].y === 110 && rows[13].x === 145 && rows[90].x === 545 && rows[90].y === 770, 'dataset = griglia TRAY_9 con origine angolo cassetto (1:(65,50) 2:(65,110) 14:(145,50) 91:(545,770))');
 
 const vm = Object.assign({}, comp.data.call({}));
 for (const [k, f] of Object.entries(comp.methods)) vm[k] = f.bind(vm);
@@ -42,7 +42,7 @@ console.log('\n1) template: niente filtri di segno, disegno da drawPz');
 const tpl = src.slice(0, src.lastIndexOf('</template>')).replace(/<!--[\s\S]*?-->/g, '');
 check(!/p\.y<0|p\.y>0|p\.x>0/.test(tpl), 'rimossi i v-if p.x>0 / p.y<0 / p.y>0');
 check(/v-for="\(p, index\) in drawPz"/.test(tpl) && /:x="p\.w-dim_x\/2" :y="p\.h-dim_y\/2"/.test(tpl), 'prisma posizionato da p.w/p.h');
-check(/import \{ DIR_X, DIR_Y, ROBOT_AXIS_ALONG \} from '\.\.\/util\/gratingAxes\.js'/.test(src), 'versi importati da gratingAxes (nessuna costante duplicata)');
+check(/import \{ robotToDrawing, ROBOT_AXIS_ALONG \} from '\.\.\/util\/gratingAxes\.js'/.test(src) && !/DIR_[XY] \*/.test(src), 'inversa presa dalla util (robotToDrawing): nessuna formula duplicata nel layout');
 
 console.log('\n2) drawPz con TRAY_9: tasca 1 e 2 adiacenti sullo stesso asse schermo');
 const d = vm.drawPz;

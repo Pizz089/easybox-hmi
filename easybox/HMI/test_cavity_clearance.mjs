@@ -103,7 +103,7 @@ function makeVm() {
 const vm = makeVm();
 check(vm.dim_x === 40 && vm.dim_y === 70 && vm.listPz.length === 91, 'dim 40x70 nominali, 91 tasche');
 const p = drawingToRobot(vm.pocketCentersWH());
-check(p[0].X === 50000 && p[0].Y === -65000 && p[1].Y === -5000 && p[13].X === 130000 && p[90].X === 530000 && p[90].Y === 655000, 'coordinate robot [POSITION] = riferimento TRAY_9');
+check(p[0].X === 65000 && p[0].Y === 50000 && p[1].Y === 110000 && p[13].X === 145000 && p[90].X === 545000 && p[90].Y === 770000, 'coordinate robot [POSITION] = griglia TRAY_9 con origine angolo cassetto (origin-fix 14/9)');
 const before = JSON.stringify(vm.listPz);
 buildGratingDxf({ width: 820, height: 610, pieces: vm.listPz, dimX: vm.dim_x, dimY: vm.dim_y, radius: vm.radius, clearanceUm: 1500 });
 check(JSON.stringify(vm.listPz) === before && vm.dim_x === 40 && vm.dim_y === 70, 'dopo un DXF a 1.5 mm: listPz e dim invariati');

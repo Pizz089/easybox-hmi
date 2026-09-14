@@ -68,8 +68,8 @@ for (let c = 0; c < 7; c++) for (let rr = 0; rr < 13; rr++) centers.push({ w: 50
 r = call('POST /associateGrating/:floor', { floor: '9' }, { gratingId: 7, replace: false, source: { centers } }, [ctx, ok(91)]);
 check(r.n === 2 && r.res.body.ris === 'OK', 'griglia dentro il contorno -> scritta');
 t = r.q[1];
-check(/FROM \(VALUES \(1, 50000, -45000\), \(2, 50000, 15000\)/.test(t), 'UNA INSERT multi-riga (VALUES): SUB_POS 1,2,... con X/Y robot (origine = tasca 1)');
-check(/\(91, 530000, 675000\)\) AS v\(SUB_POS, X, Y\)/.test(t), '91 tasche, ultima (13a riga, 7a colonna) coerente con la convenzione assi');
+check(/FROM \(VALUES \(1, 45000, 50000\), \(2, 45000, 110000\)/.test(t), 'UNA INSERT multi-riga (VALUES): SUB_POS 1,2,... con X/Y robot (origine = angolo cassetto: tasca 1 = (h1, w1), origin-fix 14/9)');
+check(/\(91, 525000, 770000\)\) AS v\(SUB_POS, X, Y\)/.test(t), '91 tasche, ultima (13a riga, 7a colonna) coerente con la convenzione assi');
 check(/COALESCE\(t\.X_ROT,0\), COALESCE\(t\.Y_ROT,0\), COALESCE\(t\.Z_ROT,0\), COALESCE\(t\.APPROACH_TYPE,3\), COALESCE\(t\.APPROACH_X,100000\)[\s\S]*, 21 FROM \(VALUES/.test(t), 'eredita teaching TRAY come insertPositionTray, Part_Type = PIECE_ID del modello (dal DB)');
 // stessa griglia TRASLATA fuori dal contorno: il client "stantio" la manda, il server la RIFIUTA
 const shifted = centers.map(p => ({ w: p.w + 300, h: p.h }));

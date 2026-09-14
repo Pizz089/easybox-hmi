@@ -181,6 +181,7 @@
       "pendantHint": "Portare il robot IN PRESA sul pezzo in POSIZIONE 1 del cassetto {n} e inserire la posa di prelievo letta a pendant. Questi valori saranno esattamente le coordinate di prelievo della posizione 1.",
       "pickPose": "Posa di prelievo pos.1 campione (cassetto {n})",
       "pieceMissing": "Pezzo della posizione 1 non risolvibile in anagrafica: impossibile calcolare la componente pezzo della Z. Verificare il grigliato associato e l'anagrafica pezzi.",
+      "zPickInvalid": "Il pezzo della posizione 1 ha Z prelievo 0: e' la quota di presa dal fondo e deve essere maggiore di 0. Correggere l'anagrafica pezzo prima del teaching.",
       "lockedHint": "Modifica riservata al livello tecnico",
       "rotHint": "Rotazioni di presa: uniformi per tutta la cassettiera.",
       "preview": "ANTEPRIMA — verranno scritte le correzioni di TUTTI i cassetti. Verificare prima di confermare.",
@@ -238,6 +239,7 @@
         "activeOrder": "Rifiutato: una tasca del cassetto è legata a un ordine ATTIVO.",
         "alreadyAssociated": "Rifiutato: il cassetto ha già un grigliato o tasche a database. Usare Sostituisci.",
         "sourceEmpty": "Rifiutato: il cassetto sorgente non ha tasche o usa un altro grigliato.",
+        "zPick": "Il pezzo {id} del modello ha Z prelievo 0 (quota di presa dal fondo): con questo valore ogni tasca generata e' imprendibile. Correggere l'anagrafica pezzo.",
         "generic": "Operazione NON eseguita: {code}"
       }
     }
@@ -387,8 +389,9 @@
     "MC1_ONLY": "Solo per MC1",
     "MC2_ONLY": "Solo per MC2",
     "MC3_ONLY": "Solo per MC3",
-    "Z_PICK": "Z per prelievo",
-    "Z_PLACE": "Z per deposito",
+    "Z_PICK": "Quota di presa dal fondo (Z prelievo)",
+    "Z_PLACE": "Quota di rilascio dal fondo (Z deposito)",
+    "zPickRange": "Z prelievo e Z deposito sono quote dal FONDO del cassetto: devono essere maggiori di 0 e non oltre l'altezza del pezzo ({h} mm). Zero = ganasce chiuse sul fondo, mai corretto.",
     "width": "Larghezza",
     "height": "Altezza",
     "length": "Lunghezza",

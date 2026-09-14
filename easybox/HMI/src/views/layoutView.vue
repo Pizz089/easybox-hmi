@@ -4,7 +4,7 @@
 
     import prisma from '../components/layout/prisma.vue'
     import cylinder from '../components/layout/cylinder.vue'
-    import { DIR_X, DIR_Y, ROBOT_AXIS_ALONG } from '../util/gratingAxes.js'
+    import { robotToDrawing, ROBOT_AXIS_ALONG } from '../util/gratingAxes.js'
     import { KO_ACTIVE_ORDER } from '../util/errorCodes.js'
 </script>
 
@@ -419,22 +419,19 @@
             }
         },
         computed: {
-            // (layout-axes, 1/9) INVERSA di gratingAxes.drawingToRobot, con i
-            // suoi stessi DIR_X/DIR_Y (nessuna costante duplicata):
-            //   X = w1 + DIR_X*(h - h1),  Y = -h1 + DIR_Y*(w - w1)
-            // con origine = tasca 1 (w1 = X1, h1 = -Y1), quindi
-            //   h = -Y1 + DIR_X*(X - X1),  w = X1 + DIR_Y*(Y - Y1).
-            // w e h sono le distanze disegno dai bordi (lato lungo / corto):
-            // qui vanno dritte su x/y schermo, come faceva gia' il layout
-            // (vista ruotata di 180 gradi rispetto all'anteprima Grigliati).
-            // ROBOT_AXIS_ALONG documenta l'accoppiamento: width <-> Y, height <-> X.
+            // (layout-axes, 1/9; origin-fix 14/9) INVERSA di
+            // gratingAxes.drawingToRobot presa dalla util (robotToDrawing):
+            // nessuna formula duplicata qui. w e h sono le distanze disegno
+            // dai bordi (lato lungo / corto): vanno dritte su x/y schermo,
+            // come faceva gia' il layout (vista ruotata di 180 gradi rispetto
+            // all'anteprima Grigliati). ROBOT_AXIS_ALONG documenta
+            // l'accoppiamento: width <-> Y, height <-> X. Le righe
+            // dell'endpoint sono in mm (x_pick/1000): riportate in micron
+            // per la util.
             drawPz() {
                 if (!this.listPz || this.listPz.length === 0) return [];
-                const X1 = Number(this.listPz[0].x), Y1 = Number(this.listPz[0].y);
-                return this.listPz.map(p => Object.assign({}, p, {
-                    w: X1 + DIR_Y * (Number(p.y) - Y1),
-                    h: -Y1 + DIR_X * (Number(p.x) - X1),
-                }));
+                const wh = robotToDrawing(this.listPz.map(p => ({ X: Math.round(Number(p.x) * 1000), Y: Math.round(Number(p.y) * 1000) })));
+                return this.listPz.map((p, i) => Object.assign({}, p, { w: wh[i].w, h: wh[i].h }));
             },
             robotAxisAlong() { return ROBOT_AXIS_ALONG; }
         },

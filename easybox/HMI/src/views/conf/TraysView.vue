@@ -542,6 +542,9 @@ export default {
             const a = this.assoc;
             const piece = a.pieces.find(p => p.ID == g.PIECE_ID);
             if (!piece || !(piece.X > 0) || !(piece.Y > 0)) { a.error = 'tray.assoc.err.noPiece'; return; }
+            // (z-pick 14/9) Z_PICK = quota di presa dal fondo: con 0 ogni tasca
+            // generata e' imprendibile (il robot chiuderebbe sul fondo). Blocco.
+            if (!(Number(piece.Z_PICK) > 0)) { a.error = 'tray.assoc.err.zPick'; a.errorParams = { id: piece.ID }; return; }
             const width = a.tray.X / 1000, height = a.tray.Y / 1000;
             const grid = buildGrid({ pieceX: piece.X / 1000, pieceY: piece.Y / 1000, prismatic: !!piece.PRISMA,
                                      safeX: g.SAFEX, safeY: g.SAFEY, width, height });
@@ -633,25 +636,30 @@ export default {
             const cfeC = this.teach.cfe.find(c => c.TRAY == f);
             if (!p1 || !cfeC) return;
             // (teach-pick-target) i 6 valori dichiarati sono la POSA DI
-            // PRELIEVO della posizione 1 (robot IN PRESA sul pezzo). La vista
-            // 4Robot somma alla Z la componente pezzo (PIECE.Z - PIECE.Z_PICK):
-            // il CORR deve sottrarla, altrimenti la posa dichiarata NON e'
-            // quella che esce dalla vista. Pezzo irrisolvibile -> BLOCCO
-            // esplicito (mai calcolare con componente pezzo assunta 0).
+            // PRELIEVO della posizione 1 (robot IN PRESA sul pezzo).
+            // (z-pick 14/9) PIECE.Z_PICK e' la QUOTA DI PRESA DAL FONDO del
+            // cassetto (vista 4Robot v3: Z = TRAY.Z_CORR + PIECE.Z_PICK), quindi
+            // TRAY.Z_CORR = fondo del cassetto = pendant - Z_PICK. Pezzo
+            // irrisolvibile o Z_PICK non positivo -> BLOCCO esplicito (mai
+            // calcolare con una componente pezzo assunta).
             const piece = this.teach.pieces.find(x => x.ID == p1.Part_Type);
-            if (!piece || piece.Z == null || piece.Z_PICK == null) {
+            if (!piece || piece.Z_PICK == null) {
                 this.teach.calcError = 'tray.teach.pieceMissing';
                 return;
             }
+            if (!(Number(piece.Z_PICK) > 0)) {
+                this.teach.calcError = 'tray.teach.zPickInvalid';
+                return;
+            }
             // (Q1) CORR campione = pendant - (pos + pos_CORR) della POSIZIONE 1.
-            // Z: si sottraggono pos.Z_CORR E la componente pezzo — pos.Z NON va
-            // sottratta perche' la transazione teachTrays la porta a 0
+            // Z: si sottraggono pos.Z_CORR e la quota di presa del pezzo — pos.Z
+            // NON va sottratta perche' la transazione teachTrays la porta a 0
             // (convenzione E/Q6): sottrarla e poi azzerarla conterebbe doppio.
             // X/Y: in presa il pendant e' il centro pezzo = identico al piano.
             const corrC = {
                 x: Math.round(this.teach.px * 1000 - (p1.X + p1.X_CORR)),
                 y: Math.round(this.teach.py * 1000 - (p1.Y + p1.Y_CORR)),
-                z: Math.round(this.teach.pz * 1000 - p1.Z_CORR - (piece.Z - piece.Z_PICK))
+                z: Math.round(this.teach.pz * 1000 - p1.Z_CORR - piece.Z_PICK)
             };
             // delta tra piani da COORDINATES_FOR_EXTRACT (tutti e 3 gli assi:
             // in cella varia solo Z, ma X/Y coprono i piani fuori canone)

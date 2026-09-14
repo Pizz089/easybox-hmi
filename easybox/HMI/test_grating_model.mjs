@@ -48,7 +48,7 @@ const g12 = buildGrid({ pieceX: 40, pieceY: 70, prismatic: true, safeX: 20, safe
 check(g12.n_cln === 13 && g12.n_row === 7 && g12.listPz.length === 91, 'TRAY_12: pezzo 40x70, SAFEX 20, SAFEY 10 su 820x610 -> 13 x 7 = 91 tasche');
 const c12 = gridCenters(g12.listPz, { width: 820, height: 610, dim_x: g12.dim_x, dim_y: g12.dim_y });
 const p12 = drawingToRobot(c12);
-check(p12[0].X === 50000 && p12[0].Y === -65000 && p12[1].Y === -5000 && p12[13].X === 130000 && p12[90].X === 530000 && p12[90].Y === 655000, 'coordinate robot IDENTICHE a quelle validate sul ferro (TRAY_9: 1=(50000,-65000), 2, 13, 14, 91)');
+check(p12[0].X === 65000 && p12[0].Y === 50000 && p12[1].Y === 110000 && p12[13].X === 145000 && p12[90].X === 545000 && p12[90].Y === 770000, 'coordinate robot: origine angolo cassetto, tasca 1 = (h1, w1) = (65, 50) (origin-fix 14/9)');
 check(gridFit(c12, { width: 820, height: 610, halfW: 20, halfH: 35 }).ok, 'la griglia storica entra nel contorno');
 // stessa griglia calcolata dal componente Grating.vue (anteprima): identica
 const gv = vmOf(Grating, { $route: { params: { grating_ID: 2096 } } });
@@ -86,8 +86,10 @@ const positions = [];
 for (let i = 0; i < 91; i++) { const col = Math.floor(i / 13), r = i % 13; positions.push({ PARENT: 'TRAY_12'.padEnd(30), SUB_POS: i + 1, X: 50000 + 82000 * col, Y: -65000 + 61000 * r }); }
 for (let i = 0; i < 88; i++) positions.push({ PARENT: 'TRAY_9 '.padEnd(30), SUB_POS: i + 1, X: 50000, Y: -65000 + 60000 * i });
 positions.push({ PARENT: 'WPALLET'.padEnd(30), SUB_POS: 1, X: 0, Y: 0 });
-const gratings = [{ ID: 7, NAME: 'T 12', DESCR: 'a', PIECE_ID: 21, GRIPPER_ID: 3, SAFEX: 20, SAFEY: 10 }, { ID: 8, NAME: 'G71x90', DESCR: 'b', PIECE_ID: 22, GRIPPER_ID: 3, SAFEX: 30, SAFEY: 30 }];
-const pieces = [{ ID: 21, X: 40000, Y: 70000, PRISMA: true }, { ID: 22, X: 71000, Y: 90000, PRISMA: true }];
+const gratings = [{ ID: 7, NAME: 'T 12', DESCR: 'a', PIECE_ID: 21, GRIPPER_ID: 3, SAFEX: 20, SAFEY: 10 }, { ID: 8, NAME: 'G71x90', DESCR: 'b', PIECE_ID: 22, GRIPPER_ID: 3, SAFEX: 30, SAFEY: 30 }, { ID: 9, NAME: 'ZERO', DESCR: 'z', PIECE_ID: 23, GRIPPER_ID: 3, SAFEX: 30, SAFEY: 30 }];
+// (z-pick 14/9) Z_PICK = quota di presa dal fondo: il dialog rifiuta di
+// generare con Z_PICK 0 (pezzo 23)
+const pieces = [{ ID: 21, X: 40000, Y: 70000, Z: 30000, Z_PICK: 15000, PRISMA: true }, { ID: 22, X: 71000, Y: 90000, Z: 15000, Z_PICK: 7500, PRISMA: true }, { ID: 23, X: 71000, Y: 90000, Z: 15000, Z_PICK: 0, PRISMA: true }];
 const trays = [
 	{ ID: 4,  FLOOR_MAG: 1,  X: 820000, Y: 610000, MAG: 1, FAMILY: ''.padEnd(400), EXTRACT: 0 },
 	{ ID: 30, FLOOR_MAG: 9,  X: 820000, Y: 610000, MAG: 1, FAMILY: 'T 12'.padEnd(400), EXTRACT: 0 },
@@ -111,7 +113,7 @@ dataStored.userLevel = 2;
 
 // ASSOCIA cassetto 1 con T 12: due sorgenti (12: 91 tasche, 9: 88) -> proposta = 12
 await tv.openAssoc('associate', trays[0]);
-check(tv.assoc.open && tv.assoc.mode === 'associate' && tv.assoc.floor === 1 && tv.assoc.gratings.length === 2, 'dialog aperto, catalogo caricato');
+check(tv.assoc.open && tv.assoc.mode === 'associate' && tv.assoc.floor === 1 && tv.assoc.gratings.length === 3, 'dialog aperto, catalogo caricato');
 check(tv.assocReady === false, 'senza modello scelto: conferma bloccata');
 tv.assoc.gratingId = 7; tv.onAssocGratingChange();
 check(tv.assoc.candidates.map(c => c.floor + ':' + c.n).join(' ') === '12:91 9:88', 'sorgenti = cassetti con lo STESSO modello e tasche a DB, la PRIMA e\' quella con PIU\' tasche');
@@ -139,6 +141,10 @@ await tv.confirmAssoc();
 post = calls.find(c => c.u.includes('associateGrating'));
 body = JSON.parse(post.opt.body);
 check(body.source.centers && body.source.centers.length === expected.listPz.length && body.source.floor === undefined, 'payload genera: source.centers in coordinate DISEGNO (il server verifica l\'ingombro dal DB)');
+
+// (z-pick 14/9) modello con pezzo a Z_PICK 0: generazione RIFIUTATA con messaggio
+tv.assoc.gratingId = 9; tv.onAssocGratingChange();
+check(tv.assoc.preview === null && tv.assoc.error === 'tray.assoc.err.zPick' && tv.assocReady === false, 'pezzo con Z_PICK 0 (quota di presa dal fondo): nessuna anteprima, errore dedicato, conferma bloccata');
 
 // SOSTITUISCI cassetto 9 (ha T 12) con G71x90 -> replace:true, tasche attuali dichiarate
 await tv.openAssoc('replace', trays[1]);

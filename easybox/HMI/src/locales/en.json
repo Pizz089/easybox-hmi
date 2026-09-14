@@ -181,6 +181,7 @@
       "pendantHint": "Move the robot INTO GRIP on the part in POSITION 1 of tray {n} and enter the pick pose read on the pendant. These values will be exactly the pick coordinates of position 1.",
       "pickPose": "Sample pos.1 pick pose (tray {n})",
       "pieceMissing": "Part of position 1 cannot be resolved in the parts registry: the part component of Z cannot be computed. Check the associated grating and the parts registry.",
+      "zPickInvalid": "The part in position 1 has Z pick 0: it is the pick height from the floor and must be greater than 0. Fix the part registry before teaching.",
       "lockedHint": "Editing reserved to the technician level",
       "rotHint": "Pick rotations: uniform for the whole tray rack.",
       "preview": "PREVIEW — the corrections of ALL trays will be written. Check before confirming.",
@@ -238,6 +239,7 @@
         "activeOrder": "Refused: a pocket of the tray is linked to an ACTIVE order.",
         "alreadyAssociated": "Refused: the tray already has a grating or pockets in the database. Use Replace.",
         "sourceEmpty": "Refused: the source tray has no pockets or uses another grating.",
+        "zPick": "Part {id} of the model has Z pick 0 (pick height from the floor): every generated pocket would be ungrippable. Fix the part registry.",
         "generic": "Operation NOT performed: {code}"
       }
     }
@@ -387,8 +389,9 @@
     "MC1_ONLY": "MC1 only",
     "MC2_ONLY": "MC2 only",
     "MC3_ONLY": "MC3 only",
-    "Z_PICK": "Z for pick",
-    "Z_PLACE": "Z for place",
+    "Z_PICK": "Pick height from the tray floor (Z pick)",
+    "Z_PLACE": "Release height from the tray floor (Z place)",
+    "zPickRange": "Z pick and Z place are heights from the tray FLOOR: they must be greater than 0 and not above the part height ({h} mm). Zero = jaws closed on the floor, never correct.",
     "width": "Width",
     "height": "height",
     "length": "Length",
