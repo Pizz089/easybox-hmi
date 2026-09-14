@@ -5,7 +5,7 @@
     import { gridFit, ROBOT_AXIS_ALONG } from '../../../util/gratingAxes.js'
     // (grating-model) griglia calcolata dalla util condivisa con la gestione
     // cassetti: qui serve SOLO per l'anteprima del modello
-    import { buildGrid, gridCenters, gripperMinSafe } from '../../../util/gratingGrid.js'
+    import { buildGrid, gridCenters, gripperMinSafe, pickClearance } from '../../../util/gratingGrid.js'
     import { cavityRect, cavityRadius, applyCavityClearanceToSvg,
              CAVITY_CLEARANCE_UM, CAVITY_CLEARANCE_MAX_UM, clearanceMmToUm, clearanceUmToMm, isValidClearanceUm } from '../../../util/cavityClearance.js'
     import { dedupeGrippers } from '../../../util/grippers.js'
@@ -142,7 +142,29 @@
                 <div>
                     <label class="pure-u-1">{{$t('grating.pitchY')}}</label>
                     <input type="text" class="pitch-field" :value="pitchYLabel" readonly tabindex="-1" />
-                </div> 
+                </div>
+                <!-- (grating-thickness 14/9) spessore fisico della griglia, mm con
+                     un decimale (a DB micron, NULL = non misurato = nessun
+                     vincolo). Protezione anti-urto: Z_PICK/Z_PLACE del pezzo
+                     devono stare sopra spessore + 1 mm. Qui solo AVVISO (il
+                     modello si salva comunque); il blocco vero e' in
+                     generazione tasche, client e server. -->
+                <div>
+                    <label class="pure-u-1">{{$t('grating.thickness')}}</label>
+                    <numericField
+                        name="THICKNESS"
+                        unitMeasure="mm"
+                        step=0.5
+                        :min=0
+                        :max=100
+                        :model-value=grating.THICKNESS
+                        @update="newValue => grating.THICKNESS = newValue">
+                    </numericField>
+                    <small class="min-hint">{{ $t('grating.thicknessHint') }}</small>
+                    <div class="model-hint model-warn" v-if="thicknessWarn">
+                        {{ $t('grating.thicknessWarn', { min: thicknessWarn.min / 1000, pick: thicknessWarn.zPick / 1000, place: thicknessWarn.zPlace / 1000 }) }}
+                    </div>
+                </div>
                 <div class="pure-u-1 btn-group row-spaced grating-actions">
                     <!-- (cavity-clearance) il franco vale SOLO per i file di
                          fabbricazione, DXF e stampa PDF (dialog askCavity: un solo
@@ -488,6 +510,7 @@ export default {
                 DESCR:'',
                 SAFEX:5,
                 SAFEY:5,
+                THICKNESS:null,   // (grating-thickness) mm nel form, micron a DB; null = non misurato
 				TRAY_ID:0,      // (grating-model) colonna morta: sempre 0, il legame e' TRAY.FAMILY
 				GRIPPER_ID:0,
 				PIECE_ID:0,
@@ -632,6 +655,8 @@ export default {
 
                     this.grating.SAFEX=data[0].SAFEX;
                     this.grating.SAFEY=data[0].SAFEY;
+                    // (grating-thickness) micron -> mm; NULL resta null (non misurato)
+                    this.grating.THICKNESS = (data[0].THICKNESS === null || data[0].THICKNESS === undefined) ? null : Number(data[0].THICKNESS) / 1000;
 
                     let index=1;
                     // (gripper-twins) niente piu' decodifica dell'ID composito
@@ -723,6 +748,14 @@ export default {
             // edita a mano se vuole piu' aria). Ricalcolo puro -> IDEMPOTENTE.
             this.calculateData();
         },
+        // (grating-thickness) payload header: THICKNESS in micron, '' = NULL
+        // (non misurato). Il resto dell'oggetto grating passa com'e' (SAFEX/
+        // SAFEY sono in mm anche a DB, per eredita').
+        headerPayload() {
+            const t = this.grating.THICKNESS;
+            const um = (t === null || t === undefined || t === '' || !(Number(t) > 0)) ? '' : Math.round(Number(t) * 1000);
+            return Object.assign({}, this.grating, { THICKNESS: um });
+        },
         async saveData() {
             // (dup-race 4/9) anti doppio-tap: UN solo salvataggio in volo
             // (governa anche il :disabled del bottone).
@@ -740,10 +773,10 @@ export default {
                 var cmd = ""
                 if (!this.createNew){
                     //eseguo aggiornamento -> update DB
-                    cmd = dataStored.server+'api/conf/grating/updategrating?' + new URLSearchParams( this.grating ).toString();
+                    cmd = dataStored.server+'api/conf/grating/updategrating?' + new URLSearchParams( this.headerPayload() ).toString();
                 }else{
                     //nuovo grigliato -> insert DB
-                    cmd = dataStored.server+'api/conf/grating/insertgrating?' + new URLSearchParams( this.grating ).toString();
+                    cmd = dataStored.server+'api/conf/grating/insertgrating?' + new URLSearchParams( this.headerPayload() ).toString();
                 }
                 const r = await fetch( cmd ,{ method: 'GET'});
                 if (!r.ok) { alert("errore"); throw new Error('Network response was not ok'); }
@@ -973,6 +1006,16 @@ export default {
         },
         pitchY(){
             return this.grating.pieceIndex>0 ? this.y + this.grating.SAFEY : null;
+        },
+        // (grating-thickness) avviso NON bloccante: il pezzo scelto ha Z_PICK o
+        // Z_PLACE (quote dal fondo) sotto spessore + franco. null = tutto ok
+        // o spessore non misurato.
+        thicknessWarn(){
+            const t = this.grating.THICKNESS;
+            const piece = this.partList && this.grating.pieceIndex > 0 ? this.partList[this.grating.pieceIndex-1] : null;
+            if (!piece || !(Number(t) > 0)) return null;
+            const c = pickClearance({ thickness: Math.round(Number(t) * 1000), zPick: piece.Z_PICK, zPlace: piece.Z_PLACE });
+            return c.ok ? null : c;
         },
         pitchXLabel(){
             return this.pitchX!=null ? this.pitchX+' mm' : '\u2014';

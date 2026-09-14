@@ -51,6 +51,20 @@ exports.gridFit = function (centers, { width, height, halfW, halfH }) {
 	return { ok: overW === 0 && overH === 0, overW, overH };
 };
 
+// (grating-thickness 14/9) protezione anti-urto: franco sopra lo spessore
+// del grigliato, UN punto solo lato server (parita' con gratingGrid.js).
+exports.GRATING_CLEARANCE_UM = 1000;
+
+// Regola: con THICKNESS > 0, Z_PICK e Z_PLACE del pezzo (quote dal fondo,
+// micron) devono essere >= THICKNESS + franco. NULL/0 = non misurato: nessun
+// vincolo (comportamento invariato). Ritorna { ok, min, zPick, zPlace }.
+exports.pickClearance = function ({ thickness, zPick, zPlace }) {
+	const t = Number(thickness), zp = Number(zPick), zl = Number(zPlace);
+	const min = (Number.isFinite(t) && t > 0) ? t + exports.GRATING_CLEARANCE_UM : 0;
+	const ok = min === 0 || (zp >= min && zl >= min);
+	return { ok, min, zPick: zp, zPlace: zl };
+};
+
 // Validazione strutturale del payload centers: array 1..500 di {w,h} numeri
 // finiti. Ritorna l'array normalizzato (Number) o null.
 exports.parseCenters = function (centers) {

@@ -19,3 +19,5 @@ exports.KO_SOURCE_EMPTY       = "KO_SOURCE_EMPTY";       // cassetto sorgente se
 exports.KO_OUT_OF_TRAY        = "KO_OUT_OF_TRAY";        // griglia generata FUORI dall'ingombro del cassetto target (verifica server)
 exports.KO_IN_USE             = "KO_IN_USE";             // grigliato usato da almeno un cassetto: cancellazione rifiutata
 exports.KO_DUP_NAME           = "KO_DUP_NAME";           // nome grigliato gia' esistente (NAME e' la chiave del legame TRAY.FAMILY)
+// Spessore grigliato (grating-thickness 14/9): quota di prelievo/deposito del pezzo sotto THICKNESS + franco
+exports.KO_Z_BELOW_GRATING   = "KO_Z_BELOW_GRATING";   // Z_PICK o Z_PLACE del pezzo < GRATING.THICKNESS + 1000 um: generazione rifiutata

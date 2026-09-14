@@ -79,6 +79,11 @@ check(!('FLOOR_MAG' in grouped[0]) && !('TRAY_ID' in grouped[0]), 'colonne casse
 const gsrcV = readFileSync('src/views/conf/GratingsView.vue', 'utf8');
 check(/:disabled="dt\.trays\.length>0" @click="deleteGrating/.test(gsrcV) && /KO_IN_USE/.test(gsrcV), 'delete: bloccata a video se in uso e KO_IN_USE gestito');
 check(!/deletePositionsTray|associate\b/.test(gsrcV), 'nessuna azione di associazione nella pagina grigliati (solo catalogo)');
+// (grating-thickness) indicatore nel catalogo: pezzo del modello sotto spessore + franco
+const gvw = vmOf(GratingsView);
+check(gvw.thicknessIssue({ THICKNESS: 14500, Z_PICK: 15000, Z_PLACE: 15000 }) !== null, 'badge: spessore 14.5 e pezzo a 15 -> segnalato (min 15.5)');
+check(gvw.thicknessIssue({ THICKNESS: 14000, Z_PICK: 15000, Z_PLACE: 15000 }) === null && gvw.thicknessIssue({ THICKNESS: null, Z_PICK: 15000, Z_PLACE: 15000 }) === null, 'badge: al limite o spessore non misurato -> nessun indicatore');
+check(/thick-badge/.test(gsrcV) && /grating\.thicknessBadge/.test(gsrcV), 'badge presente nella riga del catalogo (si vede prima di associare)');
 
 console.log('\n3) TraysView: dialog associa/sostituisci/rigenera/dissocia');
 // posizioni a DB: TRAY_12 91 tasche tarate (passi 61/82), TRAY_9 88 tasche, TRAY_1 nessuna
@@ -89,7 +94,7 @@ positions.push({ PARENT: 'WPALLET'.padEnd(30), SUB_POS: 1, X: 0, Y: 0 });
 const gratings = [{ ID: 7, NAME: 'T 12', DESCR: 'a', PIECE_ID: 21, GRIPPER_ID: 3, SAFEX: 20, SAFEY: 10 }, { ID: 8, NAME: 'G71x90', DESCR: 'b', PIECE_ID: 22, GRIPPER_ID: 3, SAFEX: 30, SAFEY: 30 }, { ID: 9, NAME: 'ZERO', DESCR: 'z', PIECE_ID: 23, GRIPPER_ID: 3, SAFEX: 30, SAFEY: 30 }];
 // (z-pick 14/9) Z_PICK = quota di presa dal fondo: il dialog rifiuta di
 // generare con Z_PICK 0 (pezzo 23)
-const pieces = [{ ID: 21, X: 40000, Y: 70000, Z: 30000, Z_PICK: 15000, PRISMA: true }, { ID: 22, X: 71000, Y: 90000, Z: 15000, Z_PICK: 7500, PRISMA: true }, { ID: 23, X: 71000, Y: 90000, Z: 15000, Z_PICK: 0, PRISMA: true }];
+const pieces = [{ ID: 21, X: 40000, Y: 70000, Z: 30000, Z_PICK: 15000, Z_PLACE: 15000, PRISMA: true }, { ID: 22, X: 71000, Y: 90000, Z: 15000, Z_PICK: 7500, Z_PLACE: 7500, PRISMA: true }, { ID: 23, X: 71000, Y: 90000, Z: 15000, Z_PICK: 0, Z_PLACE: 0, PRISMA: true }];
 const trays = [
 	{ ID: 4,  FLOOR_MAG: 1,  X: 820000, Y: 610000, MAG: 1, FAMILY: ''.padEnd(400), EXTRACT: 0 },
 	{ ID: 30, FLOOR_MAG: 9,  X: 820000, Y: 610000, MAG: 1, FAMILY: 'T 12'.padEnd(400), EXTRACT: 0 },
@@ -145,6 +150,34 @@ check(body.source.centers && body.source.centers.length === expected.listPz.leng
 // (z-pick 14/9) modello con pezzo a Z_PICK 0: generazione RIFIUTATA con messaggio
 tv.assoc.gratingId = 9; tv.onAssocGratingChange();
 check(tv.assoc.preview === null && tv.assoc.error === 'tray.assoc.err.zPick' && tv.assocReady === false, 'pezzo con Z_PICK 0 (quota di presa dal fondo): nessuna anteprima, errore dedicato, conferma bloccata');
+
+// (grating-thickness 14/9) spessore grigliato + franco: blocco in TUTTI i modi, copia compresa
+gratings[0].THICKNESS = 14500;   // T 12: pezzo 21 ha Z_PICK 15000 < 14500 + 1000
+await tv.openAssoc('associate', trays[0]);
+tv.assoc.gratingId = 7; tv.onAssocGratingChange();
+check(tv.assoc.error === 'tray.assoc.err.thickness' && tv.assoc.candidates.length === 0 && tv.assoc.sourceFloor === null && tv.assocReady === false, 'copia da sorgente disponibile ma pezzo sotto spessore + franco: bloccato PRIMA della scelta sorgente');
+check(tv.assoc.errorParams.min === 15.5 && tv.assoc.errorParams.pick === 15 && tv.assoc.errorParams.t === 14.5, 'messaggio con minimo 15.5 mm, richiesto 15 mm, spessore 14.5 mm');
+gratings[0].THICKNESS = 14000;   // al limite: 15000 = 14000 + 1000 -> passa
+tv.onAssocGratingChange();
+check(tv.assoc.error === '' && tv.assoc.sourceFloor === 12, 'al limite esatto: passa, sorgente proposta come prima');
+gratings[0].THICKNESS = null;
+tv.onAssocGratingChange();
+check(tv.assoc.error === '' && tv.assoc.sourceFloor === 12, 'spessore non misurato (NULL): nessun vincolo, come prima');
+// rifiuto dal SERVER (client con dati vecchi): codice mappato con i numeri
+globalThis.fetch = async (url, opt) => {
+	const u = String(url).replace(dataStored.server, '');
+	const j = u.includes('tray/show') ? trays : u.includes('grating/show') ? gratings : u.includes('position/show') ? positions : u.includes('piece/show') ? pieces
+		: { ris: 'KO_Z_BELOW_GRATING', n: 0, min: 15500, zPick: 15000, zPlace: 15000, thickness: 14500 };
+	return { ok: true, json: async () => j };
+};
+await tv.confirmAssoc();
+check(tv.assoc.open === true && tv.assoc.error === 'tray.assoc.err.thickness' && tv.assoc.errorParams.min === 15.5 && tv.assoc.errorParams.t === 14.5, 'KO_Z_BELOW_GRATING dal server -> stesso messaggio con i numeri del DB, dialog aperto');
+globalThis.fetch = async (url, opt) => {
+	const u = String(url).replace(dataStored.server, '');
+	calls.push({ u, opt });
+	const j = u.includes('tray/show') ? trays : u.includes('grating/show') ? gratings : u.includes('position/show') ? positions : u.includes('piece/show') ? pieces : { ris: 'OK', n: 91 };
+	return { ok: true, json: async () => j, text: async () => JSON.stringify(j) };
+};
 
 // SOSTITUISCI cassetto 9 (ha T 12) con G71x90 -> replace:true, tasche attuali dichiarate
 await tv.openAssoc('replace', trays[1]);
@@ -202,6 +235,16 @@ let alerted = '';
 globalThis.alert = m => { alerted = String(m); };
 await g.saveData();
 check(alerted.includes('grating.dupName'), 'nome duplicato -> messaggio dedicato');
+// (grating-thickness) form: avviso NON bloccante e payload in micron
+const gt = vmOf(Grating, { $route: { params: { grating_ID: 5 } }, $router: { push: () => {} } });
+gt.partList = [{ ID: 21, X: 40000, Y: 70000, Z: 30000, Z_PICK: 15000, Z_PLACE: 15000, PRISMA: true }];
+gt.grating.pieceIndex = 1; gt.grating.NAME = 'T'; gt.grating.THICKNESS = 14.5;
+check(gt.thicknessWarn && gt.thicknessWarn.min === 15500, 'form: spessore 14.5 mm e pezzo a 15 -> avviso con minimo 15.5');
+gt.grating.THICKNESS = 14;
+check(gt.thicknessWarn === null, 'form: al limite -> nessun avviso');
+check(gt.headerPayload().THICKNESS === 14000, 'payload: mm -> micron');
+gt.grating.THICKNESS = null;
+check(gt.thicknessWarn === null && gt.headerPayload().THICKNESS === '', 'form: vuoto = non misurato -> nessun avviso, payload vuoto (NULL a DB)');
 const it = JSON.parse(readFileSync('src/locales/it.json', 'utf8')), en = JSON.parse(readFileSync('src/locales/en.json', 'utf8'));
 const flat = (o, p = '') => Object.entries(o).flatMap(([k, v]) => v && typeof v === 'object' ? flat(v, p + k + '.') : [p + k]);
 const fi = flat(it), fe = flat(en);

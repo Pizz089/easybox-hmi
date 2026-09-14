@@ -8,9 +8,9 @@
     import numericField from '../../components/numericField.vue'
     // (grating-model) associazione grigliato <-> cassetto: griglia dalla
     // stessa util dell'anteprima modello, ingombro e avviso taratura
-    import { buildGrid, gridCenters, taughtMismatch } from '../../util/gratingGrid.js'
+    import { buildGrid, gridCenters, taughtMismatch, pickClearance } from '../../util/gratingGrid.js'
     import { gridFit } from '../../util/gratingAxes.js'
-    import { KO_TRAY_EXTRACTED, KO_ACTIVE_ORDER, KO_ALREADY_ASSOCIATED, KO_SOURCE_EMPTY, KO_OUT_OF_TRAY } from '../../util/errorCodes.js'
+    import { KO_TRAY_EXTRACTED, KO_ACTIVE_ORDER, KO_ALREADY_ASSOCIATED, KO_SOURCE_EMPTY, KO_OUT_OF_TRAY, KO_Z_BELOW_GRATING } from '../../util/errorCodes.js'
     const el = ref()
 </script>
 
@@ -524,6 +524,20 @@ export default {
             a.error = ''; a.errorParams = {};
             const g = a.gratings.find(x => x.ID == a.gratingId);
             if (!g || a.mode == 'dissociate') return;
+            // (grating-thickness 14/9) protezione anti-urto PRIMA di qualunque
+            // sorgente o anteprima, in TUTTI i modi (copia compresa): Z_PICK e
+            // Z_PLACE del pezzo del modello >= spessore grigliato + 1 mm.
+            // Spessore NULL/0 = non misurato = nessun vincolo. Il server
+            // ripete il controllo sui valori del DB.
+            {
+                const piece = a.pieces.find(p => p.ID == g.PIECE_ID);
+                const c = pickClearance({ thickness: g.THICKNESS, zPick: piece ? piece.Z_PICK : 0, zPlace: piece ? piece.Z_PLACE : 0 });
+                if (piece && !c.ok) {
+                    a.error = 'tray.assoc.err.thickness';
+                    a.errorParams = { min: c.min / 1000, pick: c.zPick / 1000, place: c.zPlace / 1000, t: Number(g.THICKNESS) / 1000 };
+                    return;
+                }
+            }
             if (a.mode != 'regenerate') {
                 const name = (g.NAME || '').trim();
                 a.candidates = this.datiTab
@@ -591,10 +605,13 @@ export default {
                     map[KO_ALREADY_ASSOCIATED] = 'tray.assoc.err.alreadyAssociated';
                     map[KO_SOURCE_EMPTY] = 'tray.assoc.err.sourceEmpty';
                     map[KO_OUT_OF_TRAY] = 'tray.assoc.err.outOfTray';
+                    map[KO_Z_BELOW_GRATING] = 'tray.assoc.err.thickness';
                     a.error = map[code] || 'tray.assoc.err.generic';
                     a.errorParams = code == KO_OUT_OF_TRAY
                         ? { w: Math.ceil(out.overW || 0), h: Math.ceil(out.overH || 0) }
-                        : { code: code };
+                        : code == KO_Z_BELOW_GRATING
+                            ? { min: (out.min || 0) / 1000, pick: (out.zPick || 0) / 1000, place: (out.zPlace || 0) / 1000, t: (out.thickness || 0) / 1000 }
+                            : { code: code };
                 })
                 .catch(e => { console.info(e); a.busy = false; a.error = 'tray.assoc.err.generic'; a.errorParams = { code: String(e) }; });
         },

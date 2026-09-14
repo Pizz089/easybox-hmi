@@ -16,6 +16,8 @@ const check = (c, l) => { console.log((c ? '  ok   ' : '  FAIL ') + l); if (!c) 
 
 (async () => {
 	const hmi = await import(pathToFileURL(path.join(__dirname, '..', 'HMI', 'src', 'util', 'gratingAxes.js')).href);
+	// (grating-thickness) la regola spessore + franco lato client vive in gratingGrid.js
+	const hmiGrid = await import(pathToFileURL(path.join(__dirname, '..', 'HMI', 'src', 'util', 'gratingGrid.js')).href);
 
 	// griglia TRAY_12 (13 x 7, pezzo 40x70, SAFEX 20, SAFEY 10) + casi limite
 	const grid = [];
@@ -41,6 +43,25 @@ const check = (c, l) => { console.log((c ? '  ok   ' : '  FAIL ') + l); if (!c) 
 	}
 	const p = srv.drawingToRobot(grid);
 	check(p[0].X === 45000 && p[0].Y === 50000 && p[1].Y === 110000 && p[13].X === 125000 && p[90].X === 525000 && p[90].Y === 770000, 'origine angolo cassetto (origin-fix 14/9): tasca 1 = (h1, w1) = (45000, 50000); SUB_POS 2 = +60000 su Y, SUB_POS 14 = +80000 su X');
+
+	console.log('\n2b) pickClearance (spessore grigliato + franco): parita\' server/client');
+	check(srv.GRATING_CLEARANCE_UM === 1000 && hmiGrid.GRATING_CLEARANCE_UM === 1000, 'franco 1000 um, stesso valore da entrambi i lati');
+	const clrCases = [
+		{ name: 'NULL = non misurato', thickness: null, zPick: 100, zPlace: 100 },
+		{ name: '0 = non misurato', thickness: 0, zPick: 100, zPlace: 100 },
+		{ name: 'sotto il minimo (pick)', thickness: 8500, zPick: 9000, zPlace: 12000 },
+		{ name: 'sotto il minimo (place)', thickness: 8500, zPick: 12000, zPlace: 9499 },
+		{ name: 'al limite esatto', thickness: 8500, zPick: 9500, zPlace: 9500 },
+		{ name: 'sopra', thickness: 8500, zPick: 15000, zPlace: 15000 },
+		{ name: 'stringhe dal DB', thickness: '8500', zPick: '9500', zPlace: '9500' },
+	];
+	for (const c of clrCases) {
+		const a = srv.pickClearance(c), b = hmiGrid.pickClearance(c);
+		check(JSON.stringify(a) === JSON.stringify(b), c.name + ' -> ' + JSON.stringify(a));
+	}
+	check(srv.pickClearance(clrCases[0]).ok && srv.pickClearance(clrCases[1]).ok, 'NULL e 0: nessun vincolo (comportamento invariato)');
+	check(!srv.pickClearance(clrCases[2]).ok && !srv.pickClearance(clrCases[3]).ok && srv.pickClearance(clrCases[2]).min === 9500, 'sotto 8500 + 1000 = 9500 su UNA delle due quote -> rifiuto, min 9500');
+	check(srv.pickClearance(clrCases[4]).ok && srv.pickClearance(clrCases[5]).ok, 'al limite e sopra -> ok');
 
 	console.log('\n3) parseCenters: validazione payload');
 	check(srv.parseCenters([{ w: '1', h: 2 }]).length === 1 && srv.parseCenters([{ w: '1', h: 2 }])[0].w === 1, 'stringhe numeriche normalizzate a Number');

@@ -17,13 +17,23 @@ Due difetti, due rimedi nello stesso commit:
 morsa: oggi somma anche PIECE.Z, col nuovo significato manderebbe il robot
 15 mm sopra. Lo script v3 modifica SOLO la vista cassetti.
 
+Nella STESSA fermata va anche `grating-thickness.sql` (colonna
+GRATING.THICKNESS, spessore griglia in micron, NULL = non misurato = nessun
+vincolo; protezione anti-urto in generazione: Z_PICK/Z_PLACE del pezzo >=
+spessore + 1 mm, controllata da client e server). I due DDL sono
+INDIPENDENTI (uno tocca la vista dei cassetti, l'altro la tabella GRATING):
+ordine fra loro indifferente, ENTRAMBI prima del deploy del backend
+(insert/update del grigliato nominano la colonna nuova).
+
 Sequenza obbligata (il teaching legge la tasca 1 a DB per calcolare i CORR):
 ```
 -- 1) anagrafica pezzi: Z_PICK e Z_PLACE riscritti col nuovo significato
 --    (1033 -> 7500 / 7500). Il form ora rifiuta 0 e valori > Z.
--- 2) DDL a CELLA FERMA (login plc senza ALTER):
+-- 2) DDL a CELLA FERMA (login plc senza ALTER), in qualsiasi ordine:
 sqlcmd -S .\SQLEXPRESS -E -d ADMG -i robot-tray-view-v3.sql
+sqlcmd -S .\SQLEXPRESS -E -d ADMG -i grating-thickness.sql
 -- 3) deploy codice (git pull in D:\Prog) + riavvio backend
+--    (poi, con calma: spessore misurato nel form grigliato 2097)
 -- 4) Cassetti > "Rigenera tasche" su 1 e 12 (grigliato 2097, nessuna
 --    taratura da conservare). Il 9 esce dal piano: Dissocia.
 -- 5) Cassetti > "0 CASSETTIERA": campione 1, pendant X 84 / Y 102.5 / Z 7.5

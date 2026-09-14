@@ -6,6 +6,8 @@
     import { ref, onMounted } from 'vue'
     import { dataStored } from '../../data';
     import { KO_IN_USE } from '../../util/errorCodes';
+    // (grating-thickness) stessa regola del dialog cassetti e del server
+    import { pickClearance } from '../../util/gratingGrid.js';
 
     const el = ref()
 </script>
@@ -44,7 +46,16 @@
             <tbody>
                 <template v-for="(dt) in datiTab" :key="dt.ID" >
                     <tr :class="{'pure-table-odd':(dt.ID % 2==1)}">
-                        <td>{{dt.NAME.trim()}} </td>
+                        <td>
+                            {{dt.NAME.trim()}}
+                            <!-- (grating-thickness) indicatore nel catalogo: pezzo del
+                                 modello sotto spessore + franco. Si vede QUI, non solo
+                                 quando qualcuno prova ad associare. -->
+                            <span v-if="thicknessIssue(dt)" class="thick-badge"
+                                  :title="$t('grating.thicknessWarn', { min: thicknessIssue(dt).min / 1000, pick: thicknessIssue(dt).zPick / 1000, place: thicknessIssue(dt).zPlace / 1000 })">
+                                &#9888; {{ $t('grating.thicknessBadge') }}
+                            </span>
+                        </td>
                         <td>{{dt.DESCR.trim()}}</td>
                         <td>
                             <template v-if="dt.trays.length">
@@ -178,6 +189,13 @@ export default {
 					alert(error);
                 });
         },
+        // (grating-thickness) null = ok o spessore non misurato; altrimenti
+        // { min, zPick, zPlace } in micron per il badge e il suo tooltip
+        thicknessIssue(dt){
+            if (!(Number(dt.THICKNESS) > 0)) return null;
+            const c = pickClearance({ thickness: dt.THICKNESS, zPick: dt.Z_PICK, zPlace: dt.Z_PLACE });
+            return c.ok ? null : c;
+        },
         goToLayout(Tray_ID,TraySTATUS,floor_MAG){
             if (TraySTATUS==dataStored.status_working)
                 this.$router.push('/layout/'+Tray_ID+'/0/'+floor_MAG);
@@ -222,6 +240,13 @@ export default {
     }
     .model-muted {
         color: var(--text-muted);
+    }
+    /* (grating-thickness) pezzo del modello sotto spessore + franco */
+    .thick-badge {
+        color: var(--color-danger);
+        font-size: 0.85em;
+        margin-left: var(--space-1);
+        white-space: nowrap;
     }
     .model-note {
         color: var(--text-secondary);

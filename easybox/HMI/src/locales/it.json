@@ -240,6 +240,7 @@
         "alreadyAssociated": "Rifiutato: il cassetto ha già un grigliato o tasche a database. Usare Sostituisci.",
         "sourceEmpty": "Rifiutato: il cassetto sorgente non ha tasche o usa un altro grigliato.",
         "zPick": "Il pezzo {id} del modello ha Z prelievo 0 (quota di presa dal fondo): con questo valore ogni tasca generata e' imprendibile. Correggere l'anagrafica pezzo.",
+        "thickness": "Rifiutato: quota di presa {pick} mm / rilascio {place} mm sotto il minimo {min} mm (spessore griglia {t} + 1 di franco). Correggere Z prelievo/Z deposito del pezzo, oppure lo spessore del grigliato.",
         "generic": "Operazione NON eseguita: {code}"
       }
     }
@@ -293,7 +294,11 @@
     "modelHint": "Anteprima sulle misure della cassettiera: {w} × {h} mm. L'associazione ai cassetti si fa dalla pagina Cassetti.",
     "traySizesDiffer": "ATTENZIONE: i cassetti non hanno tutti le stesse misure: l'anteprima vale solo per il cassetto di riferimento.",
     "nameRequired": "Inserire il nome del grigliato.",
-    "dupName": "Esiste già un grigliato con nome \"{name}\": il nome deve essere unico."
+    "dupName": "Esiste già un grigliato con nome \"{name}\": il nome deve essere unico.",
+    "thickness": "Spessore griglia",
+    "thicknessHint": "mm; vuoto = non misurato, nessun vincolo. Con un valore, le quote di presa e rilascio del pezzo devono stare almeno 1 mm sopra.",
+    "thicknessWarn": "Pezzo sotto lo spessore: minimo {min} mm (spessore + 1 di franco), richiesti prelievo {pick} mm e rilascio {place} mm. Correggere il pezzo o lo spessore: la generazione tasche verrà rifiutata.",
+    "thicknessBadge": "pezzo sotto spessore"
   },
   "menu": {
     "dashboard": "Dashboard",

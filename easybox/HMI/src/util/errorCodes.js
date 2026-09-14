@@ -12,3 +12,5 @@ export const KO_SOURCE_EMPTY       = "KO_SOURCE_EMPTY";       // sorgente senza 
 export const KO_OUT_OF_TRAY        = "KO_OUT_OF_TRAY";        // griglia fuori ingombro (verifica lato server)
 export const KO_IN_USE             = "KO_IN_USE";             // grigliato in uso: cancellazione rifiutata
 export const KO_DUP_NAME           = "KO_DUP_NAME";           // nome grigliato duplicato
+// (grating-thickness 14/9) Z_PICK/Z_PLACE del pezzo sotto spessore grigliato + franco
+export const KO_Z_BELOW_GRATING   = "KO_Z_BELOW_GRATING";   // generazione rifiutata dal server

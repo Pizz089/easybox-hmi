@@ -8,6 +8,16 @@ const log 	= require('../LogFunct');
 
 var templatePATH = '.';
 
+// (grating-thickness 14/9) THICKNESS in micron: '' / assente -> NULL (non
+// misurato, nessun vincolo); intero >= 0 -> valore; altro -> undefined
+// (KO_BAD_INPUT nel chiamante). NULL e 0 si comportano allo stesso modo.
+function thicknessSql(raw) {
+	if (raw === undefined || raw === null || String(raw).trim() === '' || String(raw) === 'null') return 'NULL';
+	const v = Number(raw);
+	if (!Number.isInteger(v) || v < 0) return undefined;
+	return String(v);
+}
+
 router.get('/show/:ID', (req, res) => {
 
 	sql.connect(DBf.configDB, function (err) {
@@ -52,7 +62,10 @@ router.get('/showCompleteData/:ID', (req, res) => {
 		// non si usa piu'). UNA riga per coppia grigliato-cassetto (N cassetti
 		// possono usare lo stesso modello; senza cassetti: colonne TRAY NULL).
 		// La pagina aggrega per g.ID.
-		let query=`select g.ID,g.NAME,g.DESCR, g.SAFEX, g.SAFEY ,
+		// (grating-thickness) THICKNESS + Z_PICK/Z_PLACE del pezzo: il catalogo
+		// segnala i modelli con pezzo sotto spessore + franco PRIMA che qualcuno
+		// provi ad associarli.
+		let query=`select g.ID,g.NAME,g.DESCR, g.SAFEX, g.SAFEY, g.THICKNESS, p.Z_PICK, p.Z_PLACE,
 					t.id as TRAY_ID,t.FLOOR_MAG , t.MAG,gr.FAMILY as GRIPPER_DESC,p.FAMILY AS PIECE_ID, t.STATUS as TraySTATUS
 					from GRATING g
 					left join tray t on t.FAMILY = g.NAME
@@ -106,6 +119,8 @@ router.get('/updateGrating', (req, res) => {
 		// stessa transazione; nome gia' usato da un ALTRO grigliato -> KO_DUP_NAME.
 		const gratingId = Number(req.query.ID);
 		if (!Number.isInteger(gratingId) || gratingId < 1) { res.send("KO_BAD_INPUT"); return; }
+		const thickness = thicknessSql(req.query.THICKNESS);
+		if (thickness === undefined) { res.send("KO_BAD_INPUT"); return; }
         let query = `SET NOCOUNT ON; SET XACT_ABORT ON;
 					DECLARE @old varchar(100) = (SELECT NAME FROM GRATING WHERE ID=${gratingId});
 					DECLARE @new varchar(100) = '${req.query.NAME}';
@@ -120,6 +135,7 @@ router.get('/updateGrating', (req, res) => {
 							PIECE_ID=${req.query.PIECE_ID},
 							SAFEX=${req.query.SAFEX},
 							SAFEY=${req.query.SAFEY},
+							THICKNESS=${thickness},
 							NAME=@new
 							where ID=${gratingId};
 						IF @old <> @new UPDATE TRAY SET FAMILY=@new WHERE FAMILY=@old;
@@ -156,6 +172,8 @@ router.get('/insertGrating', (req, res) => {
             return;
         }
 		
+		const thickness = thicknessSql(req.query.THICKNESS);
+		if (thickness === undefined) { res.send("KO_BAD_INPUT"); return; }
 		var request = new sql.Request();
 		// (grating-model) il grigliato nasce come MODELLO: nessun cassetto
 		// (TRAY_ID=0, colonna morta), nessuna tasca. Nome unico: e' la chiave
@@ -164,7 +182,7 @@ router.get('/insertGrating', (req, res) => {
 					IF EXISTS (SELECT 1 FROM GRATING WHERE NAME='${req.query.NAME}') SELECT '${errorCodes.KO_DUP_NAME}' AS ris;
 					ELSE BEGIN
 						INSERT INTO GRATING
-						(NAME, DESCR, TRAY_ID, GRIPPER_ID, PIECE_ID, SAFEX, SAFEY)
+						(NAME, DESCR, TRAY_ID, GRIPPER_ID, PIECE_ID, SAFEX, SAFEY, THICKNESS)
 						VALUES(
 						'${req.query.NAME}',
 						'${req.query.DESCR}',
@@ -172,7 +190,8 @@ router.get('/insertGrating', (req, res) => {
 						${req.query.GRIPPER_ID},
 						${req.query.PIECE_ID},
 						${req.query.SAFEX},
-						${req.query.SAFEY});
+						${req.query.SAFEY},
+						${thickness});
 						SELECT 'OK' AS ris;
 					END`
 

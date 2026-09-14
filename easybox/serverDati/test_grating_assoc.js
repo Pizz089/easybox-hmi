@@ -44,10 +44,12 @@ function call(key, params, body, resultQueue) {
 	routes[key]({ params, query: params, body }, res);
 	return { res, n: queries.length - before, q: queries.slice(before).map(norm) };
 }
-const ctx = { recordset: [{ ID: 7, PIECE_ID: 21, PX: 40000, PY: 70000, TX: 820000, TY: 610000 }] };
+// THICKNESS null = spessore non misurato (nessun vincolo), Z_PICK/Z_PLACE del pezzo dal DB
+const ctx = { recordset: [{ ID: 7, PIECE_ID: 21, THICKNESS: null, PX: 40000, PY: 70000, Z_PICK: 15000, Z_PLACE: 15000, TX: 820000, TY: 610000 }] };
 const ok = n => ({ recordset: [{ ris: 'OK', n }] });
 
 console.log('1) associateGrating: COPIA da cassetto tarato (default)');
+let r2;
 let r = call('POST /associateGrating/:floor', { floor: '1' }, { gratingId: 7, replace: false, source: { floor: 12 } }, [ctx, ok(91)]);
 check(r.n === 2 && r.res.body.ris === 'OK' && r.res.body.n === 91, 'contesto + transazione, risposta {ris:OK, n:91}');
 let t = r.q[1];
@@ -99,6 +101,21 @@ check(r.n === 0 && r.res.body.ris === 'KO_BAD_INPUT', 'senza sorgente ne\' cente
 r = call('POST /associateGrating/:floor', { floor: '1' }, { gratingId: 7, source: { floor: 12 } }, [ctx, { recordset: [{ ris: errorCodes.KO_TRAY_EXTRACTED, n: 0 }] }]);
 check(r.res.body.ris === errorCodes.KO_TRAY_EXTRACTED, 'esito della guardia SQL inoltrato nel JSON');
 
+console.log('\n3b) spessore grigliato (grating-thickness): protezione anti-urto in generazione, valori dal DB');
+const ctxThick = t => ({ recordset: [Object.assign({}, ctx.recordset[0], { THICKNESS: t })] });
+r = call('POST /associateGrating/:floor', { floor: '1' }, { gratingId: 7, replace: false, source: { floor: 12 } }, [ctxThick(14500), ok(91)]);
+check(r.n === 1 && r.res.body.ris === errorCodes.KO_Z_BELOW_GRATING, 'COPIA con Z_PICK 15000 < 14500 + 1000 -> KO_Z_BELOW_GRATING, NESSUNA transazione (anche la copia crea tasche)');
+check(r.res.body.min === 15500 && r.res.body.zPick === 15000 && r.res.body.zPlace === 15000 && r.res.body.thickness === 14500, 'JSON con minimo (spessore + franco 1000), quote richieste e spessore, in micron');
+r = call('POST /associateGrating/:floor', { floor: '9' }, { gratingId: 7, replace: true, source: { centers } }, [ctxThick(14500), ok(91)]);
+check(r.n === 1 && r.res.body.ris === errorCodes.KO_Z_BELOW_GRATING, 'GENERA/RIGENERA sotto il minimo -> rifiutato prima della transazione');
+r = call('POST /associateGrating/:floor', { floor: '9' }, { gratingId: 7, replace: false, source: { centers } }, [ctxThick(14000), ok(91)]);
+check(r.n === 2 && r.res.body.ris === 'OK', 'Z_PICK 15000 = spessore 14000 + 1000: al limite PASSA');
+r = call('POST /associateGrating/:floor', { floor: '9' }, { gratingId: 7, replace: false, source: { centers } }, [ctxThick(0), ok(91)]);
+check(r.n === 2 && r.res.body.ris === 'OK', 'spessore 0 = non misurato: nessun vincolo');
+r = call('POST /associateGrating/:floor', { floor: '9' }, { gratingId: 7, replace: false, source: { centers } }, [ctxThick(null), ok(91)]);
+check(r.n === 2 && r.res.body.ris === 'OK', 'spessore NULL = non misurato: nessun vincolo (grigliati esistenti invariati)');
+check(/g\.THICKNESS, p\.X AS PX, p\.Y AS PY, p\.Z_PICK, p\.Z_PLACE/.test(r.q[0]), 'spessore e quote del pezzo letti DAL DB nella query di contesto (mai dal payload)');
+
 console.log('\n4) dissociateGrating: guardie + cancellazione tasche, anche a FAMILY vuota');
 r = call('POST /dissociateGrating/:floor', { floor: '9' }, {}, [ok(91)]);
 t = r.q[0];
@@ -113,7 +130,13 @@ console.log('\n5) Grating.js: header-only, nome unico, rinomino propagato, TRAY_
 r = call('GET /insertGrating', { NAME: 'G1', DESCR: 'd', TRAY_ID: '24', GRIPPER_ID: '3', PIECE_ID: '21', SAFEX: '20', SAFEY: '10' }, null, [{ recordset: [{ ris: 'OK' }] }]);
 t = r.q[0];
 check(/IF EXISTS \(SELECT 1 FROM GRATING WHERE NAME='G1'\) SELECT 'KO_DUP_NAME'/.test(t), 'insert: nome duplicato rifiutato');
-check(/VALUES\( 'G1', 'd', 0, 3, 21, 20, 10\)/.test(t), 'insert: TRAY_ID scritto 0 anche se il client lo manda');
+check(/VALUES\( 'G1', 'd', 0, 3, 21, 20, 10, NULL\)/.test(t), 'insert: TRAY_ID scritto 0 anche se il client lo manda; THICKNESS assente -> NULL (non misurato)');
+r2 = call('GET /insertGrating', { NAME: 'G2', DESCR: 'd', GRIPPER_ID: '3', PIECE_ID: '21', SAFEX: '20', SAFEY: '10', THICKNESS: '8500' }, null, [{ recordset: [{ ris: 'OK' }] }]);
+check(/VALUES\( 'G2', 'd', 0, 3, 21, 20, 10, 8500\)/.test(r2.q[0]), 'insert: THICKNESS 8500 um scritto');
+r2 = call('GET /insertGrating', { NAME: 'G2', DESCR: 'd', GRIPPER_ID: '3', PIECE_ID: '21', SAFEX: '20', SAFEY: '10', THICKNESS: '-1' }, null);
+check(r2.n === 0 && r2.res.body === 'KO_BAD_INPUT', 'insert: THICKNESS negativo -> KO_BAD_INPUT senza query');
+r2 = call('GET /insertGrating', { NAME: 'G2', DESCR: 'd', GRIPPER_ID: '3', PIECE_ID: '21', SAFEX: '20', SAFEY: '10', THICKNESS: '8.5' }, null);
+check(r2.n === 0 && r2.res.body === 'KO_BAD_INPUT', 'insert: THICKNESS non intero (mm invece di micron) -> KO_BAD_INPUT');
 check(!/POSITION|UPDATE TRAY/.test(t) && r.res.body === 'OK', 'insert: nessuna tasca, nessun TRAY');
 r = call('GET /insertGrating', { NAME: 'G1', DESCR: 'd', GRIPPER_ID: '3', PIECE_ID: '21', SAFEX: '20', SAFEY: '10' }, null, [{ recordset: [{ ris: errorCodes.KO_DUP_NAME }] }]);
 check(r.res.body === errorCodes.KO_DUP_NAME, 'insert: body KO_DUP_NAME inoltrato');
@@ -121,6 +144,9 @@ r = call('GET /updateGrating', { ID: '7', NAME: 'G1bis', DESCR: 'd', TRAY_ID: '2
 t = r.q[0];
 check(/DECLARE @old varchar\(100\) = \(SELECT NAME FROM GRATING WHERE ID=7\)[\s\S]*ELSE IF EXISTS \(SELECT 1 FROM GRATING WHERE NAME=@new AND ID<>7\) SELECT 'KO_DUP_NAME'/.test(t), 'update: nome gia\' usato da un ALTRO modello -> KO_DUP_NAME');
 check(/BEGIN TRAN;[\s\S]*TRAY_ID=0,[\s\S]*IF @old <> @new UPDATE TRAY SET FAMILY=@new WHERE FAMILY=@old; COMMIT TRAN;/.test(t), 'update: rinomino propagato a TRAY.FAMILY nella stessa transazione, TRAY_ID=0');
+check(/THICKNESS=NULL,/.test(t), 'update: THICKNESS assente -> NULL');
+r = call('GET /updateGrating', { ID: '7', NAME: 'G1bis', DESCR: 'd', GRIPPER_ID: '3', PIECE_ID: '21', SAFEX: '20', SAFEY: '10', THICKNESS: '8500' }, null, [{ recordset: [{ ris: 'OK' }] }]);
+check(/THICKNESS=8500,/.test(r.q[0]), 'update: THICKNESS 8500 um scritto');
 check(!/POSITION/.test(t) && r.res.body === 'OK', 'update: nessuna tasca toccata');
 r = call('GET /updateGrating', { ID: 'x', NAME: 'G' }, null);
 check(r.n === 0 && r.res.body === 'KO_BAD_INPUT', 'update: ID non intero -> KO_BAD_INPUT senza query');

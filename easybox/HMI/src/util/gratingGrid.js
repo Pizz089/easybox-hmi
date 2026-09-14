@@ -87,6 +87,20 @@ export function taughtSteps(rows) {
 	return { realW, realH };
 }
 
+// (grating-thickness 14/9) protezione anti-urto: franco sopra lo spessore del
+// grigliato, UN punto solo lato client (parita' con serverDati/gratingFit.js).
+export const GRATING_CLEARANCE_UM = 1000;
+
+// Regola: con THICKNESS > 0 (micron), Z_PICK e Z_PLACE del pezzo (quote dal
+// fondo, micron) devono essere >= THICKNESS + franco. NULL/0 = non misurato:
+// nessun vincolo. Ritorna { ok, min, zPick, zPlace } (micron).
+export function pickClearance({ thickness, zPick, zPlace }) {
+	const t = Number(thickness), zp = Number(zPick), zl = Number(zPlace);
+	const min = (Number.isFinite(t) && t > 0) ? t + GRATING_CLEARANCE_UM : 0;
+	const ok = min === 0 || (zp >= min && zl >= min);
+	return { ok, min, zPick: zp, zPlace: zl };
+}
+
 // Avviso taratura: le tasche a DB (rows) hanno passi diversi da quelli che
 // la rigenerazione produrrebbe (genW/genH micron, = pezzo+distanza)? Ritorna
 // null se coincidono entro TOL o non ci sono abbastanza righe, altrimenti

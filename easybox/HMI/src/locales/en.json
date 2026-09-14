@@ -240,6 +240,7 @@
         "alreadyAssociated": "Refused: the tray already has a grating or pockets in the database. Use Replace.",
         "sourceEmpty": "Refused: the source tray has no pockets or uses another grating.",
         "zPick": "Part {id} of the model has Z pick 0 (pick height from the floor): every generated pocket would be ungrippable. Fix the part registry.",
+        "thickness": "Refused: pick height {pick} mm / release {place} mm below the minimum {min} mm (grid thickness {t} + 1 clearance). Fix the part Z pick/Z place, or the grating thickness.",
         "generic": "Operation NOT performed: {code}"
       }
     }
@@ -293,7 +294,11 @@
     "modelHint": "Preview on the drawer unit size: {w} × {h} mm. Association to trays is done from the Trays page.",
     "traySizesDiffer": "WARNING: trays do not all share the same size: the preview is valid for the reference tray only.",
     "nameRequired": "Enter the grating name.",
-    "dupName": "A grating named \"{name}\" already exists: the name must be unique."
+    "dupName": "A grating named \"{name}\" already exists: the name must be unique.",
+    "thickness": "Grid thickness",
+    "thicknessHint": "mm; empty = not measured, no constraint. With a value, the part pick and release heights must be at least 1 mm above it.",
+    "thicknessWarn": "Part below the thickness: minimum {min} mm (thickness + 1 clearance), requested pick {pick} mm and release {place} mm. Fix the part or the thickness: pocket generation will be refused.",
+    "thicknessBadge": "part below thickness"
   },
   "menu": {
     "dashboard": "Dashboard",

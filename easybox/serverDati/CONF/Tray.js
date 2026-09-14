@@ -625,7 +625,7 @@ router.post('/associateGrating/:floor', (req, res) => {
 		// FASE 1 (sola lettura): misure cassetto target e pezzo del modello
 		// DAL DB — il payload non puo' portare misure proprie (client stantio).
 		const ctx = `SET NOCOUNT ON;
-			SELECT g.ID, g.PIECE_ID, p.X AS PX, p.Y AS PY, t.X AS TX, t.Y AS TY
+			SELECT g.ID, g.PIECE_ID, g.THICKNESS, p.X AS PX, p.Y AS PY, p.Z_PICK, p.Z_PLACE, t.X AS TX, t.Y AS TY
 			FROM GRATING g
 			LEFT JOIN PIECE p ON p.ID = g.PIECE_ID
 			CROSS JOIN (SELECT TOP 1 X, Y FROM TRAY WHERE FLOOR_MAG=${floor}) t
@@ -635,6 +635,18 @@ router.post('/associateGrating/:floor', (req, res) => {
 			if (err) { log.error("Err query: " + err); res.json({ ris: "KO", n: 0 }); return; }
 			const row = result.recordset && result.recordset[0];
 			if (!row) { res.json({ ris: "KO_BAD_INPUT", n: 0 }); return; }
+			// (grating-thickness 14/9) protezione anti-urto IN GENERAZIONE, in
+			// TUTTI i modi (copia compresa: anche la copia crea le tasche di
+			// questo cassetto con il pezzo di questo modello): Z_PICK e
+			// Z_PLACE del pezzo >= THICKNESS + franco, valori DAL DB. Sotto il
+			// minimo nessuna riga entra in [POSITION]; il JSON porta i numeri
+			// per il messaggio (micron). THICKNESS NULL/0 = nessun vincolo.
+			const clr = gratingFit.pickClearance({ thickness: row.THICKNESS, zPick: row.Z_PICK, zPlace: row.Z_PLACE });
+			if (!clr.ok) {
+				log.standard("associateGrating KO_Z_BELOW_GRATING: TRAY_" + floor + " grigliato " + gratingId + " min " + clr.min + " um, Z_PICK " + clr.zPick + " Z_PLACE " + clr.zPlace);
+				res.json({ ris: errorCodes.KO_Z_BELOW_GRATING, n: 0, min: clr.min, zPick: clr.zPick, zPlace: clr.zPlace, thickness: Number(row.THICKNESS) || 0 });
+				return;
+			}
 			let insert;
 			if (copy) {
 				insert = copyInsertSql(floor, srcFloor);
