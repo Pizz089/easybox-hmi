@@ -73,8 +73,6 @@ queryErr = null;
 console.log('\n2) esito APPLICATIVO -> resta 200 col codice nel corpo');
 let r = call('GET /insertPositionTray', { TRAY_ID: '12', POS: '1', SUB_POS: '5', STATUS: '2', X: '1', Y: '1', PIECE_TYPE: '1' }, null, [{ recordset: [], rowsAffected: [0] }]);
 check(r.code === 200 && r.body === 'KO_DUP', 'insertPositionTray riga gia\' presente -> 200 KO_DUP');
-r = call('GET /insertPositionTray', { TRAY_ID: '13', SUB_POS: '1' }, null, []);
-check(r.code === 200 && r.body === 'KO_BAD_INPUT', 'insertPositionTray input non valido -> 200 KO_BAD_INPUT');
 // NB: 'DELETE /:ID' non e' verificabile qui — lo registrano piu' file (grigliato,
 // attrezzatura, pinza, morsa, pallet, pezzo, ordine) e nella mappa vince
 // l'ultimo caricato. Il KO_IN_USE del grigliato e' coperto da test_grating_assoc.
@@ -86,6 +84,21 @@ r = call('POST /associateGrating/:floor', { floor: '1' }, { gratingId: 7, source
 check(r.code === 200 && r.body.ris === errorCodes.KO_TRAY_EXTRACTED, 'associa con cassetto estratto -> 200 KO_TRAY_EXTRACTED');
 r = call('GET /updateGrating', { ID: '7', NAME: 'G', DESCR: 'd', GRIPPER_ID: '1', PIECE_ID: '1', SAFEX: '20', SAFEY: '10' }, null, [{ recordset: [{ ris: errorCodes.KO_DUP_NAME }] }]);
 check(r.code === 200 && r.body === errorCodes.KO_DUP_NAME, 'grigliato con nome duplicato -> 200 KO_DUP_NAME');
+
+console.log('\n2b) input MALFORMATO -> stato 400, codice ancora nel corpo');
+const bad = [
+	['GET /insertPositionTray', { TRAY_ID: '13', SUB_POS: '1' }, 'cassetto fuori range'],
+	['DELETE /deletePositionsTray/:ID', { ID: '9; DROP' }, 'id non intero'],
+	['GET /updateGrating', { ID: 'x', NAME: 'G' }, 'id grigliato non intero'],
+	['GET /updateFixtureOnPallet', { PALLET_ID: 'x', FIXTURE_ID: '1' }, 'pallet non numerico'],
+	['POST /associateGrating/:floor', { floor: '13' }, 'cassetto fuori range (JSON)'],
+	['POST /resetProduction/:machineId', { machineId: '0' }, 'macchina non valida'],
+];
+for (const [key, params, what] of bad) {
+	const r = call(key, params, params, []);
+	const body = typeof r.body === 'string' ? r.body : (r.body && r.body.ris);
+	check(r.code === 400 && body === 'KO_BAD_INPUT', key + ' (' + what + ') -> ' + r.code + ' ' + body);
+}
 
 console.log('\n3) nessun fallimento tecnico lasciato a 200 nel sorgente');
 const walk = (dir, out = []) => {

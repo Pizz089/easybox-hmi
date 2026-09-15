@@ -44,7 +44,7 @@ router.get('/updatePositionStatus/:tray_ID/:position/:status', (req, res) => {
 	// (tray-parent-predicate) predicato PARENT via helper condiviso
 	// (valida anche il numero cassetto: niente path param raw in query)
 	const pred = trayParentPredicate(req.params.tray_ID);
-	if (!pred) { res.send("KO_BAD_INPUT"); return; }
+	if (!pred) { res.status(400).send("KO_BAD_INPUT"); return; }
 	sql.connect(DBf.configDB, function (err) {
         if (err) {
             log.error("err updatePositionStatus: " + err);
@@ -83,7 +83,7 @@ router.get('/insertPositionTray', (req, res) => {
 	// sono appena state cancellate e la NOT EXISTS e' vera.
 	const dupPred = trayParentPredicate(req.query.TRAY_ID, 'px.PARENT');
 	const subPos = Number(req.query.SUB_POS);
-	if (!dupPred || !Number.isInteger(subPos) || subPos < 1) { res.send("KO_BAD_INPUT"); return; }
+	if (!dupPred || !Number.isInteger(subPos) || subPos < 1) { res.status(400).send("KO_BAD_INPUT"); return; }
 	sql.connect(DBf.configDB, function (err) {
         if (err) {
             log.error("err insertPosition: " + err);
@@ -140,7 +140,7 @@ router.get('/updatePositionTray', (req, res) => {
 
 	// (tray-parent-predicate) via il LIKE 'TRAY_n %': predicato dall'helper
 	const pred = trayParentPredicate(req.query.TRAY_ID);
-	if (!pred) { res.send("KO_BAD_INPUT"); return; }
+	if (!pred) { res.status(400).send("KO_BAD_INPUT"); return; }
 	sql.connect(DBf.configDB, function (err) {
         if (err) {
             log.error("err insertPosition: " + err); 
@@ -231,7 +231,7 @@ router.get('/warehouseSlot/:action/:parent/:subpos', (req, res) => {
 	const subpos = parseInt(req.params.subpos);
 	const action = String(req.params.action);
 	if (!parent || isNaN(subpos) || (action != 'disable' && action != 'enable' && action != 'occupy' && action != 'free')) {
-		res.send("KO");
+		res.status(400).send("KO");
 		return;
 	}
 	sql.connect(DBf.configDB, function (err) {
@@ -359,7 +359,7 @@ router.delete('/:ID', (req, res) => {
 // in tempo reale). Conteggio PRIMA dell'update (trigger su [POSITION]).
 router.post('/resetTray/:floor', (req, res) => {
 	const pred = trayParentPredicate(req.params.floor);
-	if (!pred) { res.send("KO_BAD_INPUT"); return; }
+	if (!pred) { res.status(400).send("KO_BAD_INPUT"); return; }
 	sql.connect(DBf.configDB, function (err) {
 		if (err) { log.error("err resetTray: " + err); res.status(500).send("KO"); return; }
 		const query = `SET NOCOUNT ON;
@@ -389,7 +389,7 @@ router.delete('/deletePositionsTray/:ID', (req, res) => {
 	// insert di savePositions non partiva mai — bug provato in cella 1/9).
 	const pred  = trayParentPredicate(req.params.ID);
 	const predP = trayParentPredicate(req.params.ID, 'p.PARENT');
-	if (!pred) { res.send("KO_BAD_INPUT"); return; }
+	if (!pred) { res.status(400).send("KO_BAD_INPUT"); return; }
 	sql.connect(DBf.configDB, function (err) {
         if (err) {
             log.error("err delete position: " + err);

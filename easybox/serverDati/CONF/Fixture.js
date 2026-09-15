@@ -144,7 +144,7 @@ router.get('/updateFixtureOnPallet', (req, res) => {
 		const fixtureID = parseInt(req.query.FIXTURE_ID != undefined ? req.query.FIXTURE_ID : req.query.ID);
 		if (isNaN(palletID) || isNaN(fixtureID)) {
 			log.error("err updateFixtureOnPallet: PALLET_ID/FIXTURE_ID mancanti o non numerici");
-			res.send("KO_BAD_INPUT");
+			res.status(400).send("KO_BAD_INPUT");
 			return;
 		}
 		const num = (v) => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
@@ -189,7 +189,7 @@ router.get('/insertFixtureOnPallet', (req, res) => {
 		const fixtureID = parseInt(req.query.FIXTURE_ID != undefined ? req.query.FIXTURE_ID : req.query.ID);
 		if (isNaN(palletID) || isNaN(fixtureID)) {
 			log.error("err insertFixtureOnPallet: PALLET_ID/FIXTURE_ID mancanti o non numerici");
-			res.send("KO");
+			res.status(400).send("KO");
 			return;
 		}
 		const num = (v) => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
@@ -263,7 +263,7 @@ router.delete('/fixtureOnPallet/:palletID/:fixtureID', (req, res) => {
 		const palletID  = parseInt(req.params.palletID);
 		const fixtureID = parseInt(req.params.fixtureID);
 		if (isNaN(palletID) || isNaN(fixtureID)) {
-			res.send("KO");
+			res.status(400).send("KO");
 			return;
 		}
 

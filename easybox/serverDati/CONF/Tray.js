@@ -470,14 +470,14 @@ router.get('/extractCoords', (req, res) => {
 //      transazione del teaching che mette la quota assoluta in TRAY.Z_CORR.
 router.get('/teachTrays', (req, res) => {
 	let rows;
-	try { rows = JSON.parse(req.query.rows); } catch (e) { res.send("KO_BAD_INPUT"); return; }
-	if (!Array.isArray(rows) || rows.length < 1 || rows.length > 12) { res.send("KO_BAD_INPUT"); return; }
+	try { rows = JSON.parse(req.query.rows); } catch (e) { res.status(400).send("KO_BAD_INPUT"); return; }
+	if (!Array.isArray(rows) || rows.length < 1 || rows.length > 12) { res.status(400).send("KO_BAD_INPUT"); return; }
 	const FIELDS = ['xCorr','yCorr','zCorr','xRot','yRot','zRot'];
 	for (const r of rows) {
 		const tray = Number(r && r.tray);
-		if (!Number.isInteger(tray) || tray < 1 || tray > 12) { res.send("KO_BAD_INPUT"); return; }
+		if (!Number.isInteger(tray) || tray < 1 || tray > 12) { res.status(400).send("KO_BAD_INPUT"); return; }
 		for (const f of FIELDS)
-			if (!Number.isFinite(Number(r[f]))) { res.send("KO_BAD_INPUT"); return; }
+			if (!Number.isFinite(Number(r[f]))) { res.status(400).send("KO_BAD_INPUT"); return; }
 	}
 	sql.connect(DBf.configDB, function (err) {
 		if (err) {
@@ -515,7 +515,7 @@ router.get('/propagateTeaching', (req, res) => {
 	const COLS = ['X_ROT','Y_ROT','Z_ROT','APPROACH_TYPE','APPROACH_X','APPROACH_Y','APPROACH_Z'];
 	const floor = num('FLOOR_MAG');
 	if (!Number.isInteger(floor) || floor < 1 || floor > 12 || COLS.some(c => !Number.isFinite(num(c)))) {
-		res.send("KO_BAD_INPUT");
+		res.status(400).send("KO_BAD_INPUT");
 		return;
 	}
 	sql.connect(DBf.configDB, function (err) {
@@ -617,7 +617,7 @@ router.post('/associateGrating/:floor', (req, res) => {
 	if (!pred || !Number.isInteger(gratingId) || gratingId < 1 ||
 		(copy && (!trayParentPredicate(srcFloor) || srcFloor === floor)) ||
 		(!copy && !centers)) {
-		res.json({ ris: "KO_BAD_INPUT", n: 0 });
+		res.status(400).json({ ris: "KO_BAD_INPUT", n: 0 });
 		return;
 	}
 	sql.connect(DBf.configDB, function (err) {
@@ -634,7 +634,7 @@ router.post('/associateGrating/:floor', (req, res) => {
 		new sql.Request().query(ctx, function (err, result) {
 			if (err) { log.error("Err query: " + err); res.status(500).json({ ris: "KO", n: 0 }); return; }
 			const row = result.recordset && result.recordset[0];
-			if (!row) { res.json({ ris: "KO_BAD_INPUT", n: 0 }); return; }
+			if (!row) { res.status(400).json({ ris: "KO_BAD_INPUT", n: 0 }); return; }
 			// (grating-thickness 14/9) protezione anti-urto IN GENERAZIONE, in
 			// TUTTI i modi (copia compresa: anche la copia crea le tasche di
 			// questo cassetto con il pezzo di questo modello): Z_PICK e
@@ -653,7 +653,7 @@ router.post('/associateGrating/:floor', (req, res) => {
 			} else {
 				// verifica INGOMBRO lato server: contorno = TRAY.X/Y (mm), mezzo
 				// ingombro tasca = PIECE.X/2, PIECE.Y/2 (mm) — stessa gridFit del client
-				if (!(Number(row.PX) > 0) || !(Number(row.PY) > 0)) { res.json({ ris: "KO_BAD_INPUT", n: 0 }); return; }
+				if (!(Number(row.PX) > 0) || !(Number(row.PY) > 0)) { res.status(400).json({ ris: "KO_BAD_INPUT", n: 0 }); return; }
 				const f = gratingFit.gridFit(centers, {
 					width: Number(row.TX) / 1000, height: Number(row.TY) / 1000,
 					halfW: Number(row.PX) / 2000, halfH: Number(row.PY) / 2000,
@@ -705,7 +705,7 @@ router.post('/dissociateGrating/:floor', (req, res) => {
 	const floor = Number(req.params.floor);
 	const pred  = trayParentPredicate(floor);
 	const predP = trayParentPredicate(floor, 'p.PARENT');
-	if (!pred) { res.json({ ris: "KO_BAD_INPUT", n: 0 }); return; }
+	if (!pred) { res.status(400).json({ ris: "KO_BAD_INPUT", n: 0 }); return; }
 	sql.connect(DBf.configDB, function (err) {
 		if (err) { log.error("err dissociateGrating: " + err); res.status(500).json({ ris: "KO", n: 0 }); return; }
 		const query = `SET NOCOUNT ON; SET XACT_ABORT ON;

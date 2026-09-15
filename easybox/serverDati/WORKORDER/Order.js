@@ -42,7 +42,7 @@ const cellRunningGuard = () =>
 // che verranno annullati e righe POSITION che verranno svincolate.
 router.get('/resetProduction/preview/:machineId', (req, res) => {
 	const machineId = Number(req.params.machineId);
-	if (!Number.isInteger(machineId) || machineId < 1) { res.send("KO_BAD_INPUT"); return; }
+	if (!Number.isInteger(machineId) || machineId < 1) { res.status(400).send("KO_BAD_INPUT"); return; }
 	sql.connect(DBf.configDB, function (err) {
 		if (err) { log.error("err resetProduction preview: " + err); res.status(500).send("KO"); return; }
 		const query = `SET NOCOUNT ON;
@@ -66,7 +66,7 @@ router.get('/resetProduction/preview/:machineId', (req, res) => {
 
 router.post('/resetProduction/:machineId', (req, res) => {
 	const machineId = Number(req.params.machineId);
-	if (!Number.isInteger(machineId) || machineId < 1) { res.send("KO_BAD_INPUT"); return; }
+	if (!Number.isInteger(machineId) || machineId < 1) { res.status(400).send("KO_BAD_INPUT"); return; }
 	sql.connect(DBf.configDB, function (err) {
 		if (err) { log.error("err resetProduction: " + err); res.status(500).send("KO"); return; }
 		// conteggi PRIMA delle scritture (il trigger su [POSITION] sporca

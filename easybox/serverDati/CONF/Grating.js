@@ -118,9 +118,9 @@ router.get('/updateGrating', (req, res) => {
 		// un RINOMINO viene propagato ai cassetti che usano il modello nella
 		// stessa transazione; nome gia' usato da un ALTRO grigliato -> KO_DUP_NAME.
 		const gratingId = Number(req.query.ID);
-		if (!Number.isInteger(gratingId) || gratingId < 1) { res.send("KO_BAD_INPUT"); return; }
+		if (!Number.isInteger(gratingId) || gratingId < 1) { res.status(400).send("KO_BAD_INPUT"); return; }
 		const thickness = thicknessSql(req.query.THICKNESS);
-		if (thickness === undefined) { res.send("KO_BAD_INPUT"); return; }
+		if (thickness === undefined) { res.status(400).send("KO_BAD_INPUT"); return; }
         let query = `SET NOCOUNT ON; SET XACT_ABORT ON;
 					DECLARE @old varchar(100) = (SELECT NAME FROM GRATING WHERE ID=${gratingId});
 					DECLARE @new varchar(100) = '${req.query.NAME}';
@@ -173,7 +173,7 @@ router.get('/insertGrating', (req, res) => {
         }
 		
 		const thickness = thicknessSql(req.query.THICKNESS);
-		if (thickness === undefined) { res.send("KO_BAD_INPUT"); return; }
+		if (thickness === undefined) { res.status(400).send("KO_BAD_INPUT"); return; }
 		var request = new sql.Request();
 		// (grating-model) il grigliato nasce come MODELLO: nessun cassetto
 		// (TRAY_ID=0, colonna morta), nessuna tasca. Nome unico: e' la chiave
@@ -214,7 +214,7 @@ router.delete('/:ID', (req, res) => {
 	// La route ora RISPONDE sempre (prima i res.send erano commentati e il
 	// fetch della HMI restava appeso).
 	const gratingId = Number(req.params.ID);
-	if (!Number.isInteger(gratingId) || gratingId < 1) { res.send("KO_BAD_INPUT"); return; }
+	if (!Number.isInteger(gratingId) || gratingId < 1) { res.status(400).send("KO_BAD_INPUT"); return; }
 	sql.connect(DBf.configDB, function (err) {
         if (err) {
             log.error("err delete grating: " + err);
@@ -256,7 +256,7 @@ router.delete('/:ID', (req, res) => {
 // associati a un cassetto qualsiasi (con un solo cassetto era indistinguibile).
 router.get('/showFromTray/:Tray_ID', (req, res) => {
 	const floor = Number(req.params.Tray_ID);
-	if (!Number.isInteger(floor) || floor < 1 || floor > 12) { res.send("KO_BAD_INPUT"); return; }
+	if (!Number.isInteger(floor) || floor < 1 || floor > 12) { res.status(400).send("KO_BAD_INPUT"); return; }
 
 	sql.connect(DBf.configDB, function (err) {
         if (err) {
