@@ -129,6 +129,7 @@
     "claw_lengthHint": "Physical measurement with a caliper, in mm. Needed by the push-to-stop cycle: empty = not measured, the cycle stays disabled."
   },
   "tray": {
+    "nessuno": "No drawer configured. Create one with Add Drawer Type.",
     "welcome": "Tray list",
     "add_Tray": "Add. Tray Type",
     "name": "Store.Floor",
@@ -302,6 +303,24 @@
     "thicknessWarn": "Part below the thickness: minimum {min} mm (thickness + 1 clearance), requested pick {pick} mm and release {place} mm. Fix the part or the thickness: pocket generation will be refused.",
     "thicknessBadge": "part below thickness"
   },
+  "rowCmd": {
+    "play": "Start",
+    "pause": "Pause",
+    "stop": "Stop",
+    "modify": "Edit",
+    "place": "Place",
+    "move": "Extract",
+    "save": "Save",
+    "delete": "Delete"
+  },
+  "elenco": {
+    "attesa": "Loading…",
+    "irraggiungibile": "I cannot reach the cell server: this list is not empty, I could not ask for it.",
+    "irraggiungibileDaFare": "Check that the data service is running on the cell PC, then tap Retry.",
+    "guasto": "The cell server answers but cannot read the data: this list is not empty, the request failed.",
+    "guastoDaFare": "This cannot be fixed from the panel: report the fault and try again shortly.",
+    "riprova": "Retry"
+  },
   "menu": {
     "dashboard": "Dashboard",
     "production": "Production",
@@ -337,6 +356,7 @@
     "disabledPos": "Position disabled"
   },
   "attrezzaggi": {
+    "nessuno": "No pallet configured. Create one with New rig.",
     "welcome": "Rigs (pallet + vice / fixture)",
     "add": "New rig",
     "create": "New rig",
@@ -392,6 +412,7 @@
     }
   },
   "piece": {
+    "nessuno": "No part type configured. Create one with Create new part type.",
     "welcome": "Piece data",
     "createNew": "Create new",
     "partProgramLabel": "Part program no. (HAAS subprogram)",
@@ -571,8 +592,17 @@
     "alarm_900002": "EMERGENCY BUTTON PRESSED ON MC2",
     "alarm_900010": "EMERGENCY BUTTON PRESSED ON ROBOT",
     "alarm_900011": "EMERGENCY BUTTON PRESSED ON HMI",
+    "critical": {
+      "confirmTitle": "Confirm the recovery command?",
+      "resetWhat": "You are about to send RESET to the robot.",
+      "resetNotThis": "It does not resume a stopped cycle: for that there is CONTINUE. Use RESET after an alarm or a block.",
+      "restartWhat": "You are about to restart the robot main program.",
+      "restartNotThis": "It does not resume the mission from where it stopped: for that there is CONTINUE."
+    },
     "section": {
       "critical": "Critical commands",
+      "restore": "Recovery",
+      "restoreHint": "Use after an alarm or a block, not to resume a stopped cycle.",
       "movement": "Movements",
       "destination": "Destinations",
       "mission": "Missions",
@@ -888,6 +918,7 @@
       "pushNoFit": "The part is {piece} mm long and the vice jaw is {claw} mm: the part overhangs, and nobody declared where it really rests. Declare it on the vice page.",
       "pushNoRoom": "The declared rest point is nearer than the part already overhangs: the part would be past the stop before being pushed at all. Check the measurement on the vice page.",
       "pushWhy": "See why",
+      "quantityMissing": "Enter how many times the part must be produced: with 0 the order cannot be created.",
       "geometry": "Pallet geometry",
       "geometryMissing": "The pallet has no geometry (associated fixture): without it the robot does not know the drop height in the machine. Complete the rig before creating the order.",
       "saveFailed": "Order NOT created: refused by the backend.",

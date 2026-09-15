@@ -6,39 +6,55 @@
 
 <template>
     <span class="oneColumn">
+        <!-- (usabilita' 15/9) ogni comando dice cosa fa: title per il tocco
+             prolungato e il passaggio del mouse, aria-label per chi legge lo
+             schermo. Prima erano 24 pulsanti muti per pagina: si capiva cosa
+             facevano solo premendoli. -->
         <div class="pure-button-group" role="group">
-            <button v-if="play" class="pure-button button_pressed play" @click="$emit('cmdPlay')" :disabled="playDisable">
+            <button v-if="play" class="pure-button button_pressed play" @click="$emit('cmdPlay')" :disabled="playDisable"
+                :title="$t('rowCmd.play')" :aria-label="$t('rowCmd.play')">
                 <svg viewBox="0 0 24 24" fill="currentColor" class="cmd-icon">
                     <polygon points="6,4 20,12 6,20" />
                 </svg>
             </button>
-            <button v-if="pause" class="pure-button button_pressed" @click="$emit('cmdPause')" :disabled="pauseDisable">
+            <button v-if="pause" class="pure-button button_pressed" @click="$emit('cmdPause')" :disabled="pauseDisable"
+                :title="$t('rowCmd.pause')" :aria-label="$t('rowCmd.pause')">
                 <img src="../../assets/pause.png" style="width:20px">
             </button>
-            <button v-if="stop" class="pure-button button_pressed stop" @click="$emit('cmdStop')" :disabled="stopDisable">
+            <button v-if="stop" class="pure-button button_pressed stop" @click="$emit('cmdStop')" :disabled="stopDisable"
+                :title="$t('rowCmd.stop')" :aria-label="$t('rowCmd.stop')">
                 <svg viewBox="0 0 24 24" fill="currentColor" class="cmd-icon">
                     <rect x="6" y="6" width="12" height="12" />
                 </svg>
             </button>
-            <button v-if="modify" class="pure-button button_pressed" @click="modifyItem()" :id="lockedLevelOP" :disabled="modifyDisable">
+            <button v-if="modify" class="pure-button button_pressed" @click="modifyItem()" :id="lockedLevelOP" :disabled="modifyDisable"
+                :title="$t('rowCmd.modify')" :aria-label="$t('rowCmd.modify')">
                 <img src="../../assets/modification.png" style="width:20px">
             </button>
-            <button v-if="place" class="pure-button button_pressed" @click="$emit('cmdPlace')" :disabled="placeDisable">
+            <button v-if="place" class="pure-button button_pressed" @click="$emit('cmdPlace')" :disabled="placeDisable"
+                :title="$t('rowCmd.place')" :aria-label="$t('rowCmd.place')">
                 <img src="../../assets/target_black.png" style="width:20px">
             </button>
-            <button v-if="del" class="pure-button button_pressed del"  @click="deleteItem()" :id="lockedLevelOP" :disabled="delDisable">
+            <button v-if="move" class="pure-button button_pressed" @click="extract()" :id="lockedNotLocal" :disabled="moveDisable"
+                :title="$t('rowCmd.move')" :aria-label="$t('rowCmd.move')">
+                <img src="../../assets/hook.png"  style="width:20px">
+            </button>
+            <button v-if="save" class="pure-button button_pressed" @click="$emit('cmdSave')" :disabled="saveDisable"
+                :title="$t('rowCmd.save')" :aria-label="$t('rowCmd.save')">
+                <img src="../../assets/disk.png"  style="width:20px">
+            </button>
+
+            <!-- CANCELLA per ultimo e staccato dagli altri: prima stava in
+                 mezzo al gruppo, a 8 px da due comandi innocui. E' l'unico
+                 irreversibile del gruppo e deve stare da solo. -->
+            <button v-if="del" class="pure-button button_pressed del cmd-destructive"  @click="deleteItem()" :id="lockedLevelOP" :disabled="delDisable"
+                :title="$t('rowCmd.delete')" :aria-label="$t('rowCmd.delete')">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="cmd-icon">
                     <polyline points="3 6 5 6 21 6"/>
                     <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
                     <path d="M10 11v6M14 11v6"/>
                     <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
                 </svg>
-            </button>
-            <button v-if="move" class="pure-button button_pressed" @click="extract()" :id="lockedNotLocal" :disabled="moveDisable">
-                <img src="../../assets/hook.png"  style="width:20px">
-            </button>
-            <button v-if="save" class="pure-button button_pressed" @click="$emit('cmdSave')" :disabled="saveDisable">
-                <img src="../../assets/disk.png"  style="width:20px">
             </button>
         </div>
     </span>
@@ -217,6 +233,13 @@
 .cmd-icon {
     width: 22px;
     height: 22px;
+}
+
+/* (usabilita' 15/9) la cancellazione e' l'unico comando irreversibile della
+   riga: sta in fondo e con uno spazio tripo rispetto agli altri, cosi' un
+   dito con il guanto che sbaglia di qualche millimetro non la prende. */
+.pure-button-group .cmd-destructive {
+    margin-left: var(--space-5);
 }
 
 /* Hover/focus brightness uniforme su bg + icona. */

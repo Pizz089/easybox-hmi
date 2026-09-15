@@ -11,6 +11,8 @@
     import { buildGrid, gridCenters, taughtMismatch, pickClearance } from '../../util/gratingGrid.js'
     import { gridFit } from '../../util/gratingAxes.js'
     import { KO_TRAY_EXTRACTED, KO_ACTIVE_ORDER, KO_ALREADY_ASSOCIATED, KO_SOURCE_EMPTY, KO_OUT_OF_TRAY, KO_Z_BELOW_GRATING } from '../../util/errorCodes.js'
+    import StatoElenco from '../../components/StatoElenco.vue'
+    import { caricaElenco, STATO } from '../../util/caricaElenco.js'
     const el = ref()
 </script>
 
@@ -89,9 +91,13 @@
                             <template v-else>
                                 <button class="btn-ghost assoc-btn" :disabled="!assocAllowed(dt)" :title="assocTitle(dt)"
                                         @click="openAssoc('replace', dt)">{{ $t('tray.assoc.replace') }}</button>
-                                <button class="btn-ghost assoc-btn" :disabled="!assocAllowed(dt)" :title="assocTitle(dt)"
+                                <!-- (usabilita' 15/9) Rigenera e Dissocia rifanno o
+                                     buttano via le tasche del cassetto: stavano a
+                                     4 px da Sostituisci. Adesso vanno a capo e si
+                                     staccano dalle azioni ordinarie. -->
+                                <button class="btn-ghost assoc-btn assoc-destructive" :disabled="!assocAllowed(dt)" :title="assocTitle(dt)"
                                         @click="openAssoc('regenerate', dt)">{{ $t('tray.assoc.regenerate') }}</button>
-                                <button class="btn-ghost assoc-btn assoc-danger" :disabled="!assocAllowed(dt)" :title="assocTitle(dt)"
+                                <button class="btn-ghost assoc-btn assoc-danger assoc-destructive" :disabled="!assocAllowed(dt)" :title="assocTitle(dt)"
                                         @click="openAssoc('dissociate', dt)">{{ $t('tray.assoc.dissociate') }}</button>
                             </template>
                         </td>
@@ -128,6 +134,15 @@
                 </template>
             </tbody>
         </table>
+        <!-- (usabilita' 15/9) tabella senza righe: si dice PERCHE'. Prima
+             restava l'intestazione e basta, identica sia che non ci fosse
+             niente sia che il server non avesse risposto. -->
+        <StatoElenco
+          :stato="statoElenco"
+          :vuoto="datiTab.length === 0"
+          :messaggio-vuoto="$t('tray.nessuno')"
+          @riprova="getDataTable()"
+        />
         </div>
 
         <!-- ===== (tray-teaching) dialog comando "0 CASSETTIERA" =====
@@ -343,6 +358,9 @@ export default {
     data(){
         return {
             datiTab:[],
+            // stato della lettura: 'attesa' finche' non si sa, cosi' non si
+            // scrive "nessun cassetto" prima di avere una risposta
+            statoElenco: STATO.ATTESA,
             showPopUp:0,
             //polling:true,
 			allInside:false,
@@ -385,28 +403,20 @@ export default {
     },
     methods: {
         getDataTable() {
-            fetch(dataStored.server+'api/conf/tray/show/all',{ method: 'GET'})
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok');
-                    }
-                    return response.json()
-                })
-                .then(trays => {
-                    console.log("ricevo dati per "+trays.length+" cassetti")  
-                    //console.log(trays[0].FLOOR_MAG + " "+trays[0].EXTRACT)
-                    //console.log(trays[1].FLOOR_MAG + " "+trays[1].EXTRACT)
-                    this.datiTab=trays  
-					this.allInside=true;
-					for (let i=0; i<this.datiTab.length; i++){
-						if (this.datiTab[i].EXTRACT == 1)
-							this.allInside=false;
-					}
-                })
-                .catch(error => {
-                    console.info("-------------")
-                    console.info(error);
-                });
+            // (usabilita' 15/9) prima il guasto finiva in console e a video
+            // restava una tabella vuota, indistinguibile da "nessun cassetto".
+            this.statoElenco = STATO.ATTESA;
+            caricaElenco(dataStored.server, 'api/conf/tray/show/all').then(esito => {
+                this.statoElenco = esito.stato;
+                if (esito.stato !== STATO.OK) {
+                    console.info('elenco cassetti non letto: ' + esito.dettaglio);
+                    return;
+                }
+                this.datiTab = esito.dati;
+                this.allInside = true;
+                for (let i = 0; i < this.datiTab.length; i++)
+                    if (this.datiTab[i].EXTRACT == 1) this.allInside = false;
+            });
         },
         updateTray(i){
             //alert("modifica "+i);
@@ -785,6 +795,13 @@ export default {
 </script>
 
 <style scoped>
+/* (usabilita' 15/9) le azioni che rifanno o buttano via le tasche non
+   stanno in fila a 4 px da Sostituisci: vanno a capo, con uno stacco. */
+.assoc-destructive {
+  display: block;
+  margin-top: var(--space-4);
+}
+
     .pure-table-horizontal  #td {
         justify-content: center;
         display: flex;

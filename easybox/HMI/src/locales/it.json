@@ -129,6 +129,7 @@
     "claw_lengthHint": "Misura fisica col calibro, in mm. Serve alla spinta in battuta: vuoto = non misurata, il ciclo resta disabilitato."
   },
   "tray": {
+    "nessuno": "Nessun cassetto configurato. Creane uno con Agg. Tipo Cassetto.",
     "welcome": "Elenco Cassetti",
     "add_Tray": "Agg. Tipo Cassetto",
     "name": "Mag.Piano",
@@ -302,6 +303,24 @@
     "thicknessWarn": "Pezzo sotto lo spessore: minimo {min} mm (spessore + 1 di franco), richiesti prelievo {pick} mm e rilascio {place} mm. Correggere il pezzo o lo spessore: la generazione tasche verrà rifiutata.",
     "thicknessBadge": "pezzo sotto spessore"
   },
+  "rowCmd": {
+    "play": "Avvia",
+    "pause": "Sospendi",
+    "stop": "Ferma",
+    "modify": "Modifica",
+    "place": "Posiziona",
+    "move": "Estrai",
+    "save": "Salva",
+    "delete": "Cancella"
+  },
+  "elenco": {
+    "attesa": "Carico…",
+    "irraggiungibile": "Non riesco a parlare con il server della cella: questo elenco non è vuoto, non sono riuscito a chiederlo.",
+    "irraggiungibileDaFare": "Controlla che il servizio dati sia avviato sul PC di cella, poi tocca Riprova.",
+    "guasto": "Il server della cella risponde ma non riesce a leggere i dati: questo elenco non è vuoto, la richiesta è fallita.",
+    "guastoDaFare": "Non si risolve dal pannello: segnala il guasto e riprova fra poco.",
+    "riprova": "Riprova"
+  },
   "menu": {
     "dashboard": "Dashboard",
     "production": "Produzione",
@@ -337,6 +356,7 @@
     "disabledPos": "Posizione disabilitata"
   },
   "attrezzaggi": {
+    "nessuno": "Nessun pallet configurato. Creane uno con Nuovo attrezzaggio.",
     "welcome": "Attrezzaggi (pallet + morsa / attrezzatura)",
     "add": "Nuovo attrezzaggio",
     "create": "Nuovo attrezzaggio",
@@ -392,6 +412,7 @@
     }
   },
   "piece": {
+    "nessuno": "Nessun tipo di pezzo configurato. Creane uno con Crea nuovo tipo pezzo.",
     "welcome": "Dati pezzo",
     "createNew": "Crea nuovo tipo pezzo",
     "partProgramLabel": "N° part program (sottoprogramma HAAS)",
@@ -571,8 +592,17 @@
     "alarm_900002": "EMERGENZA PREMUTA SU MC2",
     "alarm_900010": "EMERGENZA PREMUTA SU ROBOT",
     "alarm_900011": "EMERGENZA PREMUTA SU PULPITO",
+    "critical": {
+      "confirmTitle": "Confermi il comando di ripristino?",
+      "resetWhat": "Stai per mandare RESET al robot.",
+      "resetNotThis": "Non serve a riprendere un ciclo fermo: per quello c'\u00e8 CONTINUA ESECUZIONE. Usa RESET dopo un allarme o un blocco.",
+      "restartWhat": "Stai per far ripartire il programma principale del robot.",
+      "restartNotThis": "Non riprende la missione dal punto in cui si \u00e8 fermata: per quello c'\u00e8 CONTINUA ESECUZIONE."
+    },
     "section": {
       "critical": "Comandi critici",
+      "restore": "Ripristino",
+      "restoreHint": "Da usare dopo un allarme o un blocco, non per riprendere un ciclo fermo.",
       "movement": "Movimenti",
       "destination": "Punti di destinazione",
       "mission": "Missioni",
@@ -888,6 +918,7 @@
       "pushNoFit": "Il pezzo è lungo {piece} mm e la ganascia della morsa {claw} mm: il pezzo sporge, e non è stato dichiarato dove appoggia davvero. Si dichiara nella pagina della morsa.",
       "pushNoRoom": "L'appoggio dichiarato è più vicino di quanto il pezzo già sporge: il pezzo sarebbe oltre la battuta prima ancora di essere spinto. Verificare la misura nella pagina della morsa.",
       "pushWhy": "Vedi perché",
+      "quantityMissing": "Indica quante volte va prodotto il pezzo: con 0 l'ordine non si può creare.",
       "geometry": "Geometria del pallet",
       "geometryMissing": "Il pallet non ha la geometria (attrezzatura associata): senza, il robot non sa a che quota depositare in macchina. Completare l'attrezzaggio prima di creare l'ordine.",
       "saveFailed": "Ordine NON creato: rifiutato dal backend.",

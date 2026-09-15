@@ -3,6 +3,8 @@
     import { dataStored } from '../../data.js'
     import orderCMD from '../../components/Comands/ComandsRows.vue';
     import CubeIcon3D from '../../components/CubeIcon3D.vue';
+    import StatoElenco from '../../components/StatoElenco.vue';
+    import { caricaElenco, STATO } from '../../util/caricaElenco.js';
 
 </script>
 
@@ -75,6 +77,12 @@
             </template>
           </tbody>
         </table>
+        <StatoElenco
+          :stato="statoElenco"
+          :vuoto="pieces.length === 0"
+          :messaggio-vuoto="$t('piece.nessuno')"
+          @riprova="getDataTable()"
+        />
       </div>
     </div>
 </template>
@@ -83,7 +91,10 @@
 export default {
     data(){
         return {
-            pieces:{},
+            pieces:[],
+            // (usabilita' 15/9) 'attesa' finche' non si sa: niente affermazioni
+            // prima di avere una risposta
+            statoElenco: STATO.ATTESA,
             showPopUp:-1,
             createNew:false,
 			polling:true
@@ -91,23 +102,14 @@ export default {
     },
     methods: {
         getDataTable() {
-            fetch( dataStored.server+'api/conf/piece/show/all',{ method: 'GET'})
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok');
-                    }
-                    return response.json()
-                })
-                .then(data => {
-                    //console.log("pieces: "+JSON.stringify(data,null,4))
-                    this.pieces=data;
-                    //elimino un po di spazi vuoti
-                    //this.tray.FAMILY=this.tray.FAMILY.trim();
-                    //this.tray.DESCR=this.tray.DESCR.trim();
-                })
-                .catch(error => {
-                    console.info(error);
-                });
+            // (usabilita' 15/9) il guasto non finisce piu' solo in console:
+            // una tabella senza righe non e' la stessa cosa di un elenco vuoto.
+            this.statoElenco = STATO.ATTESA;
+            caricaElenco(dataStored.server, 'api/conf/piece/show/all').then(esito => {
+                this.statoElenco = esito.stato;
+                if (esito.stato === STATO.OK) this.pieces = esito.dati;
+                else console.info('elenco pezzi non letto: ' + esito.dettaglio);
+            });
         },
         createLink(id) {
             let stringObj = new String(id);

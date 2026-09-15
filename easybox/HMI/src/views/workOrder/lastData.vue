@@ -34,8 +34,19 @@
           type="number"
           class="form-input form-input--small"
           v-model="dataStored.createWorkOrder.quantity"
+          inputmode="numeric"
           min="1"
         />
+      </div>
+
+      <!-- (usabilita' 15/9) la quantita' a zero bloccava il salvataggio SENZA
+           dire niente: si vedeva solo un pulsante spento. Gli altri tre motivi
+           di blocco avevano gia' la loro riga, questo no. -->
+      <div class="form-row" v-if="!quantityValid">
+        <label class="form-label">
+          {{ t('quantity') }}<span class="required">*</span>
+        </label>
+        <span class="pp-missing">{{ t('wizard.lastData.quantityMissing') }}</span>
       </div>
 
       <div class="form-row">
@@ -102,7 +113,7 @@
         type="button"
         class="pure-button-primary"
         @click="saveData"
-        :disabled="!piecePPValid || !fixtureOk || !pushOk || dataStored.createWorkOrder.quantity<=0"
+        :disabled="!piecePPValid || !fixtureOk || !pushOk || !quantityValid"
       >
         {{ t('wizard.lastData.save') }}
       </button>
@@ -170,6 +181,11 @@ export default {
         },
         piecePPValid(){
             return Number.isInteger(this.piecePP) && this.piecePP > 0;
+        },
+        // stessa condizione che disabilita il pulsante, con un nome: cosi' il
+        // messaggio a video e il blocco non possono divergere
+        quantityValid(){
+            return Number(dataStored.createWorkOrder.quantity) > 0;
         }
     },
     methods: {
@@ -350,14 +366,22 @@ export default {
   background: var(--bg-base);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  padding: 10px 16px;
+  padding: var(--space-2) var(--space-4);
+  min-height: 52px;
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: var(--font-size-base);
   font-family: inherit;
   transition: border-color var(--transition-fast);
 }
 
-.form-input--small { width: 120px; }
+/* (usabilita' 15/9) era 120x38: il campo piu' piccolo del pannello, e
+   l'unico da toccare in tutta la creazione ordine. Ora e' alto quanto i
+   bottoni canonici. */
+.form-input--small {
+  width: 140px;
+  min-height: 52px;
+  font-size: var(--font-size-md);
+}
 
 /* PP ereditato dal particolare: valore sola-lettura + origine */
 .pp-value {

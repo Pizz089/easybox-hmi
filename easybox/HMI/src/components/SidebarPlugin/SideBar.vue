@@ -243,7 +243,12 @@ watch(
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  gap: var(--space-4);
+  /* (usabilita' 15/9) 16 -> 12 px fra i GRUPPI per pagare i 4 px in piu' fra
+     una voce e l'altra: lo spazio si toglie dove abbonda (fra gruppi, che
+     hanno gia' un'intestazione piena a separarli) e si mette dove serve, cioe'
+     fra due bersagli che si toccano col guanto. Misurato dopo: il menu
+     dell'operatore sta in 1010 px, sotto i 1016 disponibili in 1080p. */
+  gap: var(--space-3);
   padding: var(--space-4) var(--space-2) 0;
   overflow-y: auto;
 }
@@ -333,8 +338,12 @@ a {
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-2) var(--space-4);
-  /* 2px verticale: micro-spaziatura tra voci (eccezione §2.1) */
-  margin: 2px var(--space-2);
+  /* (usabilita' 15/9) 4px verticale, cioe' 8px di vuoto fra una voce e
+     l'altra: a 2px le voci si toccavano e col guanto si sbagliava riga.
+     Non si puo' salire oltre: la regola qui sotto vuole il menu dell'OPERATORE
+     dentro 1080p senza scorrimento, e ogni pixel in piu' moltiplica per 19
+     righe. Misurato dopo la modifica: ci sta. */
+  margin: 4px var(--space-2);
   border-radius: var(--radius-md);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);

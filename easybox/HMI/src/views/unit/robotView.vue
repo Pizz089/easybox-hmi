@@ -134,14 +134,17 @@
         </button>
       </div>
 
-      <!-- ===== CARD 1: Comandi critici (RESET / HOLD-START / RESTART) ===== -->
+      <!-- ===== CARD 1: Comandi critici =====
+           DISPOSIZIONE CAMBIATA il 15/9 dopo la verifica di usabilita': RESET,
+           CONTINUA ESECUZIONE e RESTART stavano in fila a 8 px, con il
+           pulsante che serve a RIPRENDERE in mezzo ai due rossi che non
+           riprendono niente. Con i guanti, sbagliare di 8 px voleva dire
+           resettare il robot invece di farlo ripartire.
+           Adesso: sopra c'e' la CONDUZIONE (fermare e riprendere), sotto e
+           staccato il RIPRISTINO, e i due comandi di ripristino chiedono
+           conferma dicendo cosa fanno e cosa NON fanno. -->
       <section class="command-section">
         <h3 class="section-label">{{ $t('robot.section.critical') }}</h3>
-
-        <button class="pure-button-micromission pure-u-1 specialCMD button_pressed"
-          @click="sendToRobot(99)">
-          RESET
-        </button>
 
         <button class="pure-button-micromission pure-u-1 specialCMD button_pressed" :class="{'button-hold':dataRobot.STATUS==dataStored.status_hold}"
           v-if="dataRobot.STATUS!=dataStored.status_off"
@@ -163,12 +166,46 @@
           </span>
         </button>
 
-        <button class="pure-button-micromission pure-u-1 specialCMD button_pressed" :disabled="dataRobot.STATUS!=dataStored.status_hold"
+        <!-- RIPRISTINO: gruppo separato, non in fila col pulsante che si usa
+             per riprendere. Il distacco e' visivo (riga + spazio) e non solo
+             di spaziatura, cosi' si vede che sono un'altra famiglia. -->
+        <h4 class="command-subsection-title restore-title">{{ $t('robot.section.restore') }}</h4>
+        <small class="cmd-hint">{{ $t('robot.section.restoreHint') }}</small>
+
+        <button class="pure-button-micromission pure-u-1 specialCMD button_pressed restore-btn"
+          @click="askCritical('reset')">
+          RESET
+        </button>
+
+        <button class="pure-button-micromission pure-u-1 specialCMD button_pressed restore-btn" :disabled="dataRobot.STATUS!=dataStored.status_hold"
           :class="[dataRobot.STATUS!=dataStored.status_hold ? 'pure-button-disable' : 'pure-button-micromission']"
           :style="[dataRobot.STATUS!=dataStored.status_hold ? 'background-color:lightgray;color:gray': '']"
-          @click="sendToRobot(18)">
+          @click="askCritical('restart')">
           RESTART MAIN PROGRAM
         </button>
+
+        <!-- Conferma dei due comandi di ripristino: dice cosa fa e, soprattutto,
+             cosa NON fa, perche' l'errore che si vuole evitare e' proprio
+             premerli credendo di riprendere il ciclo. -->
+        <div v-if="criticalDialog.type!=''" class="mission-dialog-overlay">
+          <div class="mission-dialog">
+            <h3 class="command-section-title">{{ $t('robot.critical.confirmTitle') }}</h3>
+            <p class="critical-what">{{ $t('robot.critical.' + criticalDialog.type + 'What') }}</p>
+            <small class="cmd-hint">{{ $t('robot.critical.' + criticalDialog.type + 'NotThis') }}</small>
+            <div class="pure-g">
+              <div class="pure-u-1-2">
+                <button style="width:100%" class="pure-button-mission button_pressed" @click="confirmCritical()">
+                  {{ $t('robot.dialog.confirm') }}
+                </button>
+              </div>
+              <div class="pure-u-1-2">
+                <button style="width:100%" class="btn-ghost" @click="criticalDialog.type=''">
+                  {{ $t('robot.dialog.cancel') }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
 
       <!-- ===== CARD 2: Movimenti (HOME/MAINT + Punti destinazione) ===== -->
@@ -706,6 +743,8 @@ export default {
       // (244) dialog conferma preleva-finito/deposita-grezzo: nessuna
       // verifica ordine (il PLC usa le quote dell'ULTIMO ordine registrato)
       pickPlaceDialog: { open: false },
+      // (usabilita' 15/9) conferma dei comandi di ripristino: '' | 'reset' | 'restart'
+      criticalDialog: { type: '' },
       // M2: stato estrazione cassetti (colonna TRAY.EXTRACT, appendice audit):
       // extractedTray = riga con EXTRACT==1 (conferma PLC) o null;
       // trayBusy = manovra in corso (EXTRACT 1000 richiesta estrazione /
@@ -1136,6 +1175,21 @@ export default {
     closePickPlaceDialog() {
       this.pickPlaceDialog.open = false;
     },
+    // I due comandi di ripristino passano da qui: nessuno dei due parte con
+    // un tocco solo, e la conferma spiega la differenza con CONTINUA
+    // ESECUZIONE, che e' l'errore che la vecchia disposizione favoriva.
+    askCritical(type) {
+      if (type === 'restart' && this.dataRobot.STATUS != this.dataStored.status_hold) return;
+      this.criticalDialog.type = type;
+    },
+
+    confirmCritical() {
+      const type = this.criticalDialog.type;
+      this.criticalDialog.type = '';
+      if (type === 'reset') this.sendToRobot(99);
+      else if (type === 'restart') this.sendToRobot(18);
+    },
+
     confirmPickPlace() {
       // re-check fresco: lo stato puo' essere decaduto a dialog aperto
       if (!this.pickPlaceConfirmEnabled) return;
@@ -1877,6 +1931,26 @@ small {
 
 h6 {
   margin-bottom: 3px;
+}
+
+/* (usabilita' 15/9) il gruppo RIPRISTINO si stacca da quello di conduzione:
+   riga di separazione e spazio, cosi' fra "continua esecuzione" e il primo
+   rosso ci sono 24 px e un confine visibile, non 8 px e basta. */
+.restore-title {
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.restore-btn {
+  margin-top: var(--space-2);
+}
+
+.critical-what {
+  margin: 0;
+  font-size: var(--font-size-md);
+  line-height: var(--line-height-normal);
+  color: var(--text-primary);
 }
 
 /* Override .specialCMD (rosso) quando robot e' in stato HOLD: bg blu vivido

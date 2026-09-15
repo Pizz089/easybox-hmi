@@ -78,34 +78,43 @@
                 </template>
             </tbody>
         </table>
-        <h4 v-else>{{ $t('production.noOrderYet') }}</h4>
+        <!-- (usabilita' 15/9) prima qui c'era solo "Nessun ordine al momento",
+             che con la richiesta fallita era un'affermazione FALSA: l'elenco
+             non era vuoto, non si era riusciti a chiederlo. -->
+        <StatoElenco
+          v-else
+          :stato="statoElenco"
+          :vuoto="true"
+          :messaggio-vuoto="$t('production.noOrderYet')"
+          @riprova="getDataTable()"
+        />
     </div>
 </template>
 
 <script>
+import StatoElenco from './StatoElenco.vue';
+import { caricaElenco, STATO } from '../util/caricaElenco.js';
+
 export default {
+    components: { StatoElenco },
     data(){
         return {
-            orders:{},
+            // 'attesa' finche' non si sa: non si scrive "nessun ordine" prima
+            // di avere una risposta
+            statoElenco: STATO.ATTESA,
+            orders:[],
             createNew:false,
             showPopUp:false
         }
     },
     methods: {
         getDataTable() {
-            fetch( dataStored.server+'api/order/show/all',{ method: 'GET'})
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok');
-                    }
-                    return response.json()
-                })
-                .then(data => {
-                    this.orders=data;
-                })
-                .catch(error => {
-                    console.info(error);
-                });
+            this.statoElenco = STATO.ATTESA;
+            caricaElenco(dataStored.server, 'api/order/show/all').then(esito => {
+                this.statoElenco = esito.stato;
+                if (esito.stato === STATO.OK) this.orders = esito.dati;
+                else console.info('elenco ordini non letto: ' + esito.dettaglio);
+            });
         },
         modifyOrder(i){
             this.$router.push('/selectRig');

@@ -14,6 +14,8 @@
     import { KO_OCCUPIED, KO_DISABLED } from '../../util/errorCodes';
     // (edit-remove-place) voci "In macchina" dalla configurazione (cantiere AS)
     import { MACHINE_POSITIONS } from '../../util/machineBrands';
+    import StatoElenco from '../../components/StatoElenco.vue';
+    import { caricaElenco, STATO } from '../../util/caricaElenco.js';
 </script>
 
 <template>
@@ -91,12 +93,16 @@
                                 @click="askEdit(row)">
                                 {{$t('attrezzaggi.edit')}}
                             </button>
-                            <button v-if="row.vice" class="btn-ghost action-btn"
+                            <!-- (usabilita' 15/9) gli SMONTA stavano a 4 px da
+                                 Modifica: disfano un montaggio, e a 4 px da
+                                 un'azione innocua si sbagliano col guanto.
+                                 Adesso sono staccati e su una riga loro. -->
+                            <button v-if="row.vice" class="btn-ghost action-btn action-destructive"
                                 :disabled="rowBlockReason(row)!=''"
                                 @click="askUnmount('vice', row.pallet.ID, row.vice.ID)">
                                 {{$t('attrezzaggi.unmountVice')}}
                             </button>
-                            <button v-for="f in row.fixtures" :key="'u'+f.FIXTURE_ID" class="btn-ghost action-btn"
+                            <button v-for="f in row.fixtures" :key="'u'+f.FIXTURE_ID" class="btn-ghost action-btn action-destructive"
                                 :disabled="rowBlockReason(row)!=''"
                                 @click="askUnmount('fixture', row.pallet.ID, f.FIXTURE_ID)">
                                 {{$t('attrezzaggi.unmountFixture')}} {{ row.fixtures.length>1 ? '#'+f.FIXTURE_ID : '' }}
@@ -147,6 +153,12 @@
                 </template>
             </tbody>
         </table>
+        <StatoElenco
+          :stato="statoElenco"
+          :vuoto="pallets.length === 0"
+          :messaggio-vuoto="$t('attrezzaggi.nessuno')"
+          @riprova="getDataTable()"
+        />
         </div>
 
         <!-- AC: dialog posizione a magazzino — overlay canonico (pattern
@@ -226,6 +238,9 @@ export default {
     data(){
         return {
             pallets:[],
+            // (usabilita' 15/9) 'attesa' finche' non si sa: niente affermazioni
+            // prima di avere una risposta
+            statoElenco: STATO.ATTESA,
             vices:[],
             fixtures:[],
             fop:[],          // righe FIXTURE_ON_PALLET
@@ -246,13 +261,23 @@ export default {
     },
     methods: {
         getDataTable() {
+            // (usabilita' 15/9) lo stato della pagina lo decide la lettura dei
+            // PALLET, che e' la riga della tabella: se quella non arriva, la
+            // pagina non e' vuota, e' cieca. Le altre letture riempiono
+            // colonne e restano come prima.
+            this.statoElenco = STATO.ATTESA;
+            caricaElenco(dataStored.server, 'api/conf/pallet/show/all').then(esito => {
+                this.statoElenco = esito.stato;
+                if (esito.stato === STATO.OK) this.pallets = esito.dati;
+                else console.info('elenco pallet non letto: ' + esito.dettaglio);
+            });
+
             const get = (url, cb) =>
                 fetch(dataStored.server + url, { method: 'GET' })
                     .then(r => { if (!r.ok) throw new Error('Network response was not ok'); return r.json(); })
                     .then(cb)
                     .catch(error => { console.info("-------------"); console.info(error); });
 
-            get('api/conf/pallet/show/all',  d => this.pallets  = d || []);
             get('api/conf/vice/show/all',    d => this.vices    = d || []);
             get('api/conf/fixture/show/all', d => this.fixtures = d || []);
             get('api/conf/fixture/showFixtureOnPallet/all', d => this.fop = d || []);
@@ -602,6 +627,13 @@ export default {
         padding: var(--space-1) var(--space-3);
         font-size: var(--font-size-sm);
         margin: 2px var(--space-1);
+    }
+
+    /* (usabilita' 15/9) le azioni che DISFANO un montaggio vanno a capo e si
+       staccano da quelle innocue: prima erano in fila a 4 px da Modifica. */
+    .action-destructive {
+        display: block;
+        margin-top: var(--space-4);
     }
 
     /* AC: overlay canonico (stesso pattern scoped di robotView: overlay a
