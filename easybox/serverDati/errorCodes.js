@@ -31,3 +31,7 @@ exports.KO_NO_FIXTURE        = "KO_NO_FIXTURE";        // FIXTURE_ID assente o s
 exports.KO_PUSH_NO_DATA      = "KO_PUSH_NO_DATA";      // manca la ganascia morsa, lo spessore ganascia pinza o la misura del pezzo
 exports.KO_PUSH_NO_FIT       = "KO_PUSH_NO_FIT";       // pezzo oltre la ganascia e appoggio NON dichiarato in PIECE_ON_VICE
 exports.KO_PUSH_NO_ROOM      = "KO_PUSH_NO_ROOM";      // appoggio dichiarato piu' vicino di quanto il pezzo gia' sporge: corsa negativa
+// Salvataggio di una singola misura (push-sim-save 15/9): la riga da
+// aggiornare non esiste. Senza questo codice una UPDATE a zero righe
+// risponderebbe OK, ed e' il difetto silenzioso che ha causato l'errore 799.
+exports.KO_NOT_FOUND         = "KO_NOT_FOUND";

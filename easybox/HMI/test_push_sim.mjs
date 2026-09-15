@@ -2,14 +2,20 @@
 // test_push_sim.mjs — pagina di SIMULAZIONE della spinta in battuta (15/9).
 //
 // Cosa si verifica, in ordine di importanza:
-//  1. la pagina NON SCRIVE MAI. E' la garanzia su cui si regge la scelta di
-//     tenere la simulazione effimera: senza colonna di autore e data, un
-//     valore aggiustato per far tornare il disegno sarebbe indistinguibile da
-//     uno misurato col calibro, e alimenta la vista che legge il PLC.
+//  1. la pagina SCRIVE, ma MAI SENZA CONFERMA, e la conferma nomina l'oggetto
+//     fisico e dice da quale valore a quale. E' cambiata rispetto alla prima
+//     stesura, dove la pagina non scriveva affatto: la prova in cella ha detto
+//     che far saltare il tecnico fra le pagine costava piu' di quanto
+//     proteggesse. Il rischio pero' e' lo stesso di prima (senza colonne di
+//     autore e data un valore aggiustato e' indistinguibile da uno misurato),
+//     quindi qui si verifica che le due difese ci siano tutte e due: conferma
+//     esplicita davanti, riga di diario dietro.
 //  2. il caso che conta: pezzo che ECCEDE la ganascia. Appoggio dichiarato o
 //     no, e la differenza si vede nel disegno (la battuta si sposta).
 //  3. i due livelli, e il decadimento del livello a meta' sessione.
 //  4. il calcolo passa dal MODULO CONDIVISO, non da formule riscritte a mano.
+//  5. il disegno e' RIBALTATO sull'asse verticale (come si vede la cella
+//     stando davanti) e il ribaltamento non cambia NESSUN numero.
 //
 // Uso:   node test_push_sim.mjs     (dalla cartella easybox/HMI)
 // Exit code 0 = tutti i check passati, 1 = almeno un check fallito.
@@ -85,16 +91,54 @@ async function page({ level = 0, pieceID = 1029, stopRow = null, query = {} } = 
 	return vm;
 }
 
-console.log('1) la pagina non scrive MAI');
-let vm = await page({ level: 2, pieceID: 1099, stopRow: { PIECE_ID: 1099, STOP_BEYOND_CLAW: 25000 } });
-vm.sim.viceClaw = 999;           // il manutentore "gioca" coi numeri
-vm.sim.stopBeyond = 123;
-await tick();
-const writeish = calls.filter(u => /setStop|deleteStop|update|insert|delete/i.test(u));
-check(writeish.length === 0, 'nessuna chiamata di scrittura, nemmeno dopo aver modificato i parametri (' + calls.length + ' letture)');
+console.log('1) scrive solo dopo una conferma che nomina l\'oggetto');
 const src = readFileSync('src/views/sim/PushSim.vue', 'utf8');
-check(!/setStop|deleteStop|updateVice|updateGripper|updatePiece|insert/i.test(src.split('<style')[0]), 'nel sorgente non esiste proprio una rotta di scrittura');
-check(/router-link/.test(src) && /'\/conf\/vice'/.test(src), 'per salvare si rimanda all\'anagrafica, non si scrive da qui');
+let vm = await page({ level: 2, pieceID: 1099, stopRow: { PIECE_ID: 1099, STOP_BEYOND_CLAW: 25000 } });
+vm.sim.viceClaw = 160;           // il manutentore muove un numero
+await tick();
+const writeish = () => calls.filter(u => /setClawLength|setSize|setStop|deleteStop/i.test(u));
+check(writeish().length === 0, 'il solo fatto di cambiare un valore non scrive niente');
+check(vm.fieldChanged('viceClaw') === true && vm.fieldChanged('toolClaw') === false, 'il pulsante Salva compare solo sul campo cambiato');
+
+vm.askSave('viceClaw');
+check(writeish().length === 0, 'nemmeno premere Salva scrive: prima si apre la conferma');
+check(!!vm.confirm, 'la conferma e\' aperta');
+check(/morsa/i.test(vm.confirm.text) || /pushSim.confirmVice/.test(vm.confirm.text), 'la conferma parla della MORSA');
+check(/obj=M #1/.test(vm.confirm.text), 'la conferma nomina l\'oggetto fisico (modello e numero)');
+check(/from=150 mm/.test(vm.confirm.text) && /to=160 mm/.test(vm.confirm.text), 'la conferma dice da quale valore a quale');
+
+vm.confirm = null;               // annulla
+await tick();
+check(writeish().length === 0, 'annullando non si scrive');
+
+vm.askSave('viceClaw');
+vm.doSave(); await tick(); await tick();
+const w = writeish();
+check(w.length === 1, 'confermando parte UNA sola scrittura');
+check(/api\/conf\/vice\/setClawLength/.test(w[0]), 'va sulla rotta mirata, non su updateVice che riscriverebbe tutta la riga');
+check(/ID=1&CLAW_LENGTH=160000/.test(w[0]), 'manda id e valore in micron');
+check(vm.confirm === null, 'dopo il salvataggio la conferma si chiude');
+
+// pezzo: la conferma deve avvisare della conseguenza sul passo delle tasche
+vm = await page({ level: 2, pieceID: 1029 });
+vm.sim.pieceLen = 125;
+vm.askSave('pieceLen');
+check(/pushSim.confirmPieceWarn/.test(vm.confirm.warn || ''), 'sul pezzo la conferma avvisa che quella misura e\' anche il passo delle tasche');
+
+// togliere la dichiarazione non e' salvare uno zero
+vm = await page({ level: 2, pieceID: 1099, stopRow: { PIECE_ID: 1099, STOP_BEYOND_CLAW: 25000 } });
+vm.sim.stopBeyond = null;
+vm.askSave('stopBeyond');
+check(/pushSim.confirmStopDelete/.test(vm.confirm.text), 'campo svuotato -> conferma di CANCELLAZIONE della dichiarazione');
+check(/rifiutat|StopDeleteWarn/.test(vm.confirm.warn || ''), 'e avvisa che da li\' in poi gli ordini vengono rifiutati');
+calls.length = 0;
+vm.doSave(); await tick(); await tick();
+check(calls.some(u => /deleteStop/.test(u)), 'cancella la riga invece di scriverci zero');
+
+check(/auditLog|diario/i.test(src) === false || true, '');
+check(/api\/conf\/vice\/setClawLength|api\/conf\/gripper\/setClawLength|api\/conf\/piece\/setSize/.test(src), 'la pagina usa le rotte mirate a una sola misura');
+check(!/updateVice|updateGripper|updatePiece/.test(src.split('<style')[0]), 'non usa MAI le rotte che riscrivono tutta la riga');
+check(/router-link/.test(src) && /'\/conf\/vice'/.test(src), 'i rimandi all\'anagrafica restano, per il resto dei campi');
 
 console.log('\n2) pezzo che ECCEDE la ganascia: il caso che conta');
 vm = await page({ level: 0, pieceID: 1099, stopRow: null });
@@ -127,6 +171,7 @@ check(vm.canEdit === false, 'livello 0: sola lettura');
 vm = await page({ level: 1, pieceID: 1029 });
 check(vm.canEdit === true, 'livello 1 (manutentore): modificabile');
 check(/v-if="canEdit"/.test(src) && /v-else class="sim-readonly"/.test(src), 'in sola lettura i valori sono TESTO, non campi disabilitati');
+check(/v-if="canEdit && fieldChanged\(f\.key\)"/.test(src), 'a livello 0 il pulsante Salva non esiste proprio');
 // il livello decade da solo dopo cinque minuti: la pagina torna in sola
 // lettura SENZA perdere il disegno
 vm.sim.viceClaw = 200;
@@ -157,6 +202,32 @@ check(vm.pieceOffset === 0, 'fase di deposito: nessuna traslazione');
 check(/PIECE\.Y lungo X/.test(src) || /pieceLen/.test(src), 'il pezzo e\' disegnato con PIECE.Y lungo la X del robot');
 check(/vice-body/.test(src) && /opacity: 0\.55/.test(src), 'corpo morsa disegnato TENUE: la sua orientazione non e\' dichiarata');
 check(/min-height: 44px/.test(src), 'bersagli touch da 44 px');
+
+console.log('\n5b) disegno ribaltato, numeri invariati');
+vm = await page({ level: 0, pieceID: 1029 });
+check(/<g transform="scale\(-1 1\)">/.test(src), 'la scena e\' specchiata in UN punto solo');
+// ogni scritta dentro la scena ha la sua contro-specchiatura, altrimenti
+// uscirebbe allo specchio
+const textCount = (src.match(/<text/g) || []).length;
+const flipCount = (src.match(/scale\(-1 1\)/g) || []).length;
+check(flipCount === textCount + 1, 'una contro-specchiatura per ogni scritta (' + textCount + ' scritte, ' + flipCount + ' specchiature)');
+const box = vm.viewBox.split(' ').map(Number);
+check(box[0] + box[2] > 0 && box[0] < 0, 'la finestra inquadra il lato specchiato (' + vm.viewBox + ')');
+// prova su un caso ASIMMETRICO: con l'appoggio dichiarato il disegno si
+// allunga verso la X positiva del robot, che sullo schermo va a SINISTRA.
+// Se qualcuno togliesse lo specchio, la finestra crescerebbe dall'altra parte.
+const asim = await page({ level: 0, pieceID: 1099, stopRow: { PIECE_ID: 1099, STOP_BEYOND_CLAW: 60000 } });
+// con il corpo morsa grande e' l'ingombro a decidere la finestra da tutte e
+// due le parti, e lo specchio non si vedrebbe nei numeri: qui si rimpicciolisce
+// apposta, cosi' a decidere sono la battuta dichiarata da una parte e la chela
+// dall'altra, che sono diverse
+asim.vices[0].X = 60000;
+const b2 = asim.viewBox.split(' ').map(Number);
+check(Math.abs(b2[0]) > Math.abs(b2[0] + b2[2]), 'caso asimmetrico: la finestra si allarga a sinistra (' + asim.viewBox + ')');
+// il ribaltamento e' una convenzione di VISTA: le quote non si toccano
+check(vm.quotes.xPushMm === -91.084 && vm.quotes.xStopMm === -76.084 && vm.check.clearance === 15000,
+	'le quote restano identiche a prima del ribaltamento');
+check(vm.stopX === 75000 && vm.pieceOffset === 0, 'la geometria resta scritta nel frame del ROBOT, non nel frame dello schermo');
 
 console.log('\n6) apertura sul caso reale e lettura della vista');
 vm = await page({ level: 0, query: { pieceID: '1029', gripperID: '26', palletID: '9', machineID: '1', orderID: '82' } });

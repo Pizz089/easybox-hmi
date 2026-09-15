@@ -5,6 +5,7 @@ var sql 	= require('mssql')
 var router 	= express.Router();
 const log 	= require('../LogFunct');
 const ERR 	= require('../errorCodes');
+const audit = require('../auditLog');
 
 var templatePATH = '.';
 
@@ -343,6 +344,46 @@ router.get('/onRobot', (req, res) => {
 				res.send(recordset.recordset)
         });
     })
+})
+
+// ===========================================================================
+// (push-sim-save 15/9) SALVATAGGIO DI UNA SOLA MISURA, stesso motivo di VICE:
+// updateGripper scrive ogni colonna dai parametri, e una chiamata parziale
+// finirebbe per scrivere "undefined" su FAMILY e DESCR.
+// ===========================================================================
+router.get('/setClawLength', (req, res) => {
+	const id = parseInt(req.query.ID, 10);
+	const len = parseInt(req.query.CLAW_LENGTH, 10);
+	if (!Number.isInteger(id) || id < 1 || !Number.isInteger(len) || len <= 0) {
+		res.status(400).send("KO_BAD_INPUT");
+		return;
+	}
+	sql.connect(DBf.configDB, function (err) {
+		if (err) {
+			log.error("err setClawLength: " + err);
+			res.status(500).send("KO");
+			return;
+		}
+		let query = `SET NOCOUNT ON;
+					DECLARE @old int = (SELECT CLAW_LENGTH FROM GRIPPER WHERE ID=${id});
+					UPDATE GRIPPER SET CLAW_LENGTH=${len} WHERE ID=${id};
+					SELECT @@ROWCOUNT AS n, @old AS old, RTRIM(FAMILY) AS fam FROM GRIPPER WHERE ID=${id};`;
+		var request = new sql.Request();
+		log.info('query ' + query);
+		request.query(query, function (err2, recordset) {
+			if (err2) {
+				log.error("Err query: " + err2);
+				res.status(500).send("KO");
+				return;
+			}
+			const row = recordset.recordset && recordset.recordset[0];
+			if (!row || !row.n) { res.send(ERR.KO_NOT_FOUND); return; }
+			audit.audit('Pinza ' + row.fam + ' (ID ' + id + '): lunghezza chela da '
+				+ (row.old == null ? 'non misurata' : row.old + ' um') + ' a ' + len + ' um',
+				audit.SRC_PUSH_SIM, 'GRIPPER:' + id);
+			res.send("OK");
+		});
+	});
 })
 
 module.exports = router;

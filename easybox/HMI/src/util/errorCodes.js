@@ -21,3 +21,6 @@ export const KO_NO_FIXTURE        = "KO_NO_FIXTURE";
 export const KO_PUSH_NO_DATA      = "KO_PUSH_NO_DATA";
 export const KO_PUSH_NO_FIT       = "KO_PUSH_NO_FIT";
 export const KO_PUSH_NO_ROOM      = "KO_PUSH_NO_ROOM";
+// (push-sim-save 15/9) la riga da aggiornare non esiste: una UPDATE a zero
+// righe non deve mai rispondere OK
+export const KO_NOT_FOUND         = "KO_NOT_FOUND";

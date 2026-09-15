@@ -4,6 +4,8 @@ const DBf 	= require('../DBFunct');
 var sql 	= require('mssql')
 var router 	= express.Router();
 const log 	= require('../LogFunct');
+const ERR 	= require('../errorCodes');
+const audit = require('../auditLog');
 
 var templatePATH = '.';
 
@@ -132,5 +134,53 @@ router.delete('/:ID', (req, res) => {
 	});
 });
 
+
+// ===========================================================================
+// (push-sim-save 15/9) LE DUE DIMENSIONI FISICHE DEL PEZZO, non tutta la riga.
+// ATTENZIONE, e la conferma a video lo dice esplicitamente: PIECE.Y non serve
+// solo alla spinta in battuta, e' anche il passo delle tasche lungo la X del
+// robot quando si genera un grigliato. Cambiarla qui cambia le griglie
+// generate dopo. Per questo la conferma nomina la conseguenza invece di
+// chiedere un si' generico.
+// ===========================================================================
+router.get('/setSize', (req, res) => {
+	const id = parseInt(req.query.ID, 10);
+	const x = parseInt(req.query.X, 10);
+	const y = parseInt(req.query.Y, 10);
+	if (!Number.isInteger(id) || id < 1
+		|| !Number.isInteger(x) || x <= 0
+		|| !Number.isInteger(y) || y <= 0) {
+		res.status(400).send("KO_BAD_INPUT");
+		return;
+	}
+	sql.connect(DBf.configDB, function (err) {
+		if (err) {
+			log.error("err setSize: " + err);
+			res.status(500).send("KO");
+			return;
+		}
+		let query = `SET NOCOUNT ON;
+					DECLARE @ox int = (SELECT X FROM PIECE WHERE ID=${id});
+					DECLARE @oy int = (SELECT Y FROM PIECE WHERE ID=${id});
+					UPDATE PIECE SET X=${x}, Y=${y} WHERE ID=${id};
+					SELECT @@ROWCOUNT AS n, @ox AS ox, @oy AS oy, RTRIM(FAMILY) AS fam FROM PIECE WHERE ID=${id};`;
+		var request = new sql.Request();
+		log.info('query ' + query);
+		request.query(query, function (err2, recordset) {
+			if (err2) {
+				log.error("Err query: " + err2);
+				res.status(500).send("KO");
+				return;
+			}
+			const row = recordset.recordset && recordset.recordset[0];
+			if (!row || !row.n) { res.send(ERR.KO_NOT_FOUND); return; }
+			audit.audit('Pezzo ' + row.fam + ' (ID ' + id + '): dimensioni da '
+				+ row.ox + 'x' + row.oy + ' a ' + x + 'x' + y + ' um'
+				+ ' (la Y e anche il passo delle tasche nel grigliato)',
+				audit.SRC_PUSH_SIM, 'PIECE:' + id);
+			res.send("OK");
+		});
+	});
+})
 
 module.exports = router;

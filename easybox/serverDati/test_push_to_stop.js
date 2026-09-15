@@ -37,10 +37,15 @@ const fs = require('fs');
 const { pathToFileURL } = require('url');
 
 const routes = {};
+const modRoutes = {};
+let currentMod = '';
 const queries = [];
 let results = [];
 const fakeRouter = () => {
-	const reg = method => (p, h) => { routes[method + ' ' + p] = h; };
+	const reg = method => (p, h) => {
+		routes[method + ' ' + p] = h;
+		(modRoutes[currentMod] = modRoutes[currentMod] || {})[method + ' ' + p] = h;
+	};
 	return { get: reg('GET'), post: reg('POST'), delete: reg('DELETE'), put: reg('PUT') };
 };
 const origLoad = Module._load;
@@ -54,23 +59,27 @@ Module._load = function (req) {
 	if (req.endsWith('LogFunct')) return { standard: () => {}, error: () => {}, info: () => {}, init: () => {} };
 	return origLoad.apply(this, arguments);
 };
-require(path.join(__dirname, 'CONF', 'Piece.js'));
-require(path.join(__dirname, 'CONF', 'Vice.js'));
-require(path.join(__dirname, 'CONF', 'Gripper.js'));
-require(path.join(__dirname, 'WORKORDER', 'Order.js'));
+currentMod = 'piece';   require(path.join(__dirname, 'CONF', 'Piece.js'));
+currentMod = 'vice';    require(path.join(__dirname, 'CONF', 'Vice.js'));
+currentMod = 'gripper'; require(path.join(__dirname, 'CONF', 'Gripper.js'));
+currentMod = 'order';   require(path.join(__dirname, 'WORKORDER', 'Order.js'));
 const errorCodes = require(path.join(__dirname, 'errorCodes.js'));
 const srv = require(path.join(__dirname, 'pushQuotes.js'));
 
 let failed = 0;
 const check = (c, l) => { console.log((c ? '  ok   ' : '  FAIL ') + l); if (!c) failed++; };
 const norm = q => q.replace(/\s+/g, ' ');
-function call(key, params, resultQueue) {
+function callIn(mod, key, params, resultQueue) {
 	results = resultQueue || [];
 	const before = queries.length;
 	const res = { code: 200, body: null, status(n) { this.code = n; return this; }, send(b) { this.body = b; }, json(o) { this.body = o; } };
-	routes[key]({ params, query: params }, res);
+	const table = mod ? modRoutes[mod] : routes;
+	if (!table || !table[key]) throw new Error('rotta non registrata: ' + (mod || '*') + ' ' + key);
+	table[key]({ params, query: params }, res);
 	return { res, n: queries.length - before, q: queries.slice(before).map(norm) };
 }
+// senza modulo: la rotta e' unica in tutto il backend
+function call(key, params, resultQueue) { return callIn(null, key, params, resultQueue); }
 
 (async () => {
 
@@ -195,6 +204,40 @@ r = call('GET /deleteStop', { VICE_ID: '1', PIECE_ID: '1029' }, [{}]);
 check(/DELETE FROM PIECE_ON_VICE WHERE VICE_ID=1 AND PIECE_ID=1029/.test(r.q[0]), 'cancellazione della dichiarazione');
 r = call('GET /deleteStop', { VICE_ID: '0', PIECE_ID: '1029' }, []);
 check(r.res.code === 400 && r.n === 0, 'morsa non valida -> 400 senza toccare il database');
+
+console.log('\n3c) salvataggio di UNA misura dalla simulazione');
+// La pagina di simulazione adesso salva. Non puo' usare updateVice/
+// updateGripper/updatePiece, che scrivono OGNI colonna dai parametri: una
+// chiamata parziale svuoterebbe il resto della riga. Da qui le rotte mirate.
+r = callIn('vice', 'GET /setClawLength', { ID: '1', CLAW_LENGTH: '160000' }, [{ recordset: [{ n: 1, old: 150000, fam: 'ADMG' }] }, {}]);
+check(/UPDATE VICE SET CLAW_LENGTH=160000 WHERE ID=1/.test(r.q[0]), 'morsa: scrive SOLO la lunghezza ganascia');
+check(!/FAMILY=|DESCR=|MAG=/.test(r.q[0]), 'morsa: nessun altra colonna viene toccata');
+check(/SELECT @@ROWCOUNT AS n/.test(r.q[0]), 'morsa: il rowcount viene controllato');
+check(r.res.body === 'OK' && r.res.code === 200, 'morsa: esito nel body, stato 200');
+check(r.q.some(q => /INSERT INTO LOG/.test(q) && /Morsa ADMG \(ID 1\)/.test(q) && /150000 um a 160000 um/.test(q)),
+	'morsa: la modifica finisce nel diario, con oggetto e valori vecchio e nuovo');
+check(r.q.some(q => /INSERT INTO LOG/.test(q) && /'PUSH_SIM'/.test(q)), 'il diario dice DA DOVE arriva la modifica');
+r = callIn('vice', 'GET /setClawLength', { ID: '99', CLAW_LENGTH: '160000' }, [{ recordset: [] }]);
+check(r.res.body === errorCodes.KO_NOT_FOUND, 'morsa inesistente -> KO_NOT_FOUND, non OK');
+check(!r.q.some(q => /INSERT INTO LOG/.test(q)), 'niente riga di diario se non e\' stato cambiato niente');
+r = callIn('vice', 'GET /setClawLength', { ID: '1', CLAW_LENGTH: '0' }, []);
+check(r.res.code === 400 && r.n === 0, 'ganascia a zero -> 400 senza toccare il database');
+r = callIn('vice', 'GET /setClawLength', { ID: 'x', CLAW_LENGTH: '1' }, []);
+check(r.res.code === 400 && r.n === 0, 'morsa non numerica -> 400');
+
+r = callIn('gripper', 'GET /setClawLength', { ID: '26', CLAW_LENGTH: '32000' }, [{ recordset: [{ n: 1, old: 30000, fam: 'P' }] }, {}]);
+check(/UPDATE GRIPPER SET CLAW_LENGTH=32000 WHERE ID=26/.test(r.q[0]), 'pinza: scrive SOLO la lunghezza chela');
+check(modRoutes.vice['GET /setClawLength'] !== modRoutes.gripper['GET /setClawLength'],
+	'morsa e pinza hanno DUE rotte distinte: stesso nome, prefissi diversi in server.js');
+check(r.q.some(q => /INSERT INTO LOG/.test(q) && /Pinza P \(ID 26\)/.test(q)), 'pinza: modifica a diario');
+
+r = call('GET /setSize', { ID: '1029', X: '40000', Y: '185000' }, [{ recordset: [{ n: 1, ox: 40000, oy: 180000, fam: 'P1029' }] }, {}]);
+check(/UPDATE PIECE SET X=40000, Y=185000 WHERE ID=1029/.test(r.q[0]), 'pezzo: scrive SOLO le due dimensioni');
+check(!/PARTPROGRAM=|PUSH_TO_STOP=/.test(r.q[0]), 'pezzo: part program e spunta spinta restano intatti');
+check(r.q.some(q => /INSERT INTO LOG/.test(q) && /passo delle tasche/.test(q)),
+	'pezzo: il diario ricorda che quella misura e\' anche il passo delle tasche');
+r = call('GET /setSize', { ID: '1029', X: '40000', Y: '0' }, []);
+check(r.res.code === 400 && r.n === 0, 'dimensione a zero -> 400');
 
 console.log('\n4) lo script della vista non nasconde la definizione');
 const view = fs.readFileSync(path.join(__dirname, 'scripts', 'coordinates-push-mc.sql'), 'utf8');

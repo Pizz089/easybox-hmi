@@ -13,24 +13,37 @@
   SENZA perdere il disegno, perche' i valori simulati stanno nello stato del
   componente e non nei campi.
 
-  QUESTA PAGINA NON SCRIVE MAI. Un manutentore che muove i numeri finche' il
-  disegno "torna" scriverebbe misure che non corrispondono agli oggetti reali,
-  e siccome VICE/GRIPPER/PIECE non hanno colonna di autore ne' di data, un
-  valore aggiustato diventerebbe indistinguibile da uno misurato col calibro.
-  E quelle colonne alimentano la vista che legge il PLC. Per salvare si va in
-  anagrafica, dove il campo sta accanto alle altre misure dell'oggetto: i
-  collegamenti qui sotto ci portano, col valore simulato gia' in mano.
-  L'etichetta di divergenza e il pulsante di ripristino servono a non
-  scambiare mai il disegno per lo stato corrente dell'impianto.
+  QUESTA PAGINA SCRIVE, ma mai in silenzio (deciso dopo la prova in cella:
+  far saltare il tecnico da una pagina all'altra costava piu' di quanto
+  proteggesse). Il rischio resta quello di sempre: un manutentore che muove i
+  numeri finche' il disegno "torna" scrive misure che non corrispondono agli
+  oggetti reali, e siccome VICE/GRIPPER/PIECE non hanno colonna di autore ne'
+  di data, quel valore diventerebbe indistinguibile da uno misurato col
+  calibro. E quelle colonne alimentano la vista che legge il PLC.
+
+  Contro quel rischio ci sono DUE difese, e servono tutte e due:
+    - la CONFERMA nomina l'oggetto fisico e dice da quale valore a quale, con
+      le stesse parole che userebbe chi ha il calibro in mano. Copre
+      l'INTENZIONE, nel momento in cui si scrive;
+    - la riga in LOG (serverDati/auditLog.js) dice dopo che quella misura e'
+      stata cambiata dalla simulazione, da quanto a quanto. Copre la
+      PROVENIENZA, che senza colonne di audit sarebbe persa per sempre.
+
+  L'etichetta di divergenza e il pulsante di ripristino restano: finche' non si
+  conferma, il disegno non e' lo stato dell'impianto e deve dirlo.
 
   DISEGNO: SVG inline, unita' utente = MICRON, viewBox calcolata (stesso
   pattern della pagina Grigliato). Niente libreria: la vista e' piatta e fatta
   di rettangoli, e come nodi del DOM scalano nitidi sul touch e si stampano.
 
-  FRAME: quello del ROBOT, X crescente verso DESTRA. La spinta si legge da
-  sinistra a destra e la battuta sta a destra. Il pezzo misura PIECE.Y lungo X
-  e PIECE.X lungo Y: e' la rotazione fra disegno e robot, ed e' la cosa piu'
-  utile che questa pagina insegna.
+  ORIENTAMENTO: il disegno e' RIBALTATO sull'asse verticale rispetto al frame
+  del robot, cioe' la X del robot cresce verso SINISTRA sullo schermo. Non e'
+  una scelta grafica: e' come si vede la cella stando davanti (verificato sul
+  pannello il 15/9). Il ribaltamento e' una convenzione di VISTA e basta: le
+  quote non cambiano di un micron, e il test lo verifica confrontando i numeri
+  prima e dopo. Il pezzo misura PIECE.Y lungo X e PIECE.X lungo Y: e' la
+  rotazione fra disegno e robot, ed e' la cosa piu' utile che questa pagina
+  insegna.
 
   CORPO DELLA MORSA DISEGNATO TENUE: la lunghezza della ganascia e' misurata,
   quindi e' piena; VICE.X e VICE.Y sono ingombri la cui orientazione sul
@@ -98,6 +111,17 @@
           />
           <span v-else class="sim-readonly">{{ mmText(sim[f.key]) }}</span>
           <span class="sim-unit">mm</span>
+          <!-- il pulsante compare SOLO sul campo che e' stato cambiato: e'
+               anche il modo piu' semplice per vedere cosa si sta per salvare -->
+          <button
+            v-if="canEdit && fieldChanged(f.key)"
+            type="button"
+            class="pure-button button_pressed sim-save"
+            :disabled="saving"
+            @click="askSave(f.key)"
+          >
+            {{ t("pushSim.save") }}
+          </button>
         </div>
 
         <p v-if="stopDeclaredReal === null && exceeds" class="sim-warn">
@@ -111,7 +135,7 @@
           </button>
         </div>
 
-        <p class="sim-hint">{{ t("pushSim.noSave") }}</p>
+        <p class="sim-hint">{{ t("pushSim.saveHint") }}</p>
         <div class="sim-links">
           <router-link v-if="sel.viceID" class="pure-button" :to="{ path: '/conf/vice', query: { viceID: sel.viceID } }">
             {{ t("pushSim.goVice") }}
@@ -124,6 +148,25 @@
           </router-link>
         </div>
       </section>
+
+      <!-- CONFERMA: nomina l'oggetto FISICO che si sta ridefinendo e dice da
+           quale valore a quale. Non e' un "sei sicuro?": chi legge deve poter
+           riconoscere l'oggetto che ha davanti. -->
+      <div v-if="confirm" class="sim-confirm-back" @click.self="confirm = null">
+        <div class="sim-confirm" role="dialog" aria-modal="true">
+          <h2 class="sim-h2">{{ t("pushSim.confirmTitle") }}</h2>
+          <p class="confirm-what">{{ confirm.text }}</p>
+          <p v-if="confirm.warn" class="confirm-warn">{{ confirm.warn }}</p>
+          <div class="confirm-buttons">
+            <button type="button" class="pure-button" @click="confirm = null">
+              {{ t("pushSim.cancel") }}
+            </button>
+            <button type="button" class="pure-button button_pressed" :disabled="saving" @click="doSave">
+              {{ t("pushSim.confirmSave") }}
+            </button>
+          </div>
+        </div>
+      </div>
 
       <!-- ------------------------------------------------------- il disegno -->
       <section class="sim-stage">
@@ -149,6 +192,14 @@
               <rect :x="-g.claw / 2" :y="-g.viceY" :width="g.claw" :height="g.viceY * 2" />
             </clipPath>
           </defs>
+
+          <!-- RIBALTAMENTO sull'asse verticale: la X del robot cresce verso
+               sinistra sullo schermo, che e' come si vede la cella stando
+               davanti. Tutta la geometria resta scritta nel frame del robot e
+               viene specchiata QUI, in un punto solo; le scritte dentro il
+               gruppo si rimettono dritte con una contro-specchiatura locale,
+               altrimenti uscirebbero allo specchio. Le quote non cambiano. -->
+          <g transform="scale(-1 1)">
 
           <!-- corpo morsa: TENUE, l'orientazione non e' dichiarata -->
           <rect
@@ -233,14 +284,12 @@
             :stroke-width="g.line * 2"
           />
           <!-- riferimento NON dichiarato: posizione ignota -->
-          <text
+          <g
             v-if="exceeds && stopDeclared === null"
-            class="lbl-missing"
-            :x="g.claw / 2 + g.overhang"
-            :y="-g.viceY / 2 - g.line * 6"
-            :font-size="g.font"
-            text-anchor="middle"
-          >?</text>
+            :transform="'translate(' + (g.claw / 2 + g.overhang) + ' ' + (-g.viceY / 2 - g.line * 6) + ') scale(-1 1)'"
+          >
+            <text class="lbl-missing" x="0" y="0" :font-size="g.font" text-anchor="middle">?</text>
+          </g>
 
           <!-- quota della distanza dichiarata -->
           <g v-if="!restsOnClaw && stopDeclared !== null">
@@ -252,33 +301,34 @@
               :y2="g.viceY / 2 + g.line * 6"
               :stroke-width="g.line"
             />
-            <text
-              class="dim-lbl"
-              :x="(g.claw / 2 + stopX) / 2"
-              :y="g.viceY / 2 + g.line * 5"
-              :font-size="g.font"
-              text-anchor="middle"
-            >{{ mm(stopDeclared) }}</text>
+            <g :transform="'translate(' + (g.claw / 2 + stopX) / 2 + ' ' + (g.viceY / 2 + g.line * 5) + ') scale(-1 1)'">
+              <text class="dim-lbl" x="0" y="0" :font-size="g.font" text-anchor="middle">{{ mm(stopDeclared) }}</text>
+            </g>
           </g>
 
           <!-- quote del pezzo: le due dimensioni, e la rotazione che confonde -->
-          <text class="dim-lbl" :x="0" :y="-g.pieceWid / 2 - g.line * 2" :font-size="g.font" text-anchor="middle">
-            {{ mm(g.pieceLen) }}
-          </text>
-          <text
-            class="dim-lbl"
-            :x="-g.pieceLen / 2 - g.line * 2"
-            :y="0"
-            :font-size="g.font"
-            text-anchor="end"
-            dominant-baseline="middle"
-          >{{ mm(g.pieceWid) }}</text>
+          <g :transform="'translate(0 ' + (-g.pieceWid / 2 - g.line * 2) + ') scale(-1 1)'">
+            <text class="dim-lbl" x="0" y="0" :font-size="g.font" text-anchor="middle">{{ mm(g.pieceLen) }}</text>
+          </g>
+          <g :transform="'translate(' + (-g.pieceLen / 2 - g.line * 2) + ' 0) scale(-1 1)'">
+            <text
+              class="dim-lbl"
+              x="0"
+              y="0"
+              :font-size="g.font"
+              text-anchor="start"
+              dominant-baseline="middle"
+            >{{ mm(g.pieceWid) }}</text>
+          </g>
 
-          <!-- verso della X del robot -->
+          <!-- verso della X del robot: la punta sta dal lato in cui la X
+               cresce, che dopo il ribaltamento e' a sinistra sullo schermo -->
           <line class="axis" :x1="axis.x1" :x2="axis.x2" :y1="axis.y" :y2="axis.y" :stroke-width="g.line" />
-          <text class="axis-lbl" :x="axis.x2" :y="axis.y - g.line * 2" :font-size="g.font" text-anchor="end">
-            X
-          </text>
+          <g :transform="'translate(' + axis.x2 + ' ' + (axis.y - g.line * 2) + ') scale(-1 1)'">
+            <text class="axis-lbl" x="0" y="0" :font-size="g.font" text-anchor="start">X</text>
+          </g>
+
+          </g>
         </svg>
 
         <div class="sim-phases">
@@ -349,6 +399,7 @@
 <script>
 import { dataStored } from "../../data.js";
 import { pushQuotes, PUSH_STATUS, STOP_REF } from "../../util/pushQuotes.js";
+import { KO_NOT_FOUND } from "../../util/errorCodes.js";
 
 // millimetri -> micron e viceversa, con il vuoto che resta vuoto: lo ZERO e'
 // un valore, l'assenza e' un'altra cosa (vale per l'appoggio dichiarato)
@@ -374,6 +425,9 @@ export default {
       phase: 0,
       timers: [],
       viewRow: null,
+      // conferma in corso: { key, text, warn, run }
+      confirm: null,
+      saving: false,
       fields: [
         { key: "pieceLen", label: "pushSim.fPieceLen" },
         { key: "pieceWid", label: "pushSim.fPieceWid" },
@@ -527,6 +581,9 @@ export default {
       return { x1: -g.viceX / 2, x2: g.viceX / 2, y };
     },
 
+    // il ribaltamento e' una convenzione di VISTA: la geometria resta nel
+    // frame del robot e viene specchiata nel disegno. Qui si specchia la
+    // finestra, altrimenti inquadrerebbe il lato sbagliato.
     viewBox() {
       const g = this.g;
       const right = Math.max(
@@ -539,7 +596,7 @@ export default {
       const x = -left - pad;
       const w = left + right + pad * 2;
       const halfH = Math.max(g.viceY / 2, g.pieceWid / 2 + g.toolT) + g.line * 18;
-      return [x, -halfH - pad, w, halfH * 2 + pad * 2].map(Math.round).join(" ");
+      return [-(x + w), -halfH - pad, w, halfH * 2 + pad * 2].map(Math.round).join(" ");
     },
   },
 
@@ -614,7 +671,10 @@ export default {
         .catch(console.info);
     },
 
-    onSelectionChange() {
+    // i valori REALI ricavati dalle anagrafiche gia' caricate. Separato dal
+    // resto perche' dopo un salvataggio serve aggiornare i valori reali SENZA
+    // buttare via le prove lasciate a meta' negli altri campi.
+    recomputeReal() {
       const piece = this.pieces.find((p) => p.ID == this.sel.pieceID);
       const vice = this.vices.find((v) => v.ID == this.sel.viceID);
       const grip = this.grippers.find((g) => g.ID == this.sel.gripperID);
@@ -622,25 +682,174 @@ export default {
       this.real.pieceWid = piece ? Number(piece.X) / 1000 : null;
       this.real.viceClaw = vice && vice.CLAW_LENGTH != null ? Number(vice.CLAW_LENGTH) / 1000 : null;
       this.real.toolClaw = grip && grip.CLAW_LENGTH != null ? Number(grip.CLAW_LENGTH) / 1000 : null;
+    },
+
+    onSelectionChange() {
+      this.recomputeReal();
       this.real.stopBeyond = null;
       this.copyRealToSim();
       this.phase = 0;
-      if (this.sel.viceID) this.loadStop();
+      if (this.sel.viceID) this.loadStop(true);
     },
 
     // l'appoggio dichiarato vive nella coppia morsa+pezzo
-    loadStop() {
-      this.get("api/conf/vice/stops/" + this.sel.viceID)
+    // syncSim=false serve dopo il salvataggio di un ALTRO campo: il valore
+    // reale si aggiorna, ma quello che l'operatore stava provando resta.
+    loadStop(syncSim) {
+      return this.get("api/conf/vice/stops/" + this.sel.viceID)
         .then((rows) => {
           const row = (rows || []).find((x) => x.PIECE_ID == this.sel.pieceID) || null;
           this.real.stopBeyond = row ? Number(row.STOP_BEYOND_CLAW) / 1000 : null;
-          if (!this.diverged || this.sim.stopBeyond === null) this.sim.stopBeyond = this.real.stopBeyond;
+          if (syncSim) this.sim.stopBeyond = this.real.stopBeyond;
         })
         .catch(console.info);
     },
 
     copyRealToSim() {
       for (const f of this.fields) this.sim[f.key] = this.real[f.key];
+    },
+
+    // ---------------------------------------------------------------
+    // SALVATAGGIO, sempre con conferma esplicita
+    // ---------------------------------------------------------------
+    fieldChanged(key) {
+      const a = toMicron(this.sim[key]);
+      const b = toMicron(this.real[key]);
+      return a !== b;
+    },
+
+    objName(list, id, fallbackKey) {
+      const o = (list || []).find((x) => x.ID == id);
+      const fam = o ? String(o.FAMILY || "").trim() : "";
+      return (fam || this.t(fallbackKey)) + " #" + id;
+    },
+
+    valText(micron) {
+      return micron === null || micron === undefined
+        ? this.t("pushSim.notMeasured")
+        : Math.round(Number(micron) / 100) / 10 + " mm";
+    },
+
+    // Prepara la frase di conferma. Nomina l'OGGETTO FISICO, non il campo del
+    // database: chi salva deve riconoscere la morsa che ha davanti.
+    askSave(key) {
+      const now = toMicron(this.sim[key]);
+      const was = toMicron(this.real[key]);
+      const args = { from: this.valText(was), to: this.valText(now) };
+
+      if (key === "viceClaw") {
+        if (now === null || now <= 0) return;
+        this.confirm = {
+          key,
+          text: this.t("pushSim.confirmVice", { ...args, obj: this.objName(this.vices, this.sel.viceID, "pushSim.vice") }),
+          run: () => this.send("api/conf/vice/setClawLength", { ID: this.sel.viceID, CLAW_LENGTH: now }),
+        };
+      } else if (key === "toolClaw") {
+        if (now === null || now <= 0) return;
+        this.confirm = {
+          key,
+          text: this.t("pushSim.confirmGripper", { ...args, obj: this.objName(this.grippers, this.sel.gripperID, "pushSim.gripper") }),
+          run: () => this.send("api/conf/gripper/setClawLength", { ID: this.sel.gripperID, CLAW_LENGTH: now }),
+        };
+      } else if (key === "pieceLen" || key === "pieceWid") {
+        const x = toMicron(this.sim.pieceWid), y = toMicron(this.sim.pieceLen);
+        if (!x || !y || x <= 0 || y <= 0) return;
+        this.confirm = {
+          key,
+          text: this.t("pushSim.confirmPiece", {
+            obj: this.objName(this.pieces, this.sel.pieceID, "pushSim.piece"),
+            from: this.valText(toMicron(this.real.pieceWid)) + " x " + this.valText(toMicron(this.real.pieceLen)),
+            to: this.valText(x) + " x " + this.valText(y),
+          }),
+          // la Y del pezzo e' anche il passo delle tasche: chi salva lo deve
+          // sapere PRIMA, non scoprirlo alla prossima generazione di griglia
+          warn: this.t("pushSim.confirmPieceWarn"),
+          run: () => this.send("api/conf/piece/setSize", { ID: this.sel.pieceID, X: x, Y: y }),
+        };
+      } else if (key === "stopBeyond") {
+        if (!this.sel.viceID || !this.sel.pieceID) return;
+        if (now === null) {
+          // togliere la dichiarazione NON e' salvare uno zero: da quel momento
+          // gli ordini con quel pezzo su quella morsa tornano a essere rifiutati
+          this.confirm = {
+            key,
+            text: this.t("pushSim.confirmStopDelete", { obj: this.objName(this.vices, this.sel.viceID, "pushSim.vice"), piece: this.objName(this.pieces, this.sel.pieceID, "pushSim.piece") }),
+            warn: this.t("pushSim.confirmStopDeleteWarn"),
+            run: () => this.send("api/conf/vice/deleteStop", { VICE_ID: this.sel.viceID, PIECE_ID: this.sel.pieceID }),
+          };
+        } else {
+          this.confirm = {
+            key,
+            text: this.t("pushSim.confirmStop", { ...args, obj: this.objName(this.vices, this.sel.viceID, "pushSim.vice"), piece: this.objName(this.pieces, this.sel.pieceID, "pushSim.piece") }),
+            run: () => this.send("api/conf/vice/setStop", { VICE_ID: this.sel.viceID, PIECE_ID: this.sel.pieceID, STOP_BEYOND_CLAW: now }),
+          };
+        }
+      }
+    },
+
+    send(path, params) {
+      const url = dataStored.server + path + "?" + new URLSearchParams(params).toString();
+      return fetch(url, { method: "GET" }).then((r) => {
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.text();
+      });
+    },
+
+    doSave() {
+      if (!this.confirm || this.saving) return;
+      const c = this.confirm;
+      this.saving = true;
+      c.run()
+        .then((body) => {
+          this.saving = false;
+          this.confirm = null;
+          if (String(body).trim() === KO_NOT_FOUND) {
+            dataStored.alert.title = this.t("WARNING");
+            dataStored.alert.desc = this.t("pushSim.saveNotFound");
+            dataStored.alert.type = "warning";
+            return;
+          }
+          // si rilegge dal database invece di fidarsi: dopo il salvataggio la
+          // divergenza deve sparire perche' i due valori coincidono davvero
+          this.reloadAfterSave(c.key);
+        })
+        .catch((e) => {
+          console.info(e);
+          this.saving = false;
+          this.confirm = null;
+          dataStored.alert.title = this.t("WARNING");
+          dataStored.alert.desc = this.t("pushSim.saveError");
+          dataStored.alert.type = "warning";
+        });
+    },
+
+    // savedKey e' l'unico campo che deve tornare al valore del database: le
+    // prove lasciate a meta' sugli ALTRI campi non si buttano via, salvare una
+    // misura non deve cancellare il ragionamento in corso sulle altre
+    reloadAfterSave(savedKey) {
+      const keep = { ...this.sim };
+      // le due dimensioni del pezzo viaggiano insieme: si salvano con una
+      // chiamata sola, quindi tornano insieme dal database
+      const saved = savedKey === "pieceLen" || savedKey === "pieceWid"
+        ? ["pieceLen", "pieceWid"] : [savedKey];
+      return Promise.all([
+        this.get("api/conf/piece/show/all"),
+        this.get("api/conf/vice/show/all"),
+        this.get("api/conf/gripper/show/all"),
+      ])
+        .then(([pieces, vices, grippers]) => {
+          this.pieces = (pieces || []).filter((p) => Number(p.ID) > 0);
+          this.vices = vices || [];
+          this.grippers = grippers || [];
+          this.recomputeReal();
+          // il campo salvato torna dal database (si rilegge invece di fidarsi:
+          // e' la prova che la scrittura e' arrivata). Quello che l'operatore
+          // stava provando sugli ALTRI campi resta dov'era.
+          for (const f of this.fields)
+            this.sim[f.key] = saved.includes(f.key) ? this.real[f.key] : keep[f.key];
+          if (this.sel.viceID) return this.loadStop(saved.includes("stopBeyond"));
+        })
+        .catch(console.info);
     },
 
     restoreReal() {
@@ -869,5 +1078,47 @@ export default {
   .sim-quotes {
     width: 100%;
   }
+}
+.sim-save {
+  min-height: 44px;
+}
+/* la conferma copre la pagina: chi salva deve leggere, non sfiorare */
+.sim-confirm-back {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 50;
+}
+.sim-confirm {
+  background: var(--bg, #0b0f14);
+  border: 1px solid var(--border, #2a3444);
+  border-radius: 10px;
+  padding: 16px;
+  max-width: 520px;
+  width: 100%;
+}
+.confirm-what {
+  font-size: 1.05rem;
+  margin: 8px 0;
+}
+.confirm-warn {
+  margin: 8px 0;
+  padding: 8px;
+  border-left: 3px solid var(--color-warning, #e8a317);
+}
+.confirm-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+.confirm-buttons .pure-button {
+  min-height: 44px;
+  min-width: 120px;
 }
 </style>

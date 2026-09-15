@@ -4,6 +4,8 @@ const DBf 	= require('../DBFunct');
 var sql 	= require('mssql')
 var router 	= express.Router();
 const log 	= require('../LogFunct');
+const ERR 	= require('../errorCodes');
+const audit = require('../auditLog');
 
 var templatePATH = '.';
 
@@ -158,6 +160,50 @@ router.delete('/:ID', (req, res) => {
 
 
 // ===========================================================================
+// (push-sim-save 15/9) SALVATAGGIO DI UNA SOLA MISURA
+// La pagina di simulazione salva da qui. updateVice non andrebbe bene: scrive
+// OGNI colonna dai parametri della query, quindi una chiamata parziale
+// scriverebbe stringhe vuote sul resto della riga.
+// Il ROWCOUNT viene controllato: una UPDATE che non tocca righe non deve
+// rispondere OK, e' il difetto silenzioso che e' costato l'errore 799.
+// La modifica viene tracciata in LOG (auditLog): la conferma a video copre
+// l'intenzione, la riga di log rende la provenienza ricostruibile dopo.
+// ===========================================================================
+router.get('/setClawLength', (req, res) => {
+	const id = parseInt(req.query.ID, 10);
+	const len = parseInt(req.query.CLAW_LENGTH, 10);
+	if (!Number.isInteger(id) || id < 1 || !Number.isInteger(len) || len <= 0) {
+		res.status(400).send("KO_BAD_INPUT");
+		return;
+	}
+	sql.connect(DBf.configDB, function (err) {
+		if (err) {
+			log.error("err setClawLength: " + err);
+			res.status(500).send("KO");
+			return;
+		}
+		let query = `SET NOCOUNT ON;
+					DECLARE @old int = (SELECT CLAW_LENGTH FROM VICE WHERE ID=${id});
+					UPDATE VICE SET CLAW_LENGTH=${len} WHERE ID=${id};
+					SELECT @@ROWCOUNT AS n, @old AS old, RTRIM(FAMILY) AS fam FROM VICE WHERE ID=${id};`;
+		var request = new sql.Request();
+		log.info('query ' + query);
+		request.query(query, function (err2, recordset) {
+			if (err2) {
+				log.error("Err query: " + err2);
+				res.status(500).send("KO");
+				return;
+			}
+			const row = recordset.recordset && recordset.recordset[0];
+			if (!row || !row.n) { res.send(ERR.KO_NOT_FOUND); return; }
+			audit.audit('Morsa ' + row.fam + ' (ID ' + id + '): lunghezza ganascia da '
+				+ (row.old == null ? 'non misurata' : row.old + ' um') + ' a ' + len + ' um',
+				audit.SRC_PUSH_SIM, 'VICE:' + id);
+			res.send("OK");
+		});
+	});
+})
+// ===========================================================================
 // (push-to-stop 15/9) APPOGGIO DICHIARATO per i pezzi che ECCEDONO la ganascia
 // Un pezzo piu' lungo della ganascia non e' un errore: appoggia piu' avanti,
 // su un altro riferimento fisico, e quella distanza nessuno la puo' dedurre
@@ -236,8 +282,12 @@ router.get('/setStop', (req, res) => {
 			if (err) {
 				log.error("Err query: " + err);
 				res.status(500).send("KO");
-			} else
+			} else {
+				audit.audit('Morsa ID ' + viceID + ', pezzo ID ' + pieceID
+					+ ': appoggio dichiarato a ' + stop + ' um oltre la fine ganascia',
+					audit.SRC_PUSH_SIM, 'PIECE_ON_VICE:' + viceID + ':' + pieceID);
 				res.send("OK");
+			}
 		});
 	});
 })
@@ -263,8 +313,12 @@ router.get('/deleteStop', (req, res) => {
 			if (err) {
 				log.error("Err query: " + err);
 				res.status(500).send("KO");
-			} else
+			} else {
+				audit.audit('Morsa ID ' + viceID + ', pezzo ID ' + pieceID
+					+ ': appoggio dichiarato RIMOSSO (gli ordini con quel pezzo tornano a essere rifiutati)',
+					audit.SRC_PUSH_SIM, 'PIECE_ON_VICE:' + viceID + ':' + pieceID);
 				res.send("OK");
+			}
 		});
 	});
 })

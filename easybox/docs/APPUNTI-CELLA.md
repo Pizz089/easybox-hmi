@@ -64,9 +64,22 @@ spostata si porta dietro la sua battuta.
 
 Per capire un caso davanti al pannello c'e' la pagina **Spinta in battuta**
 (menu ATTREZZAGGIO): vista dall'alto, tre fasi animate, e si vede se il pezzo
-appoggia sulla ganascia o sul riferimento dichiarato. Dal livello manutentore
-in su i parametri si possono muovere per capire, ma **quella pagina non salva
-nulla**: le misure si scrivono in anagrafica.
+appoggia sulla ganascia o sul riferimento dichiarato. Il disegno e' orientato
+come si vede la cella stando davanti.
+
+Dal livello manutentore in su i parametri si possono muovere **e si possono
+salvare da li'**, una misura alla volta: compare una conferma che nomina
+l'oggetto fisico e dice da quale valore a quale. Ogni modifica lascia una riga
+nella tabella `LOG`, con l'oggetto, il valore vecchio e quello nuovo, e la
+sigla `PUSH_SIM` a dire che arriva dalla simulazione. Serve a ricostruire dopo
+da dove viene un numero, visto che morsa, pinza e pezzo non hanno colonna di
+autore ne' di data. Per leggerle:
+
+```
+-- DESCR e UNIT_B sono nchar: senza RTRIM escono pieni di spazi
+SELECT [DATA], RTRIM(DESCR) AS modifica, RTRIM(UNIT_B) AS oggetto
+  FROM LOG WHERE RTRIM(UNIT_A) = 'PUSH_SIM' ORDER BY ID DESC;
+```
 
 **Asse della battuta:** la spinta e' sulla **X del robot** (quella che il PLC
 manda come X_Pick-Place). Y e Z restano quelle del deposito. Del pezzo entra
