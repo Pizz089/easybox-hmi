@@ -114,6 +114,60 @@
             <small class="claw-hint">{{ $t("vice.clawLengthHint") }}</small>
           </div>
 
+          <!-- (push-to-stop 15/9) APPOGGIO DICHIARATO. Un pezzo piu' lungo
+               della ganascia non e' un errore: appoggia piu' avanti, su un
+               altro riferimento fisico, e quella distanza nessuno la puo'
+               dedurre dai dati. Qui si dichiara, una riga per pezzo.
+               L'elenco mostra i pezzi con la spinta attiva che ECCEDONO questa
+               ganascia, piu' le dichiarazioni gia' fatte anche quando non
+               servono piu' (ganascia allungata): una riga deve sparire solo se
+               qualcuno la cancella, mai da sola. -->
+          <div class="pure-control-group stops-block" v-if="!create && clawLengthMicron > 0">
+            <label>{{ $t("vice.stops") }}</label>
+            <div class="stops-body">
+              <small class="claw-hint">{{ $t("vice.stopsHint") }}</small>
+              <p v-if="!stopRows.length" class="stops-empty">
+                {{ $t("vice.stopsNone") }}
+              </p>
+              <div v-for="row in stopRows" :key="row.PIECE_ID" class="stop-row">
+                <div class="stop-piece">
+                  <strong>{{ row.label }}</strong>
+                  <small>{{ $t("vice.stopsOverhang", { piece: row.pieceY / 1000, over: row.overhang / 1000 }) }}</small>
+                  <small v-if="!row.exceeds" class="stop-unused">{{ $t("vice.stopsUnused") }}</small>
+                </div>
+                <div class="stop-edit">
+                  <input
+                    class="aligned-foo"
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    v-model="row.value"
+                    inputmode="decimal"
+                    autocomplete="off"
+                  />
+                  <span class="unit" aria-hidden="true">mm</span>
+                  <button
+                    type="button"
+                    class="pure-button button_pressed"
+                    :disabled="!stopValueValid(row) || stopBusy"
+                    @click="saveStop(row)"
+                  >
+                    {{ $t("vice.stopsSave") }}
+                  </button>
+                  <button
+                    type="button"
+                    class="pure-button button_pressed del"
+                    v-if="row.declared"
+                    :disabled="stopBusy"
+                    @click="removeStop(row)"
+                  >
+                    {{ $t("vice.stopsDelete") }}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div class="pure-control-group">
             <label for="vice-status">{{ $t("vice.stato") }}</label>
             <optionStatus
@@ -205,6 +259,13 @@ export default {
       viceTypeList: [],
       create: false,
 
+      // (push-to-stop 15/9) dichiarazioni dell'appoggio per questa morsa.
+      // pieces: anagrafica pezzi; stops: righe PIECE_ON_VICE gia' presenti.
+      pieces: [],
+      stops: [],
+      stopRows: [],
+      stopBusy: false,
+
       // Babylon
       engine: null,
       scene: null,
@@ -215,6 +276,16 @@ export default {
       // container del modello GLB caricato
       modelContainer: null,
     };
+  },
+
+  computed: {
+    // ganascia in micron: nel form e' in millimetri, il confronto con le
+    // misure del pezzo va fatto nell'unita' del database
+    clawLengthMicron() {
+      const v = this.vice.CLAW_LENGTH;
+      if (v === null || v === undefined || String(v).trim() === "") return 0;
+      return Math.round(Number(v) * 1000);
+    },
   },
 
   methods: {
@@ -365,6 +436,141 @@ export default {
       // Qui in futuro: aggiorna scaling/posizione di parti specifiche del modello
     },
 
+    // ---------------------------------------------------------------
+    // (push-to-stop 15/9) APPOGGIO DICHIARATO
+    // ---------------------------------------------------------------
+    // La riga E' la dichiarazione: valore 0 legittimo (il pezzo sporge ma
+    // tocca ancora la fine della ganascia), riga assente = non dichiarato, e
+    // in quel caso l'ordine viene rifiutato. Per questo "cancella" e "salva 0"
+    // sono due operazioni diverse e tutte e due esistono.
+    loadStops() {
+      const viceID = Number(this.$route.query.viceID);
+      if (!Number.isInteger(viceID) || viceID < 1) return;
+      const get = (url) =>
+        fetch(dataStored.server + url, { method: "GET" }).then((r) => {
+          if (!r.ok) throw new Error("Network response was not ok");
+          return r.json();
+        });
+      Promise.all([get("api/conf/piece/show/all"), get("api/conf/vice/stops/" + viceID)])
+        .then(([pieces, stops]) => {
+          this.pieces = pieces || [];
+          this.stops = stops || [];
+          this.buildStopRows();
+        })
+        .catch(console.info);
+    },
+
+    // Una riga per ogni pezzo che ha BISOGNO di una dichiarazione (spinta
+    // attiva e piu' lungo della ganascia) piu' ogni dichiarazione gia'
+    // esistente, anche se non serve piu'. Il secondo insieme e' quello che
+    // evita la sparizione silenziosa.
+    buildStopRows() {
+      const claw = this.clawLengthMicron;
+      const byPiece = new Map();
+      for (const st of this.stops) byPiece.set(Number(st.PIECE_ID), st);
+      const rows = [];
+      const seen = new Set();
+      for (const p of this.pieces) {
+        const id = Number(p.ID);
+        if (!id) continue;
+        const pieceY = Number(p.Y) || 0;
+        const exceeds = claw > 0 && pieceY > claw;
+        const st = byPiece.get(id);
+        // serve una dichiarazione solo se la spinta e' attiva sul pezzo E il
+        // pezzo eccede questa ganascia; una dichiarazione gia' fatta si mostra
+        // sempre, anche quando non serve piu'
+        const needs = exceeds && !!Number(p.PUSH_TO_STOP);
+        if (!needs && !st) continue;
+        seen.add(id);
+        rows.push({
+          PIECE_ID: id,
+          label: (String(p.FAMILY || "").trim() || "#" + id) + (String(p.DESCR || "").trim() ? " — " + String(p.DESCR).trim() : ""),
+          pieceY,
+          exceeds,
+          overhang: exceeds ? Math.trunc((pieceY - claw) / 2) : 0,
+          declared: !!st,
+          value: st ? Number(st.STOP_BEYOND_CLAW) / 1000 : null,
+        });
+      }
+      // dichiarazioni per pezzi non piu' in anagrafica: restano visibili per
+      // poterle cancellare, invece di diventare righe orfane invisibili
+      for (const st of this.stops) {
+        const id = Number(st.PIECE_ID);
+        if (seen.has(id)) continue;
+        rows.push({
+          PIECE_ID: id,
+          label: "#" + id,
+          pieceY: 0,
+          exceeds: false,
+          overhang: 0,
+          declared: true,
+          value: Number(st.STOP_BEYOND_CLAW) / 1000,
+        });
+      }
+      this.stopRows = rows;
+    },
+
+    // lo zero e' valido; il vuoto no (per togliere la dichiarazione c'e'
+    // il pulsante di cancellazione, che e' un'altra cosa)
+    stopValueValid(row) {
+      if (row.value === null || row.value === undefined || String(row.value).trim() === "") return false;
+      const n = Number(row.value);
+      return Number.isFinite(n) && n >= 0;
+    },
+
+    saveStop(row) {
+      if (!this.stopValueValid(row)) return;
+      const viceID = Number(this.$route.query.viceID);
+      const micron = Math.round(Number(row.value) * 1000);
+      const url =
+        dataStored.server +
+        "api/conf/vice/setStop?" +
+        new URLSearchParams({ VICE_ID: viceID, PIECE_ID: row.PIECE_ID, STOP_BEYOND_CLAW: micron }).toString();
+      this.stopBusy = true;
+      fetch(url, { method: "GET" })
+        .then((r) => {
+          if (!r.ok) throw new Error("Network response was not ok");
+          return r.text();
+        })
+        .then(() => {
+          row.declared = true;
+          this.stopBusy = false;
+          this.loadStops();
+        })
+        .catch((e) => {
+          console.info(e);
+          this.stopBusy = false;
+          dataStored.alert.title = this.$t("WARNING");
+          dataStored.alert.desc = this.$t("vice.stopsSaveError");
+          dataStored.alert.type = "warning";
+        });
+    },
+
+    removeStop(row) {
+      const viceID = Number(this.$route.query.viceID);
+      const url =
+        dataStored.server +
+        "api/conf/vice/deleteStop?" +
+        new URLSearchParams({ VICE_ID: viceID, PIECE_ID: row.PIECE_ID }).toString();
+      this.stopBusy = true;
+      fetch(url, { method: "GET" })
+        .then((r) => {
+          if (!r.ok) throw new Error("Network response was not ok");
+          return r.text();
+        })
+        .then(() => {
+          this.stopBusy = false;
+          this.loadStops();
+        })
+        .catch((e) => {
+          console.info(e);
+          this.stopBusy = false;
+          dataStored.alert.title = this.$t("WARNING");
+          dataStored.alert.desc = this.$t("vice.stopsSaveError");
+          dataStored.alert.type = "warning";
+        });
+    },
+
     getDataTable() {
       if (this.$route.query.viceID == undefined) {
         this.create = true;
@@ -389,6 +595,9 @@ export default {
               ? Number(row.CLAW_LENGTH) / 1000
               : null;
           this.updatePreviewFromModel();
+          // le dichiarazioni si costruiscono DOPO aver letto la
+          // ganascia: senza quella non si sa quali pezzi la eccedono
+          this.loadStops();
         })
         .catch(console.info);
     },
@@ -732,6 +941,57 @@ h2 {
   .vice-form input[type="text"],
   .vice-form input[type="number"] {
     width: 100% !important;
+  }
+}
+/* (push-to-stop 15/9) elenco delle dichiarazioni di appoggio. Bersagli da
+   44 px: la pagina gira su un touch in cella, non su un desktop. */
+.stops-block {
+  align-items: flex-start;
+}
+.stops-body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.stops-empty {
+  margin: 6px 0 0;
+  opacity: 0.75;
+}
+.stop-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+  padding: 8px 0;
+  border-top: 1px solid var(--border, #2a3444);
+}
+.stop-piece {
+  display: flex;
+  flex-direction: column;
+  min-width: 180px;
+  flex: 1 1 180px;
+}
+.stop-piece small {
+  opacity: 0.8;
+}
+.stop-unused {
+  font-style: italic;
+}
+.stop-edit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.stop-edit input {
+  width: 110px;
+  min-height: 44px;
+}
+.stop-edit .pure-button {
+  min-height: 44px;
+}
+@media (max-width: 700px) {
+  .stop-edit input {
+    width: 100%;
   }
 }
 </style>

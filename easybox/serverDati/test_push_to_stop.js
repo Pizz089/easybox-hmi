@@ -15,6 +15,16 @@
 // (PIECE.X 40000, PIECE.Y 120000). Con un pezzo quadrato (il 1033 e' 100.6 x
 // 100.6) uno scambio d'asse darebbe lo stesso risultato e il test passerebbe
 // sbagliato: e' esattamente l'errore corretto il 15/9.
+//
+// IL PEZZO CHE ECCEDE LA GANASCIA e' invece COSTRUITO, e va detto. In cella
+// esiste il 1032 (101 x 303), che su una ganascia da 150 sporgerebbe di 76.5
+// PER LATO: e' una sporgenza grande, e nessuno ha confermato che quel pezzo
+// venga davvero lavorato con la spinta in battuta. Per non verificare una
+// situazione che in cella potrebbe non esistere, i casi "oltre la ganascia"
+// usano un pezzo da 180000 lungo la spinta sulla stessa ganascia da 150000:
+// sporge 15000 per lato, una sporgenza ordinaria, e le misure restano nella
+// scala dei pezzi reali (il piu' grande a database e' 200 x 200). La formula
+// e' la stessa per qualunque sporgenza: cambiano solo i numeri.
 //  4. lo script della vista NON crea una vista cifrata.
 //
 // Uso:   node test_push_to_stop.js
@@ -82,6 +92,21 @@ check(r1.xPush === -91084 && r1.xStop === -76084, 'riscontro numerico del 15/9 s
 // fallirebbe se qualcuno riscambiasse gli assi.
 const conX = srv.pushQuotes(Object.assign({}, cella, { pieceY: PIECE_X }));
 check(conX.xPush !== r1.xPush && conX.clearance !== r1.clearance, 'pezzo NON quadrato: con PIECE.X i numeri cambiano, lo scambio d\'asse non passerebbe inosservato');
+check(r1.stopRef === srv.STOP_REF.CLAW, 'pezzo dentro la ganascia: appoggia sulla FINE GANASCIA');
+
+// pezzo che ECCEDE la ganascia (180000 su 150000: sporge 15000 per lato)
+const LUNGO = 180000;
+const oltre = (stop) => srv.pushQuotes(Object.assign({}, cella, { pieceY: LUNGO, stopBeyondClaw: stop }));
+const rDich = oltre(25000);
+check(rDich.status === 'OK' && rDich.stopRef === srv.STOP_REF.DECLARED, 'pezzo oltre la ganascia con appoggio dichiarato: valido, e appoggia sul RIFERIMENTO');
+check(rDich.clearance === 10000, 'corsa = (150000-180000)/2 + 25000 = 10000, cioe\' meno della sporgenza');
+check(rDich.xPush === -16084 - 90000 - 15000, 'la quota di SPINTA non cambia nei due casi: dipende dal bordo del pezzo, non dalla ganascia');
+check(rDich.xStop === rDich.xPush + 10000, 'arrivo = spinta + corsa anche nel caso dichiarato');
+check(oltre(0).status === 'NO_ROOM', 'zero DICHIARATO e\' un valore, non un\'assenza: qui la corsa sarebbe negativa');
+check(oltre(undefined).status === 'NO_FIT' && oltre(undefined).stopRef === srv.STOP_REF.DECLARED, 'riga assente = appoggio non dichiarato -> NO_FIT, ma il riferimento implicato si sa gia\'');
+check(srv.pushQuotes(Object.assign({}, cella, { pieceY: 120000, stopBeyondClaw: 25000 })).clearance === 15000, 'pezzo DENTRO la ganascia: la dichiarazione si ignora, si ferma prima sulla ganascia');
+// stesso troncamento verso lo zero di SQL Server su differenza NEGATIVA
+check(srv.pushQuotes(Object.assign({}, cella, { pieceY: 180001, stopBeyondClaw: 25000 })).clearance === 10000, 'differenza negativa dispari: troncamento verso lo zero, come la divisione intera di SQL');
 const casi = [
 	{ name: 'bit spento', v: Object.assign({}, cella, { enabled: false }), st: 'DISABLED' },
 	{ name: 'nessuna morsa sul pallet', v: Object.assign({}, cella, { hasVice: false }), st: 'NO_VICE' },
@@ -89,7 +114,11 @@ const casi = [
 	{ name: 'ganascia a zero', v: Object.assign({}, cella, { viceClawLength: 0 }), st: 'NO_DATA' },
 	{ name: 'lunghezza chela pinza mancante', v: Object.assign({}, cella, { gripperClawLength: null }), st: 'NO_DATA' },
 	{ name: 'pezzo senza misura', v: Object.assign({}, cella, { pieceY: 0 }), st: 'NO_DATA' },
-	{ name: 'pezzo piu\' lungo della ganascia', v: Object.assign({}, cella, { pieceY: 160000 }), st: 'NO_FIT' },
+	{ name: 'pezzo oltre la ganascia senza dichiarazione', v: Object.assign({}, cella, { pieceY: 160000 }), st: 'NO_FIT' },
+	{ name: 'pezzo oltre la ganascia con dichiarazione valida', v: Object.assign({}, cella, { pieceY: 180000, stopBeyondClaw: 25000 }), st: 'OK' },
+	{ name: 'appoggio dichiarato piu\' vicino della sporgenza', v: Object.assign({}, cella, { pieceY: 180000, stopBeyondClaw: 10000 }), st: 'NO_ROOM' },
+	{ name: 'appoggio dichiarato a zero su pezzo che sporge', v: Object.assign({}, cella, { pieceY: 180000, stopBeyondClaw: 0 }), st: 'NO_ROOM' },
+	{ name: 'dichiarazione presente ma pezzo dentro la ganascia', v: Object.assign({}, cella, { pieceY: 120000, stopBeyondClaw: 25000 }), st: 'OK' },
 	{ name: 'pezzo esattamente lungo come la ganascia', v: Object.assign({}, cella, { pieceY: 150000 }), st: 'OK' },
 	{ name: 'pezzo girato (entrerebbe la X): resta un caso valido ma diverso', v: Object.assign({}, cella, { pieceY: PIECE_X }), st: 'OK' },
 	{ name: 'valori dispari (troncamento come SQL)', v: Object.assign({}, cella, { pieceY: 120001, viceClawLength: 150001, gripperClawLength: 30001 }), st: 'OK' },
@@ -113,7 +142,13 @@ check(/DECLARE @tool int = \(SELECT TOP 1 CLAW_LENGTH FROM GRIPPER WHERE ID=26\)
 check(/DECLARE @pieceY int = \(SELECT TOP 1 Y FROM PIECE WHERE ID=1029\)/.test(t), 'dal pezzo entra la Y, quella che corre lungo la X del robot');
 check(!/SELECT TOP 1 X FROM PIECE/.test(t), 'PIECE.X non entra nel conto della spinta');
 check(/ELSE IF @push <> 0 AND \(ISNULL\(@claw,0\) <= 0 OR ISNULL\(@tool,0\) <= 0 OR ISNULL\(@pieceY,0\) <= 0\) SELECT 'KO_PUSH_NO_DATA'/.test(t), 'guardia dati mancanti');
-check(/ELSE IF @push <> 0 AND \(@claw - @pieceY\) < 0 SELECT 'KO_PUSH_NO_FIT'/.test(t), 'guardia pezzo che non entra');
+check(/DECLARE @viceID int = \(SELECT TOP 1 ID FROM VICE WHERE PALLET_ID=9\)/.test(t), 'la morsa si risolve dal pallet dell\'ordine, poi la dichiarazione segue la MORSA');
+check(/DECLARE @stop int = \(SELECT TOP 1 STOP_BEYOND_CLAW FROM PIECE_ON_VICE WHERE VICE_ID=@viceID AND PIECE_ID=1029\)/.test(t), 'appoggio dichiarato letto per la coppia morsa+pezzo');
+check(!/PIECE_ON_VICE WHERE PALLET_ID/.test(t), 'la dichiarazione NON e\' agganciata al pallet: una morsa spostata si porta dietro la sua battuta');
+check(/DECLARE @travel int = \(@claw - @pieceY\)\/2 \+ CASE WHEN @pieceY > @claw THEN ISNULL\(@stop,0\) ELSE 0 END/.test(t), 'corsa: il tratto dichiarato entra SOLO quando il pezzo eccede la ganascia');
+check(/ELSE IF @push <> 0 AND @pieceY > @claw AND @stop IS NULL SELECT 'KO_PUSH_NO_FIT'/.test(t), 'rifiuto solo se eccede la ganascia E l\'appoggio non e\' dichiarato');
+check(/ELSE IF @push <> 0 AND @travel < 0 SELECT 'KO_PUSH_NO_ROOM'/.test(t), 'rifiuto se la corsa verrebbe negativa (appoggio piu\' vicino della sporgenza)');
+check(t.indexOf('KO_PUSH_NO_FIT') < t.indexOf('KO_PUSH_NO_ROOM'), 'prima si controlla la dichiarazione mancante, poi la corsa: un\'assenza non deve presentarsi come corsa negativa');
 check(/PartProg_ID, DECLARED_PIECE_ID, OPTION1, OPTION2\)/.test(t) && /0, @push\s*\);/.test(t), 'OPTION1 0 e OPTION2 = istantanea scritti nella INSERT');
 check(t.indexOf('@push') < t.indexOf('INSERT INTO WORKORDER'), 'le guardie girano PRIMA della INSERT');
 r = call('GET /insertOrder', ORD, [{ recordset: [{ ris: errorCodes.KO_PUSH_NO_FIT }] }]);
@@ -140,6 +175,27 @@ check(/10000,\s*NULL/.test(r.q[0]), 'pinza: lunghezza chela assente -> NULL, cio
 r = call('GET /insertGripper', { FAMILY: 'P', DESCR: 'D', X_BODY: '1', Y_BODY: '1', Z_BODY: '1', X_CLAW: '1', Y_CLAW: '1', Z_CLAW: '1', STATUS: '2', POS_MAG: '0', POS_PLANT: '0', CLAW_LENGTH: '30000' }, [{ rowsAffected: [1] }]);
 check(/10000,\s*30000/.test(r.q[0]), 'pinza: lunghezza chela salvata anche in creazione');
 
+console.log('\n3b) dichiarazione dell\'appoggio: rotte PIECE_ON_VICE');
+r = call('GET /stops/:viceID', { viceID: '1' }, [{ recordset: [] }]);
+check(/from PIECE_ON_VICE pv/.test(r.q[0]) && /where pv\.VICE_ID = 1/.test(r.q[0]), 'elenco delle dichiarazioni di una morsa');
+check(/inner join PIECE p on p\.ID = pv\.PIECE_ID/.test(r.q[0]), 'porta anche le misure del pezzo, servono a dire di quanto sporge');
+r = call('GET /stops/:viceID', { viceID: 'x' }, []);
+check(r.res.code === 400 && r.n === 0, 'morsa non numerica -> 400 senza toccare il database');
+r = call('GET /setStop', { VICE_ID: '1', PIECE_ID: '1029', STOP_BEYOND_CLAW: '25000' }, [{}]);
+check(/UPDATE PIECE_ON_VICE SET STOP_BEYOND_CLAW=25000/.test(r.q[0]) && /WHERE VICE_ID=1 AND PIECE_ID=1029/.test(r.q[0]), 'upsert: prima l\'UPDATE');
+check(/IF @@ROWCOUNT = 0/.test(r.q[0]) && /INSERT INTO PIECE_ON_VICE/.test(r.q[0]), 'e la INSERT se non c\'era: l\'UPDATE da solo cercherebbe la riga che deve creare');
+check(r.res.body === 'OK' && r.res.code === 200, 'esito applicativo nel body, stato 200');
+r = call('GET /setStop', { VICE_ID: '1', PIECE_ID: '1029', STOP_BEYOND_CLAW: '0' }, [{}]);
+check(/STOP_BEYOND_CLAW=0/.test(r.q[0]), 'lo ZERO si salva: e\' una dichiarazione, non un\'assenza');
+r = call('GET /setStop', { VICE_ID: '1', PIECE_ID: '1029', STOP_BEYOND_CLAW: '' }, []);
+check(r.res.code === 400 && r.n === 0, 'campo vuoto -> 400: per togliere la dichiarazione si cancella la riga');
+r = call('GET /setStop', { VICE_ID: '1', PIECE_ID: '1029', STOP_BEYOND_CLAW: '-1' }, []);
+check(r.res.code === 400 && r.n === 0, 'distanza negativa -> 400: il riferimento sta oltre la ganascia, mai prima');
+r = call('GET /deleteStop', { VICE_ID: '1', PIECE_ID: '1029' }, [{}]);
+check(/DELETE FROM PIECE_ON_VICE WHERE VICE_ID=1 AND PIECE_ID=1029/.test(r.q[0]), 'cancellazione della dichiarazione');
+r = call('GET /deleteStop', { VICE_ID: '0', PIECE_ID: '1029' }, []);
+check(r.res.code === 400 && r.n === 0, 'morsa non valida -> 400 senza toccare il database');
+
 console.log('\n4) lo script della vista non nasconde la definizione');
 const view = fs.readFileSync(path.join(__dirname, 'scripts', 'coordinates-push-mc.sql'), 'utf8');
 // i commenti PARLANO di WITH ENCRYPTION (per dire che non si usa): il controllo
@@ -149,6 +205,13 @@ check(!/WITH\s+ENCRYPTION/i.test(viewSql), 'nessun WITH ENCRYPTION: la vista nas
 check(/ALTER VIEW dbo\.COORDINATES_PUSH_MC AS/.test(view) && /PUSH_STATUS/.test(view), 'definizione completa versionata nel repo');
 check(/p\.X - pz\.Y\/2 - g\.CLAW_LENGTH\/2/.test(viewSql), 'quota di spinta identica alla formula del modulo condiviso: si muove la X');
 check(/\(v\.CLAW_LENGTH - pz\.Y\)\/2/.test(viewSql), 'corsa identica alla formula del modulo condiviso');
+check(/case when pz\.Y > v\.CLAW_LENGTH[\s\S]{0,80}ISNULL\(pv\.STOP_BEYOND_CLAW, 0\)/.test(viewSql), 'il tratto dichiarato entra solo quando il pezzo eccede la ganascia');
+check(/left  join PIECE_ON_VICE pv\s+on pv\.VICE_ID = v\.ID and pv\.PIECE_ID = w\.PIECE_ID/.test(viewSql), 'la dichiarazione e\' agganciata alla MORSA, non al pallet');
+check(/'NO_FIT'/.test(viewSql) && /pv\.VICE_ID is null/.test(viewSql), 'NO_FIT solo quando la dichiarazione manca');
+check(/'NO_ROOM'/.test(viewSql), 'esito NO_ROOM presente nella vista');
+check(/'DECLARED'/.test(viewSql) && /'CLAW'/.test(viewSql), 'la vista dice su cosa appoggia il pezzo');
+const viewStatuses = ['DISABLED', 'NO_VICE', 'NO_DATA', 'NO_FIT', 'NO_ROOM', 'OK'];
+check(viewStatuses.every(st => Object.values(srv.PUSH_STATUS).includes(st) && new RegExp("'" + st + "'").test(viewSql)), 'gli esiti della vista e quelli del modulo sono lo stesso insieme');
 check(!/p\.Y - pz\./.test(viewSql) && !/pz\.X/.test(viewSql), 'la vista non spinge sulla Y e non usa PIECE.X');
 check(/RTRIM\(p\.PARENT\) = CONCAT\('MC_', w\.MACHINE_ID\)/.test(view), 'posizione legata alla macchina dell\'ordine (la query storica non filtrava)');
 

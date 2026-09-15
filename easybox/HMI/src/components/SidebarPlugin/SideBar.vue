@@ -53,6 +53,11 @@ const toolItems = [
   { key: "menu.vices", fallback: "Morse", path: "/conf/Vices" },
   { key: "menu.fixtures", fallback: "Attrezzature", path: "/conf/Fixtures" },
   { key: "menu.grippers", fallback: "Pinze", path: "/conf/Grippers" },
+  // (push-to-stop 15/9) spiega cosa fanno INSIEME morsa, pinza e pezzo, quindi
+  // sta in fondo a questo blocco. Nessun requiresLevel: il livello 0 la deve
+  // vedere, e' la pagina che gli fa capire cosa fara' il robot prima di
+  // lanciare il ciclo.
+  { key: "menu.pushSim", fallback: "Spinta in battuta", path: "/sim/push" },
   // Config macchina (selettore brand): area tecnico, stesso pattern
   // requiresLevel introdotto in N1-2a per la voce diagnostica.
   { key: "menu.machines", fallback: "Macchine", path: "/conf/Machines", requiresLevel: 2 },

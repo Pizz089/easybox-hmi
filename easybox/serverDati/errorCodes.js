@@ -29,4 +29,5 @@ exports.KO_NO_FIXTURE        = "KO_NO_FIXTURE";        // FIXTURE_ID assente o s
 // saprebbe eseguire non deve nascere. Stessi esiti della colonna PUSH_STATUS
 // della vista COORDINATES_PUSH_MC.
 exports.KO_PUSH_NO_DATA      = "KO_PUSH_NO_DATA";      // manca la ganascia morsa, lo spessore ganascia pinza o la misura del pezzo
-exports.KO_PUSH_NO_FIT       = "KO_PUSH_NO_FIT";       // pezzo piu' lungo della ganascia della morsa: non ci sta
+exports.KO_PUSH_NO_FIT       = "KO_PUSH_NO_FIT";       // pezzo oltre la ganascia e appoggio NON dichiarato in PIECE_ON_VICE
+exports.KO_PUSH_NO_ROOM      = "KO_PUSH_NO_ROOM";      // appoggio dichiarato piu' vicino di quanto il pezzo gia' sporge: corsa negativa

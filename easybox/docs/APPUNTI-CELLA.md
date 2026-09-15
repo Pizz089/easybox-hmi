@@ -1,15 +1,16 @@
 # Appunti cella — interventi manuali da eseguire in impianto
 
-## [ ] 2026-09-15 — ciclo SPINTA IN BATTUTA: quattro script, poi le misure
+## [ ] 2026-09-15 — ciclo SPINTA IN BATTUTA: cinque script, poi le misure
 
-Ordine obbligato, **a cella ferma**, i primi tre prima del deploy del backend
-(insert/update nominano le colonne nuove), la vista per ultima perche' le
-nomina tutte e tre:
+Ordine obbligato, **a cella ferma**, i primi quattro prima del deploy del
+backend (insert/update nominano le colonne e la tabella nuove), la vista per
+ultima perche' le nomina tutte:
 
 ```
 sqlcmd -S .\SQLEXPRESS -E -d ADMG -i piece-push-to-stop.sql
 sqlcmd -S .\SQLEXPRESS -E -d ADMG -i vice-claw-length.sql
 sqlcmd -S .\SQLEXPRESS -E -d ADMG -i gripper-claw-length.sql
+sqlcmd -S .\SQLEXPRESS -E -d ADMG -i piece-on-vice.sql
 sqlcmd -S .\SQLEXPRESS -E -d ADMG -i coordinates-push-mc.sql
 ```
 
@@ -32,15 +33,40 @@ Dopo il deploy, misure col calibro (nessuna quota da digitare):
 2. Pinza, campo "Chela: lunghezza nella direzione in cui spinge il pezzo", in
    mm: e' la lunghezza della chela, **non** lo spessore.
 3. Pezzo, spunta "Spinta in battuta" sui particolari che la vogliono.
-4. Pinza, corsa e spessore della ganascia: **da ricontrollare su tutte le
+4. Morsa, sezione "Pezzi che sporgono dalla ganascia": compare da sola per
+   ogni pezzo con la spinta attiva piu' lungo di quella ganascia. Per ognuno
+   si misura col calibro **quanto oltre la fine della ganascia** sta il
+   riferimento su cui il pezzo appoggia davvero. Finche' manca, l'ordine viene
+   rifiutato: e' voluto, nessuno puo' dedurre quella distanza dai dati.
+5. Pinza, corsa e spessore della ganascia: **da ricontrollare su tutte le
    pinze**, perche' fino al 15/9 il form li mandava e il backend li perdeva,
    quindi a database ci sono i default e non le misure vere. Non entrano nella
    spinta, ma sono sbagliati per lo stesso motivo.
 
-Verifica: `SELECT ORDER_ID, X_PLACE, X_PUSH, X_STOP, CLEARANCE, PUSH_STATUS
-FROM COORDINATES_PUSH_MC` — **da fare su un pezzo NON quadrato**, altrimenti
-uno scambio d'asse non si vede. Col 1029 (40 x 120), ganascia morsa 150 e chela
-pinza 30: spinta scostata di 75 mm dal deposito, corsa fino alla battuta 15 mm.
+Verifica: `SELECT ORDER_ID, X_PLACE, X_PUSH, X_STOP, CLEARANCE, STOP_REF,
+STOP_BEYOND_CLAW, PUSH_STATUS FROM COORDINATES_PUSH_MC` — **da fare su un pezzo
+NON quadrato**, altrimenti uno scambio d'asse non si vede. Col 1029 (40 x 120),
+ganascia morsa 150 e chela pinza 30: spinta scostata di 75 mm dal deposito,
+corsa fino alla battuta 15 mm, `STOP_REF` = `CLAW`.
+
+**Un pezzo piu' lungo della ganascia NON e' un errore.** Appoggia piu' avanti,
+su un altro riferimento, e la corsa diventa `(ganascia - pezzo)/2 + distanza
+dichiarata`. Restano due rifiuti: `NO_FIT` quando il pezzo sporge e nessuno ha
+dichiarato dove appoggia, `NO_ROOM` quando il riferimento dichiarato e' piu'
+vicino di quanto il pezzo gia' sporge, cioe' la corsa verrebbe negativa.
+`STOP_REF` dice su cosa appoggia: `CLAW` fine ganascia, `DECLARED` riferimento
+dichiarato.
+
+La dichiarazione sta in `PIECE_ON_VICE`, una riga per coppia morsa+pezzo, ed e'
+**la riga** a essere la dichiarazione: valore zero legittimo, riga assente =
+non dichiarato. E' agganciata alla MORSA e non al pallet, quindi una morsa
+spostata si porta dietro la sua battuta.
+
+Per capire un caso davanti al pannello c'e' la pagina **Spinta in battuta**
+(menu ATTREZZAGGIO): vista dall'alto, tre fasi animate, e si vede se il pezzo
+appoggia sulla ganascia o sul riferimento dichiarato. Dal livello manutentore
+in su i parametri si possono muovere per capire, ma **quella pagina non salva
+nulla**: le misure si scrivono in anagrafica.
 
 **Asse della battuta:** la spinta e' sulla **X del robot** (quella che il PLC
 manda come X_Pick-Place). Y e Z restano quelle del deposito. Del pezzo entra

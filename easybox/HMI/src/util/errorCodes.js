@@ -16,6 +16,8 @@ export const KO_DUP_NAME           = "KO_DUP_NAME";           // nome grigliato 
 export const KO_Z_BELOW_GRATING   = "KO_Z_BELOW_GRATING";   // generazione rifiutata dal server
 // (rig-two-aspects 15/9) ordine senza geometria: il PLC non saprebbe a che quota depositare
 export const KO_NO_FIXTURE        = "KO_NO_FIXTURE";
-// (push-to-stop 15/9) ciclo di spinta in battuta: dati mancanti o pezzo che non entra
+// (push-to-stop 15/9) ciclo di spinta in battuta: dati mancanti, appoggio
+// non dichiarato per un pezzo che eccede la ganascia, o corsa negativa
 export const KO_PUSH_NO_DATA      = "KO_PUSH_NO_DATA";
 export const KO_PUSH_NO_FIT       = "KO_PUSH_NO_FIT";
+export const KO_PUSH_NO_ROOM      = "KO_PUSH_NO_ROOM";

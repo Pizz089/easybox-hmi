@@ -13,11 +13,26 @@
 // CONVENZIONI: tutto in MICRON. L'asse di battuta e' la X del ROBOT (quella
 // che il PLC manda come X_Pick-Place, non l'asse della macchina utensile).
 // Durante la spinta Y e Z restano quelle del deposito: si muove solo la X.
-// Le divisioni per due TRONCANO come la divisione intera di SQL Server.
+// Le divisioni per due TRONCANO VERSO LO ZERO come la divisione intera di SQL
+// Server, anche quando la differenza e' negativa (pezzo oltre la ganascia).
 //
 //   deposito = xPlace
 //   spinta   = xPlace - pezzo.Y/2 - lunghezza_chela_pinza/2
-//   arrivo   = spinta + (ganascia_morsa - pezzo.Y)/2
+//   arrivo   = spinta + corsa
+//
+// LA CORSA HA DUE CASI (chiarito da Dario 15/9). Un pezzo PIU' LUNGO della
+// ganascia non e' un errore: e' legittimo e succede. Allora non appoggia sulla
+// fine della ganascia ma piu' avanti, su un altro riferimento fisico, e quella
+// distanza va DICHIARATA (PIECE_ON_VICE.STOP_BEYOND_CLAW, riga per coppia
+// morsa+pezzo).
+//
+//   corsa = (ganascia - pezzo)/2               pezzo <= ganascia -> 'CLAW'
+//   corsa = (ganascia - pezzo)/2 + dichiarata  pezzo >  ganascia -> 'DECLARED'
+//
+// Col pezzo DENTRO la ganascia il valore dichiarato si ignora: la fine della
+// ganascia arriva prima e il pezzo si ferma li'. La quota di SPINTA invece non
+// cambia mai, perche' la chela tocca il bordo vicino del pezzo e dove sta quel
+// bordo non dipende dalla ganascia.
 //
 // PERCHE' pezzo.Y SULLA X: fra disegno e robot c'e' una rotazione. Nel cassetto
 // il passo lungo la X del robot vale PIECE.Y + SAFEY (convenzione validata sul
@@ -38,28 +53,47 @@
 const div2 = (v) => Math.trunc(Number(v) / 2);
 
 // Stessi esiti della colonna PUSH_STATUS della vista.
-exports.PUSH_STATUS = { DISABLED: 'DISABLED', NO_VICE: 'NO_VICE', NO_DATA: 'NO_DATA', NO_FIT: 'NO_FIT', OK: 'OK' };
+//   NO_FIT  = il pezzo eccede la ganascia e NESSUNO ha dichiarato dove appoggia
+//   NO_ROOM = l'appoggio dichiarato e' piu' vicino di quanto il pezzo gia'
+//             sporge: al deposito il pezzo sarebbe gia' oltre la battuta e la
+//             corsa verrebbe negativa, cioe' la spinta andrebbe all'indietro
+const PUSH_STATUS = { DISABLED: 'DISABLED', NO_VICE: 'NO_VICE', NO_DATA: 'NO_DATA', NO_FIT: 'NO_FIT', NO_ROOM: 'NO_ROOM', OK: 'OK' };
+// Su cosa appoggia il pezzo a fine corsa.
+const STOP_REF = { CLAW: 'CLAW', DECLARED: 'DECLARED' };
+exports.PUSH_STATUS = PUSH_STATUS;
+exports.STOP_REF = STOP_REF;
 
 // enabled: bit di spinta dell'ordine (istantanea di PIECE.PUSH_TO_STOP).
 // hasVice: c'e' una morsa sul pallet dell'ordine.
 // xPlace: quota di deposito sulla X del robot.
 // pieceY: PIECE.Y, la dimensione del pezzo che corre lungo la X.
 // viceClawLength: VICE.CLAW_LENGTH. gripperClawLength: GRIPPER.CLAW_LENGTH.
-// Tutto in micron; null/0 = dato mancante.
-// Ritorna { status, xPush, xStop, clearance }: quote null se status != OK,
-// esattamente come la vista.
-exports.pushQuotes = function ({ enabled, hasVice, xPlace, pieceY, viceClawLength, gripperClawLength }) {
-	const none = (s) => ({ status: s, xPush: null, xStop: null, clearance: null });
-	if (!enabled) return none(exports.PUSH_STATUS.DISABLED);
-	if (!hasVice) return none(exports.PUSH_STATUS.NO_VICE);
+// stopBeyondClaw: PIECE_ON_VICE.STOP_BEYOND_CLAW, cioe' quanto oltre la fine
+//   della ganascia sta il vero appoggio. null/undefined = RIGA ASSENTE = non
+//   dichiarato; lo ZERO e' un valore legittimo e diverso (appoggio dichiarato
+//   sulla fine della ganascia anche per un pezzo che sporge). Il "non
+//   dichiarato" sta nell'assenza, mai dentro il numero.
+// Tutto in micron; per le altre misure null/0 = dato mancante.
+// Ritorna { status, xPush, xStop, clearance, stopRef }: quote null se status
+// non e' OK, esattamente come la vista. stopRef e' valorizzato anche su NO_FIT
+// e NO_ROOM, perche' li' la geometria il riferimento lo implica gia'.
+exports.pushQuotes = function ({ enabled, hasVice, xPlace, pieceY, viceClawLength, gripperClawLength, stopBeyondClaw }) {
+	const none = (s, ref) => ({ status: s, xPush: null, xStop: null, clearance: null, stopRef: ref || null });
+	if (!enabled) return none(PUSH_STATUS.DISABLED);
+	if (!hasVice) return none(PUSH_STATUS.NO_VICE);
 	const py = Number(pieceY) || 0;
 	const claw = Number(viceClawLength) || 0;
 	const tool = Number(gripperClawLength) || 0;
-	if (claw <= 0 || tool <= 0 || py <= 0) return none(exports.PUSH_STATUS.NO_DATA);
-	if (claw - py < 0) return none(exports.PUSH_STATUS.NO_FIT);
+	if (claw <= 0 || tool <= 0 || py <= 0) return none(PUSH_STATUS.NO_DATA);
+	const exceeds = py > claw;
+	const ref = exceeds ? STOP_REF.DECLARED : STOP_REF.CLAW;
+	const declared = stopBeyondClaw === null || stopBeyondClaw === undefined || stopBeyondClaw === ''
+		? null : Number(stopBeyondClaw);
+	if (exceeds && (declared === null || isNaN(declared))) return none(PUSH_STATUS.NO_FIT, ref);
+	const clearance = div2(claw - py) + (exceeds ? declared : 0);
+	if (clearance < 0) return none(PUSH_STATUS.NO_ROOM, ref);
 	const xPush = Number(xPlace) - div2(py) - div2(tool);
-	const clearance = div2(claw - py);
-	return { status: exports.PUSH_STATUS.OK, xPush, xStop: xPush + clearance, clearance };
+	return { status: PUSH_STATUS.OK, xPush, xStop: xPush + clearance, clearance, stopRef: ref };
 };
 
 // Bit 1 di WORKORDER.OPTION2 = istantanea di PIECE.PUSH_TO_STOP (il bit 0

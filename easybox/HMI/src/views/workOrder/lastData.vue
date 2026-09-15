@@ -7,7 +7,7 @@
     // ricetta non deve nascere). La tendina sulla tabella PARTPROGRAM
     // (flusso Heidenhain) e' stata rimossa.
     import { dataStored } from '../../data.js'
-    import { KO_NO_FIXTURE, KO_PUSH_NO_DATA, KO_PUSH_NO_FIT } from '../../util/errorCodes.js'
+    import { KO_NO_FIXTURE, KO_PUSH_NO_DATA, KO_PUSH_NO_FIT, KO_PUSH_NO_ROOM } from '../../util/errorCodes.js'
     // (push-to-stop 15/9) stessa formula della vista COORDINATES_PUSH_MC
     import { pushQuotes, PUSH_STATUS } from '../../util/pushQuotes.js'
     import { useI18n } from 'vue-i18n'
@@ -63,13 +63,27 @@
       </div>
 
       <!-- (push-to-stop 15/9) spinta in battuta: attiva sul pezzo, si mostra la
-           corsa che il robot fara'; se manca un dato fisico o il pezzo non entra
-           nella ganascia, l'ordine e' bloccato qui -->
+           corsa che il robot fara'. L'ordine e' bloccato qui se manca un dato
+           fisico, se il pezzo eccede la ganascia senza che sia stato dichiarato
+           dove appoggia davvero, o se l'appoggio dichiarato e' piu' vicino di
+           quanto il pezzo gia' sporge. Il messaggio porta i millimetri e
+           rimanda alla pagina dove si compila il dato che manca. -->
       <div class="form-row" v-if="!pushOk">
         <label class="form-label">
           {{ t('wizard.lastData.push') }}<span class="required">*</span>
         </label>
         <span class="pp-missing">{{ t(pushMessage, { piece: pieceY/1000, claw: (viceClaw || 0)/1000 }) }}</span>
+        <!-- (push-to-stop 15/9) il momento del dubbio e' questo: si apre
+             la simulazione gia' sul caso reale, dove si VEDE perche' non
+             ci sta. La simulazione non scrive nulla. -->
+        <router-link
+          class="pure-button push-why"
+          :to="{ path: '/sim/push', query: {
+            pieceID: dataStored.createWorkOrder.pieceID,
+            gripperID: dataStored.createWorkOrder.gripperID,
+            palletID: dataStored.createWorkOrder.palletID,
+            machineID: dataStored.createWorkOrder.machineID } }"
+        >{{ t('wizard.lastData.pushWhy') }}</router-link>
       </div>
       <div class="form-row" v-else-if="piecePush">
         <label class="form-label">{{ t('wizard.lastData.push') }}</label>
@@ -112,7 +126,12 @@ export default {
             piecePush:false,
             pieceY:0,
             viceClaw:null,
+            viceID:null,
             gripperClaw:null,
+            // appoggio dichiarato per la coppia morsa+pezzo (micron). null =
+            // nessuna riga in PIECE_ON_VICE, cioe' non dichiarato: e' diverso
+            // da zero, che e' una dichiarazione valida.
+            pieceStop:null,
             viceFound:false
         }
     },
@@ -134,6 +153,7 @@ export default {
                 pieceY: this.pieceY,
                 viceClawLength: this.viceClaw,
                 gripperClawLength: this.gripperClaw,
+                stopBeyondClaw: this.pieceStop,
             });
         },
         pushOk(){
@@ -145,6 +165,7 @@ export default {
             if (st === PUSH_STATUS.NO_VICE)  return 'wizard.lastData.pushNoVice';
             if (st === PUSH_STATUS.NO_DATA)  return 'wizard.lastData.pushNoData';
             if (st === PUSH_STATUS.NO_FIT)   return 'wizard.lastData.pushNoFit';
+            if (st === PUSH_STATUS.NO_ROOM)  return 'wizard.lastData.pushNoRoom';
             return '';
         },
         piecePPValid(){
@@ -194,8 +215,16 @@ export default {
                     const v = (rows || []).find(x => x.PALLET_ID == wo.palletID) || null;
                     this.viceFound = !!v;
                     this.viceClaw = v ? v.CLAW_LENGTH : null;
+                    this.viceID = v ? v.ID : null;
+                    // la dichiarazione dell'appoggio segue la MORSA, quindi si
+                    // legge solo dopo aver risolto quale morsa c'e' sul pallet
+                    if (v) return get('api/conf/vice/stops/' + v.ID)
+                        .then(list => {
+                            const row = (list || []).find(x => x.PIECE_ID == wo.pieceID) || null;
+                            this.pieceStop = row ? row.STOP_BEYOND_CLAW : null;
+                        });
                 })
-                .catch(e => { console.info(e); this.viceFound = false; this.viceClaw = null; });
+                .catch(e => { console.info(e); this.viceFound = false; this.viceClaw = null; this.viceID = null; this.pieceStop = null; });
             get('api/conf/gripper/show/all')
                 .then(rows => {
                     const g = (rows || []).find(x => x.ID == wo.gripperID) || null;
@@ -252,6 +281,7 @@ export default {
                             esito == KO_NO_FIXTURE   ? 'wizard.lastData.geometryMissing' :
                             esito == KO_PUSH_NO_DATA ? 'wizard.lastData.pushNoData' :
                             esito == KO_PUSH_NO_FIT  ? 'wizard.lastData.pushNoFit' :
+                            esito == KO_PUSH_NO_ROOM ? 'wizard.lastData.pushNoRoom' :
                                                        'wizard.lastData.saveFailed';
                         dataStored.alert.type = 'warning';
                         return;

@@ -189,6 +189,16 @@ const router = createRouter({
       meta: { layout: StandardMenu },
       component: () => import("../views/conf/PositionView.vue"),
     },
+    // (push-to-stop 15/9) simulazione del ciclo di spinta in battuta. Nessun
+    // gate sulla rotta: il livello 0 deve poterla APRIRE, e' la pagina che gli
+    // spiega cosa fara' il robot. A essere gated e' la MODIFICA dei parametri,
+    // dentro la view.
+    {
+      path: "/sim/push",
+      name: "PushSim",
+      meta: { layout: StandardMenu },
+      component: () => import("../views/sim/PushSim.vue"),
+    },
     {
       path: "/conf/Machines",
       name: "Machines",

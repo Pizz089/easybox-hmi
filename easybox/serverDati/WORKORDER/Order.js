@@ -261,20 +261,34 @@ router.get('/insertOrder', (req, res) => {
         // OPTION2 — stesso meccanismo del part program. Lo calcola il SQL
         // dall'anagrafica, non il client: nessun campo nuovo nel payload e
         // nessuna istantanea falsificabile. Il bit 0 resta al gripper doppio.
-        // Guardia: se la spinta e' attiva ma manca la ganascia della morsa, o la
-        // lunghezza della chela della pinza, o il pezzo e' piu' lungo della
-        // ganascia, l'ordine NON nasce (il PLC lo scoprirebbe col robot in
-        // movimento). La dimensione che entra nel conto e' PIECE.Y, quella che
-        // corre lungo la X del robot: e' sulla X che si spinge in battuta.
+        // Guardia: se la spinta e' attiva ma manca la ganascia della morsa o la
+        // lunghezza della chela della pinza, l'ordine NON nasce (il PLC lo
+        // scoprirebbe col robot in movimento). La dimensione che entra nel
+        // conto e' PIECE.Y, quella che corre lungo la X del robot: e' sulla X
+        // che si spinge in battuta.
+        //
+        // PEZZO OLTRE LA GANASCIA (15/9): non e' un errore. In quel caso il
+        // pezzo appoggia su un altro riferimento fisico, e la distanza va
+        // DICHIARATA in PIECE_ON_VICE (riga per coppia morsa+pezzo; la riga E'
+        // la dichiarazione, il valore zero e' legittimo). Restano due rifiuti:
+        //   - eccede la ganascia e NESSUNO ha dichiarato dove appoggia -> NO_FIT
+        //   - l'appoggio dichiarato e' piu' vicino di quanto il pezzo gia'
+        //     sporge, quindi la corsa verrebbe NEGATIVA           -> NO_ROOM
+        // La dichiarazione segue la MORSA, non il pallet: se la morsa si sposta
+        // si porta dietro la sua battuta.
         // I termini sono gli stessi della vista COORDINATES_PUSH_MC.
         let query = `SET NOCOUNT ON;
 					DECLARE @push int = ISNULL((SELECT CASE WHEN PUSH_TO_STOP = 1 THEN ${pushQuotes.PUSH_BIT} ELSE 0 END FROM PIECE WHERE ID=${pieceID}), 0);
 					DECLARE @claw int = (SELECT TOP 1 CLAW_LENGTH FROM VICE WHERE PALLET_ID=${palletID});
 					DECLARE @tool int = (SELECT TOP 1 CLAW_LENGTH FROM GRIPPER WHERE ID=${gripperID});
 					DECLARE @pieceY int = (SELECT TOP 1 Y FROM PIECE WHERE ID=${pieceID});
+					DECLARE @viceID int = (SELECT TOP 1 ID FROM VICE WHERE PALLET_ID=${palletID});
+					DECLARE @stop int = (SELECT TOP 1 STOP_BEYOND_CLAW FROM PIECE_ON_VICE WHERE VICE_ID=@viceID AND PIECE_ID=${pieceID});
+					DECLARE @travel int = (@claw - @pieceY)/2 + CASE WHEN @pieceY > @claw THEN ISNULL(@stop,0) ELSE 0 END;
 					IF NOT EXISTS (SELECT 1 FROM FIXTURE WHERE ID=${fixtureID}) SELECT '${errorCodes.KO_NO_FIXTURE}' AS ris;
 					ELSE IF @push <> 0 AND (ISNULL(@claw,0) <= 0 OR ISNULL(@tool,0) <= 0 OR ISNULL(@pieceY,0) <= 0) SELECT '${errorCodes.KO_PUSH_NO_DATA}' AS ris;
-					ELSE IF @push <> 0 AND (@claw - @pieceY) < 0 SELECT '${errorCodes.KO_PUSH_NO_FIT}' AS ris;
+					ELSE IF @push <> 0 AND @pieceY > @claw AND @stop IS NULL SELECT '${errorCodes.KO_PUSH_NO_FIT}' AS ris;
+					ELSE IF @push <> 0 AND @travel < 0 SELECT '${errorCodes.KO_PUSH_NO_ROOM}' AS ris;
 					ELSE BEGIN
 					INSERT INTO WORKORDER
 					(PIECE_ID, GRIPPER_ID, VICE_ID, FIXTURE_ID, PALLET_ID, STATUS, MACHINE_ID, QUANTITY, X_PICK_DECENTRATED_TRAY, X_PLACE_DECENTRATED_TRAY, Y_PICK_DECENTRATED_TRAY, Y_PLACE_DECENTRATED_TRAY, X_PICK_DECENTRATED_MC, X_PLACE_DECENTRATED_MC, Y_PICK_DECENTRATED_MC, Y_PLACE_DECENTRATED_MC, PartProg_ID, DECLARED_PIECE_ID, OPTION1, OPTION2)
@@ -338,5 +352,38 @@ router.delete('/:ID', (req, res) => {
 	});
 });
 
+
+// ===========================================================================
+// (push-to-stop 15/9) LETTURA della vista COORDINATES_PUSH_MC
+// La pagina di simulazione, quando si apre su un ordine VERO, deve mostrare
+// quello che leggera' il PLC e non una replica calcolata a parte. Il modulo
+// util/pushQuotes e' verificato alla pari con la vista da un test, ma restano
+// due cose diverse: qui si legge la vista.
+// Sola lettura, nessuna scrittura, nessun effetto sull'ordine.
+// ===========================================================================
+router.get('/pushQuotes/:orderID', (req, res) => {
+	const orderID = parseInt(req.params.orderID, 10);
+	if (!Number.isInteger(orderID) || orderID < 1) { res.status(400).send("KO_BAD_INPUT"); return; }
+	sql.connect(DBf.configDB, function (err) {
+		if (err) {
+			log.error("err pushQuotes: " + err);
+			res.status(500).send("KO");
+			return;
+		}
+		let query = `select ORDER_ID, MC, X_PLACE, Y_PLACE, Z_PLACE,
+							X_PUSH, X_STOP, CLEARANCE, STOP_REF, STOP_BEYOND_CLAW,
+							PUSH_ENABLED, PUSH_STATUS
+					 from COORDINATES_PUSH_MC where ORDER_ID = ${orderID};`;
+		var request = new sql.Request();
+		log.info('query ' + query);
+		request.query(query, function (err, recordset) {
+			if (err) {
+				log.error("Err query: " + err);
+				res.status(500).send("KO");
+			} else
+				res.send(recordset.recordset);
+		});
+	});
+})
 
 module.exports = router;
