@@ -1,5 +1,28 @@
 # Appunti cella — interventi manuali da eseguire in impianto
 
+## [x] 2026-09-15 — composizione attrezzatura: NESSUNO script da eseguire
+
+La vista `FIXTURES` in cella e' gia' stata estesa (PALLET_Z, VICE_Z, Z_CALC,
+Z_DIVERGE): il pannello la legge e basta. **Non c'e' DDL da lanciare** e la
+vista non va toccata.
+
+Cosa sapere al deploy:
+
+- il backend legge sempre `select * from FIXTURES`: le colonne nuove passano
+  senza modifiche in lettura;
+- in scrittura `updateFixture`/`insertFixture` adesso nominano anche
+  `PALLET_ID` e `VICE_ID` sulla TABELLA `FIXTURE`. Se il DB di destinazione
+  non avesse quelle due colonne il salvataggio fallirebbe: verificarle prima
+  del deploy con
+  `select PALLET_ID, VICE_ID from FIXTURE;`
+- se la vista NON fosse estesa (`Z_DIVERGE` assente) il pannello non inventa
+  nulla: la colonna Composizione resta vuota e il form non mostra il blocco.
+  Nessun errore, nessun avviso falso.
+
+Il database di **sviluppo** non aveva l'estensione: e' stata replicata in
+locale solo per la prova, con uno script tenuto fuori dal repo apposta per
+non rischiare di sovrascrivere la vista buona della cella.
+
 ## [ ] 2026-09-15 — ciclo SPINTA IN BATTUTA: cinque script, poi le misure
 
 Ordine obbligato, **a cella ferma**, i primi quattro prima del deploy del

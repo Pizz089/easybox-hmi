@@ -6,6 +6,19 @@ var router 	= express.Router();
 const log 	= require('../LogFunct');
 
 var templatePATH = '.';
+// (composizione attrezzatura 16/9) FIXTURE.VICE_ID e FIXTURE.PALLET_ID
+// dichiarano DI COSA e' composta un'attrezzatura. Sono facoltative: NULL
+// significa "composizione non dichiarata", che non e' un errore ma uno stato
+// da raccontare. Vuoto, assente o 'null' -> NULL; un valore presente ma non
+// intero positivo e' invece input malformato e merita 400 (contratto HTTP).
+function refSql(raw) {
+	if (raw === undefined || raw === null) return 'NULL';
+	const t = String(raw).trim();
+	if (t === '' || t === 'null' || t === 'undefined' || t === 'NaN') return 'NULL';
+	const n = parseInt(t, 10);
+	if (isNaN(n) || n < 1 || String(n) !== t) return null;   // null = da rifiutare
+	return String(n);
+}
 
 router.get('/show/:ID', (req, res) => {
 	sql.connect(DBf.configDB, function (err) {
@@ -62,6 +75,13 @@ router.get('/updateFixture', (req, res) => {
 
 	//console.log(">>>"+JSON.stringify(req.query,null,4));
 
+	const viceRef = refSql(req.query.VICE_ID);
+	const palletRef = refSql(req.query.PALLET_ID);
+	if (viceRef === null || palletRef === null) {
+		res.status(400).send("KO_BAD_INPUT");
+		return;
+	}
+
 	sql.connect(DBf.configDB, function (err) {
         if (err) {
             log.error("err updateFixture: " + err);
@@ -79,7 +99,9 @@ router.get('/updateFixture', (req, res) => {
 					Z_SINK_CLAW=${req.query.Z_SINK_CLAW}*1000, 
 					MAG='${req.query.MAG}', 
 					MAG_POS='${req.query.MAG_POS}', 
-					POS_PLANT='${req.query.POS_PLANT}'
+					POS_PLANT='${req.query.POS_PLANT}',
+					VICE_ID=${viceRef},
+					PALLET_ID=${palletRef}
 					WHERE ID='${req.query.ID}';`
 		
 		//if (req.query.POS_PLANT>0){
@@ -284,6 +306,13 @@ router.delete('/fixtureOnPallet/:palletID/:fixtureID', (req, res) => {
 //TODO:da testare
 router.get('/insertFixture', (req, res) => {
 
+	const viceRef = refSql(req.query.VICE_ID);
+	const palletRef = refSql(req.query.PALLET_ID);
+	if (viceRef === null || palletRef === null) {
+		res.status(400).send("KO_BAD_INPUT");
+		return;
+	}
+
 	sql.connect(DBf.configDB, function (err) {
         if (err) {
             log.error("err insertFixture: " + err);
@@ -292,7 +321,7 @@ router.get('/insertFixture', (req, res) => {
 		
 		var request = new sql.Request();
         let query = `INSERT INTO FIXTURE
-					(ID, FAMILY, DESCR, STATUS, X, Y, Z, Z_CLAW, Z_SINK_CLAW, MAG, MAG_POS, POS_PLANT)
+					(ID, FAMILY, DESCR, STATUS, X, Y, Z, Z_CLAW, Z_SINK_CLAW, MAG, MAG_POS, POS_PLANT, VICE_ID, PALLET_ID)
 					VALUES(${req.query.ID}, 
 					'${req.query.FAMILY}', 
 					'${req.query.DESCR}', 
@@ -304,7 +333,9 @@ router.get('/insertFixture', (req, res) => {
 					${req.query.Z_SINK_CLAW}, 
 					${req.query.MAG}, 
 					${req.query.MAG_POS}, 
-					${req.query.POS_PLANT});`
+					${req.query.POS_PLANT},
+					${viceRef},
+					${palletRef});`
 					
         log.info('query ' + query);
         // query to the database and get the records

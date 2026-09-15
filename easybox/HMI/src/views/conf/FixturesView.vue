@@ -4,6 +4,7 @@
     
     import { ref, onMounted } from 'vue'
     import { dataStored } from '../../data';
+    import { statoComposizione, quoteComposizione } from '../../util/fixtureComposition.js';
     const el = ref()
 </script>
 
@@ -27,6 +28,10 @@
                     <th>{{$t('fixture.stato')}}</th>
                     <th>{{$t('fixture.family')}}</th>
                     <th style='width:20%'>{{$t('fixture.descr')}}</th>
+                    <!-- (composizione 16/9) prima si vedeva un solo numero,
+                         FIXTURE.Z, senza sapere da dove venisse. Adesso si
+                         vede DI COSA e' fatta la quota. -->
+                    <th>{{$t('fixture.composition.column')}}</th>
                     <!--th>{{$t('fixture.posizione')}}</th-->
                     
                     <!--th>{{$t('fixture.comands')}}</th-->
@@ -46,6 +51,27 @@
                         <td>{{dt.FAMILY}} </td>
                     
                         <td>{{dt.DESCR.trim()}}</td>
+
+                        <td class="comp-cell">
+                          <template v-if="stato(dt) === 'coerente'">
+                            <span class="comp-sum">{{ $t('fixture.composition.sum', quote(dt)) }}</span>
+                          </template>
+
+                          <template v-else-if="stato(dt) === 'diverge'">
+                            <span class="badge badge-diverge">{{ $t('fixture.composition.divergeBadge') }}</span>
+                            <div class="comp-hint">{{ $t('fixture.composition.divergeWhy', quote(dt)) }}</div>
+                            <div class="comp-hint">{{ $t('fixture.composition.divergeWhat') }}</div>
+                          </template>
+
+                          <!-- non e' un guasto: e' una composizione che nessuno
+                               ha ancora dichiarato. Tono neutro, apposta. -->
+                          <template v-else-if="stato(dt) === 'nonDichiarata'">
+                            <span class="badge badge-undeclared">{{ $t('fixture.composition.undeclaredBadge') }}</span>
+                            <div class="comp-hint">{{ $t('fixture.composition.undeclaredWhat') }}</div>
+                          </template>
+
+                          <span v-else class="cell-empty">&mdash;</span>
+                        </td>
                         
                         <td>
                             <!-- U-FASE2 (punto 6): riattivato il bottone place
@@ -91,6 +117,15 @@ export default {
         }
     },
     methods: {
+        // stato e numeri arrivano dal modulo condiviso: la lista e il form
+        // devono raccontare la stessa cosa
+        stato(row) {
+            return statoComposizione(row);
+        },
+        quote(row) {
+            const q = quoteComposizione(row);
+            return { dichiarata: q.dichiarata, pallet: q.pallet, morsa: q.morsa, somma: q.somma };
+        },
         getDataTable() {
             fetch(dataStored.server+'api/conf/fixture/show/all',{ method: 'GET'})
                 .then(response => {
@@ -171,6 +206,50 @@ export default {
 </script>
 
 <style scoped>
+/* (composizione 16/9) la cella della composizione: la somma in tono quieto,
+   la divergenza con la coppia colore/fondo degli avvisi, la composizione non
+   dichiarata in tono neutro perche' NON e' un guasto. */
+.comp-cell {
+  min-width: 18rem;
+}
+
+.comp-sum {
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.comp-hint {
+  margin-top: var(--space-1);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  color: var(--text-secondary);
+}
+
+.badge {
+  display: inline-block;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-lg);
+  font-size: var(--font-size-sm);
+  white-space: nowrap;
+}
+
+.badge-diverge {
+  background-color: var(--color-warning-bg);
+  color: var(--color-warning);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* neutro: informazione mancante, non allarme */
+.badge-undeclared {
+  background-color: var(--bg-input);
+  color: var(--text-secondary);
+}
+
+.cell-empty {
+  color: var(--text-muted);
+}
+
     .pure-table-horizontal  #td {
         justify-content: center;
         display: flex;
