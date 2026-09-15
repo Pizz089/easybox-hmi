@@ -55,7 +55,8 @@ router.get('/updatePiece', (req, res) => {
 					Y='${req.query.Y}', 
 					Z='${req.query.Z}', 
 					Z_PICK='${req.query.Z_PICK}', 
-					Z_PLACE='${req.query.Z_PLACE}'
+					Z_PLACE='${req.query.Z_PLACE}',
+					PUSH_TO_STOP=CONVERT(bit,'${req.query.PUSH_TO_STOP == undefined ? 0 : req.query.PUSH_TO_STOP}')
 					WHERE ID=${req.query.ID};`
 		
 		var request = new sql.Request();
@@ -84,14 +85,15 @@ router.get('/insertPiece', (req, res) => {
 		
 		var request = new sql.Request();
         let query = `INSERT INTO PIECE
-					(FAMILY, DESCR, PARTPROGRAM, MC1_ONLY, MC2_ONLY, MC3_ONLY, PRISMA, X, Y, Z, Z_PICK, Z_PLACE)
+					(FAMILY, DESCR, PARTPROGRAM, MC1_ONLY, MC2_ONLY, MC3_ONLY, PRISMA, X, Y, Z, Z_PICK, Z_PLACE, PUSH_TO_STOP)
 					VALUES('${req.query.FAMILY}', 
 						   '${req.query.DESCR}', 
 						   '${req.query.PARTPROGRAM}', 
 						    CONVERT(bit,'${req.query.MC1_ONLY}'), CONVERT(bit,'${req.query.MC2_ONLY}'), CONVERT(bit,'${req.query.MC3_ONLY}'), 
 						    CONVERT(bit,'${req.query.PRISMA}'), 
 						    ${req.query.X}, ${req.query.Y}, ${req.query.Z}, 
-							${req.query.Z_PICK}, ${req.query.Z_PLACE});`
+							${req.query.Z_PICK}, ${req.query.Z_PLACE},
+							CONVERT(bit,'${req.query.PUSH_TO_STOP == undefined ? 0 : req.query.PUSH_TO_STOP}'));`
 					
         log.info('query ' + query);
         // query to the database and get the records

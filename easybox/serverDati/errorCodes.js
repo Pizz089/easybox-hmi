@@ -25,3 +25,8 @@ exports.KO_Z_BELOW_GRATING   = "KO_Z_BELOW_GRATING";   // Z_PICK o Z_PLACE del p
 // geometria di cio' che sta sul pallet, perche' il PLC somma FIXTURE.Z alla
 // quota di deposito in macchina e non conosce VICE.
 exports.KO_NO_FIXTURE        = "KO_NO_FIXTURE";        // FIXTURE_ID assente o senza riga FIXTURE corrispondente
+// Ciclo di SPINTA IN BATTUTA (push-to-stop 15/9): un ordine che il PLC non
+// saprebbe eseguire non deve nascere. Stessi esiti della colonna PUSH_STATUS
+// della vista COORDINATES_PUSH_MC.
+exports.KO_PUSH_NO_DATA      = "KO_PUSH_NO_DATA";      // manca la ganascia morsa, lo spessore ganascia pinza o la misura del pezzo
+exports.KO_PUSH_NO_FIT       = "KO_PUSH_NO_FIT";       // pezzo piu' lungo della ganascia della morsa: non ci sta

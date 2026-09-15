@@ -7,6 +7,16 @@ const log 	= require('../LogFunct');
 
 var templatePATH = '.';
 
+// (push-to-stop 15/9) lunghezza ganascia della morsa sull'asse di battuta,
+// in micron. Assente, vuota o non intera -> NULL = non misurata: il ciclo di
+// spinta non si abilita (la vista COORDINATES_PUSH_MC risponde NO_DATA e
+// l'ordine viene rifiutato con KO_PUSH_NO_DATA).
+function clawLengthSql(raw) {
+	const n = parseInt(raw, 10);
+	if (raw == undefined || String(raw).trim() === '' || isNaN(n) || n < 0) return 'NULL';
+	return String(n);
+}
+
 router.get('/show/:ID', (req, res) => {
 	sql.connect(DBf.configDB, function (err) {
         if (err) {
@@ -66,7 +76,8 @@ router.get('/updateVice', (req, res) => {
 					 Z_SINK_CLAW=${req.query.Z_SINK_CLAW},
 					 MAG=${req.query.MAG},
 					 MAG_POS=${req.query.MAG_POS},
-					 POS_PLANT=${req.query.POS_PLANT}${palletClause}
+					 POS_PLANT=${req.query.POS_PLANT},
+					 CLAW_LENGTH_Y=${clawLengthSql(req.query.CLAW_LENGTH_Y)}${palletClause}
 					WHERE ID=${req.query.ID};`
 		
 		var request = new sql.Request();
@@ -93,7 +104,7 @@ router.get('/insertVice', (req, res) => {
 		
 		var request = new sql.Request();
         let query = `INSERT INTO VICE
-					(ID, FAMILY, DESCR, STATUS, X, Y, Z, Z_CLAW, Z_SINK_CLAW, MAG, MAG_POS, POS_PLANT)
+					(ID, FAMILY, DESCR, STATUS, X, Y, Z, Z_CLAW, Z_SINK_CLAW, MAG, MAG_POS, POS_PLANT, CLAW_LENGTH_Y)
 					VALUES(${req.query.ID}, 
 					'${req.query.FAMILY}', 
 					'${req.query.DESCR}', 
@@ -105,7 +116,8 @@ router.get('/insertVice', (req, res) => {
 					${req.query.Z_SINK_CLAW}, 
 					${req.query.MAG}, 
 					${req.query.MAG_POS}, 
-					${req.query.POS_PLANT});`
+					${req.query.POS_PLANT},
+					${clawLengthSql(req.query.CLAW_LENGTH_Y)});`
 					
         log.info('query ' + query);
         // query to the database and get the records

@@ -7,7 +7,9 @@
     // ricetta non deve nascere). La tendina sulla tabella PARTPROGRAM
     // (flusso Heidenhain) e' stata rimossa.
     import { dataStored } from '../../data.js'
-    import { KO_NO_FIXTURE } from '../../util/errorCodes.js'
+    import { KO_NO_FIXTURE, KO_PUSH_NO_DATA, KO_PUSH_NO_FIT } from '../../util/errorCodes.js'
+    // (push-to-stop 15/9) stessa formula della vista COORDINATES_PUSH_MC
+    import { pushQuotes, PUSH_STATUS } from '../../util/pushQuotes.js'
     import { useI18n } from 'vue-i18n'
     import workOrderStep from '../../components/workOrder_step.vue'
 
@@ -59,6 +61,20 @@
         </label>
         <span class="pp-missing">{{ t('wizard.lastData.geometryMissing') }}</span>
       </div>
+
+      <!-- (push-to-stop 15/9) spinta in battuta: attiva sul pezzo, si mostra la
+           corsa che il robot fara'; se manca un dato fisico o il pezzo non entra
+           nella ganascia, l'ordine e' bloccato qui -->
+      <div class="form-row" v-if="!pushOk">
+        <label class="form-label">
+          {{ t('wizard.lastData.push') }}<span class="required">*</span>
+        </label>
+        <span class="pp-missing">{{ t(pushMessage, { piece: pieceY/1000, claw: (viceClaw || 0)/1000 }) }}</span>
+      </div>
+      <div class="form-row" v-else-if="piecePush">
+        <label class="form-label">{{ t('wizard.lastData.push') }}</label>
+        <span class="pp-value">{{ t('wizard.lastData.pushOn', { mm: pushCheck.clearance/1000 }) }}</span>
+      </div>
     </section>
 
     <!-- (1/9) La card POSIZIONAMENTO (8 decentramenti X/Y prelievo/deposito
@@ -72,7 +88,7 @@
         type="button"
         class="pure-button-primary"
         @click="saveData"
-        :disabled="!piecePPValid || !fixtureOk || dataStored.createWorkOrder.quantity<=0"
+        :disabled="!piecePPValid || !fixtureOk || !pushOk || dataStored.createWorkOrder.quantity<=0"
       >
         {{ t('wizard.lastData.save') }}
       </button>
@@ -86,7 +102,15 @@ export default {
     data(){
         return {
             createNew:true,
-            piecePP:null   // part program ereditato dal particolare (int) o null
+            piecePP:null,  // part program ereditato dal particolare (int) o null
+            // (push-to-stop 15/9) dati per la guardia della spinta in battuta:
+            // il pezzo dice se il ciclo e' attivo, la morsa del pallet quanto e'
+            // lunga la ganascia, la pinza quanto e' spessa la sua.
+            piecePush:false,
+            pieceY:0,
+            viceClaw:null,
+            gripperTick:null,
+            viceFound:false
         }
     },
     computed: {
@@ -95,6 +119,30 @@ export default {
         // selectRig; questa e' la difesa finale prima della scrittura.
         fixtureOk(){
             return Number(dataStored.createWorkOrder.fixtureID) > 0;
+        },
+        // (push-to-stop 15/9) esito della spinta con i dati attuali. Stessa
+        // funzione della vista: qui serve solo lo stato, le quote le calcola
+        // il PLC leggendo COORDINATES_PUSH_MC.
+        pushCheck(){
+            return pushQuotes({
+                enabled: this.piecePush,
+                hasVice: this.viceFound,
+                yPlace: 0,
+                pieceY: this.pieceY,
+                viceClawLength: this.viceClaw,
+                gripperThickness: this.gripperTick,
+            });
+        },
+        pushOk(){
+            const st = this.pushCheck.status;
+            return st === PUSH_STATUS.DISABLED || st === PUSH_STATUS.OK;
+        },
+        pushMessage(){
+            const st = this.pushCheck.status;
+            if (st === PUSH_STATUS.NO_VICE)  return 'wizard.lastData.pushNoVice';
+            if (st === PUSH_STATUS.NO_DATA)  return 'wizard.lastData.pushNoData';
+            if (st === PUSH_STATUS.NO_FIT)   return 'wizard.lastData.pushNoFit';
+            return '';
         },
         piecePPValid(){
             return Number.isInteger(this.piecePP) && this.piecePP > 0;
@@ -122,11 +170,35 @@ export default {
                     const raw = ((data[0] || {}).PARTPROGRAM || '').toString().trim();
                     const n = parseInt(raw, 10);
                     this.piecePP = (/^[1-9][0-9]{0,5}$/.test(raw) && n > 0) ? n : null;
+                    this.piecePush = !!(data[0] || {}).PUSH_TO_STOP;
+                    this.pieceY = Number((data[0] || {}).Y) || 0;
+                    if (this.piecePush) this.getPushData();
                 })
                 .catch(error => {
                     console.info(error);
                     this.piecePP = null;
                 });
+        },
+        // (push-to-stop 15/9) morsa del pallet dell'ordine e pinza scelta: i due
+        // dati fisici da cui il sistema ricava le quote di spinta. Si leggono
+        // solo se il pezzo ha il ciclo attivo.
+        getPushData(){
+            const wo = dataStored.createWorkOrder;
+            const get = (url) => fetch(dataStored.server + url, { method: 'GET' })
+                .then(r => { if (!r.ok) throw new Error('Network response was not ok'); return r.json(); });
+            get('api/conf/vice/show/all')
+                .then(rows => {
+                    const v = (rows || []).find(x => x.PALLET_ID == wo.palletID) || null;
+                    this.viceFound = !!v;
+                    this.viceClaw = v ? v.CLAW_LENGTH_Y : null;
+                })
+                .catch(e => { console.info(e); this.viceFound = false; this.viceClaw = null; });
+            get('api/conf/gripper/show/all')
+                .then(rows => {
+                    const g = (rows || []).find(x => x.ID == wo.gripperID) || null;
+                    this.gripperTick = g ? g.TICKNESS_CLAW : null;
+                })
+                .catch(e => { console.info(e); this.gripperTick = null; });
         },
         saveData() {
             // guardia: senza part program dal particolare l'ordine non nasce
@@ -139,6 +211,15 @@ export default {
             if (!this.fixtureOk) {
                 dataStored.alert.title = this.$t('WARNING');
                 dataStored.alert.desc = 'wizard.lastData.geometryMissing';
+                dataStored.alert.type = 'warning';
+                return;
+            }
+            // (push-to-stop 15/9) il pezzo chiede la spinta in battuta ma i dati
+            // fisici non ci sono o il pezzo non entra nella ganascia: l'ordine
+            // non nasce. Il backend rifiuta comunque (KO_PUSH_*).
+            if (!this.pushOk) {
+                dataStored.alert.title = this.$t('WARNING');
+                dataStored.alert.desc = this.pushMessage;
                 dataStored.alert.type = 'warning';
                 return;
             }
@@ -164,9 +245,11 @@ export default {
                     const esito = (await response.text()).trim();
                     if (esito != 'OK') {
                         dataStored.alert.title = this.$t('WARNING');
-                        dataStored.alert.desc = esito == KO_NO_FIXTURE
-                            ? 'wizard.lastData.geometryMissing'
-                            : 'wizard.lastData.saveFailed';
+                        dataStored.alert.desc =
+                            esito == KO_NO_FIXTURE   ? 'wizard.lastData.geometryMissing' :
+                            esito == KO_PUSH_NO_DATA ? 'wizard.lastData.pushNoData' :
+                            esito == KO_PUSH_NO_FIT  ? 'wizard.lastData.pushNoFit' :
+                                                       'wizard.lastData.saveFailed';
                         dataStored.alert.type = 'warning';
                         return;
                     }

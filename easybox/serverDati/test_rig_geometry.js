@@ -76,7 +76,10 @@ console.log('\n3) ordine con geometria: guardia in SQL sull\'esistenza della rig
 r = call('GET /insertOrder', Object.assign({}, ORD, { fixtureID: '1' }), [{ recordset: [{ ris: 'OK' }] }]);
 t = r.q[0];
 check(r.n === 1 && r.res.body === 'OK', 'ordine creato');
-check(/IF NOT EXISTS \(SELECT 1 FROM FIXTURE WHERE ID=1\) SELECT 'KO_NO_FIXTURE' AS ris; ELSE BEGIN INSERT INTO WORKORDER/.test(t), 'la guardia gira PRIMA della INSERT, nello stesso batch');
+// (push-to-stop 15/9) fra la guardia e la INSERT si sono aggiunti i rami della
+// spinta in battuta: si verifica l'ORDINE, non l'adiacenza.
+check(/IF NOT EXISTS \(SELECT 1 FROM FIXTURE WHERE ID=1\) SELECT 'KO_NO_FIXTURE' AS ris;/.test(t)
+	&& t.indexOf("'KO_NO_FIXTURE'") < t.indexOf('INSERT INTO WORKORDER'), 'la guardia gira PRIMA della INSERT, nello stesso batch');
 check(/VALUES\( '1029', '26', '0', 1, '9',/.test(t), 'FIXTURE_ID scritto come intero validato, non come stringa del payload');
 r = call('GET /insertOrder', Object.assign({}, ORD, { fixtureID: '99' }), [{ recordset: [{ ris: errorCodes.KO_NO_FIXTURE }] }]);
 check(r.res.body === errorCodes.KO_NO_FIXTURE, 'attrezzatura inesistente a DB -> KO_NO_FIXTURE dal SQL');

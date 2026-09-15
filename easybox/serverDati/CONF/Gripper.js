@@ -8,6 +8,20 @@ const ERR 	= require('../errorCodes');
 
 var templatePATH = '.';
 
+// (push-to-stop 15/9) CORSA e SPESSORE della ganascia: il form li manda da
+// sempre ma insert e update non li nominavano, quindi si perdevano in
+// silenzio e a DB restavano i default. Lo SPESSORE ora serve davvero: e' il
+// termine 'spessore_ganascia_pinza/2' della quota di spinta in battuta.
+// Assente o non intero -> fallback: nell'UPDATE il NOME della colonna (il
+// valore a DB resta com'era, un client vecchio non azzera il dato), nella
+// INSERT..SELECT il default dello schema (10000) perche' li' non c'e' riga
+// sorgente da cui rileggere la colonna.
+function clawNum(raw, col) {
+	const n = parseInt(raw, 10);
+	if (raw == undefined || String(raw).trim() === '' || isNaN(n) || n < 0) return col;
+	return String(n);
+}
+
 router.get('/show/:ID', (req, res) => {
 
 	sql.connect(DBf.configDB, function (err) {
@@ -190,7 +204,9 @@ router.get('/updateGripper', (req, res) => {
 					Z_CLAW='${req.query.Z_CLAW}',
 					STATUS='${req.query.STATUS}',
 					POS_MAG='${req.query.POS_MAG}',
-					POS_PLANT='${req.query.POS_PLANT}'
+					POS_PLANT='${req.query.POS_PLANT}',
+					Stroke_CLAW=${clawNum(req.query.STROKE_CLAW, 'Stroke_CLAW')},
+					Tickness_CLAW=${clawNum(req.query.TICKNESS_CLAW, 'Tickness_CLAW')}
 					where ID='${req.query.ID}'`
 		// (gripper-twins, 1/9) SUB_POS NON viene piu' azzerato dall'update: e'
 		// la chiave delle righe gemelle della pinza doppia (26/37 -> 3) usata
@@ -236,7 +252,7 @@ router.get('/insertGripper', (req, res) => {
 
 		var request = new sql.Request();
         let query = `INSERT INTO GRIPPER
-					(FAMILY, DESCR, X_BODY, Y_BODY, Z_BODY, X_CLAW, Y_CLAW, Z_CLAW, STATUS, POS_MAG, SUB_POS, POS_PLANT)
+					(FAMILY, DESCR, X_BODY, Y_BODY, Z_BODY, X_CLAW, Y_CLAW, Z_CLAW, STATUS, POS_MAG, SUB_POS, POS_PLANT, Stroke_CLAW, Tickness_CLAW)
 					SELECT
 					'${req.query.FAMILY}',
 					'${req.query.DESCR}',
@@ -249,7 +265,9 @@ router.get('/insertGripper', (req, res) => {
 					'${req.query.STATUS}',
 					'${req.query.POS_MAG}',
 					0,
-					'${req.query.POS_PLANT}'`
+					'${req.query.POS_PLANT}',
+					${clawNum(req.query.STROKE_CLAW, '10000')},
+					${clawNum(req.query.TICKNESS_CLAW, '10000')}`
 		if (guarded)
 			query += ` WHERE ${shelfSlotGuard(posMag, '')}`;
 		query += ';'

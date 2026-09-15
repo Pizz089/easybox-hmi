@@ -144,6 +144,21 @@ const el = ref();
               <small>mm</small>
             </div>
 
+            <!-- (push-to-stop 15/9) SPINTA IN BATTUTA: proprieta' del PEZZO,
+                 l'ordine la eredita come istantanea alla creazione (stesso
+                 meccanismo del part program). Se attiva, il robot dopo il
+                 deposito spinge il pezzo contro la battuta della morsa; le
+                 quote le ricava il sistema dalle dimensioni dichiarate. -->
+            <div class="pure-control-group push-row">
+              <label for="push_to_stop">{{ $t("piece.pushToStop") }}</label>
+              <input
+                id="push_to_stop"
+                type="checkbox"
+                name="PUSH_TO_STOP"
+                v-model="piece.PUSH_TO_STOP"
+              />
+              <small class="push-hint">{{ $t("piece.pushToStopHint") }}</small>
+            </div>
             <div class="pure-control-group">
               <label for="z_pick">{{ $t("piece.Z_PICK") }}</label>
               <input
@@ -275,6 +290,8 @@ export default {
       piece: {
         FAMILY: "",
         DESCR: "",
+        // (push-to-stop 15/9) spinta in battuta: proprieta' del pezzo
+        PUSH_TO_STOP: false,
         PARTPROGRAM: "",
         MC1_ONLY: false,
         MC2_ONLY: false,
@@ -314,6 +331,8 @@ export default {
           this.piece.X /= 1000;
           this.piece.Y /= 1000;
           this.piece.Z /= 1000;
+          // (push-to-stop) bit a DB -> booleano per la spunta
+          this.piece.PUSH_TO_STOP = !!this.piece.PUSH_TO_STOP;
           this.piece.Z_PICK /= 1000;
           this.piece.Z_PLACE /= 1000;
           // PARTPROGRAM e' nchar a DB: arriva blank-padded, senza trim
@@ -352,6 +371,8 @@ export default {
         return;
       }
 
+      // (push-to-stop) il backend converte con CONVERT(bit, ...): 1/0 espliciti
+      this.piece.PUSH_TO_STOP = this.piece.PUSH_TO_STOP ? 1 : 0;
       this.piece.X *= 1000;
       this.piece.Y *= 1000;
       this.piece.Z *= 1000;

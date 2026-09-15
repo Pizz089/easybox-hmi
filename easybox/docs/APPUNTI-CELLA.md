@@ -1,5 +1,49 @@
 # Appunti cella — interventi manuali da eseguire in impianto
 
+## [ ] 2026-09-15 — ciclo SPINTA IN BATTUTA: tre script, poi le misure
+
+Ordine obbligato, **a cella ferma**, i primi due prima del deploy del backend
+(insert/update nominano le colonne nuove), il terzo dopo i primi due:
+
+```
+sqlcmd -S .\SQLEXPRESS -E -d ADMG -i piece-push-to-stop.sql
+sqlcmd -S .\SQLEXPRESS -E -d ADMG -i vice-claw-length.sql
+sqlcmd -S .\SQLEXPRESS -E -d ADMG -i coordinates-push-mc.sql
+```
+
+`vice-claw-length.sql` fa anche `sp_refreshview 'dbo.VICES'`: la vista e'
+definita come `SELECT v.*` e una vista con l'asterisco **non vede** le colonne
+aggiunte dopo, quindi senza il refresh il pannello non leggerebbe mai la
+ganascia. Stessa trappola da ricordare per ogni colonna nuova.
+
+Dopo il deploy, misure col calibro (nessuna quota da digitare):
+1. Morsa, campo "Ganascia: lunghezza sull'asse di battuta", in mm.
+2. Pezzo, spunta "Spinta in battuta" sui particolari che la vogliono.
+3. Pinza, corsa e spessore della ganascia: **da ricontrollare su tutte le
+   pinze**, perche' fino al 15/9 il form li mandava e il backend li perdeva,
+   quindi a database ci sono i default e non le misure vere. Lo spessore ora
+   entra nel calcolo della quota di spinta.
+
+Verifica: `SELECT ORDER_ID, Y_PLACE, Y_PUSH, Y_STOP, CLEARANCE, PUSH_STATUS
+FROM COORDINATES_PUSH_MC` — con pezzo 100.6 e ganascia 150 la corsa e' 24700.
+
+**Dipendenza da ricordare:** le quote presuppongono il deposito CENTRATO sulla
+morsa (confermato da Dario). Se si riapprende la posizione di deposito in
+macchina scentrata, la corsa calcolata non corrisponde piu' al reale e non c'e'
+nessun controllo che se ne accorga.
+
+## [ ] Errori emersi dopo il passaggio a 400/500 — lista, non correzioni
+
+Dal deploy del contratto HTTP nuovo compaiono a pannello errori che prima
+passavano inosservati. **Si annotano qui e si correggono a lotti**, quando si
+vede la causa comune: le due famiglie attese sono le scritture che toccano zero
+righe per una chiave sbagliata (come l'UPDATE che cercava la riga da creare) e
+le query che nominano colonne assunte.
+
+| Data | Pagina | Operazione | Messaggio |
+|---|---|---|---|
+|  |  |  |  |
+
 ## [ ] 2026-09-15 — UNIQUE (PALLET_ID, FIXTURE_ID) su FIXTURE_ON_PALLET — A CELLA FERMA
 
 Script: `serverDati/scripts/fixture-on-pallet-unique.sql` (idempotente, rollback

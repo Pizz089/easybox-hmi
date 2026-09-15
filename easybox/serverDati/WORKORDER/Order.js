@@ -19,6 +19,7 @@ var sql 	= require('mssql')
 var router 	= express.Router();
 const log 	= require('../LogFunct');
 const errorCodes = require('../errorCodes');
+const pushQuotes = require('../pushQuotes');
 
 var templatePATH = '.';
 
@@ -247,16 +248,34 @@ router.get('/insertOrder', (req, res) => {
         // movimento. Qui l'ordine non nasce proprio. Vale per ENTRAMBI i rami:
         // dal 15/9 anche il ramo morsa porta il FIXTURE_ID della geometria.
         const fixtureID = parseInt(req.query.fixtureID, 10);
+        const pieceID   = parseInt(req.query.pieceID, 10)   || 0;
+        const palletID  = parseInt(req.query.palletID, 10)  || 0;
+        const gripperID = parseInt(req.query.gripperID, 10) || 0;
         if (!Number.isInteger(fixtureID) || fixtureID < 1) {
             log.standard("insertOrder " + errorCodes.KO_NO_FIXTURE + ": fixtureID [" + req.query.fixtureID + "]");
             res.send(errorCodes.KO_NO_FIXTURE);
             return;
         }
+        // (push-to-stop 15/9) SPINTA IN BATTUTA: il bit e' proprieta' del PEZZO
+        // (PIECE.PUSH_TO_STOP) e l'ordine lo eredita come ISTANTANEA nel bit 1 di
+        // OPTION2 — stesso meccanismo del part program. Lo calcola il SQL
+        // dall'anagrafica, non il client: nessun campo nuovo nel payload e
+        // nessuna istantanea falsificabile. Il bit 0 resta al gripper doppio.
+        // Guardia: se la spinta e' attiva ma manca la ganascia della morsa, o lo
+        // spessore ganascia della pinza, o il pezzo e' piu' lungo della ganascia,
+        // l'ordine NON nasce (il PLC lo scoprirebbe col robot in movimento).
+        // I termini sono gli stessi della vista COORDINATES_PUSH_MC.
         let query = `SET NOCOUNT ON;
+					DECLARE @push int = ISNULL((SELECT CASE WHEN PUSH_TO_STOP = 1 THEN ${pushQuotes.PUSH_BIT} ELSE 0 END FROM PIECE WHERE ID=${pieceID}), 0);
+					DECLARE @claw int = (SELECT TOP 1 CLAW_LENGTH_Y FROM VICE WHERE PALLET_ID=${palletID});
+					DECLARE @tick int = (SELECT TOP 1 Tickness_CLAW FROM GRIPPER WHERE ID=${gripperID});
+					DECLARE @pieceY int = (SELECT TOP 1 Y FROM PIECE WHERE ID=${pieceID});
 					IF NOT EXISTS (SELECT 1 FROM FIXTURE WHERE ID=${fixtureID}) SELECT '${errorCodes.KO_NO_FIXTURE}' AS ris;
+					ELSE IF @push <> 0 AND (ISNULL(@claw,0) <= 0 OR ISNULL(@tick,0) <= 0 OR ISNULL(@pieceY,0) <= 0) SELECT '${errorCodes.KO_PUSH_NO_DATA}' AS ris;
+					ELSE IF @push <> 0 AND (@claw - @pieceY) < 0 SELECT '${errorCodes.KO_PUSH_NO_FIT}' AS ris;
 					ELSE BEGIN
 					INSERT INTO WORKORDER
-					(PIECE_ID, GRIPPER_ID, VICE_ID, FIXTURE_ID, PALLET_ID, STATUS, MACHINE_ID, QUANTITY, X_PICK_DECENTRATED_TRAY, X_PLACE_DECENTRATED_TRAY, Y_PICK_DECENTRATED_TRAY, Y_PLACE_DECENTRATED_TRAY, X_PICK_DECENTRATED_MC, X_PLACE_DECENTRATED_MC, Y_PICK_DECENTRATED_MC, Y_PLACE_DECENTRATED_MC, PartProg_ID, DECLARED_PIECE_ID)
+					(PIECE_ID, GRIPPER_ID, VICE_ID, FIXTURE_ID, PALLET_ID, STATUS, MACHINE_ID, QUANTITY, X_PICK_DECENTRATED_TRAY, X_PLACE_DECENTRATED_TRAY, Y_PICK_DECENTRATED_TRAY, Y_PLACE_DECENTRATED_TRAY, X_PICK_DECENTRATED_MC, X_PLACE_DECENTRATED_MC, Y_PICK_DECENTRATED_MC, Y_PLACE_DECENTRATED_MC, PartProg_ID, DECLARED_PIECE_ID, OPTION1, OPTION2)
 					VALUES(
 					'${req.query.pieceID}',
 					'${req.query.gripperID}',
@@ -269,7 +288,8 @@ router.get('/insertOrder', (req, res) => {
 					 0, 0, 0, 0,
 					 0, 0, 0, 0,
 					 ${req.query.PP},
-					 ${declaredSql}
+					 ${declaredSql},
+					 0, @push
 					);
 					SELECT 'OK' AS ris;
 					END`
