@@ -37,3 +37,27 @@ la decisione su chi puo' toccare cosa.
 
 **Trovato il** 2026-09-15, durante la proposta della pagina di simulazione
 della spinta in battuta.
+
+## [ ] Bersagli touch sotto il minimo, e viste non responsive
+
+**Cosa.** La classe base `.pure-button` (`HMI/src/assets/pure.css`) dichiara
+`padding: .5em 1em` e nessun `min-height`: l'altezza risultante sta intorno ai
+30 px, contro i 44 raccomandati per il tocco. La usano 46 file `.vue`.
+
+**Perche' conta adesso.** Finche' il pannello girava solo sul touch fisso della
+cella, appoggiato e sempre alla stessa distanza, era un fastidio. Dal momento
+in cui si usa un tablet **portato in giro intorno alla cella**, in piedi e in
+movimento, sbagliare bersaglio diventa normale.
+
+**Nella stessa famiglia**, tutto censito il 15/9 e descritto in
+`PWA-TABLET.md`: disegni a dimensione fissa in `views/layoutView.vue`, due
+anteprime 3D a 360x360 in `conf/Vice/Vice.vue` e `conf/Gripper/Gripper.vue`,
+la tabella cassetti a 16 colonne, 6 viste responsive su 25, e 62 regole
+`:hover` che sul touch non hanno senso.
+
+**Perche' NON e' una sostituzione meccanica.** Alzare `.pure-button` a 44 px
+sposta il layout di ogni pagina che la usa, comprese quelle dense di comandi
+che oggi entrano in una schermata. Va fatto guardando le pagine, non con una
+regola globale.
+
+**Trovato il** 2026-09-15, aggiungendo il supporto PWA per il tablet.

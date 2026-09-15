@@ -4,7 +4,25 @@
 <head>
   <meta charset="UTF-8">
   <link rel="icon" href="/favicon.ico">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- viewport-fit=cover: sul tablet a schermo intero la pagina deve arrivare
+       ai bordi, anche dove il vetro ha un incavo. Lo zoom con le dita NON e'
+       disabilitato di proposito: su un tablet tenuto in mano serve. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+
+  <!-- PWA: serve a usare il pannello da un tablet Android come se fosse
+       un'app, senza barra del browser sopra ne' barra di navigazione sotto.
+       Il manifest dichiara display fullscreen e orientamento landscape, ma
+       Android li applica SOLO all'app installata: in una scheda normale del
+       browser non cambia nulla.
+       ATTENZIONE: Chrome installa una PWA solo da un contesto SICURO (https,
+       oppure localhost). Aprendo il pannello come http://<ip-pc-cella>:5173
+       l'installazione NON viene offerta. Le strade per averla sono annotate
+       in docs/PWA-TABLET.md. -->
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#0b0f14">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link rel="apple-touch-icon" href="/pwa-192.png">
+
   <script src="/socket.io.min.js"></script>
 
   <title>ADMG EasyBox</title>
