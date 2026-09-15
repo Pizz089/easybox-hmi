@@ -41,7 +41,7 @@ normale**. "Aggiungi a schermata Home" da un'origine non sicura crea una
 semplice scorciatoia che riapre il browser con le sue barre.
 
 Decisione presa: **niente app di terze parti sul tablet**, quindi la strada del
-browser kiosk e' esclusa. Resta il certificato, e la decisione e' rimandata.
+browser kiosk e' esclusa. Si e' fatto HTTPS, ed e' descritto qui sotto.
 
 ### Passo gia' fatto: origine singola
 
@@ -62,22 +62,63 @@ porte restano raggiungibili dalla rete: chiuderle a `127.0.0.1` e' un
 intervento possibile in seguito, da valutare verificando prima che nessun altro
 le usi.
 
-### Quando si decidera' il certificato
+### Passo fatto: HTTPS
 
-Schema gia' analizzato, da riprendere quando si decide:
+Il certificato lo prepara `HMI/tools/ensure-cert.ps1`, che usa i comandi che
+Windows ha gia': niente da installare sul PC impianto.
 
-- certificato generato con PowerShell (`New-SelfSignedCertificate` +
-  `Export-PfxCertificate`), nessun binario da installare sul PC impianto;
-- CA locale da dieci anni, certificato di servizio rigenerato dallo script di
-  avvio quando mancano meno di trenta giorni alla scadenza. Rigenerare il
-  certificato **non tocca i tablet**: loro si fidano della CA;
-- l'indirizzo IP finisce dentro il certificato, quindi il PC impianto deve
-  avere indirizzo fisso; conviene metterci anche un nome host per il futuro;
-- su ogni tablet, una volta: scaricare la CA, installarla dalle impostazioni di
-  sicurezza, accettare l'avviso che la rete potrebbe essere monitorata.
+| Cosa | Dove |
+|---|---|
+| CA locale, dieci anni | `HMI/certs/ca.pfx` (chiave) e `ca.crt` (da installare sui dispositivi) |
+| Certificato del pannello, due anni | `HMI/certs/panel.pfx`, letto da `vite.config.js` |
+| Rinnovo | automatico sotto i 30 giorni, firmato dalla STESSA CA |
+| Via di ritorno | `HMI_HTTP_ONLY=1`, vedi `APPUNTI-CELLA.md` |
+
+Nel certificato ci sono **gli indirizzi IP della macchina**, `localhost`, il
+nome del computer e i nomi `easybox` e `cella`: se un domani si usera' un nome
+al posto dell'IP, il certificato lo copre gia' e non si rifa' il giro sui
+dispositivi. Gli IP stanno nel campo SAN come indirizzi e non come nomi, che e'
+la forma che Chrome pretende.
+
+Il rinnovo rigenera **solo il certificato del pannello**, non la CA: i
+dispositivi si fidano della CA, quindi non vanno ritoccati. La CA scade nel
+2036.
 
 Scartato il certificato pubblico (Let's Encrypt): il rinnovo ogni novanta
 giorni vuole Internet in uscita, che qui non e' garantito.
+
+### Da aggiungere a start_hmi.bat
+
+Una riga prima dell'avvio di Vite, piu' una commentata che serve solo come via
+di ritorno:
+
+```
+rem set HMI_HTTP_ONLY=1
+call npm run cert
+```
+
+### Aggiungere un tablet: sei passi
+
+Una volta per dispositivo. Il primo passo usa l'indirizzo del **backend**, che
+resta in chiaro apposta: il tablet deve poter prendere la CA prima di fidarsi
+di qualcosa.
+
+1. Sul tablet, aprire `http://<ip-pc-cella>:8080/ca.crt`. Il file viene
+   scaricato.
+2. Impostazioni, Sicurezza, Altre impostazioni di sicurezza, Installa dalla
+   memoria, Certificato CA. Il percorso cambia un po' fra Android stock e
+   Samsung: la voce da cercare e' sempre *Installa certificato*.
+3. Android avvisa che la rete potrebbe essere monitorata: accettare. Resta una
+   notifica permanente, ed e' normale.
+4. Scegliere il file scaricato al passo 1 e confermare.
+5. Aprire `https://<ip-pc-cella>:5173`. Il lucchetto deve essere chiuso: se
+   compare un avviso, la CA non e' stata installata o l'indirizzo non e' quello
+   del certificato.
+6. Menu di Chrome, **Installa app**. L'icona compare fra le app e si apre a
+   schermo intero, orizzontale.
+
+Se al passo 6 la voce non compare, il motivo e' quasi sempre il passo 5: senza
+lucchetto chiuso non c'e' contesto sicuro e Chrome non offre l'installazione.
 
 ## Verifiche gia' fatte
 

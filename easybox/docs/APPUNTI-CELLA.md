@@ -91,6 +91,60 @@ morsa (confermato da Dario). Se si riapprende la posizione di deposito in
 macchina scentrata, la corsa calcolata non corrisponde piu' al reale e non c'e'
 nessun controllo che se ne accorga.
 
+## HTTPS del pannello: accensione e RITORNO IN HTTP
+
+Il pannello gira in HTTPS per poter installare la PWA sul tablet, che arriva
+per indirizzo IP. Il certificato lo prepara da solo
+`HMI\tools\ensure-cert.ps1`, chiamato da `start_hmi.bat` prima di Vite.
+
+### Se in cella qualcosa non va: tornare in HTTP
+
+**Una riga sola, in `start_hmi.bat`, PRIMA della riga che chiama il
+certificato.** Togliere il `rem`:
+
+```
+set HMI_HTTP_ONLY=1
+```
+
+Poi chiudere e riaprire la finestra del pannello. Fatto: Vite riparte in HTTP
+esattamente come prima, il proxy continua a funzionare, e lo stesso
+interruttore impedisce allo script di rigenerare il certificato (senza quello
+il certificato tornerebbe e si resterebbe in HTTPS).
+
+Cosa cambia per chi usa il pannello:
+
+| Dove | Con HTTPS | Tornati in HTTP |
+|---|---|---|
+| Touch di cella | `https://localhost:5173` | `http://localhost:5173` |
+| Tablet | `https://<ip>:5173`, PWA installata | `http://<ip>:5173`, niente PWA |
+
+**L'icona della PWA sul tablet smette di funzionare** quando si torna in HTTP:
+apriva l'indirizzo `https`, che non risponde piu'. Sul tablet si riapre a mano
+l'indirizzo `http`. Sul touch di cella basta aprire l'indirizzo `http`.
+
+Per rifare il giro all'indietro fino in fondo, se un giorno si vuole togliere
+tutto: cancellare la cartella `HMI\certs`, e togliere la CA dalle autorita'
+fidate con
+
+```
+Get-ChildItem Cert:\CurrentUser\Root | Where-Object { $_.Subject -like '*EasyBox Local CA*' } | Remove-Item
+```
+
+### Riaccendere
+
+Rimettere il `rem` davanti alla riga, riavviare. Il certificato si rigenera da
+solo se serve.
+
+### Cosa NON serve fare
+
+- Non serve rinnovare niente a mano: lo script rigenera il certificato del
+  pannello quando mancano meno di 30 giorni alla scadenza, firmandolo con la
+  stessa CA. **I tablet non vanno ritoccati**, perche' si fidano della CA e
+  quella dura dieci anni.
+- Non serve rifare il giro sui dispositivi se cambia l'indirizzo IP del PC
+  impianto: lo script se ne accorge e rigenera. I tablet pero' devono usare
+  il nuovo indirizzo.
+
 ## [ ] Errori emersi dopo il passaggio a 400/500 — lista, non correzioni
 
 Dal deploy del contratto HTTP nuovo compaiono a pannello errori che prima

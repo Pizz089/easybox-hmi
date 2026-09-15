@@ -61,10 +61,17 @@ console.log('\n4) stessa configurazione per vite preview');
 const keysPrev = Object.keys(cfg.preview.proxy || {});
 check(keysPrev.length === keys.length && keysPrev.every((k) => keys.includes(k)), 'preview ha lo stesso proxy: una prova sul compilato si comporta come il pannello vero');
 
-console.log('\n5) pronto per HTTPS senza altri cambiamenti');
+console.log('\n5) il proxy vale uguale in HTTP e in HTTPS');
+// Questa sezione diceva "oggi si resta in HTTP". Adesso l'HTTPS c'e' (vedi
+// test_https.mjs), quindi qui si verifica la cosa che resta vera e che conta:
+// l'origine singola non dipende dal certificato, e il giorno in cui si torna
+// in HTTP il proxy continua a funzionare identico.
 const cfgSrc = readFileSync('vite.config.js', 'utf8');
 check(/contenuto misto/i.test(cfgSrc), 'il motivo (contenuto misto) e\' scritto dove serve');
-check(!/https:/.test(JSON.stringify(cfg.server)), 'oggi si resta in HTTP: il certificato e\' una decisione separata');
+const confHttp = await cfgMod.default({ mode: 'development', command: 'serve', httpOnlyForTest: true });
+check(JSON.stringify(Object.keys(confHttp.server.proxy)) === JSON.stringify(keys),
+	'le regole del proxy non dipendono dal certificato');
+check(cfg.server.port === 5173 && cfg.server.strictPort === true, 'la porta resta la stessa: cambia il protocollo, non l\'indirizzo');
 
 console.log('\n' + (failed ? failed + ' CHECK FALLITI' : 'TUTTI I CHECK PASSATI'));
 process.exit(failed ? 1 : 0);

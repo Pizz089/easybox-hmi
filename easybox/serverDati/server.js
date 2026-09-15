@@ -5,6 +5,7 @@ const dotenv 		= require('dotenv');
 // Posizione precedente (in fondo al file) era un bug latente.
 dotenv.config();
 var path 			= require('path')
+const fs 			= require('node:fs')
 const os 			= require('node:os');
 const si 			= require('systeminformation');
 
@@ -51,6 +52,32 @@ app.use(function (req, res, next) {
     // Pass to next layer of middleware
     next();
 });
+// ===========================================================================
+// (pwa-https) /ca.crt — la CA locale, scaricabile IN CHIARO
+//
+// E' il passo uno della procedura per aggiungere un tablet: il dispositivo
+// deve poter prendere il certificato della CA PRIMA di fidarsi di qualcosa,
+// quindi questo endpoint deve restare raggiungibile in HTTP. Sta sul backend
+// e non sul pannello proprio per questo: il pannello, acceso l'HTTPS, non
+// risponde piu' in chiaro.
+//
+// Non sta sotto /api di proposito: /api e' il prefisso che il proxy di Vite
+// gira al backend, e questo indirizzo va invece aperto DIRETTO dal tablet.
+//
+// Non e' un segreto: e' la parte pubblica della CA, quella che si installa sui
+// dispositivi. La chiave privata sta in ca.pfx e non viene servita.
+// ===========================================================================
+app.get('/ca.crt', (req, res) => {
+	const caPath = path.join(__dirname, '..', 'HMI', 'certs', 'ca.crt');
+	if (!fs.existsSync(caPath)) {
+		res.status(404).send('CA non presente: lanciare "npm run cert" nella cartella HMI.');
+		return;
+	}
+	res.setHeader('Content-Type', 'application/x-x509-ca-cert');
+	res.setHeader('Content-Disposition', 'attachment; filename="easybox-ca.crt"');
+	res.send(fs.readFileSync(caPath));
+});
+
 app.use(express.json());
 app.use('/api/conf/gripper'	, gripperRouter);
 app.use('/api/unit'			, unitRouter);

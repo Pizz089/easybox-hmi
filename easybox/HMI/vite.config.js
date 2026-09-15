@@ -1,3 +1,4 @@
+import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath, URL } from 'node:url'
 
 import { defineConfig, loadEnv } from 'vite'
@@ -42,6 +43,32 @@ const backendProxy = {
   },
 }
 
+// (pwa-https) HTTPS quando il certificato c'e', HTTP quando non c'e'.
+//
+// PERCHE' SERVE: Chrome installa una PWA solo da contesto sicuro. Il touch di
+// cella apre localhost, che Chrome considera sicuro anche in HTTP, quindi li'
+// funzionava gia'; il TABLET arriva per indirizzo IP e senza HTTPS non ha
+// contesto sicuro. Il certificato lo prepara tools/ensure-cert.ps1, che gira
+// prima di Vite (npm run cert, chiamato da start_hmi.bat).
+//
+// VIA DI RITORNO, una riga sola: con HMI_HTTP_ONLY=1 si torna in HTTP, e lo
+// stesso interruttore ferma anche lo script del certificato, che altrimenti lo
+// rigenererebbe. Procedura scritta in docs/APPUNTI-CELLA.md, perche' se serve
+// sara' probabilmente a cella ferma e di fretta.
+//
+// NB: il pannello resta raggiungibile anche in HTTP finche' nessuno accende il
+// certificato; non c'e' nessun redirect automatico da http a https, di
+// proposito. Un redirect trasformerebbe un problema di certificato in una
+// pagina che non si apre e basta.
+const certDir = fileURLToPath(new URL('./certs', import.meta.url))
+const pfxFile = certDir + '/panel.pfx'
+const passFile = certDir + '/panel.pass'
+const httpOnly = process.env.HMI_HTTP_ONLY === '1'
+const httpsOptions =
+  !httpOnly && existsSync(pfxFile) && existsSync(passFile)
+    ? { pfx: readFileSync(pfxFile), passphrase: readFileSync(passFile, 'utf8').trim() }
+    : undefined
+
 export default defineConfig(({ mode }) => {
   const devtoolsOn =
     (process.env.VITE_DEVTOOLS || loadEnv(mode, process.cwd()).VITE_DEVTOOLS) === '1'
@@ -62,6 +89,9 @@ export default defineConfig(({ mode }) => {
       port: 5173,
       strictPort: true,
       proxy: backendProxy,
+      // undefined = HTTP, come prima. Con il certificato presente Vite passa a
+      // HTTPS sulla stessa porta, e l'HMR passa da solo a wss.
+      https: httpsOptions,
     },
     // stesso proxy per `vite preview`, cosi' una prova sul pacchetto
     // compilato si comporta come il pannello vero. NB: servire dist/ con un
@@ -72,6 +102,7 @@ export default defineConfig(({ mode }) => {
       port: 4173,
       strictPort: true,
       proxy: backendProxy,
+      https: httpsOptions,
     },
   }
 })

@@ -28,3 +28,7 @@ coverage
 *.sw?
 
 *.tsbuildinfo
+
+# (pwa-https) certificati locali: contengono la chiave privata della CA
+# e del pannello. Si rigenerano con `npm run cert`, non si versionano.
+certs/
