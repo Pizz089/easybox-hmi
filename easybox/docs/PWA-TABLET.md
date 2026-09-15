@@ -143,9 +143,11 @@ Sul manifest, interrogando l'indirizzo di rete e non `localhost`:
 - `manifest.webmanifest` servito con tipo MIME `application/manifest+json`,
   che e' quello giusto. **Nessuna modifica a `vite.config.js` e' necessaria**:
   Vite serve `public/` cosi' com'e' e riconosce l'estensione.
-- `start_url` e `scope` valgono `"."`, e da `http://<ip>:5173/manifest.webmanifest`
-  si risolvono in `http://<ip>:5173/`. Funzionano quindi con qualunque
-  indirizzo e porta, senza niente di scritto a mano nel manifest.
+- `start_url` e `scope` valgono `"/"`, quindi si risolvono nella radice del
+  pannello qualunque sia l'indirizzo: nel manifest non c'e' nessun host e
+  nessuna porta scritti a mano. Fino al 15/9 valevano `"."`, che si risolve
+  allo stesso identico modo; si e' passati a `"/"` provando a sbloccare
+  l'installazione sul tablet, e **non era quello il problema** (vedi in fondo).
 - Le tre icone si risolvono e si scaricano dallo stesso indirizzo.
 - `npm run build` copia manifest e icone in `dist/`, e il link nel
   `dist/index.html` resta corretto.
@@ -155,16 +157,75 @@ indirizzi IP, e infatti la prova dall'IP di rete risponde 200. Se un domani il
 tablet puntasse a un **nome host** (`http://cella-rizzo:5173`) invece che
 all'IP, allora servirebbe aggiungere quel nome in `server.allowedHosts`.
 
+## Se sul tablet l'installazione resta appesa
+
+Successo il 15/9: lucchetto verde, manifest e icone scaricabili dal tablet, ma
+Chrome resta sull'installazione senza completarla.
+
+### Cosa e' gia' stato escluso, misurandolo
+
+Provato su Chrome 152 servendo il pannello in HTTPS con questo stesso
+certificato, aperto **da indirizzo IP** e non da localhost:
+
+| Ipotesi | Esito |
+|---|---|
+| `start_url`/`scope` relativi (`"."`) | **non era il problema.** Sono stati messi a `"/"` lo stesso, per togliere il dubbio: si risolvono in modo identico |
+| Manifest non conforme | **escluso.** Chrome emette `beforeinstallprompt`, cioe' considera il sito installabile |
+| Manca il service worker | **escluso su Chrome recente.** L'evento arriva con **zero** service worker registrati |
+| Certificato o contesto non sicuro | escluso: `isSecureContext` vero, lucchetto chiuso |
+
+Quindi manifest, icone, certificato e origine vanno bene. Quello che resta e'
+la parte **specifica di Android**.
+
+### L'ipotesi che resta: la creazione dell'app
+
+Su Android, quando si sceglie "Installa app", Chrome non crea una scorciatoia:
+crea una vera applicazione (WebAPK). Quel pacchetto lo costruisce un servizio
+di Google, a cui il telefono deve poter arrivare, e poi Android lo installa.
+Due cose possono fermarlo, e tutte e due si presentano come un'installazione
+che non finisce:
+
+1. **Android non lascia a Chrome installare applicazioni.** Impostazioni, App,
+   Chrome, *Installa app sconosciute*: deve essere consentito. Senza, il
+   pacchetto arriva e l'installazione non parte.
+2. **Il telefono non raggiunge il servizio che costruisce il pacchetto**, o
+   quel servizio non riesce a scaricare le icone, che stanno su un indirizzo
+   privato e dietro un certificato di una CA locale. Sulla rete di cella,
+   senza Internet, e' lo scenario normale.
+
+### Come vederlo, invece di indovinare
+
+- Sul tablet, aprire **`chrome://webapks`**: elenca i pacchetti creati e il
+  loro stato. Se e' vuoto o mostra un errore, la creazione non e' riuscita.
+- Collegare il tablet a un PC col cavo, aprire **`chrome://inspect`** su Chrome
+  del PC, ispezionare la scheda del pannello, scheda *Application*, voce
+  *Manifest*: Chrome scrive li' se il sito e' installabile e, se non lo e',
+  **quale criterio manca**. E' la risposta definitiva e costa due minuti.
+- Guardare **come si chiama la voce di menu**: "Installa app" e' la strada del
+  pacchetto vero, "Aggiungi a schermata Home" e' la scorciatoia, che apre in
+  una scheda con le barre e non da' lo schermo intero.
+
+### Se la creazione del pacchetto non e' praticabile
+
+Resta una strada che non richiede ne' installazione ne' app di terze parti: un
+pulsante nel pannello che chiede lo **schermo intero** al browser
+(`requestFullscreen`) e blocca l'orientamento. Costa un tocco all'apertura e
+non da' l'icona fra le app, ma toglie le barre sopra e sotto e funziona su
+qualunque browser, anche in HTTP. Da fare solo se la prima strada si chiude.
+
 ## Niente service worker, di proposito
 
 Una PWA puo' avere un service worker per funzionare offline. Qui non c'e', e
 non e' una dimenticanza: il pannello vive di dati della cella in tempo reale,
 offline non servirebbe a niente, e un service worker che mette in cache gli
 asset in un impianto che gira in **modalita' sviluppo con HMR** produrrebbe
-schermate vecchie difficili da spiegare. Se Chrome sul tablet dovesse chiedere
-un service worker per offrire l'installazione (il requisito e' cambiato piu'
-volte fra le versioni), e' la prima cosa da verificare prima di aggiungerne
-uno: si scrive in poche righe, ma va disattivato in sviluppo.
+schermate vecchie difficili da spiegare.
+
+**Non serve nemmeno per installare**, e non e' piu' un'opinione: misurato il
+15/9 su Chrome 152, il pannello risulta installabile con zero service worker
+registrati. Il requisito e' cambiato piu' volte fra le versioni di Chrome:
+se un giorno un dispositivo dovesse chiederlo, lo dira' la voce *Manifest*
+degli strumenti per sviluppatori, e solo allora vale la pena scriverne uno.
 
 ## Ergonomia su tablet tenuto in mano
 

@@ -6,8 +6,8 @@
 // normale con tutte le barre. In particolare:
 //   - display DEVE essere "fullscreen": con "standalone" resta la barra di
 //     stato di Android, che e' esattamente cio' che si voleva togliere;
-//   - start_url e scope devono restare RELATIVI, perche' l'indirizzo del PC
-//     di cella non e' scritto da nessuna parte e puo' cambiare;
+//   - start_url e scope non devono contenere indirizzi: l'indirizzo del PC di
+//     cella non e' scritto da nessuna parte e puo' cambiare;
 //   - le icone dichiarate devono esistere davvero ed essere delle dimensioni
 //     dichiarate (Chrome pretende 192 e 512 per offrire l'installazione).
 //
@@ -32,8 +32,13 @@ const m = JSON.parse(readFileSync('public/manifest.webmanifest', 'utf8'));
 check(m.display === 'fullscreen', 'display fullscreen: con standalone resterebbe la barra di stato di Android');
 check(String(m.orientation).startsWith('landscape'), 'orientamento bloccato in landscape (' + m.orientation + ')');
 check(m.orientation === 'landscape', 'landscape e non landscape-primary: il tablet si puo\' rovesciare di 180 gradi');
-check(!/^https?:|^\//.test(m.start_url), 'start_url RELATIVO (' + m.start_url + '): funziona con qualunque indirizzo del PC di cella');
-check(!/^https?:|^\//.test(m.scope), 'scope RELATIVO (' + m.scope + ')');
+// La proprieta' che conta non e' "relativo" ma "senza indirizzo dentro": il
+// manifest non deve nominare host ne' porta, altrimenti smetterebbe di
+// funzionare il giorno in cui cambia l'indirizzo del PC di cella. Sia "." sia
+// "/" vanno bene; si e' passati a "/" il 15/9 provando a sbloccare
+// l'installazione sul tablet (non era quello il problema, vedi PWA-TABLET.md).
+check(!/^https?:\/\//.test(m.start_url), 'start_url senza indirizzo dentro (' + m.start_url + '): vale con qualunque indirizzo del PC di cella');
+check(!/^https?:\/\//.test(m.scope), 'scope senza indirizzo dentro (' + m.scope + ')');
 check(!!m.name && !!m.short_name, 'nome e nome breve presenti (Chrome li pretende per installare)');
 check(m.background_color === m.theme_color, 'schermata di avvio e barra dello stesso colore (' + m.theme_color + ')');
 
@@ -42,6 +47,7 @@ check(m.background_color === m.theme_color, 'schermata di avvio e barra dello st
 const base = 'http://192.168.1.50:5173/manifest.webmanifest';
 check(new URL(m.start_url, base).href === 'http://192.168.1.50:5173/', 'start_url risolto da un indirizzo di rete -> radice del pannello');
 check(new URL(m.scope, base).href === 'http://192.168.1.50:5173/', 'scope risolto -> radice del pannello');
+check(new URL(m.start_url, base).href.startsWith(new URL(m.scope, base).href), 'start_url dentro lo scope: se non lo fosse, Chrome rifiuterebbe di installare');
 
 console.log('\n2) icone');
 const wanted = { '192x192': false, '512x512': false };
