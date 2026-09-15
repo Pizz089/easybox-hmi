@@ -201,7 +201,31 @@ vm.goPhase(0);
 check(vm.pieceOffset === 0, 'fase di deposito: nessuna traslazione');
 check(/PIECE\.Y lungo X/.test(src) || /pieceLen/.test(src), 'il pezzo e\' disegnato con PIECE.Y lungo la X del robot');
 check(/vice-body/.test(src) && /opacity: 0\.55/.test(src), 'corpo morsa disegnato TENUE: la sua orientazione non e\' dichiarata');
-check(/min-height: 44px/.test(src), 'bersagli touch da 44 px');
+check(/min-height: (44|52)px/.test(src), 'bersagli touch almeno 44 px');
+
+console.log('\n5c) stile allineato al resto del pannello');
+// La pagina deve sembrare parte dello stesso applicativo: guscio, card,
+// etichette e bottoni sono quelli del design system, non inventati qui.
+check(/class="view-shell view-shell--fill conf-card/.test(src), 'guscio e card standard delle view di configurazione');
+check(/<h3 class="view-title">/.test(src), 'titolo con la classe di pagina, non un h1 con stile proprio');
+check(/class="section-label"/.test(src) && !/sim-h2/.test(src), 'etichette di sezione dal design system');
+check(/class="pure-button pure-button-primary"/.test(src), 'azione principale: variante primary canonica');
+check(/class="btn-ghost/.test(src), 'azioni secondarie: variante ghost canonica');
+check(!/class="pure-button button_pressed/.test(src), 'niente varianti legacy fuori dalle sei canoniche');
+// nessun colore inventato: tutto dai token
+const styleBlock = src.slice(src.indexOf('<style'));
+check(!/#[0-9a-fA-F]{3,8}\b/.test(styleBlock), 'nessun colore esadecimale nello stile: solo token');
+check(!/font-size:\s*\d/.test(styleBlock), 'nessuna dimensione di carattere fuori scala: solo token');
+check((styleBlock.match(/var\(--space-/g) || []).length > 10, 'spaziature dai token 8-base');
+// il disegno deve poter rimpicciolire invece di spingere fuori le colonne
+// le soglie guardano la LARGHEZZA DELLA PAGINA, non quella della finestra:
+// la barra laterale porta via ~220 px, e con le soglie sulla finestra il
+// disegno si schiacciava a pochi pixel prima che scattassero
+check(/container-type: inline-size/.test(styleBlock), 'la pagina si adatta alla propria larghezza, non a quella della finestra');
+check((styleBlock.match(/@container \(min-width/g) || []).length >= 2, "due soglie: due colonne, poi tre quando c'e' posto");
+check(/\.sim-layout \{[\s\S]{0,400}?grid-template-columns: minmax\(0, 1fr\)/.test(styleBlock), 'si parte da UNA colonna: senza supporto alle query resta alta ma non si rompe');
+check(!/minmax\((?!0)/.test(styleBlock), "nessuna colonna con minimo rigido: il disegno puo' sempre rimpicciolire");
+check(/\.sim-layout \{[\s\S]{0,500}?overflow-y: auto/.test(styleBlock), 'lo scroll sta dentro la pagina, come nelle view con tabella');
 
 console.log('\n5b) disegno ribaltato, numeri invariati');
 vm = await page({ level: 0, pieceID: 1029 });

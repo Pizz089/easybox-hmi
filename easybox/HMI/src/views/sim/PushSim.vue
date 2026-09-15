@@ -49,17 +49,28 @@
   quindi e' piena; VICE.X e VICE.Y sono ingombri la cui orientazione sul
   pallet nessuno ha dichiarato, quindi niente deve far leggere precisione
   dove non ce n'e'.
+
+  STILE: guscio .view-shell + .conf-card, titolo .view-title, etichette di
+  sezione .section-label, bottoni dalle sei varianti canoniche
+  (assets/css/buttons.css), colori e spaziature SOLO da token. Niente valori
+  inventati qui: la pagina deve sembrare parte dello stesso applicativo.
+  DEROGA ANNOTATA (doc UI-DESIGN-SYSTEM §4.2 chiede di annotarle): i tre
+  riquadri interni sono di SECONDO livello dentro una .conf-card, quindi
+  hanno bordo ma NON l'overlay --bg-card. Tre overlay dentro un overlay
+  facevano sembrare la pagina una pila di scatole.
 -->
 <template>
   <div class="view-shell view-shell--fill conf-card push-sim">
-    <h1 class="sim-title">{{ t("pushSim.title") }}</h1>
+    <div class="view-header">
+      <h3 class="view-title">{{ t("pushSim.title") }}</h3>
+    </div>
 
     <p class="sim-intro">{{ t("pushSim.intro") }}</p>
 
     <div class="sim-layout">
       <!-- ------------------------------------------------ scelta e parametri -->
-      <section class="sim-panel">
-        <h2 class="sim-h2">{{ t("pushSim.choice") }}</h2>
+      <section class="sim-panel sim-box">
+        <h3 class="section-label">{{ t("pushSim.choice") }}</h3>
 
         <div class="sim-field">
           <label for="sim-piece">{{ t("pushSim.piece") }}</label>
@@ -91,37 +102,41 @@
           </select>
         </div>
 
-        <h2 class="sim-h2">{{ t("pushSim.measures") }}</h2>
+        <h3 class="section-label">{{ t("pushSim.measures") }}</h3>
         <p class="sim-hint">{{ canEdit ? t("pushSim.measuresEdit") : t("pushSim.measuresRead") }}</p>
 
         <!-- In sola lettura i valori sono TESTO, non campi disabilitati: su un
              touch un campo grigio invita comunque a toccarlo. -->
         <div v-for="f in fields" :key="f.key" class="sim-field">
           <label :for="'sim-' + f.key">{{ t(f.label) }}</label>
-          <input
-            v-if="canEdit"
-            :id="'sim-' + f.key"
-            class="sim-input"
-            type="number"
-            step="0.1"
-            min="0"
-            inputmode="decimal"
-            autocomplete="off"
-            v-model="sim[f.key]"
-          />
-          <span v-else class="sim-readonly">{{ mmText(sim[f.key]) }}</span>
-          <span class="sim-unit">mm</span>
-          <!-- il pulsante compare SOLO sul campo che e' stato cambiato: e'
-               anche il modo piu' semplice per vedere cosa si sta per salvare -->
-          <button
-            v-if="canEdit && fieldChanged(f.key)"
-            type="button"
-            class="pure-button button_pressed sim-save"
-            :disabled="saving"
-            @click="askSave(f.key)"
-          >
-            {{ t("pushSim.save") }}
-          </button>
+          <!-- campo, unita' e pulsante sono UN blocco: nella colonna stretta
+               vanno a capo insieme, non si separa il "mm" dal numero -->
+          <span class="sim-control">
+            <input
+              v-if="canEdit"
+              :id="'sim-' + f.key"
+              class="sim-input"
+              type="number"
+              step="0.1"
+              min="0"
+              inputmode="decimal"
+              autocomplete="off"
+              v-model="sim[f.key]"
+            />
+            <span v-else class="sim-readonly">{{ mmText(sim[f.key]) }}</span>
+            <span class="sim-unit">mm</span>
+            <!-- il pulsante compare SOLO sul campo che e' stato cambiato: e'
+                 anche il modo piu' semplice per vedere cosa si sta per salvare -->
+            <button
+              v-if="canEdit && fieldChanged(f.key)"
+              type="button"
+              class="btn-ghost sim-save"
+              :disabled="saving"
+              @click="askSave(f.key)"
+            >
+              {{ t("pushSim.save") }}
+            </button>
+          </span>
         </div>
 
         <p v-if="stopDeclaredReal === null && exceeds" class="sim-warn">
@@ -130,20 +145,20 @@
 
         <div v-if="diverged" class="sim-diverged">
           <strong>{{ t("pushSim.diverged") }}</strong>
-          <button type="button" class="pure-button button_pressed" @click="restoreReal">
+          <button type="button" class="btn-ghost" @click="restoreReal">
             {{ t("pushSim.restore") }}
           </button>
         </div>
 
         <p class="sim-hint">{{ t("pushSim.saveHint") }}</p>
         <div class="sim-links">
-          <router-link v-if="sel.viceID" class="pure-button" :to="{ path: '/conf/vice', query: { viceID: sel.viceID } }">
+          <router-link v-if="sel.viceID" class="btn-ghost" :to="{ path: '/conf/vice', query: { viceID: sel.viceID } }">
             {{ t("pushSim.goVice") }}
           </router-link>
-          <router-link v-if="sel.gripperID" class="pure-button" :to="{ path: '/conf/Gripper/gripper', query: { gripperID: sel.gripperID } }">
+          <router-link v-if="sel.gripperID" class="btn-ghost" :to="{ path: '/conf/Gripper/gripper', query: { gripperID: sel.gripperID } }">
             {{ t("pushSim.goGripper") }}
           </router-link>
-          <router-link v-if="sel.pieceID" class="pure-button" :to="{ path: '/conf/piece/piece', query: { pieceID: sel.pieceID } }">
+          <router-link v-if="sel.pieceID" class="btn-ghost" :to="{ path: '/conf/piece/piece', query: { pieceID: sel.pieceID } }">
             {{ t("pushSim.goPiece") }}
           </router-link>
         </div>
@@ -152,16 +167,16 @@
       <!-- CONFERMA: nomina l'oggetto FISICO che si sta ridefinendo e dice da
            quale valore a quale. Non e' un "sei sicuro?": chi legge deve poter
            riconoscere l'oggetto che ha davanti. -->
-      <div v-if="confirm" class="sim-confirm-back" @click.self="confirm = null">
-        <div class="sim-confirm" role="dialog" aria-modal="true">
-          <h2 class="sim-h2">{{ t("pushSim.confirmTitle") }}</h2>
+      <div v-if="confirm" class="sim-dialog-overlay" @click.self="confirm = null">
+        <div class="sim-dialog" role="dialog" aria-modal="true">
+          <h3 class="section-label">{{ t("pushSim.confirmTitle") }}</h3>
           <p class="confirm-what">{{ confirm.text }}</p>
           <p v-if="confirm.warn" class="confirm-warn">{{ confirm.warn }}</p>
           <div class="confirm-buttons">
-            <button type="button" class="pure-button" @click="confirm = null">
+            <button type="button" class="btn-ghost" @click="confirm = null">
               {{ t("pushSim.cancel") }}
             </button>
-            <button type="button" class="pure-button button_pressed" :disabled="saving" @click="doSave">
+            <button type="button" class="pure-button pure-button-primary" :disabled="saving" @click="doSave">
               {{ t("pushSim.confirmSave") }}
             </button>
           </div>
@@ -169,7 +184,7 @@
       </div>
 
       <!-- ------------------------------------------------------- il disegno -->
-      <section class="sim-stage">
+      <section class="sim-stage sim-box">
         <svg
           class="sim-svg"
           :viewBox="viewBox"
@@ -180,13 +195,13 @@
           <defs>
             <!-- la parte di pezzo NON sostenuta dalla ganascia -->
             <pattern id="overhangHatch" width="9000" height="9000" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-              <rect width="9000" height="9000" fill="#7a5a10" />
-              <rect width="4500" height="9000" fill="#b07f15" />
+              <rect class="hatch-over-a" width="9000" height="9000" />
+              <rect class="hatch-over-b" width="4500" height="9000" />
             </pattern>
             <!-- ingombro spazzato dal pezzo durante la spinta -->
             <pattern id="sweptHatch" width="7000" height="7000" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)">
-              <rect width="7000" height="7000" fill="#1d2a3a" />
-              <rect width="3500" height="7000" fill="#26384d" />
+              <rect class="hatch-swept-a" width="7000" height="7000" />
+              <rect class="hatch-swept-b" width="3500" height="7000" />
             </pattern>
             <clipPath id="jawClip">
               <rect :x="-g.claw / 2" :y="-g.viceY" :width="g.claw" :height="g.viceY * 2" />
@@ -217,34 +232,32 @@
 
           <!-- ingombro spazzato dal pezzo -->
           <rect
+            class="swept"
             v-if="ok && g.travel > 0"
             :x="-g.pieceLen / 2"
             :y="-g.pieceWid / 2"
             :width="g.pieceLen + g.travel"
             :height="g.pieceWid"
-            fill="url(#sweptHatch)"
           />
 
           <!-- pezzo: base tratteggiata (parte che sporge) + parte sostenuta
                dalla ganascia, ritagliata sulla campata -->
           <g class="moving" :transform="'translate(' + pieceOffset + ' 0)'">
             <rect
+              class="piece-over"
               :x="-g.pieceLen / 2"
               :y="-g.pieceWid / 2"
               :width="g.pieceLen"
               :height="g.pieceWid"
-              fill="url(#overhangHatch)"
-              stroke="#e8a317"
               :stroke-width="g.line"
             />
             <rect
+              class="piece-in"
               clip-path="url(#jawClip)"
               :x="-g.pieceLen / 2"
               :y="-g.pieceWid / 2"
               :width="g.pieceLen"
               :height="g.pieceWid"
-              fill="#3f7fbf"
-              stroke="#8fc4ff"
               :stroke-width="g.line"
             />
           </g>
@@ -336,22 +349,22 @@
             v-for="(lbl, i) in phaseLabels"
             :key="i"
             type="button"
-            class="pure-button phase-btn"
+            class="btn-ghost phase-btn"
             :class="{ 'phase-active': phase === i }"
             :disabled="!ok"
             @click="goPhase(i)"
           >
             {{ t(lbl) }}
           </button>
-          <button type="button" class="pure-button button_pressed play-btn" :disabled="!ok" @click="play">
+          <button type="button" class="pure-button pure-button-primary play-btn" :disabled="!ok" @click="play">
             {{ t("pushSim.play") }}
           </button>
         </div>
       </section>
 
       <!-- ---------------------------------------------------------- le quote -->
-      <aside class="sim-quotes">
-        <h2 class="sim-h2">{{ t("pushSim.quotes") }}</h2>
+      <aside class="sim-quotes sim-box">
+        <h3 class="section-label">{{ t("pushSim.quotes") }}</h3>
 
         <div class="quote-row" :class="{ 'quote-na': !ok }">
           <span>{{ t("pushSim.qPlace") }}</span><strong>{{ mmText(quotes.xPlaceMm) }}</strong>
@@ -366,9 +379,11 @@
           <span>{{ t("pushSim.qTravel") }}</span><strong>{{ mmText(quotes.travelMm) }}</strong>
         </div>
 
-        <h2 class="sim-h2">{{ t("pushSim.outcome") }}</h2>
-        <p class="sim-status" :class="ok ? 'st-ok' : 'st-ko'">
-          {{ t("pushSim.status." + check.status) }}
+        <h3 class="section-label">{{ t("pushSim.outcome") }}</h3>
+        <p class="sim-status">
+          <span class="sim-badge" :class="ok ? 'sim-badge--ok' : 'sim-badge--ko'">
+            {{ t("pushSim.status." + check.status) }}
+          </span>
         </p>
         <p class="sim-reason">{{ t("pushSim.reason." + check.status, reasonArgs) }}</p>
         <p v-if="ok" class="sim-rest">
@@ -382,7 +397,7 @@
              disegno, quindi si dichiara superata invece di restare li' a
              confondere. -->
         <div v-if="viewRow" class="sim-view">
-          <h2 class="sim-h2">{{ t("pushSim.fromView") }}</h2>
+          <h3 class="section-label">{{ t("pushSim.fromView") }}</h3>
           <p v-if="diverged" class="sim-hint">{{ t("pushSim.viewStale") }}</p>
           <template v-else>
             <div class="quote-row"><span>{{ t("pushSim.qOrder") }}</span><strong>{{ viewRow.ORDER_ID }}</strong></div>
@@ -887,238 +902,408 @@ export default {
 </script>
 
 <style scoped>
+/* Stile allineato al design system del pannello (docs/UI-DESIGN-SYSTEM.md):
+   guscio .view-shell + .conf-card, titolo .view-title, etichette
+   .section-label, bottoni dalle sei varianti canoniche. Qui sotto solo cio'
+   che e' specifico di questa pagina, e sempre con i token: nessun colore,
+   nessuna spaziatura e nessuna dimensione di carattere inventata. */
+
 .push-sim {
+  min-height: 0;
+  /* La pagina si adatta alla PROPRIA larghezza, non a quella della finestra.
+     Conta perche' la barra laterale porta via circa 220 px: con le soglie
+     sulla finestra, su un tablet il disegno si schiacciava a pochi pixel
+     mentre le due colonne laterali tenevano il loro minimo, e la soglia non
+     scattava mai. Verificato misurando la pagina: a 900 px di contenitore la
+     colonna del disegno restava larga 114 px. */
+  container-type: inline-size;
+}
+
+.sim-intro {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+}
+
+/* UNA colonna di partenza, due e poi tre quando c'e' posto davvero. L'ordine
+   e' questo e non il contrario: se le query sul contenitore non fossero
+   supportate resta la colonna singola, che e' solo piu' alta ma non rompe
+   niente. minmax(0, ...) ovunque e' cio' che permette al disegno di
+   RIMPICCIOLIRSI invece di spingere fuori le altre due colonne. */
+.sim-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: start;
+  /* dentro .view-shell--fill lo scroll sta QUI, come la .table-scroll delle
+     view di configurazione: la pagina non scrolla mai da sola */
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* tablet in mano, o cella con la barra laterale aperta */
+@container (min-width: 820px) {
+  .sim-layout {
+    grid-template-columns: minmax(0, 20rem) minmax(0, 1fr);
+  }
+  .sim-quotes {
+    grid-column: 1 / -1;
+  }
+}
+
+/* touch di cella a schermo intero */
+@container (min-width: 1280px) {
+  .sim-layout {
+    grid-template-columns: minmax(0, 22rem) minmax(0, 1fr) minmax(0, 20rem);
+  }
+  .sim-quotes {
+    grid-column: auto;
+  }
+}
+
+/* DEROGA ANNOTATA (doc §4.2): riquadri di SECONDO livello dentro una
+   .conf-card. Tengono il bordo del pattern outlined ma non l'overlay
+   --bg-card, altrimenti tre overlay dentro un overlay fanno sembrare la
+   pagina una pila di scatole. */
+.sim-box {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-3);
+  min-width: 0;
 }
-.sim-title {
-  margin: 0;
-  font-size: 1.4rem;
-}
-.sim-intro,
+
 .sim-hint {
   margin: 0;
-  opacity: 0.8;
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
 }
-.sim-h2 {
-  margin: 10px 0 4px;
-  font-size: 1rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  opacity: 0.85;
-}
-.sim-layout {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  align-items: flex-start;
-}
-.sim-panel {
-  flex: 1 1 260px;
-  min-width: 250px;
-}
-.sim-stage {
-  flex: 2 1 420px;
-  min-width: 280px;
-}
-.sim-quotes {
-  flex: 1 1 220px;
-  min-width: 220px;
-}
+
+/* Riga di campo: etichetta, valore, unita', e il salva che compare solo sul
+   campo cambiato. Va a capo da sola quando la colonna e' stretta. */
 .sim-field {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: var(--space-2);
   flex-wrap: wrap;
 }
+
 .sim-field label {
-  flex: 1 1 130px;
-  min-width: 120px;
+  flex: 1 1 10rem;
+  min-width: 8rem;
+  font-size: var(--font-size-sm);
 }
+
+/* valore, unita' e pulsante: un blocco solo, allineato a destra */
+.sim-control {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
 .sim-input,
 .sim-field select {
-  flex: 0 0 auto;
-  width: 120px;
-  min-height: 44px;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--font-size-base);
+  font-family: inherit;
+  min-height: 52px;
 }
+
+.sim-input {
+  width: 7rem;
+}
+
 .sim-field select {
-  width: 100%;
-  max-width: 260px;
+  flex: 1 1 12rem;
+  min-width: 0;
 }
+
 .sim-readonly {
-  min-width: 120px;
-  font-weight: 600;
+  min-width: 7rem;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
 }
+
 .sim-unit {
-  opacity: 0.7;
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
 }
-.sim-warn {
-  margin: 6px 0;
-  padding: 8px;
-  border-left: 3px solid var(--color-warning, #e8a317);
+
+.sim-save {
+  min-height: 44px;
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--font-size-sm);
 }
+
+/* Avvisi: stessa coppia colore/fondo dei badge di stato delle altre view. */
+.sim-warn,
+.sim-diverged {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+  font-size: var(--font-size-sm);
+}
+
 .sim-diverged {
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: space-between;
+  gap: var(--space-3);
   flex-wrap: wrap;
-  margin: 8px 0;
-  padding: 8px;
-  border-left: 3px solid var(--color-warning, #e8a317);
 }
-.sim-diverged .pure-button {
-  min-height: 44px;
-}
+
 .sim-links {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 8px;
+  gap: var(--space-2);
 }
-.sim-links .pure-button {
-  min-height: 44px;
-}
+
+/* ------------------------------------------------------------- il disegno */
 .sim-svg {
   width: 100%;
   height: auto;
   max-height: 60vh;
-  background: #16202c;
-  border-radius: 8px;
+  background: var(--bg-base);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
 }
+
 .vice-body {
-  fill: #223043;
-  stroke: #33455c;
-  stroke-width: 0;
+  fill: var(--bg-surface-2);
   opacity: 0.55;
 }
+
 .jaw {
-  fill: #5b6b80;
+  fill: var(--border-default);
 }
+
 .tool {
-  fill: #cfd8e3;
+  fill: var(--text-secondary);
 }
+
+.piece-in {
+  fill: var(--accent);
+  stroke: var(--text-primary);
+}
+
+.piece-over {
+  fill: url(#overhangHatch);
+  stroke: var(--color-warning);
+}
+
+.swept {
+  fill: url(#sweptHatch);
+}
+
+.hatch-over-a {
+  fill: var(--color-warning-bg);
+}
+
+.hatch-over-b {
+  fill: var(--color-warning-button);
+}
+
+.hatch-swept-a {
+  fill: var(--bg-surface);
+}
+
+.hatch-swept-b {
+  fill: var(--bg-surface-2);
+}
+
+/* battuta sulla ganascia = esito normale; battuta dichiarata = il caso che
+   questa pagina esiste per spiegare, quindi colore diverso e tratteggio */
 .stop-claw {
-  stroke: #57d08a;
+  stroke: var(--color-success);
 }
+
 .stop-declared {
-  stroke: #e8a317;
+  stroke: var(--color-warning);
   stroke-dasharray: 9000 6000;
 }
+
 .dim {
-  stroke: #9fb3c8;
+  stroke: var(--text-muted);
 }
+
 .dim-lbl {
-  fill: #cfd8e3;
+  fill: var(--text-secondary);
 }
+
 .lbl-missing {
-  fill: #ff6b6b;
-  font-weight: 700;
+  fill: var(--color-danger);
+  font-weight: var(--font-weight-bold);
 }
+
 .axis {
-  stroke: #6b7c92;
+  stroke: var(--text-disabled);
 }
+
 .axis-lbl {
-  fill: #9fb3c8;
+  fill: var(--text-muted);
 }
-/* l'animazione delle tre fasi: la fa il CSS, il componente cambia solo
-   l'offset. Corsa diversa nei tre casi, quindi le tre situazioni si
+
+/* L'animazione delle tre fasi: la fa il CSS, il componente cambia solo
+   l'offset. La corsa e' diversa nei tre casi, quindi le tre situazioni si
    distinguono anche dal movimento. */
 .moving {
-  transition: transform 0.6s ease-in-out, opacity 0.3s linear;
+  transition: transform var(--transition-base), opacity var(--transition-fast);
 }
+
+/* Fasi come selettore segmentato (doc §3.4): ghost, la fase corrente piena
+   su --accent. */
 .sim-phases {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 10px;
+  gap: var(--space-2);
 }
+
 .phase-btn,
 .play-btn {
-  min-height: 44px;
-  min-width: 96px;
+  min-width: 6rem;
 }
+
 .phase-active {
-  outline: 2px solid var(--accent, #4a9eff);
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg-base);
+  font-weight: var(--font-weight-semibold);
 }
+
+/* -------------------------------------------------------------- le quote */
 .quote-row {
   display: flex;
   justify-content: space-between;
-  gap: 10px;
-  padding: 6px 0;
-  border-bottom: 1px solid var(--border, #2a3444);
+  align-items: baseline;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: var(--font-size-sm);
 }
+
+.quote-row span {
+  color: var(--text-muted);
+}
+
+.quote-row strong {
+  color: var(--text-primary);
+  font-size: var(--font-size-base);
+  font-variant-numeric: tabular-nums;
+}
+
 .quote-travel strong {
-  font-size: 1.1rem;
+  font-size: var(--font-size-md);
 }
+
 .quote-na strong {
-  opacity: 0.5;
+  color: var(--text-disabled);
 }
+
 .sim-status {
-  margin: 4px 0;
-  font-weight: 700;
+  margin: 0;
 }
-.st-ok {
-  color: #57d08a;
+
+/* Stesse regole dei badge di stato di Attrezzaggi e selectRig. Sono
+   duplicate in piu' view perche' la classe .badge non ha una sede comune:
+   discrepanza segnalata, non propagata oltre il necessario. */
+.sim-badge {
+  display: inline-block;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-lg);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
 }
-.st-ko {
-  color: #ff6b6b;
+
+.sim-badge--ok {
+  background: var(--color-success-bg);
+  color: var(--color-success);
 }
+
+.sim-badge--ko {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
 .sim-reason,
 .sim-rest {
-  margin: 4px 0;
+  margin: 0;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  color: var(--text-secondary);
 }
-@media (max-width: 760px) {
-  .sim-layout {
-    flex-direction: column;
-  }
-  .sim-panel,
-  .sim-stage,
-  .sim-quotes {
-    width: 100%;
-  }
+
+.sim-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
 }
-.sim-save {
-  min-height: 44px;
-}
-/* la conferma copre la pagina: chi salva deve leggere, non sfiorare */
-.sim-confirm-back {
+
+/* ------------------------------------------------------------- conferma */
+/* Stesse regole del dialogo di Attrezzaggi (overlay --bg-backdrop, superficie
+   --bg-surface, elevazione 3): anche questo e' duplicato perche' il dialogo
+   non ha una sede comune. */
+.sim-dialog-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--bg-backdrop);
+  z-index: 1000;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 16px;
-  z-index: 50;
+  padding: var(--space-4);
 }
-.sim-confirm {
-  background: var(--bg, #0b0f14);
-  border: 1px solid var(--border, #2a3444);
-  border-radius: 10px;
-  padding: 16px;
-  max-width: 520px;
-  width: 100%;
+
+.sim-dialog {
+  background: var(--bg-surface);
+  border: var(--border-card);
+  border-radius: var(--radius-md);
+  box-shadow: var(--elevation-3);
+  padding: var(--space-4);
+  width: min(520px, 92vw);
+  max-height: 80vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
 }
+
 .confirm-what {
-  font-size: 1.05rem;
-  margin: 8px 0;
+  margin: 0;
+  font-size: var(--font-size-md);
+  line-height: var(--line-height-normal);
+  color: var(--text-primary);
 }
+
 .confirm-warn {
-  margin: 8px 0;
-  padding: 8px;
-  border-left: 3px solid var(--color-warning, #e8a317);
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
 }
+
 .confirm-buttons {
   display: flex;
-  gap: 10px;
+  gap: var(--space-3);
   justify-content: flex-end;
   flex-wrap: wrap;
-  margin-top: 12px;
-}
-.confirm-buttons .pure-button {
-  min-height: 44px;
-  min-width: 120px;
 }
 </style>

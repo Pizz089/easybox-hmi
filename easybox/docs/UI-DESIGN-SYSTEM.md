@@ -254,6 +254,15 @@ Queste eccezioni vanno annotate nel documento quando emergono, non improvvisate.
 
 **Deroga documentata — card "glassmorphism" Gripper/Vice.** Le view `Gripper.vue` e `Vice.vue` usano per form e preview 3D un tema alternativo coerente e intenzionale (bg `rgba(30,41,59,.6)` + `backdrop-filter: blur`, radius 16px, palette slate `#0f172a/#1e293b/#3b82f6`, ~125 `!important` per file) che NON segue il pattern outlined §4.1 né i token. Decisione sessione conf (audit voce GV1): **deroga temporanea** — la ritematizzazione completa è una sessione dedicata futura. Nel frattempo sono stati comunque allineati: font-size → token scala, bottoni shelfPos → touch 44 + active su `--accent` (vedi §3.4 "segmented toggle").
 
+**Eccezione annotata — riquadri di secondo livello (`PushSim.vue`).** La pagina
+di simulazione della spinta ha tre riquadri (parametri, disegno, quote) dentro
+una `.conf-card`. Applicare anche a loro l'overlay `--bg-card` dava tre overlay
+dentro un overlay, e la pagina sembrava una pila di scatole. Scelta: i riquadri
+di **secondo livello** tengono bordo (`--border-subtle`) e raggio del pattern
+outlined ma **non** l'overlay, che e' la seconda delle strategie previste qui
+sopra. Prima applicazione di quella strategia, annotata come chiede questo
+paragrafo.
+
 **Deroga documentata — tile unità dashboard (`units.vue` `.card`).** Le 4 tile cliccabili della dashboard restano su pattern **elevation** (`--bg-surface` + `--elevation-2`, senza bordo, hover `--elevation-3`): sono semanticamente affini alle status card §5 (portano lo stato unità sul wrapper immagine e devono "staccare" dal fondo, caso che §7 riserva alle ombre). Decisione sessione Dashboard, opzione (i) dell'audit.
 
 ### 4.3 Spacing tra card — nota tecnica ereditata
