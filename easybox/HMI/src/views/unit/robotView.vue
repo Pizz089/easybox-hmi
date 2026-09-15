@@ -173,14 +173,14 @@
         <small class="cmd-hint">{{ $t('robot.section.restoreHint') }}</small>
 
         <button class="pure-button-micromission pure-u-1 specialCMD button_pressed restore-btn"
-          @click="askCritical('reset')">
+          @click="criticalEnabled('reset') ? askCritical('reset') : ''">
           RESET
         </button>
 
-        <button class="pure-button-micromission pure-u-1 specialCMD button_pressed restore-btn" :disabled="dataRobot.STATUS!=dataStored.status_hold"
-          :class="[dataRobot.STATUS!=dataStored.status_hold ? 'pure-button-disable' : 'pure-button-micromission']"
-          :style="[dataRobot.STATUS!=dataStored.status_hold ? 'background-color:lightgray;color:gray': '']"
-          @click="askCritical('restart')">
+        <button class="pure-button-micromission pure-u-1 specialCMD button_pressed restore-btn" :disabled="!criticalEnabled('restart')"
+          :class="[!criticalEnabled('restart') ? 'pure-button-disable' : 'pure-button-micromission']"
+          :style="[!criticalEnabled('restart') ? 'background-color:lightgray;color:gray': '']"
+          @click="criticalEnabled('restart') ? askCritical('restart') : ''">
           RESTART MAIN PROGRAM
         </button>
 
@@ -199,7 +199,7 @@
                 </button>
               </div>
               <div class="pure-u-1-2">
-                <button style="width:100%" class="btn-ghost" @click="criticalDialog.type=''">
+                <button style="width:100%" class="btn-ghost" @click="closeCriticalDialog()">
                   {{ $t('robot.dialog.cancel') }}
                 </button>
               </div>
@@ -1178,18 +1178,45 @@ export default {
     // I due comandi di ripristino passano da qui: nessuno dei due parte con
     // un tocco solo, e la conferma spiega la differenza con CONTINUA
     // ESECUZIONE, che e' l'errore che la vecchia disposizione favoriva.
+    //
+    // STESSO SCHEMA DEL DIALOG DELLE CHELE (clawEnabled / openClawDialog /
+    // confirmClawOpen), che e' collaudato. La prima stesura ne aveva inventato
+    // uno diverso, con la guardia scritta a mano dentro l'apertura: li' era
+    // finito un `this.dataStored`, che in questo componente non esiste
+    // (dataStored e' il modulo importato, vedi le altre 4 guardie del file).
+    // Il TypeError usciva dal metodo prima di aprire il dialog, e il comando
+    // 18 non raggiungeva piu' la publish. Con la guardia in un metodo SOLO,
+    // usata dal template e dalla conferma, quell'errore non si puo' ripetere
+    // in uno dei due posti.
+    criticalEnabled(type) {
+      // RESTART ha senso solo da fermo in HOLD; il RESET e' l'uscita dagli
+      // allarmi e resta disponibile in ogni stato, com'era prima.
+      if (type === 'restart') return this.dataRobot.STATUS == dataStored.status_hold;
+      return true;
+    },
+
     askCritical(type) {
-      // dataStored e' il modulo importato, NON una proprieta' del componente:
-      // scritto come this.dataStored lanciava un TypeError e il dialogo non si
-      // apriva, cosi' RESTART non arrivava piu' al robot. RESET continuava a
-      // funzionare solo perche' la condizione si fermava prima.
-      if (type === 'restart' && this.dataRobot.STATUS != dataStored.status_hold) return;
+      if (!this.criticalEnabled(type)) return;
+      // un solo overlay per volta, come fa openClawDialog
+      this.closeDialog();
+      this.unloadOpen = false;
+      this.closeTestDialog();
+      this.closeDeclDialog();
+      this.closePickPlaceDialog();
+      this.closeClawDialog();
       this.criticalDialog.type = type;
+    },
+
+    closeCriticalDialog() {
+      this.criticalDialog.type = '';
     },
 
     confirmCritical() {
       const type = this.criticalDialog.type;
-      this.criticalDialog.type = '';
+      this.closeCriticalDialog();
+      // re-check fresco: lo stato puo' essere decaduto a dialog aperto, e la
+      // prima stesura non lo faceva. Stessa riga di confirmClawOpen.
+      if (!type || !this.criticalEnabled(type)) return;
       if (type === 'reset') this.sendToRobot(99);
       else if (type === 'restart') this.sendToRobot(18);
     },

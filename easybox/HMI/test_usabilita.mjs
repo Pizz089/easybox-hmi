@@ -48,52 +48,78 @@ for (const k of ['confirmTitle', 'resetWhat', 'resetNotThis', 'restartWhat', 're
 check(/CONTINUA ESECUZIONE/.test(it.robot.critical.resetNotThis), 'la conferma di RESET dice qual e\' il comando giusto per riprendere');
 check(/CONTINUA ESECUZIONE/.test(it.robot.critical.restartNotThis), 'idem per RESTART');
 
-console.log('\n1b) i comandi di ripristino ARRIVANO davvero al robot');
-// Questo blocco nasce da un difetto vero: askCritical usava this.dataStored,
-// che in quel componente non esiste (dataStored e' il modulo importato).
-// Il metodo lanciava un TypeError, il dialogo non si apriva e RESTART non
-// partiva piu'. RESET continuava a funzionare perche' la condizione si
-// fermava prima di valutare l'operando rotto: per questo il difetto si vedeva
-// su un comando solo. Un test sul sorgente non poteva accorgersene.
+console.log('\n1b) dal tocco alla PUBLISH: i comandi di ripristino escono davvero');
+// Questo blocco nasce da un guasto in campo: con eaa7e44 in cella, lo sniffer
+// vedeva passare 20 (home) e 17 (hold) ma MAI 18 (restart). Causa: askCritical
+// usava this.dataStored, che in quel componente non esiste, quindi il metodo
+// usciva con un TypeError prima di aprire il dialog.
+//
+// La prima stesura di questo test guardava il SORGENTE e poi, corretta,
+// sostituiva sendToRobot con una spia: si fermava un gradino prima della
+// publish. Adesso si spia il SOCKET, come fa test_robot_claw, cosi' il
+// percorso coperto e' quello vero: tocco -> conferma -> emit sul topic.
+const emesso = [];
+dataStored.WS.socket = { on: () => {}, off: () => {}, emit: (ev, p) => emesso.push([ev, String(p)]) };
+const pubblicati = () => emesso.filter((e) => e[0] === 'TO_PLANT/CMD/ROBOT').map((e) => e[1]);
+
 function vmRobot(stato) {
-	const vm = Object.assign({}, Robot.data.call({}), {
-		dataRobot: { STATUS: stato },
-		$t: (k) => k,
-		$router: { push: () => {} },
-	});
+	const vm = Object.assign({}, Robot.data.call({}), { dataRobot: { STATUS: stato }, $t: (k) => k, $router: { push: () => {} } });
 	for (const [k, f] of Object.entries(Robot.methods || {})) vm[k] = f.bind(vm);
-	vm.inviati = [];
-	vm.sendToRobot = (cmd) => vm.inviati.push(cmd);
+	for (const [k, c] of Object.entries(Robot.computed || {}))
+		Object.defineProperty(vm, k, { get: () => (typeof c === 'function' ? c.call(vm) : c.get.call(vm)) });
 	return vm;
 }
 
-// robot in HOLD: e' lo stato in cui RESTART e' ammesso
+// --- RESTART, robot in HOLD: e' il caso rotto in campo
+emesso.length = 0;
 const inHold = vmRobot(dataStored.status_hold);
 inHold.askCritical('restart');
-check(inHold.criticalDialog.type === 'restart', 'RESTART apre la conferma invece di non fare niente');
+check(inHold.criticalDialog.type === 'restart', 'RESTART apre la conferma (col difetto il metodo moriva prima)');
+check(pubblicati().length === 0, 'aprire la conferma non pubblica ancora niente');
 inHold.confirmCritical();
-check(inHold.inviati.length === 1 && inHold.inviati[0] === 18, 'e confermando arriva al robot il comando 18 (era il difetto: non arrivava piu\')');
+check(pubblicati().join(',') === '18', 'confermando esce sul topic il payload 18 — e\' il comando che in cella non arrivava');
 check(inHold.criticalDialog.type === '', 'la conferma si chiude dopo l\'invio');
 
+// --- RESET: stesso percorso, verificato esplicitamente e non per analogia
+emesso.length = 0;
 const perReset = vmRobot(dataStored.status_hold);
 perReset.askCritical('reset');
 check(perReset.criticalDialog.type === 'reset', 'RESET apre la conferma');
 perReset.confirmCritical();
-check(perReset.inviati.length === 1 && perReset.inviati[0] === 99, 'e confermando arriva il comando 99');
+check(pubblicati().join(',') === '99', 'confermando esce il payload 99');
 
-// annullare non deve mandare niente
+// --- annullare non deve pubblicare
+emesso.length = 0;
 const annulla = vmRobot(dataStored.status_hold);
 annulla.askCritical('reset');
-annulla.criticalDialog.type = '';
+annulla.closeCriticalDialog();
 annulla.confirmCritical();
-check(annulla.inviati.length === 0, 'annullando non parte nessun comando');
+check(pubblicati().length === 0, 'annullando non esce niente sul topic');
 
-// fuori da HOLD il RESTART resta bloccato, come il pulsante disabilitato
+// --- guardia: fuori da HOLD il RESTART non parte, nemmeno forzando
+emesso.length = 0;
 const nonHold = vmRobot(dataStored.status_hold + 1);
+check(nonHold.criticalEnabled('restart') === false, 'fuori da HOLD il RESTART risulta non abilitato');
+check(nonHold.criticalEnabled('reset') === true, 'il RESET resta disponibile in ogni stato, com\'era prima');
 nonHold.askCritical('restart');
-check(nonHold.criticalDialog.type === '', 'fuori da HOLD il RESTART non apre nemmeno la conferma');
-nonHold.askCritical('reset');
-check(nonHold.criticalDialog.type === 'reset', 'il RESET invece resta disponibile in ogni stato');
+check(nonHold.criticalDialog.type === '', 'e la conferma non si apre nemmeno');
+
+// --- re-check alla conferma: lo stato puo' decadere a dialog aperto.
+// La prima stesura non lo faceva e avrebbe pubblicato lo stesso.
+emesso.length = 0;
+const decade = vmRobot(dataStored.status_hold);
+decade.askCritical('restart');
+decade.dataRobot.STATUS = dataStored.status_hold + 1;   // il robot esce da HOLD
+decade.confirmCritical();
+check(pubblicati().length === 0, 'se il robot esce da HOLD a dialog aperto, la conferma non pubblica');
+
+// --- una guardia sola, condivisa da template e conferma
+check(/:disabled="!criticalEnabled\('restart'\)"/.test(robot), 'il pulsante usa criticalEnabled, non una copia dell\'espressione');
+// il commento del componente spiega il difetto nominandolo: il controllo
+// guarda il solo codice, altrimenti fallirebbe leggendo la spiegazione
+const robotCodice = robot.split(/\r?\n/).filter((l) => !/^\s*(\/\/|\*)/.test(l)).join('\n');
+check(!/this\.dataStored/.test(robotCodice), "nessun this.dataStored nel codice: qui dataStored e' il modulo importato");
+check(/confirmCritical\(\)[\s\S]{0,400}criticalEnabled\(type\)/.test(robot), 'la conferma ri-controlla lo stato, come confirmClawOpen');
 
 console.log('\n2) comandi di riga: etichette e cestino');
 const cmd = leggi('src/components/Comands/ComandsRows.vue');
