@@ -1179,7 +1179,11 @@ export default {
     // un tocco solo, e la conferma spiega la differenza con CONTINUA
     // ESECUZIONE, che e' l'errore che la vecchia disposizione favoriva.
     askCritical(type) {
-      if (type === 'restart' && this.dataRobot.STATUS != this.dataStored.status_hold) return;
+      // dataStored e' il modulo importato, NON una proprieta' del componente:
+      // scritto come this.dataStored lanciava un TypeError e il dialogo non si
+      // apriva, cosi' RESTART non arrivava piu' al robot. RESET continuava a
+      // funzionare solo perche' la condizione si fermava prima.
+      if (type === 'restart' && this.dataRobot.STATUS != dataStored.status_hold) return;
       this.criticalDialog.type = type;
     },
 
