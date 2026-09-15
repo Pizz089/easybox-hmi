@@ -106,7 +106,7 @@ router.get('/updateFixture', (req, res) => {
         request.query(query, function (err, recordset) {
             if (err) {
                 log.error("Err query: " + err)
-                res.send("KO")
+                res.status(500).send("KO")
             }else
 				res.send("OK")
 		});
@@ -151,7 +151,7 @@ router.get('/updateFixtureOnPallet', (req, res) => {
         request.query(query, function (err, recordset) {
             if (err) {
                 log.error("Err query: " + err)
-                res.send("KO")
+                res.status(500).send("KO")
             }else
 				res.send("OK")
 		});
@@ -201,7 +201,7 @@ router.get('/insertFixtureOnPallet', (req, res) => {
         request.query(query, function (err, recordset) {
             if (err) {
                 log.error("Err query: " + err)
-                res.send("KO")
+                res.status(500).send("KO")
             }else
 				res.send("OK")
         });
@@ -262,7 +262,7 @@ router.delete('/fixtureOnPallet/:palletID/:fixtureID', (req, res) => {
         request.query(query, function (err, recordset) {
             if (err) {
                 log.error("Err query: " + err)
-                res.send("KO")
+                res.status(500).send("KO")
             }else
 				res.send("OK")
         });
@@ -299,7 +299,7 @@ router.get('/insertFixture', (req, res) => {
         request.query(query, function (err, recordset) {
             if (err) {
                 log.error("Err query: " + err)
-                res.send("KO")
+                res.status(500).send("KO")
             }else
 				res.send("OK")
         });

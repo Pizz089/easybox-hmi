@@ -35,7 +35,7 @@ router.get('/show/:ID', (req, res) => {
         request.query(query, function (err, recordset) {
             if (err) {
                 log.error("Err query: " + err)
-                res.send("error DB")
+                res.status(500).send("error DB")
             }else
 				res.send(recordset.recordset)
         });
@@ -61,7 +61,7 @@ router.get('/showWarehousePos/', (req, res) => {
         request.query(query, function (err, recordset) {
             if (err) {
                 log.error("Err query: " + err)
-                res.send("error DB")
+                res.status(500).send("error DB")
             }else{
                 ris.maxPos = recordset.recordset[0].MaxPos;
         
@@ -79,7 +79,7 @@ router.get('/showWarehousePos/', (req, res) => {
                 request.query(query, function (err, recordset) {
                     if (err) {
                         log.error("Err query: " + err)
-                        res.send("error DB")
+                        res.status(500).send("error DB")
                     }else{
                         let _freePos = []
                         recordset.recordset.forEach(element => {
@@ -116,7 +116,7 @@ router.get('/showType/:ID', (req, res) => {
         request.query(query, function (err, recordset) {
             if (err) {
                 log.error("Err query: " + err)
-                res.send("error DB")
+                res.status(500).send("error DB")
             }else
 				res.send(recordset.recordset)
         });
@@ -207,7 +207,7 @@ router.get('/updateGripper', (req, res) => {
 
             if (err) {
                 log.error("Err query: " + err)
-                res.send("KO")
+                res.status(500).send("KO")
 				return;
             }
 			const n = result.rowsAffected && result.rowsAffected[0] ? result.rowsAffected[0] : 0;
@@ -259,7 +259,7 @@ router.get('/insertGripper', (req, res) => {
         request.query(query, function (err, result) {
             if (err) {
                 log.error("Err query: " + err)
-                res.send("KO")
+                res.status(500).send("KO")
 				return;
             }
 			const n = result.rowsAffected && result.rowsAffected[0] ? result.rowsAffected[0] : 0;
@@ -318,7 +318,7 @@ router.get('/onRobot', (req, res) => {
         request.query(query, function (err, recordset) {
             if (err) {
                 log.error("Err query: " + err)
-                res.send("error DB")
+                res.status(500).send("error DB")
             }else
 				res.send(recordset.recordset)
         });

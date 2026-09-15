@@ -44,14 +44,14 @@ router.get('/resetProduction/preview/:machineId', (req, res) => {
 	const machineId = Number(req.params.machineId);
 	if (!Number.isInteger(machineId) || machineId < 1) { res.send("KO_BAD_INPUT"); return; }
 	sql.connect(DBf.configDB, function (err) {
-		if (err) { log.error("err resetProduction preview: " + err); res.send("KO"); return; }
+		if (err) { log.error("err resetProduction preview: " + err); res.status(500).send("KO"); return; }
 		const query = `SET NOCOUNT ON;
 			SELECT ID, PIECE_ID, PIECE FROM WORKORDERS WHERE STATUS=3 AND MACHINE_ID=${machineId} ORDER BY ID;
 			SELECT COUNT(*) AS n FROM [POSITION] WHERE Order_ID IN (SELECT ID FROM WORKORDERS WHERE STATUS=3 AND MACHINE_ID=${machineId});
 			SELECT STATUS FROM UNIT_STATUS WHERE UNIT='ROBOT';`;
 		log.info('query ' + query);
 		new sql.Request().query(query, function (err, result) {
-			if (err) { log.error("Err query: " + err); res.send("KO"); return; }
+			if (err) { log.error("Err query: " + err); res.status(500).send("KO"); return; }
 			const rs = result.recordsets || [];
 			const robot = rs[2] && rs[2][0] ? rs[2][0].STATUS : null;
 			res.json({
@@ -68,7 +68,7 @@ router.post('/resetProduction/:machineId', (req, res) => {
 	const machineId = Number(req.params.machineId);
 	if (!Number.isInteger(machineId) || machineId < 1) { res.send("KO_BAD_INPUT"); return; }
 	sql.connect(DBf.configDB, function (err) {
-		if (err) { log.error("err resetProduction: " + err); res.send("KO"); return; }
+		if (err) { log.error("err resetProduction: " + err); res.status(500).send("KO"); return; }
 		// conteggi PRIMA delle scritture (il trigger su [POSITION] sporca
 		// rowsAffected/@@ROWCOUNT), guardia e scritture nello STESSO batch:
 		// SET XACT_ABORT ON + BEGIN TRAN = o tutto o niente.
@@ -87,7 +87,7 @@ router.post('/resetProduction/:machineId', (req, res) => {
 			END`;
 		log.info('query ' + query);
 		new sql.Request().query(query, function (err, result) {
-			if (err) { log.error("Err query: " + err); res.send("KO"); return; }
+			if (err) { log.error("Err query: " + err); res.status(500).send("KO"); return; }
 			const row = result.recordset && result.recordset[0] ? result.recordset[0] : { ris: "KO" };
 			res.json(row);
 			if (row.ris === 'OK') {
@@ -197,7 +197,7 @@ router.get('/updateOrder', (req, res) => {
         request.query(query, function (err, recordset) {
             if (err) {
                 log.error("Err query: " + err)
-                res.send("KO")
+                res.status(500).send("KO")
             }else
 				res.send("OK")
 		});
@@ -247,7 +247,7 @@ router.get('/insertOrder', (req, res) => {
         request.query(query, function (err, recordset) {
             if (err) {
                 log.error("Err query: " + err)
-                res.send("KO")
+                res.status(500).send("KO")
             }else{
 				res.send("OK")
 				DBf.io.emit('PRODUCTION/CHANGED')
@@ -273,7 +273,7 @@ router.delete('/:ID', (req, res) => {
         request.query(query, function (err, recordset) {
             if (err) {
                 log.error("Err query: " + err)
-                res.send("KO")
+                res.status(500).send("KO")
             }else{
 				res.send("OK")
 				DBf.io.emit('PRODUCTION/CHANGED')

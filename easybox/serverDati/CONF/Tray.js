@@ -82,7 +82,7 @@ router.get('/updateTray', (req, res) => {
         request.query(query, function (err, recordset) {
             if (err) {
                 log.error("Err query: " + err)
-                res.send("KO")
+                res.status(500).send("KO")
             }else
 				res.send("OK")
 		});
@@ -109,7 +109,7 @@ router.get('/updateGratingInTray', (req, res) => {
         request.query(query, function (err, recordset) {
             if (err) {
                 log.error("Err query: " + err)
-                res.send("KO")
+                res.status(500).send("KO")
             }else
 				res.send("OK")
 		});
@@ -253,7 +253,7 @@ router.get('/insertTray', (req, res) => {
         request.query(query, function (err, recordset) {
             if (err) {
                 log.error("Err query: " + err)
-                res.send("KO")
+                res.status(500).send("KO")
             }else
 				res.send("OK")
         });
@@ -482,7 +482,7 @@ router.get('/teachTrays', (req, res) => {
 	sql.connect(DBf.configDB, function (err) {
 		if (err) {
 			log.error("err teachTrays: " + err);
-			res.send("KO");
+			res.status(500).send("KO");
 			return;
 		}
 		// tutti i valori passano da Math.round(Number()) DOPO la validazione:
@@ -500,7 +500,7 @@ router.get('/teachTrays', (req, res) => {
 		request.query(query, function (err) {
 			if (err) {
 				log.error("Err query: " + err)
-				res.send("KO")
+				res.status(500).send("KO")
 			}else
 				res.send("OK")
 		});
@@ -521,7 +521,7 @@ router.get('/propagateTeaching', (req, res) => {
 	sql.connect(DBf.configDB, function (err) {
 		if (err) {
 			log.error("err propagateTeaching: " + err);
-			res.send("KO");
+			res.status(500).send("KO");
 			return;
 		}
 		// SET NOCOUNT ON + COUNT esplicita: su [POSITION] c'e' un trigger
@@ -539,7 +539,7 @@ router.get('/propagateTeaching', (req, res) => {
 		request.query(query, function (err, result) {
 			if (err) {
 				log.error("Err query: " + err)
-				res.send("KO")
+				res.status(500).send("KO")
 			}else
 				res.send("OK;" + (result.recordset && result.recordset[0] ? result.recordset[0].n : 0))
 		});
@@ -621,7 +621,7 @@ router.post('/associateGrating/:floor', (req, res) => {
 		return;
 	}
 	sql.connect(DBf.configDB, function (err) {
-		if (err) { log.error("err associateGrating: " + err); res.json({ ris: "KO", n: 0 }); return; }
+		if (err) { log.error("err associateGrating: " + err); res.status(500).json({ ris: "KO", n: 0 }); return; }
 		// FASE 1 (sola lettura): misure cassetto target e pezzo del modello
 		// DAL DB — il payload non puo' portare misure proprie (client stantio).
 		const ctx = `SET NOCOUNT ON;
@@ -632,7 +632,7 @@ router.post('/associateGrating/:floor', (req, res) => {
 			WHERE g.ID=${gratingId};`;
 		log.info('query ' + ctx);
 		new sql.Request().query(ctx, function (err, result) {
-			if (err) { log.error("Err query: " + err); res.json({ ris: "KO", n: 0 }); return; }
+			if (err) { log.error("Err query: " + err); res.status(500).json({ ris: "KO", n: 0 }); return; }
 			const row = result.recordset && result.recordset[0];
 			if (!row) { res.json({ ris: "KO_BAD_INPUT", n: 0 }); return; }
 			// (grating-thickness 14/9) protezione anti-urto IN GENERAZIONE, in
@@ -687,7 +687,7 @@ router.post('/associateGrating/:floor', (req, res) => {
 				END`;
 			log.info('query ' + query);
 			new sql.Request().query(query, function (err, result) {
-				if (err) { log.error("Err query: " + err); res.json({ ris: "KO", n: 0 }); return; }
+				if (err) { log.error("Err query: " + err); res.status(500).json({ ris: "KO", n: 0 }); return; }
 				const out = result.recordset && result.recordset[0] ? result.recordset[0] : { ris: "KO", n: 0 };
 				res.json(out);
 				if (out.ris === 'OK')
@@ -707,7 +707,7 @@ router.post('/dissociateGrating/:floor', (req, res) => {
 	const predP = trayParentPredicate(floor, 'p.PARENT');
 	if (!pred) { res.json({ ris: "KO_BAD_INPUT", n: 0 }); return; }
 	sql.connect(DBf.configDB, function (err) {
-		if (err) { log.error("err dissociateGrating: " + err); res.json({ ris: "KO", n: 0 }); return; }
+		if (err) { log.error("err dissociateGrating: " + err); res.status(500).json({ ris: "KO", n: 0 }); return; }
 		const query = `SET NOCOUNT ON; SET XACT_ABORT ON;
 			DECLARE @extract int = (SELECT TOP 1 ISNULL(EXTRACT,0) FROM TRAY WHERE FLOOR_MAG=${floor});
 			IF @extract IS NULL SELECT 'KO_BAD_INPUT' AS ris, 0 AS n;
@@ -723,7 +723,7 @@ router.post('/dissociateGrating/:floor', (req, res) => {
 			END`;
 		log.info('query ' + query);
 		new sql.Request().query(query, function (err, result) {
-			if (err) { log.error("Err query: " + err); res.json({ ris: "KO", n: 0 }); return; }
+			if (err) { log.error("Err query: " + err); res.status(500).json({ ris: "KO", n: 0 }); return; }
 			const out = result.recordset && result.recordset[0] ? result.recordset[0] : { ris: "KO", n: 0 };
 			res.json(out);
 			if (out.ris === 'OK')

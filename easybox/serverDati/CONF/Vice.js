@@ -76,7 +76,7 @@ router.get('/updateVice', (req, res) => {
         request.query(query, function (err, recordset) {
             if (err) {
                 log.error("Err query: " + err)
-                res.send("KO")
+                res.status(500).send("KO")
             }else
 				res.send("OK")
 		});
@@ -112,7 +112,7 @@ router.get('/insertVice', (req, res) => {
         request.query(query, function (err, recordset) {
             if (err) {
                 log.error("Err query: " + err)
-                res.send("KO")
+                res.status(500).send("KO")
             }else
 				res.send("OK")
         });

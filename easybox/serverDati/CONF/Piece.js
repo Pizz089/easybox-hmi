@@ -65,7 +65,7 @@ router.get('/updatePiece', (req, res) => {
         request.query(query, function (err, recordset) {
             if (err) {
                 log.error("Err query: " + err)
-                res.send("KO")
+                res.status(500).send("KO")
             }else
 				res.send("OK")
 		});
@@ -98,7 +98,7 @@ router.get('/insertPiece', (req, res) => {
         request.query(query, function (err, recordset) {
             if (err) {
                 log.error("Err query: " + err)
-                res.send("KO")
+                res.status(500).send("KO")
             }else
 				res.send("OK")
         });

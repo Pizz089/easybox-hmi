@@ -29,7 +29,7 @@ router.get('/show/:name', (req, res) => {
         request.query(query, function (err, recordset) {
             if (err) {
                 log.error("Err query: " + err)
-                res.send("error DB")
+                res.status(500).send("error DB")
             }else
 				res.send(recordset.recordset)
         });

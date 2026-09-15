@@ -24,7 +24,7 @@ router.get('/show/all', (req, res) => {
         // query to the database and get the records
         request.query(query, function (err, recordset) {
             if (err) {
-                res.send("error DB")
+                res.status(500).send("error DB")
             }else
 				res.send(recordset.recordset)
         });

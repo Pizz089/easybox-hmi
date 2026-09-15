@@ -101,7 +101,7 @@ router.get('/updatePallet', (req, res) => {
         request.query(query, function (err, result) {
             if (err) {
                 log.error("Err query: " + err)
-                res.send("KO")
+                res.status(500).send("KO")
 				return;
             }
 			const n = result.rowsAffected && result.rowsAffected[0] ? result.rowsAffected[0] : 0;
@@ -151,7 +151,7 @@ router.get('/insertPallet', (req, res) => {
         request.query(query, function (err, result) {
             if (err) {
                 log.error("Err query: " + err)
-                res.send("KO")
+                res.status(500).send("KO")
 				return;
             }
 			const n = result.rowsAffected && result.rowsAffected[0] ? result.rowsAffected[0] : 0;

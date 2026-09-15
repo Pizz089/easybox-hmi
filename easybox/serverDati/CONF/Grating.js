@@ -41,7 +41,7 @@ router.get('/show/:ID', (req, res) => {
         request.query(query, function (err, recordset) {
             if (err) {
                 log.error("Err query: " + err)
-                res.send("error DB")
+                res.status(500).send("error DB")
             }else
 				res.send(recordset.recordset)
         });
@@ -91,7 +91,7 @@ router.get('/showCompleteData/:ID', (req, res) => {
         request.query(query, function (err, recordset) {
             if (err) {
                 log.error("Err query: " + err)
-                res.send("error DB")
+                res.status(500).send("error DB")
             }else
 				res.send(recordset.recordset)
         });
@@ -150,7 +150,7 @@ router.get('/updateGrating', (req, res) => {
 
             if (err) {
                 log.error("Err query: " + err)
-                res.send("KO")
+                res.status(500).send("KO")
             }else
 				res.send(result.recordset && result.recordset[0] ? result.recordset[0].ris : "KO")
 		});
@@ -200,7 +200,7 @@ router.get('/insertGrating', (req, res) => {
         request.query(query, function (err, result) {
             if (err) {
                 log.error("Err query: " + err)
-                res.send("KO")
+                res.status(500).send("KO")
             }else
 				res.send(result.recordset && result.recordset[0] ? result.recordset[0].ris : "KO")
         });
@@ -218,7 +218,7 @@ router.delete('/:ID', (req, res) => {
 	sql.connect(DBf.configDB, function (err) {
         if (err) {
             log.error("err delete grating: " + err);
-            res.send("KO");
+            res.status(500).send("KO");
             return;
         }
 
@@ -243,7 +243,7 @@ router.delete('/:ID', (req, res) => {
         request.query(query, function (err, result) {
             if (err) {
                 log.error("Err query: " + err)
-                res.send("KO")
+                res.status(500).send("KO")
             }else
 				res.send(result.recordset && result.recordset[0] ? result.recordset[0].ris : "KO")
         });
@@ -274,7 +274,7 @@ router.get('/showFromTray/:Tray_ID', (req, res) => {
         request.query(query, function (err, recordset) {
             if (err) {
                 log.error("Err query: " + err)
-                res.send("error DB")
+                res.status(500).send("error DB")
             }else
 				res.send(recordset.recordset)
         });

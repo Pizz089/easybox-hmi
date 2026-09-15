@@ -32,7 +32,7 @@ router.get('/show/:ID', (req, res) => {
         request.query(query, function (err, recordset) {
             if (err) {
                 log.error("Err query: " + err)
-                res.send("error DB")
+                res.status(500).send("error DB")
             }else
 				res.send(recordset.recordset)
         });
@@ -66,7 +66,7 @@ router.get('/updatePositionStatus/:tray_ID/:position/:status', (req, res) => {
         request.query(query, function (err, recordset) {
 			if (err) {
                 log.error("Err query: " + err)
-                res.send("KO")
+                res.status(500).send("KO")
             }else
 				res.send("OK")
 		});
@@ -120,7 +120,7 @@ router.get('/insertPositionTray', (req, res) => {
         request.query(query, function (err, result) {
             if (err) {
                 log.error("Err query: " + err)
-                res.send("KO")
+                res.status(500).send("KO")
 				return;
             }
 			const n = result.rowsAffected && result.rowsAffected[0] ? result.rowsAffected[0] : 0;
@@ -172,7 +172,7 @@ router.get('/updatePositionTray', (req, res) => {
         request.query(query, function (err, recordset) {
             if (err) {
                 log.error("Err query: " + err)
-                res.send("KO")
+                res.status(500).send("KO")
             }else
 				res.send("OK")
         });
@@ -259,7 +259,7 @@ router.get('/warehouseSlot/:action/:parent/:subpos', (req, res) => {
         request.query(query, function (err, result) {
             if (err) {
                 log.error("Err query: " + err)
-                res.send("KO")
+                res.status(500).send("KO")
 				return;
             }
 			const n = result.rowsAffected && result.rowsAffected[0] ? result.rowsAffected[0] : 0;
@@ -320,7 +320,7 @@ router.get('/updateposition', (req, res) => {
         request.query(query, function (err, recordset) {
             if (err) {
                 log.error("Err query: " + err)
-                res.send("KO")
+                res.status(500).send("KO")
             }else
 				res.send("OK")
         });
@@ -361,7 +361,7 @@ router.post('/resetTray/:floor', (req, res) => {
 	const pred = trayParentPredicate(req.params.floor);
 	if (!pred) { res.send("KO_BAD_INPUT"); return; }
 	sql.connect(DBf.configDB, function (err) {
-		if (err) { log.error("err resetTray: " + err); res.send("KO"); return; }
+		if (err) { log.error("err resetTray: " + err); res.status(500).send("KO"); return; }
 		const query = `SET NOCOUNT ON;
 			IF EXISTS (SELECT 1 FROM WORKORDERS WHERE STATUS=3)
 				SELECT '${errorCodes.KO_ACTIVE_ORDER}' AS ris, 0 AS positions;
@@ -372,7 +372,7 @@ router.post('/resetTray/:floor', (req, res) => {
 			END`;
 		log.info('query ' + query);
 		new sql.Request().query(query, function (err, result) {
-			if (err) { log.error("Err query: " + err); res.send("KO"); return; }
+			if (err) { log.error("Err query: " + err); res.status(500).send("KO"); return; }
 			const row = result.recordset && result.recordset[0] ? result.recordset[0] : { ris: "KO" };
 			res.json(row);
 			if (row.ris === 'OK')
@@ -393,7 +393,7 @@ router.delete('/deletePositionsTray/:ID', (req, res) => {
 	sql.connect(DBf.configDB, function (err) {
         if (err) {
             log.error("err delete position: " + err);
-            res.send("KO");
+            res.status(500).send("KO");
             return;
         }
 
@@ -414,7 +414,7 @@ router.delete('/deletePositionsTray/:ID', (req, res) => {
         request.query(query, function (err, result) {
             if (err) {
                 log.error("Err query: " + err)
-                res.send("KO")
+                res.status(500).send("KO")
             }else
 				res.send(result.recordset && result.recordset[0] ? result.recordset[0].ris : "KO")
         });
