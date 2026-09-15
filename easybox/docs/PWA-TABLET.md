@@ -157,61 +157,95 @@ indirizzi IP, e infatti la prova dall'IP di rete risponde 200. Se un domani il
 tablet puntasse a un **nome host** (`http://cella-rizzo:5173`) invece che
 all'IP, allora servirebbe aggiungere quel nome in `server.allowedHosts`.
 
-## Se sul tablet l'installazione resta appesa
+## Il tablet non completa l'installazione — stato dell'indagine
 
-Successo il 15/9: lucchetto verde, manifest e icone scaricabili dal tablet, ma
-Chrome resta sull'installazione senza completarla.
+Aggiornato al 2026-09-15. **Il pannello e' a posto**: qui sotto c'e' tutto
+quello che e' stato escluso e come, cosi' chi riprende non ricomincia da capo.
 
-### Cosa e' gia' stato escluso, misurandolo
+Sintomo: sul tablet Chrome mostra il dialogo di conferma, dice "installazione
+in corso" e non finisce mai. `chrome://webapks` resta vuoto.
 
-Provato su Chrome 152 servendo il pannello in HTTPS con questo stesso
-certificato, aperto **da indirizzo IP** e non da localhost:
+### Escluso, con la prova
 
-| Ipotesi | Esito |
+| Ipotesi | Come e' stata esclusa |
 |---|---|
-| `start_url`/`scope` relativi (`"."`) | **non era il problema.** Sono stati messi a `"/"` lo stesso, per togliere il dubbio: si risolvono in modo identico |
-| Manifest non conforme | **escluso.** Chrome emette `beforeinstallprompt`, cioe' considera il sito installabile |
-| Manca il service worker | **escluso su Chrome recente.** L'evento arriva con **zero** service worker registrati |
-| Certificato o contesto non sicuro | escluso: `isSecureContext` vero, lucchetto chiuso |
+| `start_url`/`scope` relativi (`"."`) | messi a `"/"`: stesso comportamento, installazione ancora appesa. I due valori si risolvono in modo identico |
+| Manifest non conforme | Chrome 152 emette `beforeinstallprompt` sul pannello servito in HTTPS **da indirizzo IP**: considera il sito installabile |
+| Manca il service worker | lo stesso evento arriva con **zero** service worker registrati. Non e' un requisito su Chrome recente |
+| Certificato o contesto non sicuro | `isSecureContext` vero, lucchetto chiuso sul tablet |
+| Icone non raggiungibili dal servizio di Google | **le icone compaiono nel dialogo di conferma**: Chrome le ha gia' lette e le manda insieme alla richiesta, non le fa scaricare da Google. Quindi metterle su un indirizzo pubblico NON serve |
+| Permesso di installare app | attivato sul tablet (Impostazioni, App, Chrome, *Installa app sconosciute*) |
+| Tablet senza Internet | il tablet e' su Internet |
+| Servizi Google Play assenti | presenti: c'e' il Play Store |
 
-Quindi manifest, icone, certificato e origine vanno bene. Quello che resta e'
-la parte **specifica di Android**.
+### Cosa resta
 
-### L'ipotesi che resta: la creazione dell'app
+Su Android "Installa app" non crea una scorciatoia: crea una vera applicazione
+(WebAPK), che un servizio di Google costruisce e Android installa. Con tutto
+quanto sopra escluso, resta da capire **perche' quella costruzione non arriva
+a termine**. Le due strade aperte:
 
-Su Android, quando si sceglie "Installa app", Chrome non crea una scorciatoia:
-crea una vera applicazione (WebAPK). Quel pacchetto lo costruisce un servizio
-di Google, a cui il telefono deve poter arrivare, e poi Android lo installa.
-Due cose possono fermarlo, e tutte e due si presentano come un'installazione
-che non finisce:
+- il traffico verso il servizio di Google e' filtrato (proxy, filtro di rete);
+- il servizio rifiuta di costruire il pacchetto per un'origine che sta su un
+  indirizzo privato e dietro una CA locale.
 
-1. **Android non lascia a Chrome installare applicazioni.** Impostazioni, App,
-   Chrome, *Installa app sconosciute*: deve essere consentito. Senza, il
-   pacchetto arriva e l'installazione non parte.
-2. **Il telefono non raggiunge il servizio che costruisce il pacchetto**, o
-   quel servizio non riesce a scaricare le icone, che stanno su un indirizzo
-   privato e dietro un certificato di una CA locale. Sulla rete di cella,
-   senza Internet, e' lo scenario normale.
+La seconda, se confermata, chiude la strada dell'app installata cosi' com'e':
+servirebbe un **dominio vero** con certificato pubblicamente riconosciuto, con
+il nome che punta all'indirizzo privato del PC impianto. Il pannello resterebbe
+dov'e'; cambierebbe solo come lo si raggiunge.
 
-### Come vederlo, invece di indovinare
+### Come saperlo SENZA cavo
 
-- Sul tablet, aprire **`chrome://webapks`**: elenca i pacchetti creati e il
-  loro stato. Se e' vuoto o mostra un errore, la creazione non e' riuscita.
-- Collegare il tablet a un PC col cavo, aprire **`chrome://inspect`** su Chrome
-  del PC, ispezionare la scheda del pannello, scheda *Application*, voce
-  *Manifest*: Chrome scrive li' se il sito e' installabile e, se non lo e',
-  **quale criterio manca**. E' la risposta definitiva e costa due minuti.
-- Guardare **come si chiama la voce di menu**: "Installa app" e' la strada del
-  pacchetto vero, "Aggiungi a schermata Home" e' la scorciatoia, che apre in
-  una scheda con le barre e non da' lo schermo intero.
+In ordine di costo. Il primo separa il tablet dal pannello ed e' quello da fare
+per primo.
 
-### Se la creazione del pacchetto non e' praticabile
+1. **Installare una PWA pubblica qualunque sullo stesso tablet.** Se si
+   installa, il tablet, i servizi Google e la rete sono a posto, e il problema
+   e' la nostra origine privata: allora la strada e' il dominio vero. Se anche
+   quella resta appesa, il problema e' del tablet o della rete, e il pannello
+   non c'entra. Due minuti, nessuno strumento.
+2. **Provare da un'altra rete**, per esempio l'hotspot di un telefono. Esclude
+   il filtro della rete aziendale.
+3. **`chrome://net-export` sul tablet**: avvia la registrazione, si prova
+   l'installazione, si ferma. Salva un file JSON sul dispositivo, che si manda
+   via mail o si copia. Cercando `webapk` dentro quel file si vede se la
+   richiesta al servizio di Google e' partita e cosa ha risposto.
+4. **Debug senza fili** (Android 11 e superiori): Opzioni sviluppatore, Debug
+   wireless, si accoppia con il codice, e da li' il registro si legge come col
+   cavo. Vedi la ricetta qui sotto.
+5. **Guardare la schermata Home**: se e' comparsa un'icona che apre il pannello
+   in una scheda con le barre, Chrome ha ripiegato sulla scorciatoia dopo aver
+   atteso invano il pacchetto.
 
-Resta una strada che non richiede ne' installazione ne' app di terze parti: un
-pulsante nel pannello che chiede lo **schermo intero** al browser
-(`requestFullscreen`) e blocca l'orientamento. Costa un tocco all'apertura e
-non da' l'icona fra le app, ma toglie le barre sopra e sotto e funziona su
-qualunque browser, anche in HTTP. Da fare solo se la prima strada si chiude.
+### La ricetta del registro, per quando ci sara' il cavo
+
+Serve solo Platform Tools sul PC, niente sul tablet. Con il cavo e il debug USB
+attivo:
+
+```
+adb logcat -c
+adb logcat | findstr /i "webapk"
+```
+
+Poi si preme Installa sul tablet e si guarda cosa esce: se la richiesta parte,
+se risponde, e con quale errore. Senza cavo, stessa cosa dopo esserci
+collegati col debug wireless:
+
+```
+adb pair <ip-tablet>:<porta-accoppiamento>
+adb connect <ip-tablet>:<porta-debug>
+adb logcat -c
+adb logcat | findstr /i "webapk"
+```
+
+Indirizzo e porte le mostra il tablet nella schermata del debug wireless.
+
+### Cosa NON rifare
+
+- Non spostare le icone su un hosting pubblico: escluso dalla prova del
+  dialogo di conferma.
+- Non aggiungere un service worker sperando che sblocchi: misurato, non serve.
+- Non rimettere mano a `start_url` e `scope`: provati tutti e due i modi.
 
 ## Niente service worker, di proposito
 
