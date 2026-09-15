@@ -1,11 +1,26 @@
 import { reactive } from 'vue'
 
-const apiHost = window.location.hostname === 'localhost' ? '127.0.0.1' : window.location.hostname
+// (origine singola) Il pannello parla SOLO con l'origine da cui e' stato
+// caricato. Le chiamate dati e il socket ci arrivano lo stesso, perche' Vite
+// le gira al backend (server.proxy in vite.config.js).
+//
+// PRIMA erano tre origini: la pagina sulla 5173, i dati sulla 8080, il socket
+// sulla 3000, con l'indirizzo ricostruito a mano da window.location.hostname.
+// Funzionava, ma dipendeva da come era stato digitato l'indirizzo, e teneva
+// aperte due porte in piu' verso la rete di cella.
+//
+// E' anche la condizione per poter accendere HTTPS senza riscrivere niente:
+// con tre origini in chiaro, una pagina servita in https vedrebbe i dati e il
+// socket BLOCCATI dal browser come contenuto misto, e il pannello smetterebbe
+// di funzionare. Con l'origine singola il certificato riguarda un indirizzo
+// solo.
 
 export const dataStored = reactive({
     userLevel: sessionStorage.getItem("userLevel") || 0,
     timeoutUserLevel : 5*60*1000, //5min
-    server:`http://${apiHost}:8080/`,
+    // relativo di proposito: vale tale e quale da localhost (touch di cella)
+    // e da indirizzo IP (tablet), che oggi sono due percorsi diversi
+    server:'/',
 
     cmdActive        : false,   //il robot puo' eseguire i comandi singoli
     cmdActiveMission : false,   //il robot puo' eseguire le micromissioni (hold + pinza a bordo)
@@ -29,7 +44,9 @@ export const dataStored = reactive({
       client:null,
       socket:null,
       diagSocket:null,
-      brokerURL:`${apiHost}:3000`
+      // il socket passa dalla stessa origine: io(brokerURL) e
+      // io(brokerURL + '/diag') restano identici, cambia solo dove puntano
+      brokerURL:window.location.origin
     },
 
     searchQuery     : '',
