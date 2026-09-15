@@ -7,6 +7,7 @@
     // ricetta non deve nascere). La tendina sulla tabella PARTPROGRAM
     // (flusso Heidenhain) e' stata rimossa.
     import { dataStored } from '../../data.js'
+    import { KO_NO_FIXTURE } from '../../util/errorCodes.js'
     import { useI18n } from 'vue-i18n'
     import workOrderStep from '../../components/workOrder_step.vue'
 
@@ -47,6 +48,17 @@
           {{ t('wizard.lastData.partProgramMissing') }}
         </span>
       </div>
+
+      <!-- (rig-two-aspects 15/9) GEOMETRIA: l'ordine deve portare il FIXTURE_ID
+           di cio' che sta sul pallet, altrimenti il PLC non sa a che quota
+           depositare in macchina (errore 799, robot gia' in movimento). Qui e'
+           sola lettura: lo imposta selectRig dal pallet scelto. -->
+      <div class="form-row" v-if="!fixtureOk">
+        <label class="form-label">
+          {{ t('wizard.lastData.geometry') }}<span class="required">*</span>
+        </label>
+        <span class="pp-missing">{{ t('wizard.lastData.geometryMissing') }}</span>
+      </div>
     </section>
 
     <!-- (1/9) La card POSIZIONAMENTO (8 decentramenti X/Y prelievo/deposito
@@ -60,7 +72,7 @@
         type="button"
         class="pure-button-primary"
         @click="saveData"
-        :disabled="!piecePPValid || dataStored.createWorkOrder.quantity<=0"
+        :disabled="!piecePPValid || !fixtureOk || dataStored.createWorkOrder.quantity<=0"
       >
         {{ t('wizard.lastData.save') }}
       </button>
@@ -78,6 +90,12 @@ export default {
         }
     },
     computed: {
+        // (rig-two-aspects 15/9) geometria del pallet presente: senza, il PLC
+        // non sa eseguire l'ordine. Lo stato incompleto e' gia' filtrato da
+        // selectRig; questa e' la difesa finale prima della scrittura.
+        fixtureOk(){
+            return Number(dataStored.createWorkOrder.fixtureID) > 0;
+        },
         piecePPValid(){
             return Number.isInteger(this.piecePP) && this.piecePP > 0;
         }
@@ -115,6 +133,15 @@ export default {
             // (il bottone e' gia' disabilitato, questa e' la difesa in piu')
             if (!this.piecePPValid)
                 return;
+            // (rig-two-aspects 15/9) stessa difesa sulla geometria: un ordine
+            // senza FIXTURE_ID valido e' garantito rompersi al primo deposito
+            // in macchina. Il backend lo rifiuta comunque (KO_NO_FIXTURE).
+            if (!this.fixtureOk) {
+                dataStored.alert.title = this.$t('WARNING');
+                dataStored.alert.desc = 'wizard.lastData.geometryMissing';
+                dataStored.alert.type = 'warning';
+                return;
+            }
             var cmd = ""
             dataStored.createWorkOrder.PP                        = this.piecePP;
 
@@ -127,9 +154,21 @@ export default {
                 //console.log(JSON.stringify(dataStored.createWorkOrder ,null,4))
             }
             fetch( cmd ,{ method: 'GET'})
-                .then(response => {
+                .then(async response => {
                     if (!response.ok) {
                         throw new Error('Network response was not ok');
+                    }
+                    // (http-status 15/9) l'esito applicativo viaggia nel CORPO
+                    // con stato 200: va letto, altrimenti un rifiuto passa per
+                    // ordine creato. Era la trappola di quasi tutte le pagine.
+                    const esito = (await response.text()).trim();
+                    if (esito != 'OK') {
+                        dataStored.alert.title = this.$t('WARNING');
+                        dataStored.alert.desc = esito == KO_NO_FIXTURE
+                            ? 'wizard.lastData.geometryMissing'
+                            : 'wizard.lastData.saveFailed';
+                        dataStored.alert.type = 'warning';
+                        return;
                     }
                     dataStored.emptingStructure()
                     this.$router.push("/production")

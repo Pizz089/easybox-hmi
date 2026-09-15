@@ -113,11 +113,14 @@ router.get('/updateFixture', (req, res) => {
 	});
 })
 
-// QUIRK STORICO (documentato, NON riparare — ha consumatori: FixtureOnPallet.vue
-// serializza l'intera fixture con URLSearchParams): il pallet arriva nel campo
-// POS_PLANT e la fixture nel campo ID. Quindi PALLET_ID=POS_PLANT e
-// FIXTURE_ID=ID non sono errori di mappatura ma il contratto di fatto.
-// L'insert nuovo qui sotto accetta anche i nomi espliciti PALLET_ID/FIXTURE_ID.
+// UPSERT dell'associazione attrezzatura-pallet (era un UPDATE che non creava
+// mai la riga: vedi il commento dentro la route).
+// QUIRK STORICO sui nomi (documentato, NON riparare — ha consumatori:
+// FixtureOnPallet.vue serializza l'intera fixture con URLSearchParams): il
+// pallet puo' arrivare nel campo POS_PLANT e la fixture nel campo ID. Quindi
+// PALLET_ID=POS_PLANT e FIXTURE_ID=ID non sono errori di mappatura ma il
+// contratto di fatto. Qui e nell'insert si accettano ENTRAMBE le firme, con
+// precedenza ai nomi espliciti PALLET_ID/FIXTURE_ID.
 router.get('/updateFixtureOnPallet', (req, res) => {
 
 	//console.log(">>>"+JSON.stringify(req.query,null,4));
@@ -128,32 +131,41 @@ router.get('/updateFixtureOnPallet', (req, res) => {
             return;
         }
 
-		let query =`UPDATE FIXTURE_ON_PALLET SET 
-					PALLET_ID=${req.query.POS_PLANT}, 
-					FIXTURE_ID=${req.query.ID}, 
-					POS_X=${req.query.POS_X}*1000, 
-					POS_Y=${req.query.POS_Y}*1000,  
-					POS_Z=${req.query.POS_Z}*1000, 
-					POS_X_CORR=${req.query.POS_X_CORR}*1000, 
-					POS_Y_CORR=${req.query.POS_Y_CORR}*1000, 
-					POS_Z_CORR=${req.query.POS_Z_CORR}*1000, 
-					POS_X_ROT=${req.query.POS_X_ROT}*1000, 
-					POS_Y_ROT=${req.query.POS_Y_ROT}*1000, 
-					POS_Z_ROT=${req.query.POS_Z_ROT}*1000
-					WHERE FIXTURE_ID='${req.query.ID}' AND  PALLET_ID='${req.query.POS_PLANT}' ;`
-		
-		 
+		// (upsert 15/9) prima questa route faceva SOLO l'UPDATE, e la clausola
+		// WHERE cercava la stessa coppia (PALLET_ID, FIXTURE_ID) che la SET
+		// stava scrivendo: associare un'attrezzatura a un pallet che non la
+		// aveva ancora toccava ZERO righe, senza errore SQL, e rispondeva "OK".
+		// La pagina navigava via come se avesse salvato e la tabella restava
+		// invariata (incidente pallet 9 -> ordine con FIXTURE_ID 0 -> PLC in
+		// errore 799). Ora: UPDATE dei soli offset e, se non c'era niente da
+		// aggiornare, INSERT della riga. PALLET_ID/FIXTURE_ID escono dalla SET:
+		// sono la chiave, non un valore da riscrivere.
+		const palletID  = parseInt(req.query.PALLET_ID  != undefined ? req.query.PALLET_ID  : req.query.POS_PLANT);
+		const fixtureID = parseInt(req.query.FIXTURE_ID != undefined ? req.query.FIXTURE_ID : req.query.ID);
+		if (isNaN(palletID) || isNaN(fixtureID)) {
+			log.error("err updateFixtureOnPallet: PALLET_ID/FIXTURE_ID mancanti o non numerici");
+			res.send("KO_BAD_INPUT");
+			return;
+		}
+		const num = (v) => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
+		const COLS = ['POS_X','POS_Y','POS_Z','POS_X_CORR','POS_Y_CORR','POS_Z_CORR','POS_X_ROT','POS_Y_ROT','POS_Z_ROT'];
+		let query = `SET NOCOUNT ON;
+					UPDATE FIXTURE_ON_PALLET SET
+					${COLS.map(c => `${c}=${num(req.query[c])}*1000`).join(', ')}
+					WHERE FIXTURE_ID=${fixtureID} AND PALLET_ID=${palletID};
+					IF @@ROWCOUNT = 0
+						INSERT INTO FIXTURE_ON_PALLET (PALLET_ID, FIXTURE_ID, ${COLS.join(', ')})
+						VALUES(${palletID}, ${fixtureID}, ${COLS.map(c => `${num(req.query[c])}*1000`).join(', ')});
+					SELECT 'OK' AS ris;`
 		log.info('query ' + query);
-
 		var request = new sql.Request();
-        					
         // query to the database and get the records
-        request.query(query, function (err, recordset) {
+        request.query(query, function (err, result) {
             if (err) {
                 log.error("Err query: " + err)
                 res.status(500).send("KO")
             }else
-				res.send("OK")
+				res.send(result.recordset && result.recordset[0] ? result.recordset[0].ris : "KO")
 		});
 	});
 })

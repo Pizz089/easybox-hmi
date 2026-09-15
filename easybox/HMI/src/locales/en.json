@@ -344,6 +344,10 @@
     "type": "Type",
     "bare": "To be rigged",
     "anomaly": "ANOMALY: double mounting",
+    "incomplete": "INCOMPLETE: geometry missing",
+    "incompleteHint": "Vice without an associated fixture: the PLC does not know the drop height in the machine. Complete it from Edit.",
+    "geometry": "Geometry (fixture giving its height)",
+    "geometryHint": "Required: the robot computes the machine drop height as position + part + fixture height. For a vice, it is the fixture describing it.",
     "unmount": "UNMOUNT",
     "unmountVice": "Unmount vice",
     "unmountFixture": "Unmount fixture",
@@ -862,6 +866,9 @@
       "partProgram": "Part Program",
       "partProgramFromPiece": "(from part master data)",
       "partProgramMissing": "The part has no part program: set it in the part master data before creating the order",
+      "geometry": "Pallet geometry",
+      "geometryMissing": "The pallet has no geometry (associated fixture): without it the robot does not know the drop height in the machine. Complete the rig before creating the order.",
+      "saveFailed": "Order NOT created: refused by the backend.",
       "save": "Save order"
     }
   },

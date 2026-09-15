@@ -1,17 +1,21 @@
 <script setup>
     // MODELLO (cantiere AG fase 2): PRIMO step del wizard ordini. La cella
-    // lavora per PALLET ATTREZZATI (modello esclusivo AB, util/rigging.js):
+    // lavora per PALLET ATTREZZATI (modello a due aspetti, util/rigging.js):
     // la scelta del pallet deriva palletID e il RAMO del flusso —
     //   morsa       -> selectPiece (filtri attuali) -> selectGripper -> selectMC
     //   attrezzatura-> selectPiece DICHIARATIVO (pezzo gia' sul pallet,
     //                  sorgente del part program) -> selectMC (niente pinza)
-    // Pallet nudi o in anomalia si MOSTRANO ma non si selezionano (mai
-    // ordini su dati sporchi). Cambiare rig azzera il ramo a valle;
-    // riselezionare lo stesso rig conserva le scelte fatte.
+    // Pallet nudi, incompleti (morsa senza geometria) o in anomalia si
+    // MOSTRANO ma non si selezionano: mai ordini su dati che il PLC non sa
+    // eseguire. (15/9) In ENTRAMBI i rami l'ordine porta il FIXTURE_ID della
+    // riga di geometria: il PLC somma FIXTURE.Z alla quota di deposito in
+    // macchina, anche quando sul pallet c'e' una morsa.
+    // Cambiare rig azzera il ramo a valle; riselezionare lo stesso rig
+    // conserva le scelte fatte.
     import { dataStored } from '../../data.js'
     import { useI18n } from 'vue-i18n'
     import workOrderStep from '../../components/workOrder_step.vue'
-    import { buildRigRows, rigState } from '../../util/rigging'
+    import { buildRigRows, rigState, rigComplete, rigFixtureId } from '../../util/rigging'
     import { palletPositionLabel } from '../../util/warehouseGrid'
 
     const { t } = useI18n()
@@ -40,14 +44,20 @@
           <span v-if="state(row)=='bare'" class="badge badge-missing">{{ t('attrezzaggi.bare') }}</span>
           <span v-else-if="state(row)=='vice'" class="badge badge-type">{{ t('attrezzaggi.vice') }}</span>
           <span v-else-if="state(row)=='fixture'" class="badge badge-type">{{ t('attrezzaggi.fixture') }}</span>
+          <span v-else-if="state(row)=='vice-incomplete'" class="badge badge-anomaly">{{ t('attrezzaggi.incomplete') }}</span>
           <span v-else class="badge badge-anomaly">{{ t('attrezzaggi.anomaly') }}</span>
 
           <div class="rig-meta">
             <span v-if="row.vice" class="rig-detail">
               {{ (row.vice.FAMILY || '').trim() }} {{ (row.vice.DESCR || '').trim() }}
             </span>
-            <span v-else-if="row.fixtures.length==1" class="rig-detail">
+            <span v-if="row.fixtures.length==1" class="rig-detail">
               {{ fixtureName(row.fixtures[0].FIXTURE_ID) }}
+            </span>
+            <!-- (15/9) morsa senza geometria: si dice PERCHE' non e' selezionabile,
+                 invece di lasciare una scheda grigia senza motivo -->
+            <span v-if="state(row)=='vice-incomplete'" class="rig-detail rig-warn">
+              {{ t('attrezzaggi.incompleteHint') }}
             </span>
             <!-- posizione a magazzino: info, non filtrante -->
             <span class="rig-pos">{{ getPosition(row.pallet) }}</span>
@@ -85,8 +95,7 @@ export default {
             return rigState(row);
         },
         isSelectable(row){
-            const s = rigState(row);
-            return s == 'vice' || s == 'fixture';
+            return rigComplete(rigState(row));
         },
         isCurrent(row){
             const wo = dataStored.createWorkOrder;
@@ -101,7 +110,7 @@ export default {
         },
         pick(row){
             const s = rigState(row);
-            if (s != 'vice' && s != 'fixture') return;
+            if (!rigComplete(s)) return;
             const wo = dataStored.createWorkOrder;
             // stesso rig -> conserva il ramo e le scelte a valle;
             // rig DIVERSO -> azzera tutto e reimposta (il ramo cambia semantica)
@@ -109,12 +118,13 @@ export default {
                 dataStored.emptingStructure();
                 wo.palletID = row.pallet.ID;
                 wo.rigType = s;
+                // GEOMETRIA: sempre, in tutti e due i rami (15/9)
+                wo.fixtureID = rigFixtureId(row);
                 if (s == 'fixture') {
                     // convenzioni PLC ramo attrezzatura: niente missione di
-                    // carico (pieceID 0), niente pinza; fixtureID solo uso HMI
+                    // carico (pieceID 0), niente pinza
                     wo.pieceID = 0;
                     wo.gripperID = 0;
-                    wo.fixtureID = row.fixtures[0].FIXTURE_ID;
                 }
             }
             this.$router.push('/selectPiece');
@@ -210,5 +220,9 @@ export default {
     border-radius: var(--radius-md);
     padding: var(--space-4);
     font-size: var(--font-size-base);
+}
+/* (15/9) motivo per cui un pallet non e' selezionabile */
+.rig-warn {
+  color: var(--color-danger);
 }
 </style>

@@ -38,7 +38,9 @@ const COLS = ['X_PICK_DECENTRATED_TRAY', 'X_PLACE_DECENTRATED_TRAY', 'Y_PICK_DEC
 
 // payload "ostile": un vecchio client (o un curl) manda decentramenti != 0
 const hostile = {
-	pieceID: 1029, gripperID: 26, viceID: 0, fixtureID: 0, palletID: 5, machineID: 1, quantity: 3, PP: 12, declaredPieceID: 0, status: 4, ID: 77,
+	// (rig-two-aspects 15/9) fixtureID 1 = geometria del pallet: con 0 l'ordine
+	// non nasce piu' (guardia KO_NO_FIXTURE, coperta da test_order_fixture.js)
+	pieceID: 1029, gripperID: 26, viceID: 0, fixtureID: 1, palletID: 5, machineID: 1, quantity: 3, PP: 12, declaredPieceID: 0, status: 4, ID: 77,
 	decentrated_tray_x_pick: 500, decentrated_tray_y_pick: 600, decentrated_tray_x_place: 700, decentrated_tray_y_place: 800,
 	decentrated_MC_x_pick: 900, decentrated_MC_y_pick: 1000, decentrated_MC_x_place: 1100, decentrated_MC_y_place: 1200,
 };

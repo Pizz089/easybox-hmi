@@ -344,6 +344,10 @@
     "type": "Tipo",
     "bare": "Da attrezzare",
     "anomaly": "ANOMALIA: doppio montaggio",
+    "incomplete": "INCOMPLETO: manca la geometria",
+    "incompleteHint": "Morsa senza attrezzatura associata: il PLC non sa a che quota depositare in macchina. Completare dalla Modifica.",
+    "geometry": "Geometria (attrezzatura che ne dà l'altezza)",
+    "geometryHint": "Obbligatoria: il robot calcola la quota di deposito in macchina come posizione + pezzo + altezza dell'attrezzatura. Per una morsa, è l'attrezzatura che la descrive.",
     "unmount": "SMONTA",
     "unmountVice": "Smonta morsa",
     "unmountFixture": "Smonta attrezzatura",
@@ -862,6 +866,9 @@
       "partProgram": "Part Program",
       "partProgramFromPiece": "(dal particolare)",
       "partProgramMissing": "Il particolare non ha un part program: impostalo nell'anagrafica pezzo prima di creare l'ordine",
+      "geometry": "Geometria del pallet",
+      "geometryMissing": "Il pallet non ha la geometria (attrezzatura associata): senza, il robot non sa a che quota depositare in macchina. Completare l'attrezzaggio prima di creare l'ordine.",
+      "saveFailed": "Ordine NON creato: rifiutato dal backend.",
       "save": "Salva ordine"
     }
   },

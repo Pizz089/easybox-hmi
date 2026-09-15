@@ -165,15 +165,28 @@ router.get('/updateOrder', (req, res) => {
 		const declared = parseInt(req.query.declaredPieceID, 10);
 		const declaredSql = (Number.isInteger(declared) && declared > 0) ? declared : 'NULL';
 
+		// (rig-two-aspects 15/9) stessa GUARDIA GEOMETRIA di insertOrder: una
+		// modifica non puo' portare l'ordine in uno stato che il PLC non sa
+		// eseguire (join interno su FIXTURE -> errore 799).
+		const fixtureID = parseInt(req.query.fixtureID, 10);
+		if (!Number.isInteger(fixtureID) || fixtureID < 1) {
+			log.standard("updateOrder " + errorCodes.KO_NO_FIXTURE + ": fixtureID [" + req.query.fixtureID + "]");
+			res.send(errorCodes.KO_NO_FIXTURE);
+			return;
+		}
+
 		// SCRITTURA sulla base table WORKORDER (la view WORKORDERS non e'
 		// aggiornabile). Riparati gli apici rotti storici (B1).
 		// (1/9) gli 8 decentramenti X/Y sono 0 FISSI: la regolazione della
 		// presa e' SOLO in Z, via PIECE.Z_PICK / Z_PLACE (vedi insertOrder).
-		let query = `UPDATE WORKORDER SET
+		let query = `SET NOCOUNT ON;
+					IF NOT EXISTS (SELECT 1 FROM FIXTURE WHERE ID=${fixtureID}) SELECT '${errorCodes.KO_NO_FIXTURE}' AS ris;
+					ELSE BEGIN
+					UPDATE WORKORDER SET
 					PIECE_ID='${req.query.pieceID}',
 					GRIPPER_ID='${req.query.gripperID}',
 					VICE_ID='${req.query.viceID}',
-					FIXTURE_ID='${req.query.fixtureID}',
+					FIXTURE_ID=${fixtureID},
 					PALLET_ID='${req.query.palletID}',
 					STATUS='${req.query.status}',
 					MACHINE_ID='${req.query.machineID}',
@@ -188,18 +201,20 @@ router.get('/updateOrder', (req, res) => {
 					Y_PLACE_DECENTRATED_MC=0,
 					PartProg_ID=${req.query.PP},
 					DECLARED_PIECE_ID=${declaredSql}
-					WHERE ID='${req.query.ID}';`
-		
+					WHERE ID='${req.query.ID}';
+					SELECT 'OK' AS ris;
+					END`
+
 		var request = new sql.Request();
-        					
+
         log.info('query ' + query);
         // query to the database and get the records
-        request.query(query, function (err, recordset) {
+        request.query(query, function (err, result) {
             if (err) {
                 log.error("Err query: " + err)
                 res.status(500).send("KO")
             }else
-				res.send("OK")
+				res.send(result.recordset && result.recordset[0] ? result.recordset[0].ris : "KO")
 		});
 	});
 })
@@ -225,13 +240,28 @@ router.get('/insertOrder', (req, res) => {
         // a 0 sono neutre) ma nessun valore diverso da zero puo' entrare.
         const declared = parseInt(req.query.declaredPieceID, 10);
         const declaredSql = (Number.isInteger(declared) && declared > 0) ? declared : 'NULL';
-        let query = `INSERT INTO WORKORDER
+        // (rig-two-aspects 15/9) GUARDIA GEOMETRIA: il PLC calcola la quota di
+        // deposito in macchina come P.Z + PIECE.Z_PLACE + FIXTURE.Z con un join
+        // INTERNO su FIXTURE. Un ordine con FIXTURE_ID che non aggancia nessuna
+        // riga (0 compreso) non produce righe: errore 799 col robot gia' in
+        // movimento. Qui l'ordine non nasce proprio. Vale per ENTRAMBI i rami:
+        // dal 15/9 anche il ramo morsa porta il FIXTURE_ID della geometria.
+        const fixtureID = parseInt(req.query.fixtureID, 10);
+        if (!Number.isInteger(fixtureID) || fixtureID < 1) {
+            log.standard("insertOrder " + errorCodes.KO_NO_FIXTURE + ": fixtureID [" + req.query.fixtureID + "]");
+            res.send(errorCodes.KO_NO_FIXTURE);
+            return;
+        }
+        let query = `SET NOCOUNT ON;
+					IF NOT EXISTS (SELECT 1 FROM FIXTURE WHERE ID=${fixtureID}) SELECT '${errorCodes.KO_NO_FIXTURE}' AS ris;
+					ELSE BEGIN
+					INSERT INTO WORKORDER
 					(PIECE_ID, GRIPPER_ID, VICE_ID, FIXTURE_ID, PALLET_ID, STATUS, MACHINE_ID, QUANTITY, X_PICK_DECENTRATED_TRAY, X_PLACE_DECENTRATED_TRAY, Y_PICK_DECENTRATED_TRAY, Y_PLACE_DECENTRATED_TRAY, X_PICK_DECENTRATED_MC, X_PLACE_DECENTRATED_MC, Y_PICK_DECENTRATED_MC, Y_PLACE_DECENTRATED_MC, PartProg_ID, DECLARED_PIECE_ID)
 					VALUES(
 					'${req.query.pieceID}',
 					'${req.query.gripperID}',
 					'${req.query.viceID}',
-					'${req.query.fixtureID}',
+					${fixtureID},
 					'${req.query.palletID}',
 					 4,
 					'${req.query.machineID}',
@@ -240,18 +270,22 @@ router.get('/insertOrder', (req, res) => {
 					 0, 0, 0, 0,
 					 ${req.query.PP},
 					 ${declaredSql}
-					);`
-					
+					);
+					SELECT 'OK' AS ris;
+					END`
+
         log.info('query ' + query);
         // query to the database and get the records
-        request.query(query, function (err, recordset) {
+        request.query(query, function (err, result) {
             if (err) {
                 log.error("Err query: " + err)
                 res.status(500).send("KO")
-            }else{
-				res.send("OK")
+                return;
+            }
+			const ris = result.recordset && result.recordset[0] ? result.recordset[0].ris : "KO";
+			res.send(ris);
+			if (ris === 'OK')
 				DBf.io.emit('PRODUCTION/CHANGED')
-			}
         });
 	});
 })

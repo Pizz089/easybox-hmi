@@ -1,9 +1,14 @@
 <script setup>
-    // MODELLO ESCLUSIVO (dal creatore del progetto, AB): morsa e attrezzatura
-    // sono ALTERNATIVE mutuamente esclusive — ogni pallet monta UNA sola
-    // morsa O UNA sola attrezzatura, mai entrambe. Morsa = ciclo EasyBox
-    // pieno (carico grezzi/scarico finiti dai cassetti); attrezzatura =
-    // lavorazione speciale, entra in macchina col grezzo gia' montato.
+    // MODELLO A DUE ASPETTI (15/9, vedi util/rigging.js): la riga
+    // FIXTURE_ON_PALLET e' la GEOMETRIA di cio' che sta sul pallet e c'e'
+    // SEMPRE — il PLC somma FIXTURE.Z alla quota di deposito in macchina e
+    // non conosce VICE. La MORSA (VICE.PALLET_ID) aggiunge il comportamento:
+    // ciclo EasyBox pieno, carico grezzi e scarico finiti dai cassetti. Senza
+    // morsa il pallet e' attrezzatura: lavorazione speciale, entra in macchina
+    // col grezzo gia' montato.
+    // Quindi il ramo MORSA chiede DUE cose: quale morsa e quale attrezzatura
+    // ne descrive l'altezza. Una morsa senza geometria e' lo stato INCOMPLETO
+    // che ha fermato la cella il 15/9 (errore 799): da qui non si crea.
     // Il dato normalizzato (VICE.PALLET_ID / FIXTURE_ON_PALLET) resta com'e'.
     import { dataStored } from '../../data.js'
 </script>
@@ -84,6 +89,26 @@
                             {{ $t('attrezzaggi.createNew') }}
                         </button>
                     </div>
+                    <!-- (rig-two-aspects 15/9) la morsa porta anche la sua
+                         GEOMETRIA: il PLC somma FIXTURE.Z alla quota di deposito
+                         in macchina e non conosce VICE. Obbligatoria: senza,
+                         l'ordine morirebbe con l'errore 799. -->
+                    <div class="pure-control-group">
+                        <label for="att-geom">{{$t('attrezzaggi.geometry')}}</label>
+                        <select id="att-geom" v-model="fixtureID">
+                            <option :value="0">-</option>
+                            <option v-for="f in freeFixtures" :key="f.ID" :value="f.ID">
+                                #{{ f.ID }} {{ (f.FAMILY || '').trim() }} - {{ (f.DESCR || '').trim() }}
+                            </option>
+                        </select>
+                        <button class="btn-ghost inline-new" @click="$router.push('/conf/fixture?returnTo=/conf/Attrezzaggio')">
+                            {{ $t('attrezzaggi.createNew') }}
+                        </button>
+                    </div>
+                    <div class="pure-control-group">
+                        <label>&nbsp;</label>
+                        <span class="geom-hint">{{$t('attrezzaggi.geometryHint')}}</span>
+                    </div>
                 </template>
 
                 <!-- ===== 3b. ATTREZZATURA (solo ramo scelto, offset FIXTURE_ON_PALLET) ===== -->
@@ -103,7 +128,9 @@
                     </div>
                 </template>
 
-                <span v-if="rigType=='fixture' && fixtureID>0">
+                <!-- (15/9) gli offset appartengono alla riga di geometria, che
+                     ora esiste anche nel ramo morsa: stessa sezione per tutti -->
+                <span v-if="fixtureID>0">
                     <h5 class="section-label">{{ $t('attrezzaggi.offsets') }}</h5>
                     <div class="pure-control-group">
                         <label for="att-posx">X</label>
@@ -194,7 +221,11 @@ export default {
             if (!this.editPalletId) return;
             const v = this.vices.find(x => x.PALLET_ID == this.editPalletId) || null;
             const fops = this.fop.filter(f => f.PALLET_ID == this.editPalletId);
-            if ((v && fops.length > 0) || fops.length > 1 || !this.pallets.find(p => p.ID == this.editPalletId)) {
+            // (15/9) morsa PIU' la sua geometria e' lo stato COMPLETO, non
+            // piu' un'anomalia: la Modifica lo accetta (ed e' l'unico posto da
+            // cui si completa una morsa nuda). Resta anomalia la sola
+            // condizione di piu' attrezzature sullo stesso pallet.
+            if (fops.length > 1 || !this.pallets.find(p => p.ID == this.editPalletId)) {
                 this.$router.replace('/conf/Attrezzaggi');
                 return;
             }
@@ -202,11 +233,12 @@ export default {
             // sospeso (flag), poi riattivato al tick successivo
             this.preloading = true;
             this.palletID = this.editPalletId;
-            if (v) {
-                this.rigType = 'vice';
-                this.viceID = v.ID;
-            } else if (fops.length == 1) {
-                this.rigType = 'fixture';
+            // (15/9) il RAMO lo decide la morsa; la geometria si precarica in
+            // entrambi i casi (con la morsa nuda resta 0: e' quello che
+            // l'operatore viene qui a completare).
+            this.rigType = v ? 'vice' : (fops.length == 1 ? 'fixture' : '');
+            if (v) this.viceID = v.ID;
+            if (fops.length == 1) {
                 this.fixtureID = fops[0].FIXTURE_ID;
                 // FOP a DB in MICRON, form in mm: /1000 al precarico (il
                 // server ri-moltiplica *1000 al salvataggio — mai rimandare
@@ -237,6 +269,33 @@ export default {
                 PALLET_ID: palletIdValue
             });
         },
+        // (http-status 15/9) scrittura con controllo dell'ESITO: lo stato HTTP
+        // non basta, i codici KO viaggiano nel CORPO con stato 200. Usato da
+        // creazione e modifica: un fallimento non passa piu' per successo.
+        apiWrite(url){
+            return fetch(url, { method: 'GET' })
+                .then(r => { if (!r.ok) throw new Error('net'); return r.text(); })
+                .then(body => { const b = String(body).trim(); if (b.indexOf('KO') === 0) throw new Error(b); return b; });
+        },
+        // parametri della riga di GEOMETRIA (FIXTURE_ON_PALLET) per l'upsert.
+        // I CORR non sono editabili dal form: pass-through dalla riga fresca
+        // se e' la stessa attrezzatura, altrimenti 0.
+        geometryParams(palletId, fresh){
+            const same = fresh && fresh.FIXTURE_ID == this.fixtureID;
+            return new URLSearchParams({
+                PALLET_ID: palletId,
+                FIXTURE_ID: this.fixtureID,
+                POS_X: this.pos.POS_X || 0,
+                POS_Y: this.pos.POS_Y || 0,
+                POS_Z: this.pos.POS_Z || 0,
+                POS_X_CORR: (same ? (fresh.POS_X_CORR || 0) : 0) / 1000,
+                POS_Y_CORR: (same ? (fresh.POS_Y_CORR || 0) : 0) / 1000,
+                POS_Z_CORR: (same ? (fresh.POS_Z_CORR || 0) : 0) / 1000,
+                POS_X_ROT: this.pos.POS_X_ROT || 0,
+                POS_Y_ROT: this.pos.POS_Y_ROT || 0,
+                POS_Z_ROT: this.pos.POS_Z_ROT || 0
+            }).toString();
+        },
         async saveEdit(){
             // (pattern AE) righe FRESCHE rilette ORA — mai lo stato caricato
             // all'apertura del form
@@ -266,75 +325,36 @@ export default {
                 this.getDataTable().then(() => this.preloadEdit());
                 return;
             }
-            const GET = url => fetch(url, { method: 'GET' })
-                .then(r => { if (!r.ok) throw new Error('net'); return r.text(); })
-                .then(body => { if (body == 'KO') throw new Error('KO'); return body; });
+            const GET = (url) => this.apiWrite(url);
+            const upsertGeometry = () => GET(dataStored.server+'api/conf/fixture/updateFixtureOnPallet?'+this.geometryParams(this.editPalletId, freshFops[0]));
             try {
-                if (this.rigType == 'vice' && this.viceID > 0) {
-                    if (this.editLoaded.viceID == this.viceID && this.editLoaded.fixtureID == 0) {
-                        // stessa morsa: la morsa non ha offset — niente da scrivere
-                        this.$router.push('/conf/Attrezzaggi');
-                        return;
-                    }
-                    // SMONTA POI MONTA, mai l'inverso: l'ordine inverso apre
-                    // una finestra di doppio montaggio vietata dal modello
-                    // esclusivo. Caso peggiore su errore: pallet
-                    // temporaneamente NUDO — accettabile e recuperabile.
-                    if (freshV)
-                        await GET(dataStored.server+'api/conf/vice/updateVice?'+this.buildViceParams(freshV, '').toString());
-                    if (freshFops.length == 1)
-                        await fetch(dataStored.server+'api/conf/fixture/fixtureOnPallet/'+this.editPalletId+'/'+freshFops[0].FIXTURE_ID, { method: 'delete' });
+                // MODELLO A DUE ASPETTI: la geometria (riga FIXTURE_ON_PALLET)
+                // c'e' SEMPRE; la morsa si aggiunge o si toglie sopra.
+                // Ordine: si smonta cio' che non serve piu', poi si scrive.
+                // Caso peggiore su errore: pallet INCOMPLETO — stato previsto
+                // dal modello, visibile a pannello e recuperabile ripetendo.
+                if (!(this.fixtureID > 0)) return;
+                // morsa diversa (o non voluta): smonto quella attuale
+                if (freshV && (this.rigType != 'vice' || freshV.ID != this.viceID))
+                    await GET(dataStored.server+'api/conf/vice/updateVice?'+this.buildViceParams(freshV, '').toString());
+                // geometria diversa: via la riga vecchia (l'indice unico
+                // (PALLET_ID, FIXTURE_ID) non ammette comunque doppioni)
+                if (freshFops.length == 1 && freshFops[0].FIXTURE_ID != this.fixtureID)
+                    await fetch(dataStored.server+'api/conf/fixture/fixtureOnPallet/'+this.editPalletId+'/'+freshFops[0].FIXTURE_ID, { method: 'delete' });
+                // morsa voluta e non ancora montata su questo pallet
+                if (this.rigType == 'vice' && (!freshV || freshV.ID != this.viceID)) {
                     const newV = (freshVices || []).find(x => x.ID == this.viceID);
                     if (!newV) throw new Error('vice not found');
                     await GET(dataStored.server+'api/conf/vice/updateVice?'+this.buildViceParams(newV, this.editPalletId).toString());
-                } else if (this.rigType == 'fixture' && this.fixtureID > 0) {
-                    if (this.editLoaded.fixtureID == this.fixtureID && this.editLoaded.viceID == 0) {
-                        // stessa attrezzatura: update IN LOCO dei soli offset.
-                        // Firma QUIRK dell'endpoint: POS_PLANT=palletID,
-                        // ID=fixtureID (documentata sull'endpoint). I CORR,
-                        // che il form NON edita, ripartono dalla riga FRESCA
-                        // /1000 (il server ri-moltiplica *1000): pass-through.
-                        const fr = freshFops[0];
-                        const params = new URLSearchParams({
-                            POS_PLANT: this.editPalletId,
-                            ID: this.fixtureID,
-                            POS_X: this.pos.POS_X || 0,
-                            POS_Y: this.pos.POS_Y || 0,
-                            POS_Z: this.pos.POS_Z || 0,
-                            POS_X_CORR: (fr.POS_X_CORR || 0) / 1000,
-                            POS_Y_CORR: (fr.POS_Y_CORR || 0) / 1000,
-                            POS_Z_CORR: (fr.POS_Z_CORR || 0) / 1000,
-                            POS_X_ROT: this.pos.POS_X_ROT || 0,
-                            POS_Y_ROT: this.pos.POS_Y_ROT || 0,
-                            POS_Z_ROT: this.pos.POS_Z_ROT || 0
-                        });
-                        await GET(dataStored.server+'api/conf/fixture/updateFixtureOnPallet?'+params.toString());
-                    } else {
-                        // cambio attrezzatura o cambio TIPO: SMONTA POI MONTA
-                        if (freshV)
-                            await GET(dataStored.server+'api/conf/vice/updateVice?'+this.buildViceParams(freshV, '').toString());
-                        if (freshFops.length == 1)
-                            await fetch(dataStored.server+'api/conf/fixture/fixtureOnPallet/'+this.editPalletId+'/'+freshFops[0].FIXTURE_ID, { method: 'delete' });
-                        const params = new URLSearchParams({
-                            PALLET_ID: this.editPalletId,
-                            FIXTURE_ID: this.fixtureID,
-                            POS_X: this.pos.POS_X || 0,
-                            POS_Y: this.pos.POS_Y || 0,
-                            POS_Z: this.pos.POS_Z || 0,
-                            POS_X_ROT: this.pos.POS_X_ROT || 0,
-                            POS_Y_ROT: this.pos.POS_Y_ROT || 0,
-                            POS_Z_ROT: this.pos.POS_Z_ROT || 0
-                        });
-                        await GET(dataStored.server+'api/conf/fixture/insertFixtureOnPallet?'+params.toString());
-                    }
-                } else
-                    return;
+                }
+                // geometria: UPSERT (crea la riga se manca, aggiorna gli offset
+                // se c'e' gia') — e' la route che prima non creava mai nulla
+                await upsertGeometry();
                 this.$router.push('/conf/Attrezzaggi');
             } catch (e) {
                 console.info(e);
-                // fase 2 fallita dopo lo smonta: pallet temporaneamente NUDO
-                // (coerente col modello, MAI doppio montaggio) — recuperabile
-                // ripetendo l'operazione dall'elenco
+                // fallita a meta': il pallet puo' essere rimasto INCOMPLETO
+                // (morsa senza geometria) — si vede nell'elenco e si ripete
                 alert(this.$t('attrezzaggi.editIncomplete'));
                 this.getDataTable().then(() => this.preloadEdit());
             }
@@ -356,56 +376,30 @@ export default {
         // insertFixtureOnPallet (nomi espliciti, CORR restano 0).
         // Il re-check palletMounted difende dal dato cambiato sotto (polling
         // di un'altra postazione): mai un secondo montaggio dallo stesso form.
-        saveData() {
-            if (this.palletGateActive) return;
-            // (edit) il salvataggio della MODIFICA ha il suo flusso
-            // (fresh+re-check+smonta-poi-monta)
+        // CREAZIONE (la modifica ha il suo flusso: saveEdit).
+        // (rig-two-aspects 15/9) la GEOMETRIA si scrive SEMPRE, in tutti e due
+        // i rami: e' la riga che il PLC usa per la quota di deposito. Nel ramo
+        // morsa si monta prima la morsa, poi la geometria.
+        async saveData() {
+            if (this.palletGateActive || !this.canSave) return;
             if (this.editMode) {
                 this.saveEdit();
                 return;
             }
-            let call = null;
-
-            if (this.rigType == 'vice' && this.viceID > 0) {
-                const v = this.vices.find(x => x.ID == this.viceID);
-                if (!v) return;
-                const params = new URLSearchParams({
-                    ID: v.ID,
-                    FAMILY: (v.FAMILY || '').trim(),
-                    DESCR: (v.DESCR || '').trim(),
-                    STATUS: v.STATUS,
-                    X: v.X, Y: v.Y, Z: v.Z,
-                    Z_CLAW: v.Z_CLAW, Z_SINK_CLAW: v.Z_SINK_CLAW,
-                    MAG: v.MAG, MAG_POS: v.MAG_POS, POS_PLANT: v.POS_PLANT,
-                    PALLET_ID: this.palletID
-                });
-                call = fetch(dataStored.server+'api/conf/vice/updateVice?'+params.toString(), { method: 'GET' });
+            const GET = (url) => this.apiWrite(url);
+            try {
+                if (this.rigType == 'vice') {
+                    const v = this.vices.find(x => x.ID == this.viceID);
+                    if (!v) return;
+                    await GET(dataStored.server+'api/conf/vice/updateVice?'+this.buildViceParams(v, this.palletID).toString());
+                }
+                // upsert: crea la riga di geometria (o ne aggiorna gli offset)
+                await GET(dataStored.server+'api/conf/fixture/updateFixtureOnPallet?'+this.geometryParams(this.palletID, null));
+                this.$router.push('/conf/Attrezzaggi');
+            } catch (error) {
+                console.info(error);
+                alert(this.$t('attrezzaggi.editIncomplete'));
             }
-
-            if (this.rigType == 'fixture' && this.fixtureID > 0) {
-                const params = new URLSearchParams({
-                    PALLET_ID: this.palletID,
-                    FIXTURE_ID: this.fixtureID,
-                    POS_X: this.pos.POS_X || 0,
-                    POS_Y: this.pos.POS_Y || 0,
-                    POS_Z: this.pos.POS_Z || 0,
-                    POS_X_ROT: this.pos.POS_X_ROT || 0,
-                    POS_Y_ROT: this.pos.POS_Y_ROT || 0,
-                    POS_Z_ROT: this.pos.POS_Z_ROT || 0
-                });
-                call = fetch(dataStored.server+'api/conf/fixture/insertFixtureOnPallet?'+params.toString(), { method: 'GET' });
-            }
-
-            if (!call) return;
-            call
-                .then(r => {
-                    if (!r.ok) throw new Error('Network response was not ok');
-                    this.$router.push('/conf/Attrezzaggi');
-                })
-                .catch(error => {
-                    console.info(error);
-                    alert("errore");
-                });
         }
     },
     watch: {
@@ -444,10 +438,12 @@ export default {
         palletGateActive(){
             return this.palletMounted && !(this.editMode && this.palletID == this.editPalletId);
         },
-        // AB: salva solo col ramo scelto completo
+        // salva solo col ramo scelto completo. (15/9) il ramo morsa richiede
+        // ANCHE la geometria: un pallet con la sola morsa e' uno stato che il
+        // PLC non sa eseguire, e questo form non deve poterlo creare.
         canSave(){
             if (this.palletID == 0 || this.palletGateActive) return false;
-            if (this.rigType == 'vice')    return this.viceID > 0;
+            if (this.rigType == 'vice')    return this.viceID > 0 && this.fixtureID > 0;
             if (this.rigType == 'fixture') return this.fixtureID > 0;
             return false;
         },
@@ -500,4 +496,9 @@ export default {
     .pure-controls .btn-ghost {
         margin-left: var(--space-2);
     }
+/* (15/9) perche' la morsa chiede anche la geometria */
+.geom-hint {
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+}
 </style>

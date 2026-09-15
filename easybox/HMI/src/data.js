@@ -54,17 +54,24 @@ export const dataStored = reactive({
     status_alarm    : 99,
 
     createWorkOrder:{
-      // Convenzioni PLC (cantiere AG fase 2): VICE_ID=0 SEMPRE (mai -1);
-      // ramo morsa: pieceID reale, gripperID reale, fixtureID=0, declaredPieceID 0/NULL;
+      // Convenzioni PLC (cantiere AG fase 2, riviste il 15/9): VICE_ID=0
+      // SEMPRE (mai -1); palletID reale sempre.
+      // FIXTURE_ID: REALE IN ENTRAMBI I RAMI — e' la GEOMETRIA di cio' che
+      // sta sul pallet (riga FIXTURE_ON_PALLET). Il PLC calcola la quota di
+      // deposito in macchina come P.Z + PIECE.Z_PLACE + FIXTURE.Z con un join
+      // INTERNO su FIXTURE e non conosce VICE: con FIXTURE_ID 0 non trova
+      // righe e va in errore 799 col robot gia' in movimento. Prima il ramo
+      // morsa scriveva 0 per convenzione: era la causa del fermo del 15/9.
+      // ramo morsa: pieceID reale, gripperID reale, declaredPieceID 0/NULL;
       // ramo attrezzatura: pieceID=0 (un PIECE_ID!=0 farebbe partire una
       // missione di carico dal magazzino), gripperID=0, declaredPieceID=pezzo
-      // dichiarato (sorgente del PP), fixtureID solo uso HMI; palletID reale sempre.
+      // dichiarato (sorgente del PP).
       rigType   :'',       // '' | 'vice' | 'fixture' — ramo del wizard (solo client)
       declaredPieceID:0,   // pezzo dichiarato ramo attrezzatura -> WORKORDER.DECLARED_PIECE_ID
       pieceID   :-1,
       gripperID :0,
       palletID  :-1,
-      fixtureID :0,
+      fixtureID :0,        // 0 = non ancora scelto; all'ordine DEVE essere > 0
       viceID    :0,
       machineID :0,
       quantity  :0,

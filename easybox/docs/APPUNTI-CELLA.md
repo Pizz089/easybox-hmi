@@ -1,5 +1,30 @@
 # Appunti cella — interventi manuali da eseguire in impianto
 
+## [ ] 2026-09-15 — UNIQUE (PALLET_ID, FIXTURE_ID) su FIXTURE_ON_PALLET — A CELLA FERMA
+
+Script: `serverDati/scripts/fixture-on-pallet-unique.sql` (idempotente, rollback
+commentato). La tabella non ha ne' chiave primaria ne' indice unico ne' chiave
+esterna: niente impedisce due righe per la stessa coppia, e la geometria del
+pallet diventerebbe ambigua.
+
+```
+sqlcmd -S .\SQLEXPRESS -E -d ADMG -i fixture-on-pallet-unique.sql
+```
+
+Verifica post: `EXEC sp_helpindex 'dbo.FIXTURE_ON_PALLET'` mostra
+`UX_FOP_PALLET_FIXTURE`. Se lo script elenca duplicati: bonificare con la
+procedura commentata dentro lo script e rieseguire.
+
+**Chiave esterna verso FIXTURE: RIMANDATA.** Oggi fallirebbe per la riga orfana
+(PALLET_ID 1, FIXTURE_ID 2, con l'attrezzatura 2 inesistente in cella) e non si
+bonificano dati mentre si produce.
+
+**Dopo il deploy del modello a due aspetti** (commit rig-two-aspects): il pallet
+9 risultera' INCOMPLETO nell'elenco Attrezzaggi (morsa senza geometria). Si
+completa dalla Modifica associandogli l'attrezzatura 1 ("Morsa 158 + pallet 38",
+Z 176000). Da quel momento gli ordini nascono col FIXTURE_ID giusto e non serve
+piu' la correzione a mano `UPDATE WORKORDER SET FIXTURE_ID=1`.
+
 ## [ ] 2026-09-14 — origine tasche + significato Z_PICK: vista 4Robot v3 e bonifica
 
 Riscontro pendant TRAY_1 tasca 1 (pezzo 1033, 100.6x100.6x15): reale

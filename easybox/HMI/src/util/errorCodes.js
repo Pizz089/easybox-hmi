@@ -14,3 +14,5 @@ export const KO_IN_USE             = "KO_IN_USE";             // grigliato in us
 export const KO_DUP_NAME           = "KO_DUP_NAME";           // nome grigliato duplicato
 // (grating-thickness 14/9) Z_PICK/Z_PLACE del pezzo sotto spessore grigliato + franco
 export const KO_Z_BELOW_GRATING   = "KO_Z_BELOW_GRATING";   // generazione rifiutata dal server
+// (rig-two-aspects 15/9) ordine senza geometria: il PLC non saprebbe a che quota depositare
+export const KO_NO_FIXTURE        = "KO_NO_FIXTURE";

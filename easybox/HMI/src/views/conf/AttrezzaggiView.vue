@@ -1,11 +1,13 @@
 <script setup>
-    // MODELLO ESCLUSIVO (dal creatore del progetto, AB): ogni pallet monta
-    // UNA sola morsa O UNA sola attrezzatura, mai entrambe. Morsa = ciclo
-    // EasyBox pieno (grezzi/finiti dai cassetti); attrezzatura = lavorazione
-    // speciale (entra in macchina col grezzo gia' montato). Una riga con
-    // entrambe o con piu' attrezzature e' un DATO SPORCO: si mostra col
-    // badge di anomalia (mai sanatorie automatiche, si sistema con gli
-    // smonta).
+    // MODELLO A DUE ASPETTI (15/9, vedi util/rigging.js): la GEOMETRIA di cio'
+    // che sta sul pallet e' sempre una riga FIXTURE_ON_PALLET (il PLC somma
+    // FIXTURE.Z alla quota di deposito in macchina e non conosce VICE); la
+    // MORSA aggiunge il comportamento, cioe' il ciclo EasyBox pieno
+    // (grezzi/finiti dai cassetti). Senza morsa il pallet e' attrezzatura:
+    // lavorazione speciale, entra in macchina col grezzo gia' montato.
+    // Morsa SENZA geometria = attrezzaggio INCOMPLETO: si mostra e si completa
+    // dalla Modifica. Piu' attrezzature sullo stesso pallet = DATO SPORCO:
+    // badge di anomalia, mai sanatorie automatiche, si sistema con gli smonta.
     import { dataStored } from '../../data';
     import { palletGridOrder, palletPositionLabel } from '../../util/warehouseGrid';
     import { buildRigRows, rigState } from '../../util/rigging';
@@ -40,15 +42,20 @@
                         <td>#{{row.pallet.ID}} {{(row.pallet.FAMILY || '').trim()}} - {{(row.pallet.DESCR || '').trim()}}</td>
                         <td>{{ getPosition(row.pallet) }}</td>
 
-                        <!-- AB: badge semantico del modello esclusivo — nudo
-                             (warning), Morsa/Attrezzatura (informativi),
-                             ANOMALIA (entrambe o piu' attrezzature: dato
-                             sporco MOSTRATO, mai nascosto ne' sanato). -->
+                        <!-- Badge semantico: nudo (warning), Morsa/Attrezzatura
+                             = attrezzaggio COMPLETO (informativi), INCOMPLETO =
+                             morsa senza geometria, ANOMALIA = piu' attrezzature
+                             (dato sporco MOSTRATO, mai nascosto ne' sanato). -->
                         <td>
                             <span v-if="rowState(row)=='bare'" class="badge badge-missing">{{$t('attrezzaggi.bare')}}</span>
                             <span v-else-if="rowState(row)=='vice'" class="badge badge-type">{{$t('attrezzaggi.vice')}}</span>
                             <span v-else-if="rowState(row)=='fixture'" class="badge badge-type">{{$t('attrezzaggi.fixture')}}</span>
+                            <!-- (15/9) morsa senza geometria: il PLC non saprebbe
+                                 a che quota depositare. Si vede QUI, non come
+                                 errore 799 col robot in movimento. -->
+                            <span v-else-if="rowState(row)=='vice-incomplete'" class="badge badge-anomaly">{{$t('attrezzaggi.incomplete')}}</span>
                             <span v-else class="badge badge-anomaly">{{$t('attrezzaggi.anomaly')}}</span>
+                            <div v-if="rowState(row)=='vice-incomplete'" class="incomplete-hint">{{$t('attrezzaggi.incompleteHint')}}</div>
                         </td>
 
                         <td>
@@ -75,7 +82,10 @@
                                  (vice|fixture) — sull'anomalia l'unica azione e'
                                  lo smonta (D5). Gating D1: bottone SEMPRE
                                  visibile, disabilitato col motivo sotto. -->
-                            <button v-if="rowState(row)=='vice' || rowState(row)=='fixture'"
+                            <!-- (15/9) la Modifica e' offerta anche sugli
+                                 INCOMPLETI: e' da li' che si aggiunge alla morsa
+                                 la geometria mancante. -->
+                            <button v-if="rowState(row)!='bare' && rowState(row)!='anomaly'"
                                 class="btn-ghost action-btn"
                                 :disabled="rowBlockReason(row)!=''"
                                 @click="askEdit(row)">
@@ -739,4 +749,10 @@ export default {
         font-size: var(--font-size-sm);
         font-weight: var(--font-weight-normal);
     }
+/* (15/9) motivo dell'attrezzaggio incompleto, sotto il badge */
+.incomplete-hint {
+    color: var(--color-danger);
+    font-size: var(--font-size-sm);
+    margin-top: var(--space-1);
+}
 </style>
