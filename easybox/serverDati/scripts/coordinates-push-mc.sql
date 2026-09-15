@@ -10,12 +10,26 @@
 -- SCOPO: il PLC legge UNA riga e ha tutto. Il calcolo delle tre quote sta
 -- qui, non nel PLC: e' verificabile con un test e il PLC resta semplice.
 --
--- LE TRE QUOTE (asse di battuta = Y, battuta a Y CRESCENTI, convenzione fissa):
---   deposito = P.Y                                        (invariata)
---   spinta   = P.Y - pezzo.Y/2 - spessore_ganascia_pinza/2
+-- LE TRE QUOTE (asse di battuta = X del ROBOT, quella che il PLC manda come
+-- X_Pick-Place; NON l'asse della macchina utensile):
+--   deposito = P.X                                        (invariata)
+--   spinta   = P.X - pezzo.Y/2 - lunghezza_ganascia_pinza/2
 --   arrivo   = spinta + (ganascia_morsa - pezzo.Y)/2
--- Sulla spinta si compensa MEZZO spessore di ganascia perche' il TCP sta al
--- centro della chela e il punto che tocca il pezzo e' il bordo.
+-- Durante la spinta Y e Z restano quelle del deposito: si muove solo la X.
+--
+-- PERCHE' pezzo.Y SULLA X: fra disegno e robot c'e' una rotazione. Nel
+-- cassetto il passo lungo la X del robot vale PIECE.Y + SAFEY (convenzione
+-- validata sul ferro, util/gratingAxes.js), quindi e' PIECE.Y a correre lungo
+-- la X; il pezzo non ruota fra presa e deposito, percio' in morsa presenta la
+-- stessa dimensione. Riscontro pezzo 1029 (PIECE.X 40, PIECE.Y 120): nel
+-- cassetto occupa 120 sulla X del robot e 40 sulla Y.
+--
+-- Sulla spinta si compensa MEZZA LUNGHEZZA di chela: il TCP sta al centro
+-- della chela e il punto che tocca il pezzo e' il bordo. Le chele della pinza
+-- e le ganasce della morsa si aprono entrambe lungo la Y, cioe' stringono di
+-- traverso rispetto alla spinta: la chela presenta quindi la sua LUNGHEZZA
+-- nella direzione in cui spinge, e la ganascia della morsa CONTIENE il pezzo
+-- nella direzione in cui scorre fino alla battuta.
 --
 -- IPOTESI DICHIARATA (confermata da Dario 15/9): il deposito e' SEMPRE
 -- CENTRATO sulla morsa, quindi lo spazio verso la battuta e' meta' della
@@ -33,12 +47,12 @@
 -- lega la posizione alla macchina dell'ordine (PARENT = 'MC_' + MACHINE_ID).
 --
 -- COLONNE DI ESITO — il PLC legge PUSH_STATUS PRIMA delle quote:
---   'DISABLED' bit di spinta non attivo sull'ordine  -> Y_PUSH/Y_STOP NULL
+--   'DISABLED' bit di spinta non attivo sull'ordine  -> X_PUSH/X_STOP NULL
 --   'NO_VICE'  nessuna morsa sul pallet dell'ordine  -> NULL
---   'NO_DATA'  manca la ganascia morsa o lo spessore ganascia pinza -> NULL
+--   'NO_DATA'  manca la ganascia della morsa o la lunghezza della chela -> NULL
 --   'NO_FIT'   pezzo piu' lungo della ganascia       -> NULL
 --   'OK'       quote valorizzate
--- Y_PUSH/Y_STOP sono NULL quando non sono utilizzabili: un PLC che leggesse
+-- X_PUSH/X_STOP sono NULL quando non sono utilizzabili: un PLC che leggesse
 -- le quote ignorando l'esito fallisce la lettura invece di muoversi male.
 --
 -- DIVISIONI INTERE: le colonne sono int, quindi /2 tronca (1 micron). Il
@@ -51,9 +65,11 @@
 -- ===========================================================================
 SET NOCOUNT ON;
 
-IF COL_LENGTH('dbo.PIECE', 'PUSH_TO_STOP') IS NULL OR COL_LENGTH('dbo.VICE', 'CLAW_LENGTH_Y') IS NULL
+IF COL_LENGTH('dbo.PIECE', 'PUSH_TO_STOP') IS NULL
+   OR COL_LENGTH('dbo.VICE', 'CLAW_LENGTH') IS NULL
+   OR COL_LENGTH('dbo.GRIPPER', 'CLAW_LENGTH') IS NULL
 BEGIN
-	PRINT 'MANCANO le colonne: eseguire prima piece-push-to-stop.sql e vice-claw-length.sql.';
+	PRINT 'MANCANO le colonne: eseguire prima piece-push-to-stop.sql, vice-claw-length.sql e gripper-claw-length.sql.';
 	SET NOEXEC ON;
 END
 GO
@@ -68,8 +84,8 @@ select	q.ORDER_ID,
 		q.X_PLACE,
 		q.Y_PLACE,
 		q.Z_PLACE,
-		case when q.PUSH_STATUS = 'OK' then q.Y_PUSH_RAW end				as Y_PUSH,
-		case when q.PUSH_STATUS = 'OK' then q.Y_STOP_RAW end				as Y_STOP,
+		case when q.PUSH_STATUS = 'OK' then q.X_PUSH_RAW end				as X_PUSH,
+		case when q.PUSH_STATUS = 'OK' then q.X_STOP_RAW end				as X_STOP,
 		case when q.PUSH_STATUS = 'OK' then q.CLEARANCE_RAW end				as CLEARANCE,
 		q.PUSH_ENABLED,
 		q.PUSH_STATUS
@@ -79,16 +95,16 @@ from (
 			p.X														as X_PLACE,
 			p.Y														as Y_PLACE,
 			p.Z + pz.Z_PLACE + f.Z									as Z_PLACE,
-			p.Y - pz.Y/2 - g.Tickness_CLAW/2						as Y_PUSH_RAW,
-			p.Y - pz.Y/2 - g.Tickness_CLAW/2 + (v.CLAW_LENGTH_Y - pz.Y)/2	as Y_STOP_RAW,
-			(v.CLAW_LENGTH_Y - pz.Y)/2								as CLEARANCE_RAW,
+			p.X - pz.Y/2 - g.CLAW_LENGTH/2							as X_PUSH_RAW,
+			p.X - pz.Y/2 - g.CLAW_LENGTH/2 + (v.CLAW_LENGTH - pz.Y)/2	as X_STOP_RAW,
+			(v.CLAW_LENGTH - pz.Y)/2								as CLEARANCE_RAW,
 			case when (ISNULL(w.OPTION2,0) & 2) <> 0 then 1 else 0 end		as PUSH_ENABLED,
 			case when (ISNULL(w.OPTION2,0) & 2) = 0					then 'DISABLED'
 				 when v.ID is null									then 'NO_VICE'
-				 when ISNULL(v.CLAW_LENGTH_Y,0) <= 0
-				   or ISNULL(g.Tickness_CLAW,0) <= 0
+				 when ISNULL(v.CLAW_LENGTH,0) <= 0
+				   or ISNULL(g.CLAW_LENGTH,0) <= 0
 				   or ISNULL(pz.Y,0) <= 0							then 'NO_DATA'
-				 when (v.CLAW_LENGTH_Y - pz.Y) < 0					then 'NO_FIT'
+				 when (v.CLAW_LENGTH - pz.Y) < 0					then 'NO_FIT'
 				 else 'OK' end										as PUSH_STATUS
 	from WORKORDER w
 	inner join [POSITION] p	on RTRIM(p.PARENT) = CONCAT('MC_', w.MACHINE_ID)
@@ -102,12 +118,13 @@ SET NOEXEC OFF;
 GO
 
 -- ===========================================================================
--- VERIFICA (numeri attesi con i dati di cella: pezzo 1033 Y 100600, pinza 26
--- Tickness_CLAW 5000, POSITION MC_1 Y da misura):
---   Y_PUSH = Y_PLACE - 50300 - 2500
---   Y_STOP = Y_PUSH + (CLAW_LENGTH_Y - 100600)/2
---   con ganascia 150000: CLEARANCE 24700
--- SELECT ORDER_ID, MC, Y_PLACE, Y_PUSH, Y_STOP, CLEARANCE, PUSH_ENABLED, PUSH_STATUS
+-- VERIFICA con un pezzo NON QUADRATO (col 1033, 100.6x100.6, un errore d'asse
+-- non si vedrebbe). Pezzo 1029: PIECE.X 40000, PIECE.Y 120000; chela pinza
+-- 30000; ganascia morsa 150000:
+--   X_PUSH   = X_PLACE - 60000 - 15000
+--   CLEARANCE = (150000 - 120000)/2 = 15000
+--   X_STOP   = X_PUSH + 15000
+-- SELECT ORDER_ID, MC, X_PLACE, X_PUSH, X_STOP, CLEARANCE, PUSH_ENABLED, PUSH_STATUS
 --   FROM COORDINATES_PUSH_MC ORDER BY ORDER_ID;
 -- ===========================================================================
 

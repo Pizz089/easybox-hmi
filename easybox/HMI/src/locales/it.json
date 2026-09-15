@@ -124,7 +124,9 @@
     "posMag": "Posizione nel magazzino",
     "posPlant": "Posizione attuale",
     "stroke_claw": "Corsa della ganascia",
-    "tickness_claw": "Spessore della ganascia"
+    "tickness_claw": "Spessore della ganascia",
+    "claw_length": "Chela: lunghezza nella direzione in cui spinge il pezzo",
+    "claw_lengthHint": "Misura fisica col calibro, in mm. Serve alla spinta in battuta: vuoto = non misurata, il ciclo resta disabilitato."
   },
   "tray": {
     "welcome": "Elenco Cassetti",
@@ -707,7 +709,7 @@
     "sure": "sei sicuro?",
     "delete": "cancello?",
     "data": "Dati morsa",
-    "clawLengthY": "Ganascia: lunghezza sull'asse di battuta",
+    "clawLength": "Ganascia: lunghezza nella direzione in cui il pezzo scorre fino alla battuta",
     "clawLengthHint": "Misura fisica col calibro, in mm. Serve alla spinta in battuta: vuoto = non misurata, il ciclo resta disabilitato."
   },
   "pallet": {

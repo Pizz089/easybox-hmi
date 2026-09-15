@@ -261,17 +261,19 @@ router.get('/insertOrder', (req, res) => {
         // OPTION2 — stesso meccanismo del part program. Lo calcola il SQL
         // dall'anagrafica, non il client: nessun campo nuovo nel payload e
         // nessuna istantanea falsificabile. Il bit 0 resta al gripper doppio.
-        // Guardia: se la spinta e' attiva ma manca la ganascia della morsa, o lo
-        // spessore ganascia della pinza, o il pezzo e' piu' lungo della ganascia,
-        // l'ordine NON nasce (il PLC lo scoprirebbe col robot in movimento).
+        // Guardia: se la spinta e' attiva ma manca la ganascia della morsa, o la
+        // lunghezza della chela della pinza, o il pezzo e' piu' lungo della
+        // ganascia, l'ordine NON nasce (il PLC lo scoprirebbe col robot in
+        // movimento). La dimensione che entra nel conto e' PIECE.Y, quella che
+        // corre lungo la X del robot: e' sulla X che si spinge in battuta.
         // I termini sono gli stessi della vista COORDINATES_PUSH_MC.
         let query = `SET NOCOUNT ON;
 					DECLARE @push int = ISNULL((SELECT CASE WHEN PUSH_TO_STOP = 1 THEN ${pushQuotes.PUSH_BIT} ELSE 0 END FROM PIECE WHERE ID=${pieceID}), 0);
-					DECLARE @claw int = (SELECT TOP 1 CLAW_LENGTH_Y FROM VICE WHERE PALLET_ID=${palletID});
-					DECLARE @tick int = (SELECT TOP 1 Tickness_CLAW FROM GRIPPER WHERE ID=${gripperID});
+					DECLARE @claw int = (SELECT TOP 1 CLAW_LENGTH FROM VICE WHERE PALLET_ID=${palletID});
+					DECLARE @tool int = (SELECT TOP 1 CLAW_LENGTH FROM GRIPPER WHERE ID=${gripperID});
 					DECLARE @pieceY int = (SELECT TOP 1 Y FROM PIECE WHERE ID=${pieceID});
 					IF NOT EXISTS (SELECT 1 FROM FIXTURE WHERE ID=${fixtureID}) SELECT '${errorCodes.KO_NO_FIXTURE}' AS ris;
-					ELSE IF @push <> 0 AND (ISNULL(@claw,0) <= 0 OR ISNULL(@tick,0) <= 0 OR ISNULL(@pieceY,0) <= 0) SELECT '${errorCodes.KO_PUSH_NO_DATA}' AS ris;
+					ELSE IF @push <> 0 AND (ISNULL(@claw,0) <= 0 OR ISNULL(@tool,0) <= 0 OR ISNULL(@pieceY,0) <= 0) SELECT '${errorCodes.KO_PUSH_NO_DATA}' AS ris;
 					ELSE IF @push <> 0 AND (@claw - @pieceY) < 0 SELECT '${errorCodes.KO_PUSH_NO_FIT}' AS ris;
 					ELSE BEGIN
 					INSERT INTO WORKORDER

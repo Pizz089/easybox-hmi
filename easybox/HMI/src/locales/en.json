@@ -124,7 +124,9 @@
     "posMag": "Position on storage",
     "posPlant": "Actual position",
     "stroke_claw": "Jaw stroke",
-    "tickness_claw": "Jaw thickness"
+    "tickness_claw": "Jaw thickness",
+    "claw_length": "Claw: length along the direction it pushes the part",
+    "claw_lengthHint": "Physical measurement with a caliper, in mm. Needed by the push-to-stop cycle: empty = not measured, the cycle stays disabled."
   },
   "tray": {
     "welcome": "Tray list",
@@ -707,7 +709,7 @@
     "sure": "Are you sure?",
     "delete": "Delete?",
     "data": "Vice data",
-    "clawLengthY": "Jaw: length along the stop axis",
+    "clawLength": "Jaw: length along the direction the part slides to the stop",
     "clawLengthHint": "Physical measurement with a caliper, in mm. Needed by the push-to-stop cycle: empty = not measured, the cycle stays disabled."
   },
   "pallet": {

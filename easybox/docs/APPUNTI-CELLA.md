@@ -1,31 +1,51 @@
 # Appunti cella — interventi manuali da eseguire in impianto
 
-## [ ] 2026-09-15 — ciclo SPINTA IN BATTUTA: tre script, poi le misure
+## [ ] 2026-09-15 — ciclo SPINTA IN BATTUTA: quattro script, poi le misure
 
-Ordine obbligato, **a cella ferma**, i primi due prima del deploy del backend
-(insert/update nominano le colonne nuove), il terzo dopo i primi due:
+Ordine obbligato, **a cella ferma**, i primi tre prima del deploy del backend
+(insert/update nominano le colonne nuove), la vista per ultima perche' le
+nomina tutte e tre:
 
 ```
 sqlcmd -S .\SQLEXPRESS -E -d ADMG -i piece-push-to-stop.sql
 sqlcmd -S .\SQLEXPRESS -E -d ADMG -i vice-claw-length.sql
+sqlcmd -S .\SQLEXPRESS -E -d ADMG -i gripper-claw-length.sql
 sqlcmd -S .\SQLEXPRESS -E -d ADMG -i coordinates-push-mc.sql
 ```
 
-`vice-claw-length.sql` fa anche `sp_refreshview 'dbo.VICES'`: la vista e'
-definita come `SELECT v.*` e una vista con l'asterisco **non vede** le colonne
-aggiunte dopo, quindi senza il refresh il pannello non leggerebbe mai la
-ganascia. Stessa trappola da ricordare per ogni colonna nuova.
+I due script delle chele toccano anche le viste, in due modi diversi:
+`vice-claw-length.sql` fa `sp_refreshview 'dbo.VICES'` perche' quella vista e'
+`SELECT v.*` e una vista con l'asterisco **non vede** le colonne aggiunte dopo;
+`gripper-claw-length.sql` fa invece un `ALTER` esplicito, perche' GRIPPERS
+elenca le colonne per nome e il refresh non basterebbe. Senza questi passaggi
+il pannello non leggerebbe mai le due misure. Trappola da ricordare per ogni
+colonna nuova.
+
+`vice-claw-length.sql` gestisce anche la **rinomina** da `CLAW_LENGTH_Y` a
+`CLAW_LENGTH`: se in cella e' gia' stato eseguito il primo script (versione del
+14/9, quando la battuta si credeva sulla Y), la colonna viene rinominata e i
+dati restano. Se non e' mai stato eseguito, la crea e basta.
 
 Dopo il deploy, misure col calibro (nessuna quota da digitare):
-1. Morsa, campo "Ganascia: lunghezza sull'asse di battuta", in mm.
-2. Pezzo, spunta "Spinta in battuta" sui particolari che la vogliono.
-3. Pinza, corsa e spessore della ganascia: **da ricontrollare su tutte le
+1. Morsa, campo "Ganascia: lunghezza nella direzione in cui il pezzo scorre
+   fino alla battuta", in mm.
+2. Pinza, campo "Chela: lunghezza nella direzione in cui spinge il pezzo", in
+   mm: e' la lunghezza della chela, **non** lo spessore.
+3. Pezzo, spunta "Spinta in battuta" sui particolari che la vogliono.
+4. Pinza, corsa e spessore della ganascia: **da ricontrollare su tutte le
    pinze**, perche' fino al 15/9 il form li mandava e il backend li perdeva,
-   quindi a database ci sono i default e non le misure vere. Lo spessore ora
-   entra nel calcolo della quota di spinta.
+   quindi a database ci sono i default e non le misure vere. Non entrano nella
+   spinta, ma sono sbagliati per lo stesso motivo.
 
-Verifica: `SELECT ORDER_ID, Y_PLACE, Y_PUSH, Y_STOP, CLEARANCE, PUSH_STATUS
-FROM COORDINATES_PUSH_MC` — con pezzo 100.6 e ganascia 150 la corsa e' 24700.
+Verifica: `SELECT ORDER_ID, X_PLACE, X_PUSH, X_STOP, CLEARANCE, PUSH_STATUS
+FROM COORDINATES_PUSH_MC` — **da fare su un pezzo NON quadrato**, altrimenti
+uno scambio d'asse non si vede. Col 1029 (40 x 120), ganascia morsa 150 e chela
+pinza 30: spinta scostata di 75 mm dal deposito, corsa fino alla battuta 15 mm.
+
+**Asse della battuta:** la spinta e' sulla **X del robot** (quella che il PLC
+manda come X_Pick-Place). Y e Z restano quelle del deposito. Del pezzo entra
+`PIECE.Y`, perche' e' la dimensione che corre lungo la X del robot: e' la
+stessa convenzione del passo delle tasche nel cassetto.
 
 **Dipendenza da ricordare:** le quote presuppongono il deposito CENTRATO sulla
 morsa (confermato da Dario). Se si riapprende la posizione di deposito in

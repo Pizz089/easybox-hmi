@@ -105,11 +105,14 @@ export default {
             piecePP:null,  // part program ereditato dal particolare (int) o null
             // (push-to-stop 15/9) dati per la guardia della spinta in battuta:
             // il pezzo dice se il ciclo e' attivo, la morsa del pallet quanto e'
-            // lunga la ganascia, la pinza quanto e' spessa la sua.
+            // lunga la ganascia, la pinza quanto e' lunga la chela. Tutte
+            // dimensioni fisiche da calibro, nessuna coordinata insegnata.
+            // pieceY e' PIECE.Y perche' e' la misura che corre lungo la X del
+            // robot, cioe' la direzione della spinta.
             piecePush:false,
             pieceY:0,
             viceClaw:null,
-            gripperTick:null,
+            gripperClaw:null,
             viceFound:false
         }
     },
@@ -127,10 +130,10 @@ export default {
             return pushQuotes({
                 enabled: this.piecePush,
                 hasVice: this.viceFound,
-                yPlace: 0,
+                xPlace: 0,
                 pieceY: this.pieceY,
                 viceClawLength: this.viceClaw,
-                gripperThickness: this.gripperTick,
+                gripperClawLength: this.gripperClaw,
             });
         },
         pushOk(){
@@ -190,15 +193,15 @@ export default {
                 .then(rows => {
                     const v = (rows || []).find(x => x.PALLET_ID == wo.palletID) || null;
                     this.viceFound = !!v;
-                    this.viceClaw = v ? v.CLAW_LENGTH_Y : null;
+                    this.viceClaw = v ? v.CLAW_LENGTH : null;
                 })
                 .catch(e => { console.info(e); this.viceFound = false; this.viceClaw = null; });
             get('api/conf/gripper/show/all')
                 .then(rows => {
                     const g = (rows || []).find(x => x.ID == wo.gripperID) || null;
-                    this.gripperTick = g ? g.TICKNESS_CLAW : null;
+                    this.gripperClaw = g ? g.CLAW_LENGTH : null;
                 })
-                .catch(e => { console.info(e); this.gripperTick = null; });
+                .catch(e => { console.info(e); this.gripperClaw = null; });
         },
         saveData() {
             // guardia: senza part program dal particolare l'ordine non nasce

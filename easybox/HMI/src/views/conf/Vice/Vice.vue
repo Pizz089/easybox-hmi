@@ -83,8 +83,11 @@
             <span class="unit" aria-hidden="true">&micro;m</span>
           </div>
 
-          <!-- (push-to-stop 15/9) GANASCIA sull'asse di battuta: dimensione
-               FISICA, si misura col calibro. Da questa e dalle misure del pezzo
+          <!-- (push-to-stop 15/9) GANASCIA nella direzione in cui il pezzo
+               scorre fino alla battuta: dimensione FISICA, si misura col
+               calibro. L'etichetta descrive la direzione invece di nominare
+               un asse: l'operatore misura la ganascia, non deve sapere come
+               si chiama l'asse del robot. Da questa e dalle misure del pezzo
                il sistema ricava le quote di spinta e di arrivo: l'operatore non
                inserisce nessuna coordinata. Vuoto = non misurata, ciclo
                disabilitato. NB unita': questo campo e' in MILLIMETRI (convertito
@@ -92,15 +95,15 @@
                raw, difetto storico gia' censito, e per questo hanno etichetta
                diversa. -->
           <div class="pure-control-group">
-            <label for="vice-claw">{{ $t("vice.clawLengthY") }}</label>
+            <label for="vice-claw">{{ $t("vice.clawLength") }}</label>
             <input
               id="vice-claw"
               class="aligned-foo"
               type="number"
               step="0.1"
               min="0"
-              name="CLAW_LENGTH_Y"
-              v-model="vice.CLAW_LENGTH_Y"
+              name="CLAW_LENGTH"
+              v-model="vice.CLAW_LENGTH"
               inputmode="decimal"
               autocomplete="off"
             />
@@ -186,7 +189,7 @@ export default {
       Z: 80,
       // (push-to-stop 15/9) ganascia sull'asse di battuta, mm nel form e
       // micron a DB; null = non misurata, ciclo di spinta disabilitato
-      CLAW_LENGTH_Y: null,
+      CLAW_LENGTH: null,
       STATUS: 0,
       // AF: via POS_MAG (campo fantasma: updateVice non lo scrive) e i
       // campi posizione dagli editabili — restano nella riga letta e
@@ -381,9 +384,9 @@ export default {
             ? { ...this.defaultVice(), ...row }
             : this.defaultVice();
           // (push-to-stop) colonna in micron, campo in mm; NULL resta vuoto
-          this.vice.CLAW_LENGTH_Y =
-            row && row.CLAW_LENGTH_Y !== null && row.CLAW_LENGTH_Y !== undefined
-              ? Number(row.CLAW_LENGTH_Y) / 1000
+          this.vice.CLAW_LENGTH =
+            row && row.CLAW_LENGTH !== null && row.CLAW_LENGTH !== undefined
+              ? Number(row.CLAW_LENGTH) / 1000
               : null;
           this.updatePreviewFromModel();
         })
@@ -418,12 +421,12 @@ export default {
         Z: this.vice.Z,
         // (push-to-stop) il campo e' in mm, la colonna in micron: vuoto resta
         // vuoto e il backend scrive NULL (= non misurata)
-        CLAW_LENGTH_Y:
-          this.vice.CLAW_LENGTH_Y === null ||
-          this.vice.CLAW_LENGTH_Y === undefined ||
-          String(this.vice.CLAW_LENGTH_Y).trim() === ''
+        CLAW_LENGTH:
+          this.vice.CLAW_LENGTH === null ||
+          this.vice.CLAW_LENGTH === undefined ||
+          String(this.vice.CLAW_LENGTH).trim() === ''
             ? ''
-            : Math.round(Number(this.vice.CLAW_LENGTH_Y) * 1000),
+            : Math.round(Number(this.vice.CLAW_LENGTH) * 1000),
       };
     },
     saveData() {

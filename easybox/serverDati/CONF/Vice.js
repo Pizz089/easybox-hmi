@@ -77,7 +77,7 @@ router.get('/updateVice', (req, res) => {
 					 MAG=${req.query.MAG},
 					 MAG_POS=${req.query.MAG_POS},
 					 POS_PLANT=${req.query.POS_PLANT},
-					 CLAW_LENGTH_Y=${clawLengthSql(req.query.CLAW_LENGTH_Y)}${palletClause}
+					 CLAW_LENGTH=${clawLengthSql(req.query.CLAW_LENGTH)}${palletClause}
 					WHERE ID=${req.query.ID};`
 		
 		var request = new sql.Request();
@@ -104,7 +104,7 @@ router.get('/insertVice', (req, res) => {
 		
 		var request = new sql.Request();
         let query = `INSERT INTO VICE
-					(ID, FAMILY, DESCR, STATUS, X, Y, Z, Z_CLAW, Z_SINK_CLAW, MAG, MAG_POS, POS_PLANT, CLAW_LENGTH_Y)
+					(ID, FAMILY, DESCR, STATUS, X, Y, Z, Z_CLAW, Z_SINK_CLAW, MAG, MAG_POS, POS_PLANT, CLAW_LENGTH)
 					VALUES(${req.query.ID}, 
 					'${req.query.FAMILY}', 
 					'${req.query.DESCR}', 
@@ -117,7 +117,7 @@ router.get('/insertVice', (req, res) => {
 					${req.query.MAG}, 
 					${req.query.MAG_POS}, 
 					${req.query.POS_PLANT},
-					${clawLengthSql(req.query.CLAW_LENGTH_Y)});`
+					${clawLengthSql(req.query.CLAW_LENGTH)});`
 					
         log.info('query ' + query);
         // query to the database and get the records

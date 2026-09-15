@@ -160,6 +160,35 @@
             <span class="unit" aria-hidden="true">mm</span>
           </div>
 
+          <!-- (push-to-stop 15/9) LUNGHEZZA DELLA CHELA nella direzione in cui
+               spinge il pezzo contro la battuta: dimensione FISICA, si misura
+               col calibro. Serve mezza lunghezza nella quota di spinta perche'
+               il TCP sta al centro della chela e il punto che tocca il pezzo e'
+               il bordo. Vuoto = non misurata: la spinta resta disabilitata e
+               l'ordine viene rifiutato prima di nascere, invece di andare a
+               sbattere. NB: qui in MILLIMETRI, a DB in micron. -->
+          <div class="pure-control-group">
+            <label :for="ids.clawLength">{{
+              $t("gripper.claw_length")
+            }}</label>
+            <input
+              :id="ids.clawLength"
+              class="aligned-foo"
+              type="number"
+              step="0.1"
+              min="0"
+              name="CLAW_LENGTH"
+              v-model="gripper.CLAW_LENGTH"
+              inputmode="decimal"
+              autocomplete="off"
+            />
+            <span class="unit" aria-hidden="true">mm</span>
+          </div>
+          <div class="pure-control-group">
+            <label>&nbsp;</label>
+            <small class="claw-hint">{{ $t("gripper.claw_lengthHint") }}</small>
+          </div>
+
           <div class="pure-control-group">
             <label :for="ids.status">{{ $t("gripper.stato") }}</label>
             <optionStatus
@@ -266,6 +295,8 @@ export default {
       Z_CLAW: 0,
       STROKE_CLAW: 0,
       TICKNESS_CLAW: 0,
+      // null = non misurata (vedi il campo nel form): resta NULL a DB
+      CLAW_LENGTH: null,
       STATUS: 0,
       POS_MAG: 0,
       SUB_POS: 0,
@@ -284,6 +315,7 @@ export default {
         zClaw: "gripper-z-claw",
         stroke: "gripper-stroke",
         thickness: "gripper-thickness",
+        clawLength: "gripper-claw-length",
         status: "gripper-status",
         posMag: "gripper-pos-mag",
         posMagLabel: "gripper-pos-mag-label",
@@ -605,6 +637,12 @@ export default {
           this.gripper.Z_CLAW /= 1000;
           this.gripper.STROKE_CLAW /= 1000;
           this.gripper.TICKNESS_CLAW /= 1000;
+          // la lunghezza chela e' NULLABILE: non misurata deve restare vuota
+          // nel campo, non diventare 0 (0 direbbe "misurata e nulla").
+          this.gripper.CLAW_LENGTH =
+            row && row.CLAW_LENGTH !== null && row.CLAW_LENGTH !== undefined
+              ? Number(row.CLAW_LENGTH) / 1000
+              : null;
 
           this.updatePreviewFromModel();
         })
@@ -654,6 +692,15 @@ export default {
         Z_BODY: g.Z_BODY * 1000,
         STROKE_CLAW: g.STROKE_CLAW * 1000,
         TICKNESS_CLAW: g.TICKNESS_CLAW * 1000,
+        // vuoto -> parametro vuoto: il backend lo traduce in NULL (update) o
+        // lo lascia NULL (insert). Senza questo ramo lo spread manderebbe la
+        // stringa "null" e a DB finirebbe un numero sbagliato o un errore.
+        CLAW_LENGTH:
+          g.CLAW_LENGTH === null ||
+          g.CLAW_LENGTH === undefined ||
+          String(g.CLAW_LENGTH).trim() === ""
+            ? ""
+            : Math.round(Number(g.CLAW_LENGTH) * 1000),
       };
 
       const base =

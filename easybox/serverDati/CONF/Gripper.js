@@ -206,7 +206,8 @@ router.get('/updateGripper', (req, res) => {
 					POS_MAG='${req.query.POS_MAG}',
 					POS_PLANT='${req.query.POS_PLANT}',
 					Stroke_CLAW=${clawNum(req.query.STROKE_CLAW, 'Stroke_CLAW')},
-					Tickness_CLAW=${clawNum(req.query.TICKNESS_CLAW, 'Tickness_CLAW')}
+					Tickness_CLAW=${clawNum(req.query.TICKNESS_CLAW, 'Tickness_CLAW')},
+					CLAW_LENGTH=${clawNum(req.query.CLAW_LENGTH, 'CLAW_LENGTH')}
 					where ID='${req.query.ID}'`
 		// (gripper-twins, 1/9) SUB_POS NON viene piu' azzerato dall'update: e'
 		// la chiave delle righe gemelle della pinza doppia (26/37 -> 3) usata
@@ -252,7 +253,7 @@ router.get('/insertGripper', (req, res) => {
 
 		var request = new sql.Request();
         let query = `INSERT INTO GRIPPER
-					(FAMILY, DESCR, X_BODY, Y_BODY, Z_BODY, X_CLAW, Y_CLAW, Z_CLAW, STATUS, POS_MAG, SUB_POS, POS_PLANT, Stroke_CLAW, Tickness_CLAW)
+					(FAMILY, DESCR, X_BODY, Y_BODY, Z_BODY, X_CLAW, Y_CLAW, Z_CLAW, STATUS, POS_MAG, SUB_POS, POS_PLANT, Stroke_CLAW, Tickness_CLAW, CLAW_LENGTH)
 					SELECT
 					'${req.query.FAMILY}',
 					'${req.query.DESCR}',
@@ -267,7 +268,8 @@ router.get('/insertGripper', (req, res) => {
 					0,
 					'${req.query.POS_PLANT}',
 					${clawNum(req.query.STROKE_CLAW, '10000')},
-					${clawNum(req.query.TICKNESS_CLAW, '10000')}`
+					${clawNum(req.query.TICKNESS_CLAW, '10000')},
+					${clawNum(req.query.CLAW_LENGTH, 'NULL')}`
 		if (guarded)
 			query += ` WHERE ${shelfSlotGuard(posMag, '')}`;
 		query += ';'
