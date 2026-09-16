@@ -82,7 +82,7 @@ const ctxSmall = { recordset: [{ ID: 7, PIECE_ID: 21, PX: 40000, PY: 70000, TX: 
 r = call('POST /associateGrating/:floor', { floor: '9' }, { gratingId: 7, replace: false, source: { centers } }, [ctxSmall, ok(91)]);
 check(r.n === 1 && r.res.body.ris === errorCodes.KO_OUT_OF_TRAY, 'cassetto a DB piu\' stretto della griglia del client -> rifiutata');
 r = call('POST /associateGrating/:floor', { floor: '9' }, { gratingId: 7, replace: false, source: { centers } }, [{ recordset: [{ ID: 7, PIECE_ID: 0, PX: null, PY: null, TX: 820000, TY: 610000 }] }]);
-check(r.n === 1 && r.res.body.ris === 'KO_BAD_INPUT', 'modello senza pezzo -> KO_BAD_INPUT (niente generazione)');
+check(r.n === 1 && r.res.body.ris === errorCodes.KO_GRATING_NO_PIECE, 'modello senza pezzo -> KO_GRATING_NO_PIECE (niente generazione)');
 
 console.log('\n3) associateGrating: replace (Sostituisci/Rigenera) e input');
 r = call('POST /associateGrating/:floor', { floor: '12' }, { gratingId: 7, replace: true, source: { centers } }, [ctx, ok(91)]);
@@ -156,6 +156,41 @@ r = call('GET /showFromTray/:Tray_ID', { Tray_ID: '12' }, null, [{ recordset: []
 check(/g\.NAME = \(select TOP 1 FAMILY from TRAY where FLOOR_MAG=12\)/.test(r.q[0]), 'showFromTray: modello DEL cassetto richiesto (prima ignorava il parametro)');
 r = call('GET /showFromTray/:Tray_ID', { Tray_ID: '12; DROP' }, null);
 check(r.n === 0 && r.res.body === 'KO_BAD_INPUT', 'showFromTray: piano non intero -> KO_BAD_INPUT');
+
+console.log('\nX) Part_Type: viene dal MODELLO che si associa, mai ereditato (16/9)');
+// PERCHE'. Dal cambio di modello PLC il ciclo trova i grezzi con
+// STATUS=4 AND Part_Type=<pezzo dell'ordine>, e la vista 4Robot aggancia PIECE
+// con un join INTERNO su Part_Type per sommarne Z_PICK: quel campo decide
+// QUALE pezzo il robot prende e a CHE QUOTA scende. La copia lo ereditava
+// dalla tasca sorgente: copiando un cassetto tarato su un codice per
+// associarne un altro della STESSA SAGOMA, le tasche nascevano col codice
+// vecchio mentre il pannello mostrava il grigliato nuovo. Nessun allarme.
+
+// modello 7 -> pezzo 21; la sorgente TRAY_12 e' tarata su un ALTRO codice
+// della stessa sagoma (e' quello che rendeva il difetto invisibile)
+r = call('POST /associateGrating/:floor', { floor: '1' }, { gratingId: 7, replace: false, source: { floor: 12 } }, [ctx, ok(91)]);
+t = r.q[1];
+check(/APPROACH_Z_ROT, 21, 0 FROM \[POSITION\] s/.test(t), 'COPIA: le tasche nascono col PIECE_ID del modello (21), non con quello della sorgente');
+check(!/s\.Part_Type/.test(t), 'e il campo della tasca sorgente non viene piu\' letto');
+check(/s\.X, s\.Y, 0, s\.X_CORR, s\.Y_CORR, s\.Z_CORR/.test(t), 'quello che si copia restano le MISURE tarate della griglia');
+
+// stesso modello, ramo genera: stesso valore — i due rami non possono piu'
+// raccontare due cose diverse sullo stesso cassetto
+r2 = call('POST /associateGrating/:floor', { floor: '9' }, { gratingId: 7, replace: false, source: { centers } }, [ctx, ok(91)]);
+check(/COALESCE\(t\.APPROACH_Z,100000\), 21 FROM \(VALUES/.test(r2.q[1]), 'GENERA: stesso PIECE_ID del modello');
+
+// guardia: modello senza pezzo agganciabile -> nessuna tasca, in NESSUNO dei
+// due rami. Un cassetto invisibile alla cella e' peggio di un rifiuto.
+const ctxNoPiece = { recordset: [{ ID: 7, PIECE_ID: 0, THICKNESS: null, PX: null, PY: null, Z_PICK: 15000, Z_PLACE: 15000, TX: 820000, TY: 610000 }] };
+r = call('POST /associateGrating/:floor', { floor: '1' }, { gratingId: 7, replace: false, source: { floor: 12 } }, [ctxNoPiece]);
+check(r.n === 1 && r.res.body.ris === errorCodes.KO_GRATING_NO_PIECE, 'COPIA senza pezzo nel modello: rifiutata, nessuna transazione');
+const ctxGhost = { recordset: [{ ID: 7, PIECE_ID: 999, THICKNESS: null, PX: null, PY: null, Z_PICK: 15000, Z_PLACE: 15000, TX: 820000, TY: 610000 }] };
+r = call('POST /associateGrating/:floor', { floor: '1' }, { gratingId: 7, replace: false, source: { floor: 12 } }, [ctxGhost]);
+check(r.n === 1 && r.res.body.ris === errorCodes.KO_GRATING_NO_PIECE, 'PIECE_ID che non aggancia nessun PIECE: rifiutata (sarebbe invisibile al robot)');
+
+// e in tutto il test non resta nessuna INSERT che scriva Part_Type 0
+const tutte = queries.map(norm).filter(q => /INSERT INTO \[POSITION\]/.test(q));
+check(tutte.length > 0 && !tutte.some(q => /APPROACH_Z_ROT, 0, 0 FROM/.test(q) || /COALESCE\(t\.APPROACH_Z,100000\), 0 FROM/.test(q)), 'nessuna INSERT scrive Part_Type 0 (' + tutte.length + ' insert viste)');
 
 console.log('\n' + (failed ? failed + ' CHECK FALLITI' : 'TUTTI I CHECK PASSATI'));
 process.exit(failed ? 1 : 0);

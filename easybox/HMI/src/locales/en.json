@@ -259,7 +259,7 @@
       "err": {
         "load": "Data loading failed.",
         "noModel": "The grating of this tray no longer exists in the catalog: use Replace.",
-        "noPiece": "The model has no valid piece: cannot generate the grid.",
+        "noPiece": "The grating model does not say which part it holds: the pockets would be invisible to the robot. Set the part code on the grating and try again.",
         "emptyGrid": "No pocket can be generated with these sizes.",
         "outOfTray": "Grid OUTSIDE the tray outline (exceeds by {w} mm along Y, {h} mm along X): no pocket written.",
         "extracted": "Refused: the tray appears extracted or moving (TRAY.EXTRACT). If it is inside, the PLC did not update the state.",
@@ -287,6 +287,8 @@
     "safeY": "Gap between parts Y",
     "pitchX": "Resulting pitch X (center-to-center)",
     "pitchY": "Resulting pitch Y (center-to-center)",
+    "importPieceHint": "Which part sits in these pockets. One outline holds every part with that footprint: only whoever has the tray in front of them knows the code.",
+    "importNoPiece": "Choose the part code: without it the grating would generate pockets the robot cannot see.",
     "part": "Code type",
     "comands": "Comands",
     "sizes": "Size grating",

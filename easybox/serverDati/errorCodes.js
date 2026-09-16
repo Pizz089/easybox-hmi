@@ -20,6 +20,11 @@ exports.KO_OUT_OF_TRAY        = "KO_OUT_OF_TRAY";        // griglia generata FUO
 exports.KO_IN_USE             = "KO_IN_USE";             // grigliato usato da almeno un cassetto: cancellazione rifiutata
 exports.KO_DUP_NAME           = "KO_DUP_NAME";           // nome grigliato gia' esistente (NAME e' la chiave del legame TRAY.FAMILY)
 // Spessore grigliato (grating-thickness 14/9): quota di prelievo/deposito del pezzo sotto THICKNESS + franco
+// Pezzo del modello grigliato (16/9): dal cambio di modello PLC, POSITION.Part_Type
+// decide QUALE pezzo il robot preleva e a CHE QUOTA (la vista 4Robot aggancia PIECE
+// con join INTERNO su quel campo e ne somma Z_PICK). Un grigliato senza pezzo
+// genererebbe tasche invisibili alla cella: l'associazione viene rifiutata.
+exports.KO_GRATING_NO_PIECE  = "KO_GRATING_NO_PIECE";  // GRATING.PIECE_ID assente, 0, o senza riga PIECE
 exports.KO_Z_BELOW_GRATING   = "KO_Z_BELOW_GRATING";   // Z_PICK o Z_PLACE del pezzo < GRATING.THICKNESS + 1000 um: generazione rifiutata
 // Modello a DUE ASPETTI degli attrezzaggi (15/9): ogni ordine deve portare la
 // geometria di cio' che sta sul pallet, perche' il PLC somma FIXTURE.Z alla

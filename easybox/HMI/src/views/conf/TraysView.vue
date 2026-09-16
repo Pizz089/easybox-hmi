@@ -10,7 +10,7 @@
     // stessa util dell'anteprima modello, ingombro e avviso taratura
     import { buildGrid, gridCenters, taughtMismatch, pickClearance } from '../../util/gratingGrid.js'
     import { gridFit } from '../../util/gratingAxes.js'
-    import { KO_TRAY_EXTRACTED, KO_ACTIVE_ORDER, KO_ALREADY_ASSOCIATED, KO_SOURCE_EMPTY, KO_OUT_OF_TRAY, KO_Z_BELOW_GRATING } from '../../util/errorCodes.js'
+    import { KO_TRAY_EXTRACTED, KO_ACTIVE_ORDER, KO_ALREADY_ASSOCIATED, KO_SOURCE_EMPTY, KO_OUT_OF_TRAY, KO_Z_BELOW_GRATING, KO_GRATING_NO_PIECE } from '../../util/errorCodes.js'
     import StatoElenco from '../../components/StatoElenco.vue'
     import { caricaElenco, STATO } from '../../util/caricaElenco.js'
     const el = ref()
@@ -616,6 +616,9 @@ export default {
                     map[KO_SOURCE_EMPTY] = 'tray.assoc.err.sourceEmpty';
                     map[KO_OUT_OF_TRAY] = 'tray.assoc.err.outOfTray';
                     map[KO_Z_BELOW_GRATING] = 'tray.assoc.err.thickness';
+                    // (16/9) il modello non dice che pezzo ospita: le tasche
+                    // nascerebbero invisibili al robot, quindi non nascono
+                    map[KO_GRATING_NO_PIECE] = 'tray.assoc.err.noPiece';
                     a.error = map[code] || 'tray.assoc.err.generic';
                     a.errorParams = code == KO_OUT_OF_TRAY
                         ? { w: Math.ceil(out.overW || 0), h: Math.ceil(out.overH || 0) }

@@ -91,16 +91,15 @@
                     </optionStatus>
 
                 </div>
-                <!--div class="pure-control-group">
-                    <label for="aligned-foo">{{$t('tray.tipoPezzo')}}</label>
-                    <select id="aligned-foo" name="TIPO_PEZZO" v-model="tray.PIECE_TYPE"  :readonly="dataStored.userLevel==0" >
-                        <template v-for="tpl in typePartList" :key="tpl.ID">
-                            <option :value="tpl.ID">
-                                {{ tpl.FAMILY }} / {{ tpl.DESCR }}
-                            </option>
-                        </template>
-                    </select>
-                </div-->
+                <!-- (16/9) TENDINA "TIPO PEZZO" RIMOSSA. Prometteva di
+                     cambiare il codice pezzo del cassetto e non scriveva
+                     niente: updateTray non tocca quella colonna, e sulla
+                     tabella vera si chiama PIECE_TYPE_NONUSARE. Non e' stata
+                     fatta funzionare apposta: dal cambio di modello PLC il
+                     codice pezzo di un cassetto vive in POSITION.Part_Type e
+                     si cambia in UN modo solo, riassociando il grigliato
+                     (Cassetti > Associa). Due strade che scrivono lo stesso
+                     campo sono il problema, non la soluzione. -->
                 <!--div class="pure-control-group">
                     <label for="aligned-foo">{{$t('tray.tipoApproccio')}}</label>
                     <select id="aligned-foo" name="TIPO_APPROCCIO" v-model="tray.APPROACH_TYPE" :readonly="dataStored.userLevel==0">

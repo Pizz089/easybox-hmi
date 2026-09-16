@@ -55,6 +55,23 @@ const el = ref()
               <span>{{ $t('grating.associate') }}</span>
             </button>
           </div>
+
+          <!-- (16/9) IL CODICE PEZZO SI CHIEDE. Prima questa pagina scriveva
+               PIECE_ID = 0 di suo: il grigliato nasceva senza pezzo, e le
+               tasche generate da quel modello prendevano Part_Type = 0. La
+               vista del PLC aggancia PIECE con un join INTERNO su Part_Type,
+               quindi quelle tasche non esistevano per la cella. Una sagoma
+               ospita tutti i pezzi con quell'ingombro: quale sia, lo sa solo
+               chi ha il cassetto davanti. -->
+          <label class="mt" style="text-align:center">{{ $t('grating.part') }}</label>
+          <select class="pure-u-1" name="partList" v-model="grating.pieceIndex"
+            :disabled="dataStored.userLevel < 0">
+            <option :value="0"> </option>
+            <option v-for="(p, index) in partList" :key="p.ID" :value="index + 1">
+              {{ p.FAMILY }} - {{ p.DESCR }}
+            </option>
+          </select>
+          <small class="piece-hint">{{ $t('grating.importPieceHint') }}</small>
         </fieldset>
       </form>
 
@@ -123,10 +140,13 @@ const el = ref()
       
       <!----------------------------------->
       <div class="pure-u-1 save-row">
-        <button class="pure-button pure-button-primary" @click="saveData()"
-          >  <!-- :disabled="dataStored.userLevel < 0 || grating.SAFEX < minSafeX || grating.SAFEY < minSafeY || !gratingAssociated"-->
+        <!-- senza pezzo NON si salva: un grigliato senza codice produce
+             cassetti invisibili al robot, ed e' peggio di un import fallito -->
+        <button class="pure-button" :class="pieceChosen ? 'pure-button-primary' : 'pure-button-disable'"
+          @click="pieceChosen ? saveData() : ''">
           Save
         </button>
+        <small class="piece-missing" v-if="!pieceChosen">{{ $t('grating.importNoPiece') }}</small>
       </div>
       <!----------------------------------->
       <div class="stats" v-if="ready">
@@ -196,7 +216,7 @@ export default {
   name: 'ImportGrating',
   data() {
     return {
-      grating: { NAME: '', DESCR: '', TRAY_ID: 0, trayIndex: 0 },
+      grating: { NAME: '', DESCR: '', TRAY_ID: 0, trayIndex: 0, pieceIndex: 0, PIECE_ID: 0 },
       width: 820,
       height: 605,
       minBordoX: 0,
@@ -209,7 +229,7 @@ export default {
       trayList: {},
 
       
-      partList: {},            
+      partList: [],            
       gripperList: {},         
       gratingList: {},         
 
@@ -253,6 +273,12 @@ export default {
   },
 
   computed: {
+    // il pezzo va SCELTO: senza, il modello nascerebbe con PIECE_ID 0 e i
+    // cassetti che ne derivano sarebbero invisibili al robot
+    pieceChosen() {
+      const i = Number(this.grating.pieceIndex);
+      return Number.isInteger(i) && i > 0 && !!(this.partList || [])[i - 1];
+    },
     canCalc() {
       return this.widthPiece > 0 &&
         this.heightPiece > 0 &&
@@ -282,6 +308,7 @@ export default {
 
   mounted() {
     this.getTrayList();
+    this.getPartList();
     //setTimeout(() => { this.getGratingList(); }, "300");
 
     if (this.$route.params.grating_ID > 0) {
@@ -364,6 +391,21 @@ export default {
     this.ready = true;
   },
     
+    // anagrafica pezzi per il selettore: il campo partList esisteva gia' ma
+    // nessuno lo riempiva, quindi la scelta non era proprio possibile
+    getPartList() {
+      fetch(dataStored.server + 'api/conf/piece/show/all', { method: 'GET' })
+        .then(response => {
+          if (!response.ok) { throw new Error('Network response was not ok'); }
+          return response.json()
+        })
+        .then(data => {
+          // stesso filtro di selectPiece: fuori il "pezzo non definito"
+          this.partList = (data || []).filter(p => p.X > 0 && p.Y > 0);
+        })
+        .catch(error => { console.info(error); this.partList = []; });
+    },
+
     getTrayList() {
       fetch(dataStored.server + 'api/conf/tray/show/all', { method: 'GET' })
         .then(response => {
@@ -429,10 +471,14 @@ export default {
     setGratingAssociated(){ this.gratingAssociated=!this.gratingAssociated; }, 
 
     saveData() {
+      // RIFIUTO invece di scrivere zero: senza codice pezzo il modello
+      // genererebbe tasche che il robot non vede (vedi il commento sul
+      // selettore). Il bottone e' gia' spento, questo e' il re-check.
+      if (!this.pieceChosen) return;
       this.updateGratingInTray()
 
       this.grating.GRIPPER_ID=0;
-      this.grating.PIECE_ID=0;
+      this.grating.PIECE_ID = this.partList[this.grating.pieceIndex - 1].ID;
       this.grating.SAFEX=this.SAFEX;
       this.grating.SAFEY=this.SAFEY;
 
@@ -448,7 +494,6 @@ export default {
             alert("errore"); 
             throw new Error('Network response was not ok'); 
           }else{
-            //this.savePositions();
             this.updateGratingInTray();
             this.$router.push('/conf/Gratings');
           }
@@ -466,55 +511,11 @@ export default {
         .catch(error => { console.info(error); alert(error) });
     },
 
-    savePositions() {
-      var cmd = ""
-      // (grating-axis-swap-2) adapter -> centri {w,h} disegno, poi
-      // convenzione robot dalla util condivisa (origine = tasca 1)
-      const centers = this.listPz.map(p => ({
-        w: p.prisma ? this.grating.width  - p.cx : this.grating.width  - p.x,
-        h: p.prisma ? this.grating.height - p.cy : this.grating.height - p.y,
-      }));
-      const robotPts = drawingToRobot(centers);
-      // (Task 3, 1/9) BLOCCO ingombro prima di scrivere, in coordinate
-      // DISEGNO (width -> asse robot Y, height -> asse robot X, vedi
-      // ROBOT_AXIS_ALONG). L'ingombro tasca dal DXF importato non e' noto:
-      // check sui SOLI centri (halfW/halfH 0).
-      const tray = this.trayList[this.grating.trayIndex - 1];
-      const fit = gridFit(centers, {
-        width:  tray && tray.X > 0 ? tray.X/1000 : this.grating.width,
-        height: tray && tray.Y > 0 ? tray.Y/1000 : this.grating.height,
-        halfW: 0, halfH: 0,
-      });
-      if (!fit.ok) {
-        const detail = [];
-        if (fit.overW > 0) detail.push(this.$t('grating.outOfTrayAxis', { mm: Math.ceil(fit.overW), axis: ROBOT_AXIS_ALONG.width }));
-        if (fit.overH > 0) detail.push(this.$t('grating.outOfTrayAxis', { mm: Math.ceil(fit.overH), axis: ROBOT_AXIS_ALONG.height }));
-        alert(this.$t('grating.outOfTray', { detail: detail.join(', ') }));
-        return;
-      }
-      for (let i=0; i<this.listPz.length; i++){
-        let pos={};
-        pos.SUB_POS   = i+1;
-        pos.POS       = this.trayList[this.grating.trayIndex-1].MAG;
-        pos.TRAY_ID   = this.trayList[this.grating.trayIndex-1].FLOOR_MAG;
-        pos.PIECE_TYPE= 0; 
-        pos.STATUS    = 2;
-        pos.SAFEX     = this.grating.SAFEX;
-        pos.SAFEY     = this.grating.SAFEY;
-
-        pos.X = robotPts[i].X;
-        pos.Y = robotPts[i].Y;   // micron, gia' in convenzione robot
-
-        if (this.createNew)
-          cmd = dataStored.server+'api/conf/position/insertPositionTray?' + new URLSearchParams( pos ).toString();
-        else
-          cmd = dataStored.server+'api/conf/position/updatePositionTray?' + new URLSearchParams( pos ).toString();
-
-        fetch( cmd ,{ method: 'GET'})
-          .then(response => { if (!response.ok) { throw new Error('Network response was not ok'); } })
-          .catch(error => { alert(error) });
-      }
-    },
+    // (16/9) savePositions() RIMOSSA. Era irraggiungibile (l'unica chiamata
+    // era commentata) e scriveva PIECE_TYPE = 0 su ogni tasca: tasche con
+    // Part_Type 0 sono invisibili al robot, perche' la vista 4Robot aggancia
+    // PIECE con un join INTERNO su quel campo. Le tasche di un cassetto si
+    // creano in UN modo solo: associando il grigliato dalla pagina Cassetti.
   }
 }
 </script>

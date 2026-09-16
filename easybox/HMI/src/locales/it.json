@@ -259,7 +259,7 @@
       "err": {
         "load": "Caricamento dati non riuscito.",
         "noModel": "Il grigliato di questo cassetto non esiste più nel catalogo: usare Sostituisci.",
-        "noPiece": "Il modello non ha un pezzo valido: impossibile generare la griglia.",
+        "noPiece": "Il modello grigliato non dice quale pezzo ospita: le tasche nascerebbero invisibili al robot. Assegnare il codice pezzo al grigliato e riprovare.",
         "emptyGrid": "Nessuna tasca generabile con queste misure.",
         "outOfTray": "Griglia FUORI dal contorno del cassetto (sfora {w} mm lungo Y, {h} mm lungo X): nessuna tasca scritta.",
         "extracted": "Rifiutato: il cassetto risulta estratto o in manovra (TRAY.EXTRACT). Se è dentro, il PLC non ha aggiornato lo stato.",
@@ -287,6 +287,8 @@
     "safeY": "Distanza tra i pezzi Y",
     "pitchX": "Interasse X (centro-centro)",
     "pitchY": "Interasse Y (centro-centro)",
+    "importPieceHint": "Quale particolare sta in queste tasche. Una sagoma ospita tutti i pezzi con quell'ingombro: il codice lo sa solo chi ha il cassetto davanti.",
+    "importNoPiece": "Scegliere il codice pezzo: senza, il grigliato genererebbe tasche che il robot non vede.",
     "part": "Codice pezzo",
     "comands": "Comandi",
     "sizes": "Grandezze grigliato",

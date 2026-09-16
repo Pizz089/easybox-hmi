@@ -566,17 +566,27 @@ const TRAY_TEACH_COLS = 'MAG, X_ROT, Y_ROT, Z_ROT, APPROACH_TYPE, APPROACH_X, AP
 
 // Ramo COPIA: tasche del cassetto sorgente -> target, stesso SUB_POS, quote
 // e correzioni per tasca TARATE conservate (X, Y, *_CORR, *_ROT_CORR,
-// APPROACH_*_ROT, Part_Type). Z=0 per convenzione (la quota piano vive in
-// TRAY.Z_CORR del target). Rotazioni e avvicinamenti dal teaching del TRAY
-// target, con ripiego sul valore della tasca sorgente se il target non e'
-// mai stato insegnato (NULL). Stato vuoto (2), Order_ID 0.
-function copyInsertSql(floor, srcFloor) {
+// APPROACH_*_ROT). Z=0 per convenzione (la quota piano vive in TRAY.Z_CORR
+// del target). Rotazioni e avvicinamenti dal teaching del TRAY target, con
+// ripiego sul valore della tasca sorgente se il target non e' mai stato
+// insegnato (NULL). Stato vuoto (2), Order_ID 0.
+//
+// Part_Type viene dal MODELLO che si sta associando (GRATING.PIECE_ID), NON
+// dalla tasca sorgente. Prima si copiava s.Part_Type: copiando un cassetto
+// tarato su un codice per associarne un altro della stessa sagoma, le tasche
+// nascevano col codice VECCHIO mentre il pannello mostrava il grigliato
+// nuovo. Dal cambio di modello PLC (16/9) quel campo decide sia QUALE pezzo
+// il robot preleva sia a CHE QUOTA: la vista 4Robot aggancia PIECE via
+// Part_Type e ne somma Z_PICK. Un codice ereditato a sproposito manda il
+// robot sul pezzo sbagliato alla quota di un altro pezzo, in silenzio.
+// Quello che si copia sono le MISURE tarate della griglia, non il contenuto.
+function copyInsertSql(floor, srcFloor, pieceId) {
 	return `INSERT INTO [POSITION] (PARENT, POS, SUB_POS, STATUS, X, Y, Z, X_CORR, Y_CORR, Z_CORR, X_ROT, Y_ROT, Z_ROT, X_ROT_CORR, Y_ROT_CORR, Z_ROT_CORR, APPROACH_TYPE, APPROACH_X, APPROACH_Y, APPROACH_Z, APPROACH_X_ROT, APPROACH_Y_ROT, APPROACH_Z_ROT, Part_Type, Order_ID)
 		SELECT 'TRAY_${floor}', t.MAG, s.SUB_POS, 2, s.X, s.Y, 0, s.X_CORR, s.Y_CORR, s.Z_CORR,
 			COALESCE(t.X_ROT, s.X_ROT), COALESCE(t.Y_ROT, s.Y_ROT), COALESCE(t.Z_ROT, s.Z_ROT),
 			s.X_ROT_CORR, s.Y_ROT_CORR, s.Z_ROT_CORR,
 			COALESCE(t.APPROACH_TYPE, s.APPROACH_TYPE), COALESCE(t.APPROACH_X, s.APPROACH_X), COALESCE(t.APPROACH_Y, s.APPROACH_Y), COALESCE(t.APPROACH_Z, s.APPROACH_Z),
-			s.APPROACH_X_ROT, s.APPROACH_Y_ROT, s.APPROACH_Z_ROT, s.Part_Type, 0
+			s.APPROACH_X_ROT, s.APPROACH_Y_ROT, s.APPROACH_Z_ROT, ${pieceId}, 0
 		FROM [POSITION] s
 		CROSS JOIN (SELECT TOP 1 ${TRAY_TEACH_COLS} FROM TRAY WHERE FLOOR_MAG=${floor}) t
 		WHERE ${trayParentPredicate(srcFloor, 's.PARENT')} AND s.SUB_POS > 0;`;
@@ -647,9 +657,24 @@ router.post('/associateGrating/:floor', (req, res) => {
 				res.json({ ris: errorCodes.KO_Z_BELOW_GRATING, n: 0, min: clr.min, zPick: clr.zPick, zPlace: clr.zPlace, thickness: Number(row.THICKNESS) || 0 });
 				return;
 			}
+			// GUARDIA PEZZO (16/9), valida per ENTRAMBI i rami: le tasche
+			// nascono con Part_Type = PIECE_ID del modello, e la vista del PLC
+			// aggancia PIECE con un join INTERNO su quel campo. Un modello
+			// senza pezzo (PIECE_ID 0/NULL) o che punta a un PIECE inesistente
+			// genererebbe tasche INVISIBILI al robot: il cassetto risulterebbe
+			// associato e pieno sul pannello, e per la cella non esisterebbe.
+			// Meglio non generarle: un'associazione rifiutata si vede, un
+			// cassetto invisibile no. row.PX viene da LEFT JOIN PIECE: NULL
+			// significa che la riga PIECE non c'e'.
+			const pieceId = Math.round(Number(row.PIECE_ID));
+			if (!Number.isInteger(pieceId) || pieceId < 1 || row.PX === null || row.PX === undefined) {
+				log.standard("associateGrating " + errorCodes.KO_GRATING_NO_PIECE + ": grigliato " + gratingId + " PIECE_ID [" + row.PIECE_ID + "]");
+				res.json({ ris: errorCodes.KO_GRATING_NO_PIECE, n: 0, pieceId: Number(row.PIECE_ID) || 0 });
+				return;
+			}
 			let insert;
 			if (copy) {
-				insert = copyInsertSql(floor, srcFloor);
+				insert = copyInsertSql(floor, srcFloor, pieceId);
 			} else {
 				// verifica INGOMBRO lato server: contorno = TRAY.X/Y (mm), mezzo
 				// ingombro tasca = PIECE.X/2, PIECE.Y/2 (mm) — stessa gridFit del client
@@ -663,7 +688,7 @@ router.post('/associateGrating/:floor', (req, res) => {
 					res.json({ ris: errorCodes.KO_OUT_OF_TRAY, n: 0, overW: f.overW, overH: f.overH });
 					return;
 				}
-				insert = generateInsertSql(floor, gratingFit.drawingToRobot(centers), Math.round(Number(row.PIECE_ID)));
+				insert = generateInsertSql(floor, gratingFit.drawingToRobot(centers), pieceId);
 			}
 			const freeCheck = replace ? '1=0' :
 				`EXISTS (SELECT 1 FROM TRAY WHERE FLOOR_MAG=${floor} AND RTRIM(ISNULL(FAMILY,'')) <> '') OR EXISTS (SELECT 1 FROM [POSITION] WHERE ${pred})`;
