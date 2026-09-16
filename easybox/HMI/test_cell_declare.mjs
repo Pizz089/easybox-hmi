@@ -256,8 +256,14 @@ check(/conferma, non una forzatura/.test(it.robot.decl.boxHint), 'e l\'avviso de
 check(it.robot.decl.seq.stopped.includes('NON sono state inviate'), 'la sequenza fermata dice che il resto non e\' partito');
 
 console.log('\n11) chiavi che oggi il pannello mostra grezze');
-check(typeof it.robot.alarm_13599 === 'string' && typeof en.robot.alarm_13599 === 'string', 'robot.alarm_13599 tradotta');
-check(typeof it.robot.alarm_3005 === 'string' && typeof en.robot.alarm_3005 === 'string', 'robot.alarm_3005 tradotta');
+// i codici lunghi sono MissionCode * 100 + errore: 13599 = missione 135
+// (PickPlacePart_MC) + 99, 3005 = catena Pallet_Robot_to_MC + 5. La regola e'
+// in docs/ALLARMI-PLC.md; qui si verifica solo che non sia rimasto un
+// segnaposto al posto della descrizione vera.
+check(/[Qq]uote di lavorazione/.test(it.robot.alarm_13599) && typeof en.robot.alarm_13599 === 'string', 'robot.alarm_13599 dice cosa non e\' stato trovato');
+check(/[Pp]osizione pallet/.test(it.robot.alarm_3005) && typeof en.robot.alarm_3005 === 'string', 'robot.alarm_3005 idem');
+for (const k of ['alarm_13599', 'alarm_3005'])
+	check(!/non ancora fornita|not yet provided/i.test(it.robot[k] + en.robot[k]), 'nessun segnaposto rimasto in ' + k);
 check(typeof it.normal === 'string' && typeof en.normal === 'string', "'normal' esiste (units.vue la chiede a ogni STATUS non mappato)");
 const flat = (o, p = '') => Object.entries(o).flatMap(([k, v]) => v && typeof v === 'object' ? flat(v, p + k + '.') : [p + k]);
 check(flat(it).length === flat(en).length, 'parita\' di conteggio it/en: ' + flat(it).length);
