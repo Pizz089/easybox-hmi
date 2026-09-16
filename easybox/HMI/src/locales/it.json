@@ -528,6 +528,10 @@
       "choosePalletUnload": "Quale pallet scaricare?",
       "choosePalletDest": "Dove deposito il pallet?",
       "palletOnBoard": "A bordo: #{id} {name}. Dove lo deposito?",
+      "palletSlotBusy": "casa del pallet #{id} {name}",
+      "palletSlotUntaught": "posizione non insegnata",
+      "palletNoWarehouseDest": "Nessuna posizione di magazzino raggiungibile: la cella conosce le coordinate solo delle posizioni configurate.",
+      "palletDestHint": "Sono elencate solo le posizioni che la cella sa raggiungere (COORDINATES_FOR_PALLET_WAREHOUSE). Le altre non esistono per il robot: il comando partirebbe e la catena si fermerebbe.",
       "chooseTray": "Quale cassetto estrarre?",
       "releaseTray": "Rilasciare il cassetto estratto?",
       "unloadGripper": "Scaricare la pinza a bordo?",
@@ -551,6 +555,7 @@
       "notHold": "Robot non in HOLD: premere HOLD per abilitare i comandi",
       "noGripperSystem": "Nessuna pinza a bordo risulta al sistema",
       "palletUnknownOnBoard": "La pinza pallet risulta occupata ma nessun pallet risulta a bordo: il sistema non sa quale scaricare. Dichiarare lo stato cella, poi riprovare.",
+      "palletNoDest": "Nessuna destinazione raggiungibile per questo pallet: ne' una posizione di magazzino configurata e libera, ne' una macchina. Configurare la posizione a magazzino, poi riprovare.",
       "trayBusy": "Manovra cassetto in corso",
       "noTrayExtracted": "Nessun cassetto estratto: estrarre prima un cassetto"
     },

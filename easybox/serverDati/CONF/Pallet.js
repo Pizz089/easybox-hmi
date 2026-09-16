@@ -35,6 +35,40 @@ function palletSlotReason(magPos, excludeID, cb) {
 	});
 }
 
+// ===========================================================================
+// POSIZIONI DI MAGAZZINO CHE LA CELLA SA RAGGIUNGERE (16/9)
+//
+// Il PLC cerca le coordinate del posto in COORDINATES_FOR_PALLET_WAREHOUSE.
+// Una posizione che non ha riga in quella vista NON ESISTE per la cella: il
+// comando parte, il robot non trova le coordinate e la catena si ferma con
+// errore 2005. Il pannello proponeva invece una griglia TEORICA di venti
+// caselle (5 file x 4, costante di layout in util/warehouseGrid): diciotto
+// di quelle, in campo, non sono raggiungibili.
+//
+// Questa rotta e' l'elenco vero. Non si inventa nulla: se la vista non c'e'
+// o e' vuota si risponde con un elenco vuoto, e chi chiama dice che non ci
+// sono destinazioni invece di proporne venti che falliscono.
+router.get('/warehousePositions', (req, res) => {
+	sql.connect(DBf.configDB, function (err) {
+		if (err) { log.error('err warehousePositions: ' + err); res.status(500).json([]); return; }
+		// SELECT * : le colonne della vista in campo non sono note qui, e il
+		// chiamante ha bisogno solo del numero di posizione. Si normalizza
+		// sotto, senza pretendere uno schema che non abbiamo verificato.
+		const query = `SET NOCOUNT ON; SELECT * FROM COORDINATES_FOR_PALLET_WAREHOUSE;`;
+		log.info('query ' + query);
+		new sql.Request().query(query, function (err, result) {
+			if (err) {
+				// vista assente: non e' un errore del pannello, e' una cella non
+				// configurata. Si risponde elenco vuoto e lo si dice nel log.
+				log.standard('warehousePositions: COORDINATES_FOR_PALLET_WAREHOUSE non leggibile (' + err.message + ')');
+				res.json([]);
+				return;
+			}
+			res.send(result.recordset || []);
+		});
+	});
+})
+
 router.get('/show/:ID', (req, res) => {
 	sql.connect(DBf.configDB, function (err) {
         if (err) {

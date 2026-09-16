@@ -119,44 +119,90 @@ check(/'13;3;' \+ sel\.ID \+ ';0'/.test(rsrc) && /'14;3;' \+ sel\.ID \+ ';0'/.te
 	'preleva/deposita in macchina dalla card collaudo: posizione 0 fissa, invariati');
 check(!/';' \+ sel\.MAG_POS/.test(rsrc), 'nessun MAG_POS grezzo nel payload della pagina robot');
 
-console.log('\n3-ter) SCARICO PALLET: la domanda e\' DOVE, non QUALE');
+console.log('\n3-ter) SCARICO PALLET: la domanda e\' DOVE, e le destinazioni vengono dalla VISTA');
 // Il dialog chiedeva 'quale pallet scaricare?' con l'elenco di TUTTI i
-// pallet — compreso uno fermo a scaffale, che il robot non ha in mano. Ma il
-// robot ne ha uno solo a bordo e il sistema sa gia' quale: PALLET.POS_PLANT
-// = 1000. Chiederlo significa far scegliere una cosa che il database
-// risponde, e lasciar scegliere quello sbagliato.
-const A_BORDO = { ID: 5, MAG: 1, MAG_POS: -1, POS_PLANT: 1000, FAMILY: 'ZERO POINT' };
+// pallet. Ma il robot ne ha uno solo a bordo e il sistema sa gia' quale:
+// PALLET.POS_PLANT = 1000.
+//
+// E le destinazioni non sono una griglia teorica. Il PLC cerca le coordinate
+// in COORDINATES_FOR_PALLET_WAREHOUSE: una posizione che li' non c'e' NON
+// ESISTE per la cella — il comando parte, il robot non trova le coordinate e
+// la catena si ferma con 2005. Il pannello proponeva venti caselle da una
+// costante di layout; in campo la vista ne ha due.
+const A_BORDO = { ID: 5, MAG: 1, MAG_POS: 10, POS_PLANT: 1000, FAMILY: 'ZERO POINT' };
+const ALTRO = { ID: 2, MAG: 1, MAG_POS: 11, POS_PLANT: 0, FAMILY: 'ZERO POINT RINFORZATO' };
+// la vista come in campo: due righe, 10 (casa di quello a bordo) e 11 (casa
+// dell'altro). Piu' un terzo caso reale: riga presente ma coordinate a zero.
+const VISTA = [
+	{ POS: 10, PalletID: 5, X: -250540, Y: 45325, Z: -360166 },
+	{ POS: 11, PalletID: 2, X: -248707, Y: 46421, Z: 53971 },
+];
 const rv2 = vmOf(Robot);
-rv2.palletsList = [A_BORDO, A_SCAFFALE];      // a bordo + uno fermo in posizione 11
-PALLET_FETCH = [A_BORDO, A_SCAFFALE];         // e il ricarico ritrova gli stessi
-rv2.wpallet = [{ SUB_POS: 7, STATUS: 9 }];    // casella 7 disabilitata
+rv2.palletsList = [A_BORDO, ALTRO];
+rv2.warehousePositions = VISTA;
 check(rv2.palletOnBoard && rv2.palletOnBoard.ID === 5, 'il pallet a bordo si LEGGE da POS_PLANT = 1000');
-check(rv2.palletOccupantOf(11) && rv2.palletOccupantOf(11).ID === 9, 'la posizione 11 risulta occupata: non e\' una destinazione');
-check(rv2.palletOccupantOf(-1) === null, 'e il pallet a bordo non occupa piu\' il suo vecchio posto');
-check(rv2.palletDisabledSlots.has(7), 'le caselle disabilitate restano riconosciute');
-check(rv2.palletLoadItems.every(x => x.ID !== 5), 'il pallet a bordo NON compare fra quelli da caricare');
+check(rv2.palletDestinations.length === 2, 'le destinazioni sono DUE, quante ne ha la vista — non venti');
+check(rv2.palletDestinations.map(d => d.pos).join(',') === '10,11', 'e sono proprio le posizioni della vista');
+const d10 = rv2.palletDestinations.find(d => d.pos === 10);
+const d11 = rv2.palletDestinations.find(d => d.pos === 11);
+check(d10.usable === true, 'la casa del pallet a bordo e\' selezionabile');
+check(d11.usable === false && d11.reason === 'robot.dialog.palletSlotBusy', 'la casa di un ALTRO pallet e\' spenta, col motivo');
+check(d11.reasonParams.id === 2, 'e il motivo nomina l\'occupante');
+// riga presente ma mai insegnata: il robot ci andrebbe nel posto sbagliato
+rv2.warehousePositions = [{ POS: 10, PalletID: 5, X: 0, Y: 0, Z: 0 }];
+const dz = rv2.palletDestinations[0];
+check(dz.usable === false && dz.reason === 'robot.dialog.palletSlotUntaught',
+	'riga in vista ma coordinate a zero: spenta — succede davvero (in sviluppo la 11 e\' cosi\')');
+rv2.warehousePositions = VISTA;
 
 // la conferma vuole la DESTINAZIONE, non un elemento dell'elenco
 rv2.dialog = { type: 'palletUnload', selected: null, dest: null };
 check(rv2.dialogConfirmEnabled === false, 'senza destinazione la conferma e\' spenta');
-rv2.dialog.dest = 3;
+rv2.dialog.dest = 10;
 check(rv2.dialogConfirmEnabled === true, 'scelta la destinazione, si conferma');
 sent.length = 0;
+PALLET_FETCH = [A_BORDO, ALTRO];
 rv2.sendMission = (k, cmd) => sent.push({ ev: 'TO_PLANT/CMD/ROBOT', payload: cmd });
 Object.defineProperty(rv2, 'palletBranchEnabled', { configurable: true, get: () => 1 });
 rv2.palletGripperEmptyNow = () => 0;
 rv2.confirmDialog();
 await tick();
-check(sent.some(x => x.payload === '14;3;5;3'), 'deposita a scaffale: 14;3;5;3 — il pallet e\' quello a bordo, non uno scelto');
+check(sent.some(x => x.payload === '14;3;5;10'), 'deposita nella sua casa: 14;3;5;10');
+// una posizione che NON e' nella vista non deve poter uscire, nemmeno forzando
+sent.length = 0;
+rv2.dialog = { type: 'palletUnload', selected: null, dest: 3 };
+rv2.confirmDialog();
+await tick();
+check(!sent.some(x => String(x.payload).startsWith('14;')), 'posizione fuori vista forzata: NESSUN comando (sarebbe 2005)');
+check(String(dataStored.alert.desc) === 'robot.dialog.palletNoPosition', 'e il motivo e\' scritto');
+// e la casella occupata da un altro, idem
+sent.length = 0;
+rv2.dialog = { type: 'palletUnload', selected: null, dest: 11 };
+rv2.confirmDialog();
+await tick();
+check(!sent.some(x => String(x.payload).startsWith('14;')), 'casa di un altro pallet: NESSUN comando');
+// la macchina non viene da questa vista: resta sempre offerta
 sent.length = 0;
 rv2.dialog = { type: 'palletUnload', selected: null, dest: 0 };
 rv2.confirmDialog();
 await tick();
-check(sent.some(x => x.payload === '14;3;5;0'), 'deposita in macchina: 14;3;5;0 (posizione 0 come da contratto)');
+check(sent.some(x => x.payload === '14;3;5;0'), 'deposita in macchina: 14;3;5;0 (posizione 0, non viene dalla vista)');
+
+// VISTA VUOTA o senza posizioni libere: il comando non e' proponibile
+const rv4 = vmOf(Robot);
+rv4.palletsList = [A_BORDO];
+rv4.warehousePositions = [];
+rv4.dataRobot = { STATUS: dataStored.status_hold };
+rv4.gripperOnBoardNow = () => 1;
+rv4.palletGripperEmptyNow = () => 0;
+check(rv4.palletDestinations.length === 0, 'vista vuota: nessuna destinazione di magazzino');
+// con una macchina configurata il comando resta proponibile VERSO LA MACCHINA
+check(rv4.palletDestCount > 0, 'ma la macchina resta una destinazione valida');
 
 // NIENTE pallet a bordo: il comando non e' proponibile, col motivo scritto
 const rv3 = vmOf(Robot);
-rv3.palletsList = [A_SCAFFALE];               // nessuno con POS_PLANT 1000
+rv3.palletsList = [ALTRO];                    // nessuno con POS_PLANT 1000
+rv3.warehousePositions = VISTA;
 rv3.dataRobot = { STATUS: dataStored.status_hold };
 rv3.gripperOnBoardNow = () => 1;
 rv3.palletGripperEmptyNow = () => 0;          // pinza occupata...
@@ -165,9 +211,13 @@ check(rv3.palletBranchEnabled === false, 'il bottone Gestione pallet e\' spento'
 check(rv3.palletDisabledReason === 'robot.hint.palletUnknownOnBoard', 'e dice perche\', invece di aprire un elenco da indovinare');
 sent.length = 0;
 rv3.openPalletMission();
-check(rv3.dialog.type !== 'palletUnload', "forzando l'apertura il dialog non si apre");
+check(rv3.dialog.type !== "palletUnload", "forzando l\'apertura il dialog non si apre");
 check(String(dataStored.alert.desc) === 'robot.hint.palletUnknownOnBoard', 'e il motivo torna a video');
-
+// nessuna griglia teorica nel codice del dialog
+const rsrc3 = readFileSync('src/views/unit/robotView.vue', 'utf8');
+check(!/palletGridOrder/.test(rsrc3), 'la griglia teorica (palletGridOrder, costante 20) non e\' piu\' la fonte');
+check(/warehousePositions/.test(rsrc3) && /api\/conf\/pallet\/warehousePositions/.test(rsrc3),
+	'le destinazioni arrivano dalla vista, via rotta dedicata');
 console.log('\n3-quater) le altre gestioni della pagina: chiedono o dicono?');
 // Stesso metro su pinza e cassetto: il sistema sa gia' QUALE oggetto e'?
 const rsrc2 = readFileSync('src/views/unit/robotView.vue', 'utf8');

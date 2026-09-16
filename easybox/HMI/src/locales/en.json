@@ -528,6 +528,10 @@
       "choosePalletUnload": "Which pallet to unload?",
       "choosePalletDest": "Where should the pallet go?",
       "palletOnBoard": "On board: #{id} {name}. Where should it go?",
+      "palletSlotBusy": "home of pallet #{id} {name}",
+      "palletSlotUntaught": "position not taught",
+      "palletNoWarehouseDest": "No reachable warehouse position: the cell only knows the coordinates of configured positions.",
+      "palletDestHint": "Only positions the cell can actually reach are listed (COORDINATES_FOR_PALLET_WAREHOUSE). The others do not exist for the robot: the command would start and the chain would stop.",
       "chooseTray": "Which tray to extract?",
       "releaseTray": "Release the extracted tray?",
       "unloadGripper": "Unload the on-board gripper?",
@@ -551,6 +555,7 @@
       "notHold": "Robot not in HOLD: press HOLD to enable commands",
       "noGripperSystem": "No gripper on board according to the system",
       "palletUnknownOnBoard": "The pallet gripper is busy but no pallet is recorded on board: the system does not know which one to unload. Declare the cell state, then try again.",
+      "palletNoDest": "No reachable destination for this pallet: neither a configured and free warehouse position nor a machine. Configure the warehouse position, then try again.",
       "trayBusy": "Tray operation in progress",
       "noTrayExtracted": "No tray extracted: extract a tray first"
     },

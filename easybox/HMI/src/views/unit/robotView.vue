@@ -17,7 +17,7 @@
   import { dedupeGrippers } from '../../util/grippers.js'
   // (pallet MC 16/9) stessa regola di posizione della pagina Pallet: MAG_POS
   // grezzo mandava un numero NEGATIVO al PLC per il pallet fuori magazzino
-  import { palletPickPosition, palletGridOrder } from '../../util/warehouseGrid'
+  import { palletPickPosition } from '../../util/warehouseGrid'
 </script>
 
 <template>
@@ -374,20 +374,25 @@
                 {{ $t('robot.dialog.palletOnBoard', { id: palletOnBoard.ID, name: (palletOnBoard.FAMILY || '').trim() }) }}
               </div>
               <div class="mission-dialog-list">
-                <!-- posti liberi: occupati e disabilitati restano visibili ma
-                     spenti, col motivo — come nel dialog Posiziona -->
-                <button v-for="n in palletSlotOrder" :key="'sl'+n"
+                <!-- LE POSIZIONI VENGONO DALLA VISTA, non da una griglia
+                     teorica: il PLC cerca le coordinate in
+                     COORDINATES_FOR_PALLET_WAREHOUSE, e un posto che li' non
+                     c'e' non esiste per la cella (il comando parte e la
+                     catena si ferma con 2005). Quelle inutilizzabili restano
+                     visibili ma spente, col motivo. -->
+                <button v-for="d in palletDestinations" :key="'sl'+d.pos"
                   class="mission-dialog-item"
-                  :class="{ selected: dialog.dest===n }"
-                  :disabled="!!palletOccupantOf(n) || palletDisabledSlots.has(n)"
-                  @click="dialog.dest=n">
-                  <span>{{ $t('robot.dialog.position') }} {{ n }}</span>
-                  <span v-if="palletOccupantOf(n)" class="coh-na">
-                    #{{ palletOccupantOf(n).ID }} {{ (palletOccupantOf(n).FAMILY || '').trim() }}
-                  </span>
-                  <span v-else-if="palletDisabledSlots.has(n)" class="coh-na">{{ $t('warehouses.disabled') }}</span>
+                  :class="{ selected: dialog.dest===d.pos }"
+                  :disabled="!d.usable"
+                  @click="d.usable ? dialog.dest=d.pos : ''">
+                  <span>{{ $t('robot.dialog.position') }} {{ d.pos }}</span>
+                  <span v-if="d.reason" class="coh-na">{{ $t(d.reason, d.reasonParams) }}</span>
                 </button>
-                <!-- e la macchina: posizione 0 nel contratto 13/14 -->
+                <div v-if="palletDestinations.length===0" class="cmd-hint">
+                  {{ $t('robot.dialog.palletNoWarehouseDest') }}
+                </div>
+                <!-- e la macchina: posizione 0 nel contratto 13/14. Non viene
+                     da questa vista, quindi resta anche a magazzino muto. -->
                 <button v-for="m in MACHINE_POSITIONS" :key="'mc'+m.n"
                   class="mission-dialog-item"
                   :class="{ selected: dialog.dest===0 }"
@@ -395,6 +400,7 @@
                   {{ $t('attrezzaggi.inMachine', { mc: $t(m.labelKey) }) }}
                 </button>
               </div>
+              <small class="cmd-hint decl-note">{{ $t('robot.dialog.palletDestHint') }}</small>
             </template>
 
             <!-- trayRelease: dialog di sola conferma, nessun elenco -->
@@ -912,7 +918,9 @@ export default {
       //robotSpeed: ''
       grippersList: [],   // pinze a magazzino per il dialog CARICA PINZA
       palletsList: [],    // pallet per i dialog CARICA/SCARICA PALLET
-      wpallet: [],        // righe [POSITION] WPALLET: caselle disabilitate del magazzino pallet
+      // righe di COORDINATES_FOR_PALLET_WAREHOUSE: le SOLE posizioni di cui il
+      // PLC conosce le coordinate. Non una griglia teorica: l'elenco vero.
+      warehousePositions: [],
       traysList: [],      // cassetti a magazzino per il dialog ESTRAI CASSETTO
       dialog: {
         type: '',         // '' | 'gripper' | 'palletLoad' | 'palletUnload' | 'tray' | 'trayRelease'
@@ -1531,17 +1539,14 @@ export default {
         return;
       }
       this.openDialog('palletUnload');
-      this.getWarehouseSlots();
     },
-    palletOccupantOf(n) {
-      // il pallet a bordo non occupa piu' il suo vecchio posto
-      return (this.palletsList || []).find(p => p.MAG_POS == n && Number(p.POS_PLANT) !== 1000) || null;
-    },
+    // le posizioni raggiungibili si leggono dalla vista del PLC, non da una
+    // griglia di layout: quelle che non ci sono non esistono per la cella
     getWarehouseSlots() {
-      fetch(dataStored.server + 'api/conf/position/showWarehouse/WPALLET', { method: 'GET' })
+      fetch(dataStored.server + 'api/conf/pallet/warehousePositions', { method: 'GET' })
         .then(r => { if (!r.ok) throw new Error('Network response was not ok'); return r.json(); })
-        .then(d => { this.wpallet = d || []; })
-        .catch(e => { console.info(e); this.wpallet = []; });
+        .then(d => { this.warehousePositions = Array.isArray(d) ? d : []; })
+        .catch(e => { console.info(e); this.warehousePositions = []; });
     },
     // (collaudo) dispatcher del dialog di collaudo. Nessuna condizione
     // propria: il gate e' la computed del bottone (pattern CARD 3); i
@@ -2033,6 +2038,12 @@ export default {
           const pal = this.palletOnBoard;
           const dest = this.dialog.dest;
           if (!pal || dest === null) { this.posizioneIgnota(); return; }
+          // re-check sulla vista FRESCA: fra l'apertura del dialog e la
+          // conferma un altro pallet puo' essersi preso la casella
+          if (dest > 0 && !this.palletDestinations.some(d => d.pos === dest && d.usable)) {
+            this.posizioneIgnota();
+            return;
+          }
           this.sendMission('pallet', '14;3;' + pal.ID + ';' + dest);
           break;
         }
@@ -2107,6 +2118,9 @@ export default {
       // sa COSA scaricare, e non lo si chiede all'operatore. Il comando non e'
       // proponibile e il motivo e' scritto.
       if (!this.palletGripperEmptyNow() && !this.palletOnBoard) return 'robot.hint.palletUnknownOnBoard';
+      // nessuna destinazione raggiungibile: proporre lo scarico vorrebbe dire
+      // proporre un comando che puo' solo fallire
+      if (!this.palletGripperEmptyNow() && this.palletDestCount === 0) return 'robot.hint.palletNoDest';
       return '';
     },
     trayDisabledReason() {
@@ -2235,17 +2249,54 @@ export default {
     palletLoadItems() {
       return (this.palletsList || []).filter(p => palletPickPosition(p) !== null);
     },
-    palletDisabledSlots() {
-      return new Set((this.wpallet || []).filter(r => r.STATUS == 9).map(r => r.SUB_POS));
+    // DESTINAZIONI DI MAGAZZINO, dalla vista che usa il PLC.
+    //
+    // COSA CONTIENE LA VISTA (verificato sui dati, non dedotto): una riga per
+    // ogni posizione RIVENDICATA da un pallet (PALLET.MAG_POS), con le
+    // coordinate della casella. In sviluppo sono 4, 6 e 11 — esattamente i
+    // MAG_POS dei tre pallet che ne hanno uno; in campo sono 10 e 11. Le altre
+    // caselle del magazzino, pur esistendo in [POSITION], NON ci sono.
+    // Conseguenza pratica: la destinazione di un deposito a magazzino e' la
+    // CASA del pallet che si ha a bordo. Un'altra casella o non e' nella vista
+    // (2005) o e' nella vista perche' ci abita un altro pallet (occupata).
+    //
+    // Due motivi distinti per spegnere una voce, e si dicono:
+    //  - la casella e' la casa di un ALTRO pallet -> occupata;
+    //  - la riga c'e' ma le coordinate sono a zero (casella mai insegnata):
+    //    il robot ci andrebbe, ma nel posto sbagliato. Succede davvero: in
+    //    sviluppo la posizione 11 e' in vista con X/Z a zero.
+    palletDestinations() {
+      const aBordo = this.palletOnBoard ? Number(this.palletOnBoard.ID) : null;
+      return (this.warehousePositions || [])
+        .map(r => {
+          const pos = Number(r.POS);
+          const pid = Number(r.PalletID) || null;
+          const insegnata = !!(Number(r.X) || Number(r.Y) || Number(r.Z));
+          const altrui = pid !== null && pid !== aBordo;
+          const occupante = altrui ? (this.palletsList || []).find(p => Number(p.ID) === pid) : null;
+          return {
+            pos: pos,
+            usable: !altrui && insegnata,
+            reason: altrui ? 'robot.dialog.palletSlotBusy'
+                  : !insegnata ? 'robot.dialog.palletSlotUntaught' : '',
+            reasonParams: altrui ? { id: pid, name: occupante ? String(occupante.FAMILY || '').trim() : '' } : {},
+          };
+        })
+        .filter(d => Number.isInteger(d.pos) && d.pos > 0)
+        .sort((a, b) => a.pos - b.pos);
     },
-    palletSlotOrder() {
-      return palletGridOrder(this.palletDisabledSlots);
+    // destinazioni davvero selezionabili: magazzino utilizzabile + macchine
+    // configurate (la macchina non viene da questa vista)
+    palletDestCount() {
+      return this.palletDestinations.filter(d => d.usable).length + MACHINE_POSITIONS.length;
     },
     palletBranchEnabled() {
       const inHold = this.dataRobot.STATUS == dataStored.status_hold;
       if (!(inHold && this.gripperOnBoardNow())) return false;
       // scarico senza sapere quale pallet e' a bordo: niente comando
       if (!this.palletGripperEmptyNow() && !this.palletOnBoard) return false;
+      // scarico senza nessuna destinazione raggiungibile: idem
+      if (!this.palletGripperEmptyNow() && this.palletDestCount === 0) return false;
       return true;
     },
     // R2: posizione slider = eco PLC agganciato alla scala 10..100 dello
@@ -2306,6 +2357,7 @@ export default {
     this.getRobotData();
     this.getGrippersList();
     this.getPalletsList();
+    this.getWarehouseSlots();
     this.getTraysList();
     this.statusHandler = payload => {
       this.dataRobot.STATUS = parseInt(payload);
