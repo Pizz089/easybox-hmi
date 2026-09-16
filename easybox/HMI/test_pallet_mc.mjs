@@ -65,7 +65,12 @@ function vmOf(comp, extra) {
 	vm.$router = { push: () => {} };
 	return vm;
 }
-globalThis.fetch = async () => ({ ok: true, json: async () => [], text: async () => 'OK' });
+// il fetch finto deve REGGERE il ricarico: confirmDialog in coda richiama
+// getPalletsList, e una risposta vuota svuoterebbe la lista in mezzo al test
+let PALLET_FETCH = [];
+globalThis.fetch = async (url) => ({ ok: true,
+	json: async () => (String(url).includes('pallet/show') ? PALLET_FETCH : []),
+	text: async () => 'OK' });
 const pv = vmOf(Pallets);
 pv.dataGripper = { STATUS: 2 };                 // pinza pallet VUOTA -> prelievo (13)
 check(pv.movePos(IN_MACCHINA) === 0, 'pinza vuota + pallet in macchina -> posizione 0, bottone presente');
@@ -106,18 +111,78 @@ rv.confirmDialog();
 await tick();
 check(!sent.some(x => String(x.payload).startsWith('13;')), 'pallet sperso: NESSUN comando');
 check(String(dataStored.alert.desc) === 'robot.dialog.palletNoPosition', 'e il motivo e\' scritto, non un silenzio');
-// deposito
-sent.length = 0;
-rv.dialog = { type: 'palletUnload', selected: A_SCAFFALE };
-rv.palletGripperEmptyNow = () => 0;
-rv.confirmDialog();
-await tick();
-check(sent.some(x => x.payload === '14;3;9;11'), 'deposita a magazzino: 14;3;9;11');
+// Il DEPOSITO non passa piu' da qui: non si sceglie un pallet dall'elenco, si
+// sceglie la DESTINAZIONE di quello a bordo. Sta nella sezione 3-ter.
 // e i due comandi dedicati alla macchina restano quelli
 const rsrc = readFileSync('src/views/unit/robotView.vue', 'utf8');
 check(/'13;3;' \+ sel\.ID \+ ';0'/.test(rsrc) && /'14;3;' \+ sel\.ID \+ ';0'/.test(rsrc),
 	'preleva/deposita in macchina dalla card collaudo: posizione 0 fissa, invariati');
 check(!/';' \+ sel\.MAG_POS/.test(rsrc), 'nessun MAG_POS grezzo nel payload della pagina robot');
+
+console.log('\n3-ter) SCARICO PALLET: la domanda e\' DOVE, non QUALE');
+// Il dialog chiedeva 'quale pallet scaricare?' con l'elenco di TUTTI i
+// pallet — compreso uno fermo a scaffale, che il robot non ha in mano. Ma il
+// robot ne ha uno solo a bordo e il sistema sa gia' quale: PALLET.POS_PLANT
+// = 1000. Chiederlo significa far scegliere una cosa che il database
+// risponde, e lasciar scegliere quello sbagliato.
+const A_BORDO = { ID: 5, MAG: 1, MAG_POS: -1, POS_PLANT: 1000, FAMILY: 'ZERO POINT' };
+const rv2 = vmOf(Robot);
+rv2.palletsList = [A_BORDO, A_SCAFFALE];      // a bordo + uno fermo in posizione 11
+PALLET_FETCH = [A_BORDO, A_SCAFFALE];         // e il ricarico ritrova gli stessi
+rv2.wpallet = [{ SUB_POS: 7, STATUS: 9 }];    // casella 7 disabilitata
+check(rv2.palletOnBoard && rv2.palletOnBoard.ID === 5, 'il pallet a bordo si LEGGE da POS_PLANT = 1000');
+check(rv2.palletOccupantOf(11) && rv2.palletOccupantOf(11).ID === 9, 'la posizione 11 risulta occupata: non e\' una destinazione');
+check(rv2.palletOccupantOf(-1) === null, 'e il pallet a bordo non occupa piu\' il suo vecchio posto');
+check(rv2.palletDisabledSlots.has(7), 'le caselle disabilitate restano riconosciute');
+check(rv2.palletLoadItems.every(x => x.ID !== 5), 'il pallet a bordo NON compare fra quelli da caricare');
+
+// la conferma vuole la DESTINAZIONE, non un elemento dell'elenco
+rv2.dialog = { type: 'palletUnload', selected: null, dest: null };
+check(rv2.dialogConfirmEnabled === false, 'senza destinazione la conferma e\' spenta');
+rv2.dialog.dest = 3;
+check(rv2.dialogConfirmEnabled === true, 'scelta la destinazione, si conferma');
+sent.length = 0;
+rv2.sendMission = (k, cmd) => sent.push({ ev: 'TO_PLANT/CMD/ROBOT', payload: cmd });
+Object.defineProperty(rv2, 'palletBranchEnabled', { configurable: true, get: () => 1 });
+rv2.palletGripperEmptyNow = () => 0;
+rv2.confirmDialog();
+await tick();
+check(sent.some(x => x.payload === '14;3;5;3'), 'deposita a scaffale: 14;3;5;3 — il pallet e\' quello a bordo, non uno scelto');
+sent.length = 0;
+rv2.dialog = { type: 'palletUnload', selected: null, dest: 0 };
+rv2.confirmDialog();
+await tick();
+check(sent.some(x => x.payload === '14;3;5;0'), 'deposita in macchina: 14;3;5;0 (posizione 0 come da contratto)');
+
+// NIENTE pallet a bordo: il comando non e' proponibile, col motivo scritto
+const rv3 = vmOf(Robot);
+rv3.palletsList = [A_SCAFFALE];               // nessuno con POS_PLANT 1000
+rv3.dataRobot = { STATUS: dataStored.status_hold };
+rv3.gripperOnBoardNow = () => 1;
+rv3.palletGripperEmptyNow = () => 0;          // pinza occupata...
+check(rv3.palletOnBoard === null, '...ma nessun pallet risulta a bordo');
+check(rv3.palletBranchEnabled === false, 'il bottone Gestione pallet e\' spento');
+check(rv3.palletDisabledReason === 'robot.hint.palletUnknownOnBoard', 'e dice perche\', invece di aprire un elenco da indovinare');
+sent.length = 0;
+rv3.openPalletMission();
+check(rv3.dialog.type !== 'palletUnload', "forzando l'apertura il dialog non si apre");
+check(String(dataStored.alert.desc) === 'robot.hint.palletUnknownOnBoard', 'e il motivo torna a video');
+
+console.log('\n3-quater) le altre gestioni della pagina: chiedono o dicono?');
+// Stesso metro su pinza e cassetto: il sistema sa gia' QUALE oggetto e'?
+const rsrc2 = readFileSync('src/views/unit/robotView.vue', 'utf8');
+// PINZA: con una pinza a bordo si apre un dialog di sola conferma che NOMINA
+// la pinza (dataGripper[0]); l'elenco compare solo a mani vuote.
+check(/openGripperMission\(\) \{[\s\S]{0,400}this\.unloadOpen = true;[\s\S]{0,120}else[\s\S]{0,80}openDialog\('gripper'\)/.test(rsrc2),
+	'PINZA: a bordo -> conferma che nomina la pinza; a mani vuote -> elenco. Gia\' giusto.');
+// CASSETTO: idem, trayRelease e' a sola conferma e nomina il cassetto fuori.
+check(/openTrayMission\(\) \{[\s\S]{0,200}openDialog\('trayRelease'\)[\s\S]{0,80}else[\s\S]{0,80}openDialog\('tray'\)/.test(rsrc2),
+	'CASSETTO: estratto -> conferma che nomina il cassetto; altrimenti -> elenco. Gia\' giusto.');
+check(/dialog\.type=='trayRelease' && extractedTray[\s\S]{0,200}extractedTray\.FLOOR_MAG/.test(rsrc2),
+	'e il dialog del cassetto DICE quale, non lo chiede');
+// il pallet era l'unico a chiedere in entrambi i sensi
+check(/dialog\.type=='palletUnload'/.test(rsrc2) && /palletOnBoard/.test(rsrc2),
+	'PALLET: adesso allineato agli altri due');
 
 console.log('\n3-bis) COMANDO 40: l\'ID puo\' venire solo dall\'elenco');
 // In DB_MC1.pallet e' finito 23178, che in anagrafica non esiste. Il PLC non

@@ -526,6 +526,8 @@
       "chooseGripper": "Which gripper to load?",
       "choosePalletLoad": "Which pallet to load?",
       "choosePalletUnload": "Which pallet to unload?",
+      "choosePalletDest": "Where should the pallet go?",
+      "palletOnBoard": "On board: #{id} {name}. Where should it go?",
       "chooseTray": "Which tray to extract?",
       "releaseTray": "Release the extracted tray?",
       "unloadGripper": "Unload the on-board gripper?",
@@ -548,6 +550,7 @@
       "auxNotReset": "Auxiliaries not reset: press the reset",
       "notHold": "Robot not in HOLD: press HOLD to enable commands",
       "noGripperSystem": "No gripper on board according to the system",
+      "palletUnknownOnBoard": "The pallet gripper is busy but no pallet is recorded on board: the system does not know which one to unload. Declare the cell state, then try again.",
       "trayBusy": "Tray operation in progress",
       "noTrayExtracted": "No tray extracted: extract a tray first"
     },

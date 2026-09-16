@@ -17,7 +17,7 @@
   import { dedupeGrippers } from '../../util/grippers.js'
   // (pallet MC 16/9) stessa regola di posizione della pagina Pallet: MAG_POS
   // grezzo mandava un numero NEGATIVO al PLC per il pallet fuori magazzino
-  import { palletPickPosition, palletPlacePosition } from '../../util/warehouseGrid'
+  import { palletPickPosition, palletGridOrder } from '../../util/warehouseGrid'
 </script>
 
 <template>
@@ -362,8 +362,43 @@
               <span v-if="(extractedTray.DESCR || '').trim()"> - {{ extractedTray.DESCR.trim() }}</span>
             </div>
 
+            <!-- (pallet 16/9) SCARICO PALLET: la domanda non e' QUALE pallet.
+                 Il robot ne ha uno solo a bordo e il sistema sa gia' quale
+                 (PALLET.POS_PLANT = 1000): chiederlo significa far scegliere
+                 una cosa che il database risponde, e lasciar scegliere quello
+                 sbagliato — nell'elenco compariva anche un pallet fermo a
+                 scaffale, che il robot non ha in mano. La domanda giusta e'
+                 DOVE depositarlo. -->
+            <template v-if="dialog.type=='palletUnload'">
+              <div class="unload-info" v-if="palletOnBoard">
+                {{ $t('robot.dialog.palletOnBoard', { id: palletOnBoard.ID, name: (palletOnBoard.FAMILY || '').trim() }) }}
+              </div>
+              <div class="mission-dialog-list">
+                <!-- posti liberi: occupati e disabilitati restano visibili ma
+                     spenti, col motivo — come nel dialog Posiziona -->
+                <button v-for="n in palletSlotOrder" :key="'sl'+n"
+                  class="mission-dialog-item"
+                  :class="{ selected: dialog.dest===n }"
+                  :disabled="!!palletOccupantOf(n) || palletDisabledSlots.has(n)"
+                  @click="dialog.dest=n">
+                  <span>{{ $t('robot.dialog.position') }} {{ n }}</span>
+                  <span v-if="palletOccupantOf(n)" class="coh-na">
+                    #{{ palletOccupantOf(n).ID }} {{ (palletOccupantOf(n).FAMILY || '').trim() }}
+                  </span>
+                  <span v-else-if="palletDisabledSlots.has(n)" class="coh-na">{{ $t('warehouses.disabled') }}</span>
+                </button>
+                <!-- e la macchina: posizione 0 nel contratto 13/14 -->
+                <button v-for="m in MACHINE_POSITIONS" :key="'mc'+m.n"
+                  class="mission-dialog-item"
+                  :class="{ selected: dialog.dest===0 }"
+                  @click="dialog.dest=0">
+                  {{ $t('attrezzaggi.inMachine', { mc: $t(m.labelKey) }) }}
+                </button>
+              </div>
+            </template>
+
             <!-- trayRelease: dialog di sola conferma, nessun elenco -->
-            <div class="mission-dialog-list" v-if="dialog.type!='trayRelease'">
+            <div class="mission-dialog-list" v-if="dialog.type!='trayRelease' && dialog.type!='palletUnload'">
               <div v-if="dialogItems.length==0" class="mission-dialog-empty">
                 {{ $t('robot.dialog.empty') }}
               </div>
@@ -877,9 +912,11 @@ export default {
       //robotSpeed: ''
       grippersList: [],   // pinze a magazzino per il dialog CARICA PINZA
       palletsList: [],    // pallet per i dialog CARICA/SCARICA PALLET
+      wpallet: [],        // righe [POSITION] WPALLET: caselle disabilitate del magazzino pallet
       traysList: [],      // cassetti a magazzino per il dialog ESTRAI CASSETTO
       dialog: {
         type: '',         // '' | 'gripper' | 'palletLoad' | 'palletUnload' | 'tray' | 'trayRelease'
+        dest: null,       // scarico pallet: DESTINAZIONE (0 = macchina, >0 = posto)
         selected: null    // riga selezionata; nessuna preselezione
       },
       unloadOpen: false,  // M: dialog conferma scarico pinza (blocco separato)
@@ -1309,6 +1346,7 @@ export default {
       this.closePickPlaceDialog();
       this.dialog.type = type;
       this.dialog.selected = null;   // mai preselezionato
+      this.dialog.dest = null;       // idem per la destinazione dello scarico
     },
     // ===== (244) preleva finito + deposita grezzo in un ingresso in MC1 =====
     // Precondizioni verificabili dal pannello, rispecchiate nel gate:
@@ -1478,10 +1516,32 @@ export default {
     // M-PALLET(B): dispatcher del bottone unico "Gestione pallet".
     // Nessuna condizione propria (gate = palletBranchEnabled).
     openPalletMission() {
-      if (this.palletGripperEmptyNow())
+      if (this.palletGripperEmptyNow()) {
+        // mani vuote: QUALE pallet e' la domanda giusta
         this.openDialog('palletLoad');
-      else
-        this.openDialog('palletUnload');
+        return;
+      }
+      // pallet a bordo: la domanda e' DOVE. Se non si sa quale sia, il gate
+      // del bottone ha gia' fermato tutto (palletBranchEnabled), ma si
+      // ricontrolla sul dato fresco.
+      if (!this.palletOnBoard) {
+        dataStored.alert.title = this.$t('WARNING');
+        dataStored.alert.desc = 'robot.hint.palletUnknownOnBoard';
+        dataStored.alert.type = 'warning';
+        return;
+      }
+      this.openDialog('palletUnload');
+      this.getWarehouseSlots();
+    },
+    palletOccupantOf(n) {
+      // il pallet a bordo non occupa piu' il suo vecchio posto
+      return (this.palletsList || []).find(p => p.MAG_POS == n && Number(p.POS_PLANT) !== 1000) || null;
+    },
+    getWarehouseSlots() {
+      fetch(dataStored.server + 'api/conf/position/showWarehouse/WPALLET', { method: 'GET' })
+        .then(r => { if (!r.ok) throw new Error('Network response was not ok'); return r.json(); })
+        .then(d => { this.wpallet = d || []; })
+        .catch(e => { console.info(e); this.wpallet = []; });
     },
     // (collaudo) dispatcher del dialog di collaudo. Nessuna condizione
     // propria: il gate e' la computed del bottone (pattern CARD 3); i
@@ -1906,8 +1966,9 @@ export default {
           missionEnabled = (this.palletBranchEnabled && this.palletGripperEmptyNow());
           break;
         case 'palletUnload':
-          // (scarico valido solo se c'e' ancora un oggetto in pinza)
-          missionEnabled = (this.palletBranchEnabled && !this.palletGripperEmptyNow());
+          // (scarico valido solo se c'e' ancora un oggetto in pinza, e si sa
+          // ancora QUALE pallet e')
+          missionEnabled = (this.palletBranchEnabled && !this.palletGripperEmptyNow() && !!this.palletOnBoard);
           break;
         case 'tray':
           // M2 re-check EXTRACT (punto 8): ancora nessun estratto/manovra
@@ -1935,8 +1996,10 @@ export default {
         dataStored.alert.type = 'warning';
         return;
       }
-      // trayRelease e' a sola conferma, non richiede selezione
-      if (this.dialog.type != 'trayRelease' && this.dialog.selected == null)
+      // trayRelease e' a sola conferma; palletUnload sceglie la DESTINAZIONE
+      // (dialog.dest), non un elemento dell'elenco
+      if (this.dialog.type != 'trayRelease' && this.dialog.type != 'palletUnload' &&
+          this.dialog.selected == null)
         return;
       const sel = this.dialog.selected;
       switch (this.dialog.type) {
@@ -1966,9 +2029,11 @@ export default {
           break;
         }
         case 'palletUnload': {
-          const pos = palletPlacePosition(sel);
-          if (pos === null) { this.posizioneIgnota(); return; }
-          this.sendMission('pallet', '14;3;' + sel.ID + ';' + pos);
+          // il pallet e' quello a bordo (dato), la destinazione e' la scelta
+          const pal = this.palletOnBoard;
+          const dest = this.dialog.dest;
+          if (!pal || dest === null) { this.posizioneIgnota(); return; }
+          this.sendMission('pallet', '14;3;' + pal.ID + ';' + dest);
           break;
         }
         case 'tray':
@@ -2038,6 +2103,10 @@ export default {
       if (dataStored.safetyAux === 0) return 'robot.hint.auxNotReset';
       if (this.dataRobot.STATUS != dataStored.status_hold) return 'robot.hint.notHold';
       if (!this.gripperOnBoardNow()) return 'robot.hint.noGripperSystem';
+      // (16/9) pinza pallet occupata ma nessun pallet risulta a bordo: non si
+      // sa COSA scaricare, e non lo si chiede all'operatore. Il comando non e'
+      // proponibile e il motivo e' scritto.
+      if (!this.palletGripperEmptyNow() && !this.palletOnBoard) return 'robot.hint.palletUnknownOnBoard';
       return '';
     },
     trayDisabledReason() {
@@ -2154,9 +2223,30 @@ export default {
     // Gating storico di cmdActivePallet (inHold && gripperOnBoard, da
     // Mission_enabled) valutato fresco sui segnali primari; il ramo 13/14
     // e' scelto da palletGripperEmptyNow.
+    // (pallet 16/9) COSA C'E' DAVVERO IN PINZA. POS_PLANT = 1000 e' il campo
+    // con cui l'impianto dice "questo pallet e' sul robot": e' un dato, non
+    // una domanda da girare all'operatore.
+    palletOnBoard() {
+      return (this.palletsList || []).find(p => Number(p.POS_PLANT) === 1000) || null;
+    },
+    // CARICO: l'elenco dei pallet prelevabili. Qui la domanda "quale" e'
+    // legittima — il robot ha le mani vuote — ma si offrono solo quelli di cui
+    // si sa comporre la posizione (a scaffale o in macchina).
+    palletLoadItems() {
+      return (this.palletsList || []).filter(p => palletPickPosition(p) !== null);
+    },
+    palletDisabledSlots() {
+      return new Set((this.wpallet || []).filter(r => r.STATUS == 9).map(r => r.SUB_POS));
+    },
+    palletSlotOrder() {
+      return palletGridOrder(this.palletDisabledSlots);
+    },
     palletBranchEnabled() {
       const inHold = this.dataRobot.STATUS == dataStored.status_hold;
-      return inHold && this.gripperOnBoardNow();
+      if (!(inHold && this.gripperOnBoardNow())) return false;
+      // scarico senza sapere quale pallet e' a bordo: niente comando
+      if (!this.palletGripperEmptyNow() && !this.palletOnBoard) return false;
+      return true;
     },
     // R2: posizione slider = eco PLC agganciato alla scala 10..100 dello
     // slider (l'1% fine impostato da input manuale mostra il numero esatto
@@ -2187,7 +2277,7 @@ export default {
                                     ? 'robot.dialog.chooseSwapGripper'
                                     : 'robot.dialog.chooseGripper';
         case 'palletLoad':   return 'robot.dialog.choosePalletLoad';
-        case 'palletUnload': return 'robot.dialog.choosePalletUnload';
+        case 'palletUnload': return 'robot.dialog.choosePalletDest';
         case 'palletPickMC':  return 'robot.dialog.choosePalletPickMC';
         case 'palletPlaceMC': return 'robot.dialog.choosePalletPlaceMC';
         case 'tray':         return 'robot.dialog.chooseTray';
@@ -2198,6 +2288,7 @@ export default {
     dialogItems() {
       switch (this.dialog.type) {
         case 'gripper':     return this.loadGrippersList;
+        case 'palletLoad':  return this.palletLoadItems;
         case 'tray':        return this.traysList;
         case 'trayRelease': return [];
       }
@@ -2205,7 +2296,10 @@ export default {
     },
     dialogConfirmEnabled() {
       // trayRelease: conferma sempre attiva (nessuna selezione richiesta)
-      return this.dialog.type == 'trayRelease' || this.dialog.selected != null;
+      if (this.dialog.type == 'trayRelease') return true;
+      // scarico pallet: si sceglie la DESTINAZIONE, non il pallet
+      if (this.dialog.type == 'palletUnload') return this.dialog.dest != null;
+      return this.dialog.selected != null;
     }
   },
   mounted() {

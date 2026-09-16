@@ -526,6 +526,8 @@
       "chooseGripper": "Quale pinza caricare?",
       "choosePalletLoad": "Quale pallet caricare?",
       "choosePalletUnload": "Quale pallet scaricare?",
+      "choosePalletDest": "Dove deposito il pallet?",
+      "palletOnBoard": "A bordo: #{id} {name}. Dove lo deposito?",
       "chooseTray": "Quale cassetto estrarre?",
       "releaseTray": "Rilasciare il cassetto estratto?",
       "unloadGripper": "Scaricare la pinza a bordo?",
@@ -548,6 +550,7 @@
       "auxNotReset": "Ausiliari non ripristinati: premere il ripristino",
       "notHold": "Robot non in HOLD: premere HOLD per abilitare i comandi",
       "noGripperSystem": "Nessuna pinza a bordo risulta al sistema",
+      "palletUnknownOnBoard": "La pinza pallet risulta occupata ma nessun pallet risulta a bordo: il sistema non sa quale scaricare. Dichiarare lo stato cella, poi riprovare.",
       "trayBusy": "Manovra cassetto in corso",
       "noTrayExtracted": "Nessun cassetto estratto: estrarre prima un cassetto"
     },
