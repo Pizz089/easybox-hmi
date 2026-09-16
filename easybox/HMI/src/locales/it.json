@@ -497,6 +497,7 @@
     "sure": "sei sicuro?",
     "noOrderYet": "Nessun ordine al momento"
   },
+  "normal": "Normale",
   "robot": {
     "dialog": {
       "chooseGripper": "Quale pinza caricare?",
@@ -582,6 +583,21 @@
     "alarm_946": "Errore database durante la dichiarazione dello stato",
     "alarm_947": "Dichiarazione macchina rifiutata: ciclo attivo o pallet già dichiarato",
     "alarm_4099": "Coordinate pallet non trovate a database",
+    "declErr": {
+      "947": "Cella non a riposo: il PLC non registra dichiarazioni mentre qualcosa si muove. Portare la cella in HOLD e ripetere.",
+      "948": "Pezzo non valido: l'ID dichiarato non esiste in anagrafica. Sceglierne uno dall'elenco e ripetere.",
+      "99": "Numero cassetto fuori intervallo: il PLC accetta da 1 a 12, oppure «nessun cassetto fuori». Scegliere dall'elenco.",
+      "996": "Il cassetto dichiarato non coincide con i sensori: il comando è una conferma, non una forzatura. Guardare quale cassetto è davvero fuori e dichiarare quello.",
+      "997": "Robot in missione: il cassetto non si dichiara mentre il robot lavora. Attendere la fine della missione e ripetere.",
+      "999": "Più cassetti fuori contemporaneamente: è un'anomalia fisica e il PLC non può sceglierne uno. Richiudere a mano i cassetti in eccesso e ripetere.",
+      "944": "Contenuto dichiarato su un lato che non esiste: la pinza montata non ha quel lato. Lasciarlo vuoto e ripetere.",
+      "945": "Dichiarazione pinza incoerente col sensore: il sensore vede una pinza diversa da quella scelta. Verificare quale pinza è montata e dichiarare quella.",
+      "946": "Errore database sul PLC: la dichiarazione non è stata registrata. Ripetere; se l'errore torna, chiamare l'assistenza.",
+      "20001": "Nessun cassetto estratto: le tasche si correggono solo sul cassetto fuori. Estrarre il cassetto e ripetere.",
+      "20002": "Posizione tasca non valida: quella tasca non esiste in questo cassetto. Sceglierne una dal disegno.",
+      "20005": "Stato tasca non ammesso: il PLC accetta solo vuota, grezzo o finito.",
+      "20006": "Grezzo dichiarato senza un ordine attivo: la tasca resterebbe invisibile al ciclo, e nessuno la preleverebbe. Attivare l'ordine e ripetere, oppure dichiarare la tasca vuota."
+    },
     "decl": {
       "button": "Reimposta stato cella",
       "title": "Reimposta stato cella (dichiarazione manuale)",
@@ -600,12 +616,41 @@
       "send": "DICHIARA",
       "waiting": "In attesa di conferma dal PLC…",
       "noEcho": "Nessuna conferma dal PLC: verificare e riprovare",
-      "done": "Stato cella dichiarato"
+      "done": "Stato cella dichiarato",
+      "sectionRobot": "Robot: pinza e chele",
+      "sectionMc": "Macchina: pezzo in morsa",
+      "sectionBox": "Cassetto estratto",
+      "sectionPockets": "Tasche del cassetto",
+      "mcContent": "In morsa",
+      "mcEmpty": "Morsa vuota",
+      "mcHint": "Si dichiara il pezzo che è fisicamente in morsa adesso. Se la morsa è libera, lasciare «Morsa vuota».",
+      "boxTray": "Cassetto fuori",
+      "boxNone": "Nessun cassetto fuori",
+      "boxHint": "È una conferma, non una forzatura: il PLC accetta solo se i dodici sensori cassetto sono d'accordo. Se non coincide, va richiuso o estratto il cassetto giusto.",
+      "pocketsOpen": "Correggi tasche",
+      "pocketsNoTray": "Nessun cassetto estratto: le tasche si correggono solo sul cassetto fuori.",
+      "pocketsNotHold": "Cella non ferma: il PLC accetta la correzione delle tasche solo a cella in HOLD.",
+      "pocketsPick": "Toccare la tasca da correggere.",
+      "pocketsChoose": "Tasca {sub}: che cosa contiene?",
+      "seq": {
+        "mc": "Dichiaro il pezzo in morsa, attendo la conferma della macchina…",
+        "box": "Dichiaro il cassetto estratto, attendo la conferma…",
+        "robot": "Dichiaro lo stato del robot, attendo la conferma…",
+        "done": "Stato cella dichiarato.",
+        "stopped": "Fermato alla sezione {section}: le dichiarazioni successive NON sono state inviate. Risolvere il motivo qui sopra e ripetere.",
+        "name": {
+          "mc": "macchina",
+          "box": "cassetto",
+          "robot": "robot"
+        }
+      }
     },
     "alarm_1001": "Ordine di lavoro non definito per macchina 1",
     "alarm_1002": "Ordine di lavoro non definito per macchina 2",
     "alarm_1010": "Nessun pallet pronto per lavorare",
     "alarm_1021": "Pinza non vuota",
+    "alarm_13599": "Allarme robot 13599 (descrizione non ancora fornita dal robotista)",
+    "alarm_3005": "Allarme robot 3005 (descrizione non ancora fornita dal robotista)",
     "alarm_15090": "Dati pinza richiesta non trovati",    
     "alarm_20001": "Nessun cassetto estratto",
     "alarm_20002": "Posizione pezzo non valida",

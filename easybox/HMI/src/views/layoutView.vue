@@ -2,9 +2,9 @@
     import { RouterLink, RouterView } from 'vue-router'
     import { dataStored } from '../data.js'
 
-    import prisma from '../components/layout/prisma.vue'
-    import cylinder from '../components/layout/cylinder.vue'
-    import { robotToDrawing, ROBOT_AXIS_ALONG } from '../util/gratingAxes.js'
+    import TrayPockets from '../components/layout/TrayPockets.vue'
+    import { ROBOT_AXIS_ALONG } from '../util/gratingAxes.js'
+    import { loadTrayPockets } from '../util/trayPockets.js'
     import { KO_ACTIVE_ORDER } from '../util/errorCodes.js'
 </script>
 
@@ -14,70 +14,15 @@
     <h2 class="layout-title view-title">LAYOUT {{ $t('TRAY')}} ID{{$route.params.trayID }} - {{$t('piano')}}{{$route.params.floorMag }}</h2>
 	
     <div class="pure-u-1">
-        <svg width="480" height="360" 
-            version="1.1" xmlns="http://www.w3.org/2000/svg" 
-            viewBox="0 -20 820 650" > 
-            <!-- vassoio -->
-            <rect x="0" y="0" width="820" height="615" style="fill:lightgray" />
-            <image v-if="!robotSide" href="../assets/centro.png" x="-20" y="-20" width="40px"/>
-            <image v-if="robotSide" href="../assets/centro.png" x="800" y="595" width="40px"/>
-            
-            <!-- (layout-axes, 1/9) tasche in coordinate DISEGNO {w,h} ricavate
-                 dalle coordinate robot con l'inversa di gratingAxes (vedi
-                 drawPz): w = orizzontale (lato lungo, asse robot Y), h =
-                 verticale (asse robot X). Prima: x<-X, y<- -Y e filtro
-                 p.y<0 — con la convenzione corretta (Y positive) restavano
-                 disegnate solo le 7 tasche a Y=-65: strisce in un angolo. -->
-            <!-- (dup-guard 4/9) etichetta e chiave = SUB_POS REALE della riga,
-                 mai l'indice: con buchi o anomalie a DB i numeri restano
-                 quelli veri delle tasche -->
-            <g v-for="(p, index) in drawPz" :key="p.SUB_POS != null ? p.SUB_POS : index" >
-                <prisma v-if="p.prisma"
-                        :x="p.w-dim_x/2" :y="p.h-dim_y/2"
-                        :width="dim_x" :height="dim_y"
-                        :status="p.status"
-                        :diffOrder="checkIfOrderChanged(index)"
-                        @click_obj="clickPiece(index)" >
-                        {{ p.SUB_POS != null ? p.SUB_POS : index+1 }}
-                </prisma>
-                <cylinder v-if="!p.prisma"
-                        :x="p.w" :y="p.h"
-                        :width="radius"
-                        :status="p.status"
-                        :diffOrder="checkIfOrderChanged(index)"
-                        @click_obj="clickPiece(index)" >
-                        {{ p.SUB_POS != null ? p.SUB_POS : index+1 }}
-                </cylinder>
-            </g>
-            
-            <!--image href="../assets/reload.png" x="365" y="568" width="65px" @click="changeSide()">
-                <animateTransform
-                    attributeName="transform"
-                    attributeType="XML"
-                    type="rotate"
-                    from="0 398 600"
-                    to="360 398 600"
-                    dur="2s"
-                    repeatCount="2" />
-            </image-->
-
-            <!--text v-if="!robotSide" x='186' y='14' style="fill:blue;font-family:times;font-size:50"  @click="changeSide()">
-                OPERATOR VIEW
-            </text>
-            <text v-if="robotSide" x='230' y='14' style="fill:blue;font-family:times;font-size:50"  @click="changeSide()">
-                ROBOT VIEW
-            </text-->
-            <!--text x='160' y='620' style="fill:blue;font-family:times;font-size:50"  @click="changeSide()">
-                {{ robotSide?'   Robot':'Operator' }} view 
-            </text-->
-            <!--text x='460' y='620' style="fill:blue;font-family:times;font-size:20"  @click="changeSide()">
-                (click to switch)
-            </text-->
-
-            <!--text x='190' y='320' style="fill:gray;font-family:times;font-size:80">
-                {{ robotSide?'   Robot':'Operator' }} view
-            </text-->
-        </svg>
+        <!-- (stato cella 16/9) il disegno delle tasche vive adesso in
+             TrayPockets.vue: la stessa griglia serve al dialog "Reimposta
+             stato cella" per far cliccare la tasca da correggere (comando
+             39). Qui restano i dati e le regole di modifica. -->
+        <TrayPockets
+            :pockets="listPz"
+            :dimX="dim_x" :dimY="dim_y" :radius="radius"
+            :robotSide="robotSide"
+            @pick="clickPiece($event.index)" />
     </div>
 
     <div class="pure-u-1">
@@ -171,92 +116,26 @@
             }
         },
         methods: {
+            // (stato cella 16/9) la lettura delle tasche e la deduzione del
+            // passo stanno in util/trayPockets.js: le usa anche il dialog di
+            // dichiarazione della pagina robot, e una seconda copia sarebbe
+            // divergita al primo ritocco.
             getDataTable() {
-                //console.log("mostro layout per cassetto con ID: "+this.$route.params.trayID )
-                fetch(dataStored.server+'api/conf/tray/layout/'+ this.$route.params.floorMag ,{ method: 'GET'})
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error('Network response was not ok');
-                        }
-                        return response.json()
-                    })
-                    .then(pz => {
-                        console.log("ricevo dati per "+pz.length+"  posizioni")
-                        // (dup-guard 4/9) dedup DIFENSIVO per SUB_POS: righe
-                        // duplicate a DB sfalserebbero etichette, click e
-                        // salvataggi (mappa per indice). Si tiene la prima e
-                        // si SEGNALA l'anomalia, mai disegnarla in silenzio.
-                        const seen = new Set();
-                        const rows = [];
-                        let dups = 0;
-                        for (const p of (pz || [])) {
-                            if (p.SUB_POS != null && seen.has(p.SUB_POS)) { dups++; continue; }
-                            seen.add(p.SUB_POS);
-                            rows.push(p);
-                        }
-                        if (dups > 0) {
+                loadTrayPockets(dataStored.server, this.$route.params.floorMag)
+                    .then(d => {
+                        // righe duplicate a DB: si disegnano le prime, ma
+                        // l'anomalia si dice (mai in silenzio)
+                        if (d.dups > 0) {
                             dataStored.alert.title = this.$t('WARNING');
-                            dataStored.alert.desc = this.$t('layout.dupRows', { n: dups, floor: this.$route.params.floorMag });
+                            dataStored.alert.desc = this.$t('layout.dupRows', { n: d.dups, floor: this.$route.params.floorMag });
                             dataStored.alert.type = 'warning';
                         }
-                        this.listPz = rows;
-                        //console.log(JSON.stringify(pz,null,4))
-
-                        //alert(JSON.stringify(this.listPz,null,4))
-
-                        //console.log("tipo pezzo: "+pz[0].partType)
-                        if (this.listPz[0].partType==0){
-                            //caso speciale: grigliato importato dal mondo reale
-                            fetch(dataStored.server+'api/conf/grating/showFromTray/'+ this.$route.params.floorMag,{ method: 'GET'})
-                                .then(response => {
-                                    if (!response.ok) {
-                                        throw new Error('Network response was not ok');
-                                    }
-                                    return response.json()
-                                })
-                                .then(dim => {
-                                    console.log("ricevo dati sulla dimensione "+dim.length)
-                                    // (layout-axes) passo dedotto dalle tasche: SUB_POS
-                                    // consecutive avanzano sull'asse robot Y (= lungo
-                                    // width -> dim_x); la prima tasca con X diversa da'
-                                    // il passo lungo height (-> dim_y). Versi
-                                    // ininfluenti: ampiezze in valore assoluto.
-                                    const d = this.listPz;
-                                    this.dim_x = (d.length > 1 ? Math.abs(d[1].y - d[0].y) : 0) - dim[0].SAFEX;
-                                    const other = d.find(p => p.x != d[0].x);
-                                    this.dim_y = (other ? Math.abs(other.x - d[0].x) : 0) - dim[0].SAFEY;
-                                    this.radius=Math.round(this.dim_x/2);
-                                 })
-                                .catch(error => {
-                                    console.info("-------------")
-                                    console.info(error);
-                                });
-                        }else{
-                            fetch(dataStored.server+'api/conf/piece/show/'+pz[0].partType,{ method: 'GET'})
-                                .then(response => {
-                                    if (!response.ok) {
-                                        throw new Error('Network response was not ok');
-                                    }
-                                    return response.json()
-                                })
-                                .then(dim => {
-                                    console.log("ricevo dati sulla dimensione "+dim.length)  
-                                    this.dim_x=dim[0].X/1000;
-                                    this.dim_y=dim[0].Y/1000;
-                                    this.radius=Math.round((dim[0].X/1000)/2);
-                                    this.avanzamento=0;
-                                })
-                                .catch(error => {
-                                    console.info("-------------")
-                                    console.info(error);
-                                });
-                        }
-                    })
-                    .catch(error => {
-                        console.info("-------------")
-                        console.info(error);
+                        this.listPz = d.rows;
+                        this.dim_x = d.dimX;
+                        this.dim_y = d.dimY;
+                        this.radius = d.radius;
+                        this.avanzamento = 0;
                     });
-                
             },
             changeSide(){
                 this.robotSide =! this.robotSide;
@@ -419,20 +298,10 @@
             }
         },
         computed: {
-            // (layout-axes, 1/9; origin-fix 14/9) INVERSA di
-            // gratingAxes.drawingToRobot presa dalla util (robotToDrawing):
-            // nessuna formula duplicata qui. w e h sono le distanze disegno
-            // dai bordi (lato lungo / corto): vanno dritte su x/y schermo,
-            // come faceva gia' il layout (vista ruotata di 180 gradi rispetto
-            // all'anteprima Grigliati). ROBOT_AXIS_ALONG documenta
-            // l'accoppiamento: width <-> Y, height <-> X. Le righe
-            // dell'endpoint sono in mm (x_pick/1000): riportate in micron
-            // per la util.
-            drawPz() {
-                if (!this.listPz || this.listPz.length === 0) return [];
-                const wh = robotToDrawing(this.listPz.map(p => ({ X: Math.round(Number(p.x) * 1000), Y: Math.round(Number(p.y) * 1000) })));
-                return this.listPz.map((p, i) => Object.assign({}, p, { w: wh[i].w, h: wh[i].h }));
-            },
+            // (layout-axes 1/9) ROBOT_AXIS_ALONG documenta l'accoppiamento
+            // fra assi robot e assi disegno (width <-> Y, height <-> X). La
+            // conversione la fa TrayPockets con robotToDrawing: qui non c'e'
+            // nessuna formula, e non deve tornarci.
             robotAxisAlong() { return ROBOT_AXIS_ALONG; }
         },
         mounted(){

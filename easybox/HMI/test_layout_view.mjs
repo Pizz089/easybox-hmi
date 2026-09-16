@@ -17,6 +17,14 @@ const server = await createServer({ root: process.cwd(), logLevel: 'error', serv
 const { drawingToRobot, ROBOT_AXIS_ALONG } = await server.ssrLoadModule('/src/util/gratingAxes.js');
 const comp = (await server.ssrLoadModule('/src/views/layoutView.vue')).default;
 const src = readFileSync('src/views/layoutView.vue', 'utf8');
+// (stato cella 16/9) il DISEGNO delle tasche e la lettura sono usciti da
+// layoutView: la griglia serve anche al dialog "Reimposta stato cella" della
+// pagina robot. I controlli sul disegno seguono il disegno dov'e' andato —
+// quello che si verifica e' lo stesso: nessun filtro sul segno, posizione da
+// p.w/p.h, conversione assi presa dalla util e mai riscritta a mano.
+const Grid = (await server.ssrLoadModule('/src/components/layout/TrayPockets.vue')).default;
+const gsrc = readFileSync('src/components/layout/TrayPockets.vue', 'utf8');
+const loader = readFileSync('src/util/trayPockets.js', 'utf8');
 
 let failed = 0;
 const check = (c, l) => { console.log((c ? '  ok   ' : '  FAIL ') + l); if (!c) failed++; };
@@ -30,19 +38,23 @@ for (let i = 0; i < 91; i++) {
 }
 check(rows[0].x === 65 && rows[0].y === 50 && rows[1].y === 110 && rows[13].x === 145 && rows[90].x === 545 && rows[90].y === 770, 'dataset = griglia TRAY_9 con origine angolo cassetto (1:(65,50) 2:(65,110) 14:(145,50) 91:(545,770))');
 
-const vm = Object.assign({}, comp.data.call({}));
-for (const [k, f] of Object.entries(comp.methods)) vm[k] = f.bind(vm);
-for (const [k, c] of Object.entries(comp.computed || {}))
+// il vm e' quello del COMPONENTE: props al posto dello stato della view
+const vm = { pockets: rows, dimX: 40, dimY: 70, radius: 20 };   // pezzo 40x70 (api/conf/piece)
+for (const [k, f] of Object.entries(Grid.methods || {})) vm[k] = f.bind(vm);
+for (const [k, c] of Object.entries(Grid.computed || {}))
 	Object.defineProperty(vm, k, { get: () => (typeof c === 'function' ? c.call(vm) : c.get.call(vm)) });
-vm.listPz = rows;
-vm.dim_x = 40; vm.dim_y = 70;   // pezzo 40x70 (api/conf/piece)
 
 console.log('\n1) template: niente filtri di segno, disegno da drawPz');
 // template senza i commenti HTML (che citano i vecchi filtri per storia)
-const tpl = src.slice(0, src.lastIndexOf('</template>')).replace(/<!--[\s\S]*?-->/g, '');
+const tpl = gsrc.slice(0, gsrc.lastIndexOf('</template>')).replace(/<!--[\s\S]*?-->/g, '');
 check(!/p\.y<0|p\.y>0|p\.x>0/.test(tpl), 'rimossi i v-if p.x>0 / p.y<0 / p.y>0');
-check(/v-for="\(p, index\) in drawPz"/.test(tpl) && /:x="p\.w-dim_x\/2" :y="p\.h-dim_y\/2"/.test(tpl), 'prisma posizionato da p.w/p.h');
-check(/import \{ robotToDrawing, ROBOT_AXIS_ALONG \} from '\.\.\/util\/gratingAxes\.js'/.test(src) && !/DIR_[XY] \*/.test(src), 'inversa presa dalla util (robotToDrawing): nessuna formula duplicata nel layout');
+check(/v-for="\(p, index\) in drawPz"/.test(tpl) && /:x="p\.w-dimX\/2" :y="p\.h-dimY\/2"/.test(tpl), 'prisma posizionato da p.w/p.h');
+check(/import \{ robotToDrawing \} from '\.\.\/\.\.\/util\/gratingAxes\.js'/.test(gsrc) && !/DIR_[XY] \*/.test(gsrc), 'inversa presa dalla util (robotToDrawing): nessuna formula duplicata nel disegno');
+// e il layout non se n'e' tenuta una copia (i commenti citano la util per
+// spiegare DOVE e' finita: si guarda il codice, non le spiegazioni)
+const codiceLayout = src.split('\n').filter(r => !r.trim().startsWith('//')).join('\n');
+check(!/robotToDrawing/.test(codiceLayout) && !/<prisma|<cylinder/.test(codiceLayout), 'layoutView non ridisegna piu\' le tasche per conto suo: usa il componente');
+check(/TrayPockets/.test(src) && /loadTrayPockets/.test(src), 'e prende disegno e dati dagli stessi due posti del dialog robot');
 
 console.log('\n2) drawPz con TRAY_9: tasca 1 e 2 adiacenti sullo stesso asse schermo');
 const d = vm.drawPz;
@@ -67,14 +79,12 @@ const back = drawingToRobot(d.map(p => ({ w: p.w, h: p.h })));
 check(back.every((p, i) => p.X === Math.round(rows[i].x * 1000) && p.Y === Math.round(rows[i].y * 1000)), 'drawingToRobot(drawPz) == coordinate lette, tutte le 91');
 
 console.log('\n5) grigliato importato (partType 0): passo dedotto sugli assi giusti');
-const vm0 = Object.assign({}, comp.data.call({}));
-for (const [k, f] of Object.entries(comp.methods)) vm0[k] = f.bind(vm0);
-vm0.listPz = rows;
 // replica del ramo partType==0 (senza rete): SAFEX 20, SAFEY 10
-const dd = vm0.listPz;
+const dd = rows;
 const dimx = Math.abs(dd[1].y - dd[0].y) - 20, other = dd.find(p => p.x != dd[0].x), dimy = Math.abs(other.x - dd[0].x) - 10;
 check(dimx === 40 && dimy === 70, 'dim_x=40 (da SUB_POS 1->2 su Y robot), dim_y=70 (da prima tasca con X diversa)');
-check(/Math\.abs\(d\[1\]\.y - d\[0\]\.y\)/.test(src) && /p\.x != d\[0\]\.x/.test(src), 'il codice usa proprio questa deduzione');
+// la deduzione e' andata nella util insieme alla lettura: si verifica li'
+check(/Math\.abs\(d\[1\]\.y - d\[0\]\.y\)/.test(loader) && /p\.x != d\[0\]\.x/.test(loader), 'il codice usa proprio questa deduzione');
 
 await server.close();
 console.log('\n' + (failed ? failed + ' CHECK FALLITI' : 'TUTTI I CHECK PASSATI'));

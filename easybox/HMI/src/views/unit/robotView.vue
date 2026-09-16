@@ -1,5 +1,10 @@
 <script setup>
   import { dataStored } from '../../data.js'
+  // (stato cella 16/9) la griglia delle tasche e' quella della pagina layout,
+  // estratta in componente: il dialog di dichiarazione fa cliccare la casella
+  // che si vede, invece di far digitare un numero di tasca
+  import TrayPockets from '../../components/layout/TrayPockets.vue'
+  import { loadTrayPockets } from '../../util/trayPockets.js'
   // (collaudo) campo numerico condiviso a contratto "emette sempre numeri
   // interi clampati" (AL 2c) — per la scelta subpos nei comandi 31/32
   import numericField from '../../components/numericField.vue'
@@ -552,7 +557,7 @@
              Stato mostrato SOLO dai sensori/echi PLC (mai optimistic).
              Entra nell'invariante un-solo-overlay. -->
         <div v-if="declDialog.open" class="mission-dialog-overlay">
-          <div class="mission-dialog">
+          <div class="mission-dialog decl-dialog">
             <h3 class="command-section-title">{{ $t('robot.decl.title') }}</h3>
             <div class="unload-info">{{ $t('robot.decl.hint') }}</div>
 
@@ -591,53 +596,116 @@
               </div>
             </template>
 
-            <!-- STEP 2: pinza + contenuti lati -->
+            <!-- STEP 2: lo stato dell'INTERA cella, in sezioni.
+                 Ogni sezione parte da quello che il PLC crede adesso (echi
+                 DECLARE/MC1, TRAY/EXTRACT): l'operatore CORREGGE quello che
+                 non torna, non reinventa da zero. -->
             <template v-if="declDialog.step==2">
-              <div class="decl-field">
-                <label>{{ $t('robot.decl.gripper') }}</label>
-                <select v-model.number="declDialog.gripperSel" class="decl-select">
-                  <option :value="0">-</option>
-                  <option v-for="g in declGrippers" :key="g.ID" :value="g.ID">
-                    #{{ g.ID }} {{ (g.FAMILY || '').trim() }}
-                  </option>
-                </select>
-              </div>
-              <div class="decl-field">
-                <label>{{ $t('robot.decl.side1') }}</label>
-                <!-- regola RATIFICATA: chele aperte (CLOSED1=0) = contenuto
-                     FORZATO a vuoto, sola lettura -->
-                <span v-if="gripperClosed1===0" class="coh-na">{{ $t('robot.decl.forcedEmpty') }}</span>
-                <template v-else>
-                  <select v-model.number="declDialog.cont1" class="decl-select">
+
+              <!-- ===== ROBOT: pinza e contenuto delle chele (35) ===== -->
+              <div class="decl-section">
+                <h4 class="section-label">{{ $t('robot.decl.sectionRobot') }}</h4>
+                <p v-if="declErr.robot" class="decl-err">{{ $t('robot.declErr.' + declErr.robot) }}</p>
+                <div class="decl-field">
+                  <label>{{ $t('robot.decl.gripper') }}</label>
+                  <select v-model.number="declDialog.gripperSel" class="decl-select">
+                    <option :value="0">-</option>
+                    <option v-for="g in declGrippers" :key="g.ID" :value="g.ID">
+                      #{{ g.ID }} {{ (g.FAMILY || '').trim() }}
+                    </option>
+                  </select>
+                </div>
+                <div class="decl-field">
+                  <label>{{ $t('robot.decl.side1') }}</label>
+                  <!-- regola RATIFICATA: chele aperte (CLOSED1=0) = contenuto
+                       FORZATO a vuoto, sola lettura -->
+                  <span v-if="gripperClosed1===0" class="coh-na">{{ $t('robot.decl.forcedEmpty') }}</span>
+                  <template v-else>
+                    <select v-model.number="declDialog.cont1" class="decl-select">
+                      <option :value="0">{{ $t('status.empty') }}</option>
+                      <option :value="1">{{ $t('status.raw') }}</option>
+                      <option :value="2">{{ $t('status.finished') }}</option>
+                      <option :value="3">{{ $t('robot.decl.contPallet') }}</option>
+                    </select>
+                    <select v-if="declDialog.cont1==3" v-model.number="declDialog.id1" class="decl-select">
+                      <option :value="0">-</option>
+                      <option v-for="p in palletsList" :key="'d1'+p.ID" :value="p.ID">#{{ p.ID }} {{ (p.FAMILY || '').trim() }}</option>
+                    </select>
+                  </template>
+                </div>
+                <div class="decl-field">
+                  <label>{{ $t('robot.decl.side2') }}</label>
+                  <!-- nessun sensore lato 2: scelta libera, la validazione
+                       lato-inesistente la fa il PLC (errore 944) -->
+                  <select v-model.number="declDialog.cont2" class="decl-select">
                     <option :value="0">{{ $t('status.empty') }}</option>
                     <option :value="1">{{ $t('status.raw') }}</option>
                     <option :value="2">{{ $t('status.finished') }}</option>
                     <option :value="3">{{ $t('robot.decl.contPallet') }}</option>
                   </select>
-                  <select v-if="declDialog.cont1==3" v-model.number="declDialog.id1" class="decl-select">
+                  <select v-if="declDialog.cont2==3" v-model.number="declDialog.id2" class="decl-select">
                     <option :value="0">-</option>
-                    <option v-for="p in palletsList" :key="'d1'+p.ID" :value="p.ID">#{{ p.ID }} {{ (p.FAMILY || '').trim() }}</option>
+                    <option v-for="p in palletsList" :key="'d2'+p.ID" :value="p.ID">#{{ p.ID }} {{ (p.FAMILY || '').trim() }}</option>
                   </select>
-                </template>
+                </div>
               </div>
-              <div class="decl-field">
-                <label>{{ $t('robot.decl.side2') }}</label>
-                <!-- nessun sensore lato 2: scelta libera, la validazione
-                     lato-inesistente la fa il PLC (errore 944) -->
-                <select v-model.number="declDialog.cont2" class="decl-select">
-                  <option :value="0">{{ $t('status.empty') }}</option>
-                  <option :value="1">{{ $t('status.raw') }}</option>
-                  <option :value="2">{{ $t('status.finished') }}</option>
-                  <option :value="3">{{ $t('robot.decl.contPallet') }}</option>
-                </select>
-                <select v-if="declDialog.cont2==3" v-model.number="declDialog.id2" class="decl-select">
-                  <option :value="0">-</option>
-                  <option v-for="p in palletsList" :key="'d2'+p.ID" :value="p.ID">#{{ p.ID }} {{ (p.FAMILY || '').trim() }}</option>
-                </select>
+
+              <!-- ===== MACCHINA: pezzo in morsa (36) o morsa vuota (37) ===== -->
+              <div class="decl-section">
+                <h4 class="section-label">{{ $t('robot.decl.sectionMc') }}</h4>
+                <p v-if="declErr.mc" class="decl-err">{{ $t('robot.declErr.' + declErr.mc) }}</p>
+                <div class="decl-field">
+                  <label>{{ $t('robot.decl.mcContent') }}</label>
+                  <select v-model.number="declDialog.pieceSel" class="decl-select">
+                    <option :value="0">{{ $t('robot.decl.mcEmpty') }}</option>
+                    <option v-for="pc in declPieces" :key="'pc'+pc.ID" :value="pc.ID">
+                      #{{ pc.ID }} {{ (pc.DESCR || pc.FAMILY || '').trim() }}
+                    </option>
+                  </select>
+                </div>
+                <small class="cmd-hint decl-note">{{ $t('robot.decl.mcHint') }}</small>
               </div>
+
+              <!-- ===== CASSETTO: quale e' fuori (38), 0 = nessuno =====
+                   Il 38 e' una CONFERMA: il PLC lo accetta solo se i dodici
+                   sensori sono d'accordo (rifiuto 996). L'avviso lo dice,
+                   perche' l'operatore non creda di poter forzare. -->
+              <div class="decl-section">
+                <h4 class="section-label">{{ $t('robot.decl.sectionBox') }}</h4>
+                <p v-if="declErr.box" class="decl-err">{{ $t('robot.declErr.' + declErr.box) }}</p>
+                <div class="decl-field">
+                  <label>{{ $t('robot.decl.boxTray') }}</label>
+                  <select v-model.number="declDialog.boxSel" class="decl-select">
+                    <option :value="0">{{ $t('robot.decl.boxNone') }}</option>
+                    <option v-for="t in traysList" :key="'bt'+t.FLOOR_MAG" :value="t.FLOOR_MAG">
+                      {{ $t('robot.dialog.tray') }} {{ t.FLOOR_MAG }}<span v-if="(t.DESCR || '').trim()"> - {{ t.DESCR.trim() }}</span>
+                    </option>
+                  </select>
+                </div>
+                <small class="cmd-hint decl-note">{{ $t('robot.decl.boxHint') }}</small>
+              </div>
+
+              <!-- ===== QUARTA VOCE: correggi le tasche (39) ===== -->
+              <div class="decl-section">
+                <h4 class="section-label">{{ $t('robot.decl.sectionPockets') }}</h4>
+                <button style="width:100%" class="button_pressed"
+                  :class="[pocketsEnabled ? 'pure-button-micromission' : 'pure-button-disable']"
+                  @click="pocketsEnabled ? openPockets() : ''">
+                  {{ $t('robot.decl.pocketsOpen') }}
+                </button>
+                <small class="cmd-hint" v-if="!pocketsEnabled">{{ $t(pocketsDisabledReason) }}</small>
+              </div>
+
+              <!-- avanzamento della sequenza: 36/37 -> 38 -> 35, in quest'ordine
+                   obbligato (il 35 azzera le catene del dispatcher) -->
+              <div v-if="declDialog.phase" class="decl-seq">
+                <p v-if="declDialog.phase!='stopped'">{{ $t('robot.decl.seq.' + declDialog.phase) }}</p>
+                <p v-else class="decl-err">{{ $t('robot.decl.seq.stopped', { section: $t('robot.decl.seq.name.' + declDialog.stoppedAt) }) }}</p>
+              </div>
+
               <div class="pure-g">
                 <div class="pure-u-1-3">
-                  <button style="width:100%" class="btn-ghost" @click="declDialog.step=1">
+                  <button style="width:100%" class="btn-ghost" :disabled="declDialog.waiting" @click="declDialog.step=1">
                     {{ $t('tray.teach.back') }}
                   </button>
                 </div>
@@ -656,6 +724,46 @@
               </div>
             </template>
 
+            <!-- STEP 3: correggi tasche (39). La griglia e' la STESSA della
+                 pagina layout (TrayPockets): si clicca la casella che si
+                 vede, non si digita un numero. Una tasca alla volta. -->
+            <template v-if="declDialog.step==3">
+              <p v-if="declErr.pocket" class="decl-err">{{ $t('robot.declErr.' + declErr.pocket) }}</p>
+              <div class="unload-info" v-if="extractedTray">
+                {{ $t('robot.dialog.tray') }} {{ extractedTray.FLOOR_MAG }}
+                <span v-if="(extractedTray.DESCR || '').trim()"> - {{ extractedTray.DESCR.trim() }}</span>
+              </div>
+              <div class="pockets-wrap">
+                <TrayPockets
+                  :pockets="pockets.rows"
+                  :dimX="pockets.dimX" :dimY="pockets.dimY" :radius="pockets.radius"
+                  :selected="pockets.sel"
+                  width="420" height="315"
+                  @pick="pickPocket($event)" />
+              </div>
+              <p class="cmd-hint">{{ $t(pockets.sel === null ? 'robot.decl.pocketsPick' : 'robot.decl.pocketsChoose', { sub: pockets.sel }) }}</p>
+              <div class="pure-g" v-if="pockets.sel !== null">
+                <div class="pure-u-1-3" v-for="st in pocketStates" :key="'ps'+st.code">
+                  <button style="width:100%" class="button_pressed"
+                    :class="[pockets.busy ? 'pure-button-disable' : 'pure-button-micromission']"
+                    @click="pockets.busy ? '' : declarePocket(st.code)">
+                    {{ $t(st.label) }}
+                  </button>
+                </div>
+              </div>
+              <div class="pure-g">
+                <div class="pure-u-1-2">
+                  <button style="width:100%" class="btn-ghost" :disabled="pockets.busy" @click="declDialog.step=2">
+                    {{ $t('tray.teach.back') }}
+                  </button>
+                </div>
+                <div class="pure-u-1-2">
+                  <button style="width:100%" class="btn-ghost" :disabled="pockets.busy" @click="closeDeclDialog()">
+                    {{ $t('robot.dialog.cancel') }}
+                  </button>
+                </div>
+              </div>
+            </template>
             <small class="cmd-hint" v-if="declDialog.waiting">{{ $t('robot.decl.waiting') }}</small>
           </div>
         </div>
@@ -769,16 +877,34 @@ export default {
       },
       // (fase B) dialog "Reimposta stato cella" (35): sensori LIVE + scelta
       // pinza/contenuti; waiting = in attesa dell'eco DECLARE/ROBOT
+      // (stato cella 16/9) il dialog dichiara adesso TUTTA la cella, in
+      // sezioni: robot (35), macchina (36/37), cassetto (38), piu' la
+      // correzione delle tasche (39, step 3).
       declDialog: {
         open: false,
         step: 1,
         gripperSel: 0,
         cont1: 0, id1: 0,
         cont2: 0, id2: 0,
-        waiting: false
+        waiting: false,
+        pieceSel: 0,        // 0 = morsa vuota -> comando 37; >0 -> 36;pieceID
+        boxSel: 0,          // 0 = nessun cassetto fuori
+        phase: '',          // '' | 'mc' | 'box' | 'robot' | 'done' | 'stopped'
+        stoppedAt: ''       // sezione dove la sequenza si e' fermata
       },
+      // rifiuti del PLC, uno per sezione: il codice, 0 = nessuno. Si
+      // accendono con l'allarme e si spengono con l'eco del comando riuscito
+      // (il PLC non pubblica nulla per dire "ora e' a posto").
+      declErr: { mc: 0, box: 0, robot: 0, pocket: 0 },
+      declPieces: [],          // anagrafica pezzi per il selettore morsa
+      declEchoMs: 5000,        // attesa massima di UN eco, per passo
+      // correzione tasche (39): griglia del cassetto ESTRATTO
+      pockets: { rows: [], dimX: 0, dimY: 0, radius: 0, sel: null, busy: false },
       declGrippers: [],        // anagrafica COMPLETA (inclusa l'eventuale a bordo)
-      declTimer: null,
+      // terzo campo di FROM_PLANT/DECLARE/MC1 (aggiunta del PLC): pezzo che
+      // la macchina crede di avere in morsa. Serve a PRESELEZIONARE la
+      // sezione macchina: si conferma quello che c'e', non si reinventa.
+      declPieceInVice: 0,
       gripperMounted: null,    // FROM_PLANT/GRIPPER/MOUNTED (0/1, null = mai visto)
       gripperClosed1: null,    // FROM_PLANT/GRIPPER/CLOSED1
       // R2-2: editing dell'input velocita' — col flag attivo l'eco PLC non
@@ -1343,6 +1469,17 @@ export default {
       this.declDialog.cont1 = 0; this.declDialog.id1 = 0;
       this.declDialog.cont2 = 0; this.declDialog.id2 = 0;
       this.declDialog.waiting = false;
+      this.declDialog.phase = '';
+      this.declDialog.stoppedAt = '';
+      // i rifiuti sono di QUESTA apertura: un errore vecchio, gia' risolto
+      // altrove, non deve riapparire all'apertura successiva
+      this.declErr = { mc: 0, box: 0, robot: 0, pocket: 0 };
+      this.pockets.sel = null;
+      // le sezioni partono da quello che il PLC crede ADESSO: l'operatore
+      // corregge, non reinventa (gli echi arrivano dallo snapshot al mount)
+      this.declDialog.pieceSel = this.declPieceInVice > 0 ? this.declPieceInVice : 0;
+      this.declDialog.boxSel = this.extractedTray ? this.extractedTray.FLOOR_MAG : 0;
+      this.getPiecesList();
       // anagrafica pinze COMPLETA (senza il filtro POS_PLANT!=1000 della
       // lista carico: la dichiarazione puo' riguardare la pinza gia' a bordo)
       fetch(dataStored.server + 'api/conf/gripper/show/all', { method: 'GET' })
@@ -1353,35 +1490,204 @@ export default {
     closeDeclDialog() {
       this.declDialog.open = false;
       this.declDialog.waiting = false;
-      clearTimeout(this.declTimer);
+    },
+    // ===== echi e rifiuti del PLC =====
+    // L'ECO VALE ANCHE COME CANCELLAZIONE: il PLC pubblica l'allarme quando
+    // rifiuta, ma non pubblica niente per dire "ora e' a posto" — manda solo
+    // l'eco del comando riuscito. Quindi l'eco spegne l'errore della sezione.
+    onDeclRobot() {
+      this.declErr.robot = 0;   // eco del 35
+    },
+    onDeclMc1(payload) {
+      this.declErr.mc = 0;      // eco del 36/37
+      // "pallet;manualVice;pieceInMorsa": il terzo campo e' l'aggiunta nuova,
+      // e puo' mancare se il PLC in campo non e' ancora aggiornato
+      const pz = parseInt(String(payload).split(';')[2], 10);
+      this.declPieceInVice = Number.isInteger(pz) ? pz : 0;
+    },
+    onDeclTray() {
+      this.declErr.pocket = 0;  // eco del 39
+    },
+    onTrayExtract(payload) {
+      this.declErr.box = 0;     // eco del 38
+      const n = parseInt(String(payload).trim(), 10);
+      // aggiorna la scelta a video solo FUORI da una sequenza: durante
+      // l'invio il campo e' quello che l'operatore ha appena dichiarato
+      if (Number.isInteger(n) && this.declDialog.open && !this.declDialog.waiting)
+        this.declDialog.boxSel = n;
+      this.getTraysList();
+    },
+    // I rifiuti si registrano SOLO a dialog aperto: un rifiuto vecchio, gia'
+    // risolto altrove, non deve riapparire alla prossima apertura.
+    setDeclErr(sezione, payload, ammessi) {
+      if (!this.declDialog.open) return;
+      const code = parseInt(String(payload).trim(), 10);
+      if (ammessi.indexOf(code) >= 0) this.declErr[sezione] = code;
+    },
+    onAlarmMc1(payload) { this.setDeclErr('mc', payload, [947, 948]); },
+    onAlarmBox(payload) { this.setDeclErr('box', payload, [99, 996, 997, 999]); },
+    onAlarmRobot(payload) {
+      // 944/945/946 sono il 35 (sezione robot); la serie 200xx e' il 39,
+      // cioe' la correzione delle tasche: sezioni diverse, avvisi diversi
+      this.setDeclErr('robot', payload, [944, 945, 946]);
+      this.setDeclErr('pocket', payload, [20001, 20002, 20005, 20006]);
+    },
+    getPiecesList() {
+      fetch(dataStored.server + 'api/conf/piece/show/all', { method: 'GET' })
+        .then(r => { if (!r.ok) throw new Error('Network response was not ok'); return r.json(); })
+        .then(d => { this.declPieces = d || []; })
+        .catch(e => { console.info(e); this.declPieces = []; });
+    },
+    // Attende UN eco, con timeout. Un rifiuto del PLC sulla stessa sezione
+    // chiude l'attesa SUBITO: l'allarme arriva al posto dell'eco, e stare a
+    // guardare il timeout scadere non aggiungerebbe niente.
+    // Risolve { ok } — mai una rejection da inseguire.
+    waitEcho(event, alarmEvent, codes, ms) {
+      return new Promise(resolve => {
+        let done = false;
+        const finish = (ok) => {
+          if (done) return;
+          done = true;
+          clearTimeout(t);
+          dataStored.WS.socket.off(event, onEcho);
+          if (alarmEvent) dataStored.WS.socket.off(alarmEvent, onAlarm);
+          resolve({ ok: ok });
+        };
+        const onEcho = () => finish(true);
+        const onAlarm = (payload) => {
+          const code = parseInt(String(payload).trim(), 10);
+          if (codes.indexOf(code) >= 0) finish(false);
+        };
+        const t = setTimeout(() => finish(false), ms);
+        dataStored.WS.socket.on(event, onEcho);
+        if (alarmEvent) dataStored.WS.socket.on(alarmEvent, onAlarm);
+      });
     },
     declareBare() {
-      // MOUNTED=0: flangia nuda dichiarata esplicitamente (35;0;0;0;0;0)
-      this.armDeclWait();
-      this.sendToRobot('35;0;0;0;0;0');
+      // MOUNTED=0: flangia nuda dichiarata esplicitamente (35;0;0;0;0;0).
+      // Riguarda il solo robot: niente sequenza, niente macchina, niente
+      // cassetto.
+      if (this.declDialog.waiting) return;
+      this.runDeclSequence([{ section: 'robot', unit: 'ROBOT', cmd: '35;0;0;0;0;0' }]);
     },
+    // SEQUENZA OBBLIGATA. Il 35 azzera TUTTE le catene del dispatcher nel PLC
+    // (RESET_ALL_DISPATCH): se partisse per primo travolgerebbe le catene che
+    // 36/37 e 38 hanno appena alzato. Quindi macchina, poi cassetto, poi
+    // robot, ognuno atteso dal suo eco.
     sendDeclare() {
       const d = this.declDialog;
       if (!(d.gripperSel > 0) || d.waiting) return;
       // regola RATIFICATA: chele aperte (CLOSED1=0) = lato 1 FORZATO vuoto;
-      // id != 0 solo con contenuto pallet (3)
+      // id != 0 solo con contenuto pallet (3). CONTRATTO DEL 35 INVARIATO.
       const c1 = this.gripperClosed1 === 0 ? 0 : d.cont1;
-      const cmd = '35;' + d.gripperSel + ';' + c1 + ';' + (c1 == 3 ? d.id1 : 0) +
-                  ';' + d.cont2 + ';' + (d.cont2 == 3 ? d.id2 : 0);
-      this.armDeclWait();
-      this.sendToRobot(cmd);
+      const cmd35 = '35;' + d.gripperSel + ';' + c1 + ';' + (c1 == 3 ? d.id1 : 0) +
+                    ';' + d.cont2 + ';' + (d.cont2 == 3 ? d.id2 : 0);
+      this.runDeclSequence([
+        { section: 'mc', unit: 'MC1', cmd: d.pieceSel > 0 ? '36;' + d.pieceSel : '37' },
+        { section: 'box', unit: 'BOX', cmd: '38;' + d.boxSel },
+        { section: 'robot', unit: 'ROBOT', cmd: cmd35 }
+      ]);
     },
-    armDeclWait() {
+    // Esegue i passi in ordine e SI FERMA al primo eco mancante: i comandi
+    // successivi non partono. Dire "fermato qui" vale piu' che mandare il
+    // resto e lasciare la cella in uno stato meta' dichiarato.
+    runDeclSequence(steps) {
+      const ECHO_MS = this.declEchoMs;
+      const ECHI = {
+        mc: { event: 'DECLARE/MC1', alarm: 'ALARM/MC1', codes: [947, 948] },
+        box: { event: 'TRAY/EXTRACT', alarm: 'ALARM/BOX', codes: [99, 996, 997, 999] },
+        robot: { event: 'DECLARE/ROBOT', alarm: 'ALARM/ROBOT', codes: [944, 945, 946] }
+      };
       this.declDialog.waiting = true;
-      clearTimeout(this.declTimer);
-      this.declTimer = setTimeout(() => {
-        // nessun eco: il dialog resta aperto, l'operatore decide (gli errori
-        // 944/945/946 arrivano comunque come allarme robot via fix P3)
-        this.declDialog.waiting = false;
+      this.declDialog.stoppedAt = '';
+      const next = (i) => {
+        // dialog chiuso a meta' sequenza: i comandi rimasti NON partono. Chi
+        // ha annullato si aspetta che sia finita li', non che la cella
+        // continui a ricevere dichiarazioni a sua insaputa.
+        if (!this.declDialog.open) { this.declDialog.waiting = false; return; }
+        if (i >= steps.length) {
+          this.declDialog.waiting = false;
+          this.declDialog.phase = 'done';
+          this.closeDeclDialog();
+          dataStored.alert.title = 'INFO';
+          dataStored.alert.desc = 'robot.decl.done';
+          dataStored.alert.type = 'message';
+          this.getRobotData();
+          this.getGrippersList();
+          this.getTraysList();
+          return;
+        }
+        const st = steps[i];
+        const e = ECHI[st.section];
+        this.declDialog.phase = st.section;
+        dataStored.WS.socket.emit('TO_PLANT/CMD/' + st.unit, st.cmd);
+        this.waitEcho(e.event, e.alarm, e.codes, ECHO_MS).then(r => {
+          if (!r.ok) {
+            // FERMO QUI: niente comandi successivi. Il motivo preciso lo
+            // scrive la sezione (declErr, dall'allarme); se non e' arrivato
+            // nemmeno l'allarme resta il messaggio di eco mancante.
+            this.declDialog.waiting = false;
+            this.declDialog.phase = 'stopped';
+            this.declDialog.stoppedAt = st.section;
+            if (!this.declErr[st.section]) {
+              dataStored.alert.title = this.$t('WARNING');
+              dataStored.alert.desc = 'robot.decl.noEcho';
+              dataStored.alert.type = 'warning';
+            }
+            return;
+          }
+          next(i + 1);
+        });
+      };
+      next(0);
+    },
+    // ===== (stato cella) correggi tasche: comando 39, una per volta =====
+    openPockets() {
+      if (!this.pocketsEnabled) return;
+      this.declDialog.step = 3;
+      this.pockets.sel = null;
+      this.declErr.pocket = 0;
+      loadTrayPockets(dataStored.server, this.extractedTray.FLOOR_MAG).then(d => {
+        this.pockets.rows = d.rows;
+        this.pockets.dimX = d.dimX;
+        this.pockets.dimY = d.dimY;
+        this.pockets.radius = d.radius;
+      });
+    },
+    pickPocket(ev) {
+      if (this.pockets.busy) return;
+      this.pockets.sel = ev.subPos;
+      this.declErr.pocket = 0;
+    },
+    // 39;subpos;stato. Il gate HOLD si ricontrolla sui dati FRESCHI: il dialog
+    // puo' essere rimasto aperto mentre la cella ripartiva.
+    declarePocket(stato) {
+      if (this.pockets.busy || this.pockets.sel === null) return;
+      if (!this.pocketsEnabled) {
+        this.declDialog.step = 2;
         dataStored.alert.title = this.$t('WARNING');
-        dataStored.alert.desc = 'robot.decl.noEcho';
+        dataStored.alert.desc = 'robot.dialog.stateChanged';
         dataStored.alert.type = 'warning';
-      }, 5000);
+        return;
+      }
+      const sub = this.pockets.sel;
+      this.pockets.busy = true;
+      this.sendToRobot('39;' + sub + ';' + stato);
+      this.waitEcho('DECLARE/TRAY', 'ALARM/ROBOT', [20001, 20002, 20005, 20006], this.declEchoMs).then(r => {
+        this.pockets.busy = false;
+        if (!r.ok) {
+          if (!this.declErr.pocket) {
+            dataStored.alert.title = this.$t('WARNING');
+            dataStored.alert.desc = 'robot.decl.noEcho';
+            dataStored.alert.type = 'warning';
+          }
+          return;
+        }
+        // riuscito: il disegno mostra il nuovo stato senza rileggere tutto
+        const row = this.pockets.rows.find(x => (x.SUB_POS != null ? x.SUB_POS : null) == sub);
+        if (row) row.status = stato;
+        this.pockets.sel = null;
+      });
     },
     confirmTestDialog() {
       const t = this.testDialog.type;
@@ -1628,6 +1934,27 @@ export default {
     testBaseEnabled() {
       return this.dataRobot.STATUS == dataStored.status_hold;
     },
+    // (stato cella 16/9) le tasche si correggono SOLO sul cassetto estratto e
+    // SOLO a cella ferma: il PLC accetta il 39 con lo stesso gate dei comandi
+    // manuali, e fuori da HOLD lo ignora in silenzio. Meglio un bottone spento
+    // con la ragione scritta che un comando che non arriva da nessuna parte.
+    pocketsEnabled() {
+      return !!this.extractedTray && this.dataRobot.STATUS == dataStored.status_hold;
+    },
+    pocketsDisabledReason() {
+      if (!this.extractedTray) return 'robot.decl.pocketsNoTray';
+      if (this.dataRobot.STATUS != dataStored.status_hold) return 'robot.decl.pocketsNotHold';
+      return '';
+    },
+    // stati ammessi dal PLC per una tasca (39;subpos;stato). Sono gli stessi
+    // numeri del layout: 2 vuota, 4 grezzo, 5 finito.
+    pocketStates() {
+      return [
+        { code: dataStored.status_empty, label: 'status.empty' },
+        { code: dataStored.status_raw, label: 'status.raw' },
+        { code: dataStored.status_finished, label: 'status.finished' }
+      ];
+    },
     testTrayEnabled() {
       // 31/32 richiedono un cassetto estratto (il PLC risponde 20001)
       return this.testBaseEnabled && !!this.extractedTray;
@@ -1828,19 +2155,17 @@ export default {
     // dialog (successo); gli errori arrivano come allarme robot (fix P3)
     this.gripperMountedHandler = v => { const n = parseInt(v, 10); if (Number.isInteger(n)) this.gripperMounted = n; };
     this.gripperClosed1Handler = v => { const n = parseInt(v, 10); if (Number.isInteger(n)) this.gripperClosed1 = n; };
-    this.declRobotHandler = () => {
-      if (!this.declDialog.open || !this.declDialog.waiting) return;
-      clearTimeout(this.declTimer);
-      this.closeDeclDialog();
-      dataStored.alert.title = 'INFO';
-      dataStored.alert.desc = 'robot.decl.done';
-      dataStored.alert.type = 'message';
-      this.getRobotData();
-      this.getGrippersList();
-    };
+    // (stato cella 16/9) gli echi e i rifiuti sono METODI (onDecl*/onAlarm*):
+    // il riferimento e' stabile per istanza, quindi l'off resta specifico.
     dataStored.WS.socket.on('GRIPPER/MOUNTED', this.gripperMountedHandler);
     dataStored.WS.socket.on('GRIPPER/CLOSED1', this.gripperClosed1Handler);
-    dataStored.WS.socket.on('DECLARE/ROBOT', this.declRobotHandler);
+    dataStored.WS.socket.on('DECLARE/ROBOT', this.onDeclRobot);
+    dataStored.WS.socket.on('DECLARE/MC1', this.onDeclMc1);
+    dataStored.WS.socket.on('DECLARE/TRAY', this.onDeclTray);
+    dataStored.WS.socket.on('TRAY/EXTRACT', this.onTrayExtract);
+    dataStored.WS.socket.on('ALARM/MC1', this.onAlarmMc1);
+    dataStored.WS.socket.on('ALARM/BOX', this.onAlarmBox);
+    dataStored.WS.socket.on('ALARM/ROBOT', this.onAlarmRobot);
     dataStored.WS.socket.on('GRIPPER/SENSOR', this.gripperSensorHandler);
     dataStored.WS.socket.on('GRIPPER/CODE', this.gripperCodeHandler);
     dataStored.WS.socket.on('GRIPPER/REGISTERED', this.gripperRegisteredHandler);
@@ -1861,8 +2186,13 @@ export default {
     dataStored.WS.socket.off('BOX/STATUS', this.boxStatusHandler);
     dataStored.WS.socket.off('GRIPPER/MOUNTED', this.gripperMountedHandler);
     dataStored.WS.socket.off('GRIPPER/CLOSED1', this.gripperClosed1Handler);
-    dataStored.WS.socket.off('DECLARE/ROBOT', this.declRobotHandler);
-    clearTimeout(this.declTimer);
+    dataStored.WS.socket.off('DECLARE/ROBOT', this.onDeclRobot);
+    dataStored.WS.socket.off('DECLARE/MC1', this.onDeclMc1);
+    dataStored.WS.socket.off('DECLARE/TRAY', this.onDeclTray);
+    dataStored.WS.socket.off('TRAY/EXTRACT', this.onTrayExtract);
+    dataStored.WS.socket.off('ALARM/MC1', this.onAlarmMc1);
+    dataStored.WS.socket.off('ALARM/BOX', this.onAlarmBox);
+    dataStored.WS.socket.off('ALARM/ROBOT', this.onAlarmRobot);
     dataStored.WS.socket.off('GRIPPER/SENSOR', this.gripperSensorHandler);
     dataStored.WS.socket.off('GRIPPER/CODE', this.gripperCodeHandler);
     dataStored.WS.socket.off('GRIPPER/REGISTERED', this.gripperRegisteredHandler);
@@ -2113,6 +2443,15 @@ h6 {
   gap: var(--space-4);
 }
 
+/* (stato cella 16/9) il dialog di dichiarazione e' molto piu' alto degli
+   altri: tre sezioni, gli avvisi di rifiuto e la griglia delle tasche. Con
+   il solo max-height il fondo (bottoni compresi) restava tagliato fuori
+   schermo sul touch di cella. Lo scorrimento sta SOLO qui: gli altri dialog
+   non cambiano. */
+.decl-dialog {
+  overflow-y: auto;
+}
+
 .mission-dialog-list {
   overflow-y: auto;
   display: flex;
@@ -2195,5 +2534,58 @@ h6 {
   border-radius: var(--radius-sm);
   padding: var(--space-2) var(--space-4);
   font-size: var(--font-size-base);
+}
+/* (stato cella 16/9) sezioni del dialog di dichiarazione: robot, macchina,
+   cassetto, tasche. Il separatore serve a far capire che sono dichiarazioni
+   DIVERSE, inviate a unita' diverse, non un unico modulo. */
+.decl-section {
+  text-align: left;
+  padding-top: var(--space-3);
+  margin-top: var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.decl-section:first-of-type {
+  border-top: none;
+  margin-top: 0;
+}
+
+/* il rifiuto del PLC: motivo e cosa fare, col peso dell'avviso, dentro la
+   sezione che l'ha subito (non in un toast che passa) */
+.decl-err {
+  background: var(--color-warning-bg);
+  border-left: 3px solid var(--color-warning);
+  padding: var(--space-2) var(--space-3);
+  margin: var(--space-2) 0;
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  text-align: left;
+}
+
+/* nota sotto un selettore: perche' quel campo si comporta cosi' */
+.decl-note {
+  text-align: left;
+  margin-top: var(--space-1);
+}
+
+/* avanzamento della sequenza 36/37 -> 38 -> 35 */
+.decl-seq {
+  margin-top: var(--space-3);
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  text-align: left;
+}
+
+/* griglia tasche dentro il dialog: si adatta alla larghezza disponibile,
+   il disegno resta quello del layout */
+.pockets-wrap {
+  display: flex;
+  justify-content: center;
+  margin: var(--space-3) 0;
+}
+
+.pockets-wrap svg {
+  max-width: 100%;
+  height: auto;
 }
 </style>

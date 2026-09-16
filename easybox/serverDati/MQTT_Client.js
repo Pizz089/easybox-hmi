@@ -61,6 +61,9 @@ const safetyCache = {};
 // e su refresh 90): MC1 = "pallet;manualVice", ROBOT = "gripper;cont1;cont2".
 // Stessa famiglia di cache: replay incluso in GRIPPER/REQUEST_SNAPSHOT.
 const declareCache = {};
+// (stato cella 16/9) ultimo FROM_PLANT/TRAY/BOX/EXTRACT visto: serve al
+// replay dello snapshot, come le altre cache (il PLC non ritiene i topic)
+let extractCache;
 
 client.on('error', function (err){
 	DBf.io.emit('PLC/ALARM/GENERIC', 'Impossible to connect to broker!    ['+err+']');
@@ -259,8 +262,11 @@ client.on('message', function (topic, message, packet) {
 		}	
 	}
 	// ===== FASE B: dichiarazioni stato cella =====
-	// FROM_PLANT/DECLARE/MC1 ("pallet;manualVice") e /ROBOT ("gripper;c1;c2")
-	if (param[1] == "DECLARE" && (param[2] == "MC1" || param[2] == "ROBOT")) {
+	// FROM_PLANT/DECLARE/MC1 ("pallet;manualVice;pieceInMorsa" — il terzo
+	// campo e' l'aggiunta del cantiere "stato cella", i vecchi consumatori
+	// leggono i primi due e lo ignorano), /ROBOT ("gripper;c1;c2") e
+	// /TRAY ("trayID;subpos;stato", eco del 39: topic NUOVO).
+	if (param[1] == "DECLARE" && (param[2] == "MC1" || param[2] == "ROBOT" || param[2] == "TRAY")) {
 		declareCache[param[2]] = message.toString();
 		DBf.io.emit('DECLARE/' + param[2], message.toString());
 		insertLog('DECLARE/' + param[2] + ': ' + message.toString(), 'PLC', 'DECLARE');
@@ -287,6 +293,12 @@ client.on('message', function (topic, message, packet) {
 	}
 	if (param[1] =="ALARM") {		//es: FROM_PLANT/ALARM
 		insertLog( message.toString(), 'PLC', 'ALARM' )
+		// (stato cella 16/9) il dialog di dichiarazione deve sapere QUALE
+		// sezione ha rifiutato: ALARM/BOX e ALARM/ROBOT viaggiavano insieme
+		// sul canale generico e arrivavano indistinguibili. Canale dedicato
+		// IN PIU', non al posto: il toast globale resta quello di prima.
+		if (param[2] == "BOX" || param[2] == "ROBOT")
+			DBf.io.emit('ALARM/' + param[2], message.toString());
 		DBf.io.emit('PLC/ALARM/ROBOT', message.toString())
 		return;
 	}
@@ -438,6 +450,12 @@ client.on('message', function (topic, message, packet) {
 			case 'TRAY':		//es: FROM_PLANT/TRAY/BOX/EXTRACT or FROM_PLANT/TRAY/BOX/RELEASE
 				if (param[3] == 'EXTRACT') {
 					setExtractedTray(1,message.toString())
+					// (stato cella 16/9) BOX/STATUS vale per EXTRACT E per
+					// RELEASE: chi aspetta la conferma del 38 non puo'
+					// distinguerli. Canale dedicato, in piu' (payload =
+					// numero cassetto, 0 = nessuno).
+					extractCache = message.toString();
+					DBf.io.emit('TRAY/EXTRACT',message.toString())
 					DBf.io.emit('BOX/STATUS',message.toString())
 				}
 				if (param[3] == 'RELEASE') {
@@ -631,6 +649,10 @@ DBf.io.on('connection', (socket) => {
 		socket.emit('DECLARE/MC1', declareCache.MC1);
 	if (declareCache.ROBOT !== undefined)
 		socket.emit('DECLARE/ROBOT', declareCache.ROBOT);
+	if (declareCache.TRAY !== undefined)
+		socket.emit('DECLARE/TRAY', declareCache.TRAY);
+	if (extractCache !== undefined)
+		socket.emit('TRAY/EXTRACT', extractCache);
 	if (Object.keys(gripperStateCache).length === 0)
 		snapshotMiss('GRIPPER', '');
   });

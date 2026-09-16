@@ -497,6 +497,7 @@
     "sure": "Are you sure?",
     "noOrderYet": "No order yet"
   },
+  "normal": "Normal",
   "robot": {
     "dialog": {
       "chooseGripper": "Which gripper to load?",
@@ -582,6 +583,21 @@
     "alarm_946": "Database error during state declaration",
     "alarm_947": "Machine declaration refused: cycle active or pallet already declared",
     "alarm_4099": "Pallet coordinates not found in database",
+    "declErr": {
+      "947": "Cell not at rest: the PLC does not record declarations while something is moving. Put the cell in HOLD and repeat.",
+      "948": "Invalid part: the declared ID does not exist. Pick one from the list and repeat.",
+      "99": "Tray number out of range: the PLC accepts 1 to 12, or \"no tray out\". Pick one from the list.",
+      "996": "The declared tray does not match the sensors: this command is a confirmation, not an override. Look at which tray is really out and declare that one.",
+      "997": "Robot on a mission: the tray cannot be declared while the robot is working. Wait for the mission to end and repeat.",
+      "999": "More than one tray is out: this is a physical anomaly and the PLC cannot pick one. Close the extra trays by hand and repeat.",
+      "944": "Content declared on a side that does not exist: the mounted gripper has no such side. Leave it empty and repeat.",
+      "945": "Gripper declaration does not match the sensor: the sensor sees a different gripper than the one selected. Check which gripper is mounted and declare that one.",
+      "946": "Database error on the PLC: the declaration was not recorded. Repeat; if it happens again, call support.",
+      "20001": "No tray is out: pockets can only be corrected on the tray that is out. Extract the tray and repeat.",
+      "20002": "Invalid pocket position: that pocket does not exist in this tray. Pick one from the drawing.",
+      "20005": "Pocket state not allowed: the PLC only accepts empty, raw or finished.",
+      "20006": "Raw declared with no active order: the pocket would be invisible to the cycle and nobody would pick it. Activate the order and repeat, or declare the pocket empty."
+    },
     "decl": {
       "button": "Reset cell state",
       "title": "Reset cell state (manual declaration)",
@@ -600,12 +616,41 @@
       "send": "DECLARE",
       "waiting": "Waiting for PLC confirmation…",
       "noEcho": "No confirmation from the PLC: check and retry",
-      "done": "Cell state declared"
+      "done": "Cell state declared",
+      "sectionRobot": "Robot: gripper and claws",
+      "sectionMc": "Machine: part in vice",
+      "sectionBox": "Extracted tray",
+      "sectionPockets": "Tray pockets",
+      "mcContent": "In the vice",
+      "mcEmpty": "Vice empty",
+      "mcHint": "Declare the part that is physically in the vice right now. If the vice is free, leave \"Vice empty\".",
+      "boxTray": "Tray out",
+      "boxNone": "No tray out",
+      "boxHint": "This is a confirmation, not an override: the PLC accepts it only if the twelve tray sensors agree. If it does not match, close or extract the right tray.",
+      "pocketsOpen": "Correct pockets",
+      "pocketsNoTray": "No tray is out: pockets can only be corrected on the tray that is out.",
+      "pocketsNotHold": "Cell not idle: the PLC accepts pocket corrections only with the cell in HOLD.",
+      "pocketsPick": "Tap the pocket to correct.",
+      "pocketsChoose": "Pocket {sub}: what is in it?",
+      "seq": {
+        "mc": "Declaring the part in the vice, waiting for the machine to confirm…",
+        "box": "Declaring the extracted tray, waiting for confirmation…",
+        "robot": "Declaring the robot state, waiting for confirmation…",
+        "done": "Cell state declared.",
+        "stopped": "Stopped at the {section} section: the following declarations were NOT sent. Fix the reason above and repeat.",
+        "name": {
+          "mc": "machine",
+          "box": "tray",
+          "robot": "robot"
+        }
+      }
     },
     "alarm_1001": "Workorder non defined for machine 1",
     "alarm_1002": "Workorder non defined for machine 2",
     "alarm_1010": "No pallet ready to work",
     "alarm_1021": "Gripper not empty",
+    "alarm_13599": "Robot alarm 13599 (description not yet provided by the robot programmer)",
+    "alarm_3005": "Robot alarm 3005 (description not yet provided by the robot programmer)",
     "alarm_15090": "Data for gripper not found",
     "alarm_20001": "No tray extracted",
     "alarm_20002": "Invalid part position",

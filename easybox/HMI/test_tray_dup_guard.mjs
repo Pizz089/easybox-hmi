@@ -20,6 +20,9 @@ const { createServer } = await import('vite');
 const server = await createServer({ root: process.cwd(), logLevel: 'error', server: { middlewareMode: true }, appType: 'custom' });
 const { dataStored } = await server.ssrLoadModule('/src/data.js');
 const layoutView = (await server.ssrLoadModule('/src/views/layoutView.vue')).default;
+// (stato cella 16/9) il disegno e' uscito da layoutView in un componente
+// condiviso col dialog robot: le tasche deduplicate devono arrivare LI'
+const Grid = (await server.ssrLoadModule('/src/components/layout/TrayPockets.vue')).default;
 const Grating = (await server.ssrLoadModule('/src/views/conf/Grating/Grating.vue')).default;
 
 let failed = 0;
@@ -56,7 +59,11 @@ lv.getDataTable(); await tick();
 check(withDups.length === 93 && lv.listPz.length === 91, '93 righe (2 doppioni) dal backend -> 91 tasche in griglia');
 check(lv.listPz.every((p, i) => p.SUB_POS === i + 1), 'tenuta la PRIMA riga di ogni SUB_POS, sequenza 1..91 integra');
 check(String(dataStored.alert.desc).includes('layout.dupRows') && String(dataStored.alert.desc).includes('n=2'), 'anomalia SEGNALATA a video (2 doppioni), non disegnata in silenzio');
-check(lv.drawPz.length === 91, 'drawPz: 91 tasche');
+// il componente e' di sole props: niente data() da chiamare
+const grid = { pockets: lv.listPz, dimX: 40, dimY: 70, radius: 20 };
+for (const [k, c] of Object.entries(Grid.computed || {}))
+	Object.defineProperty(grid, k, { get: () => (typeof c === 'function' ? c.call(grid) : c.get.call(grid)) });
+check(grid.drawPz.length === 91, 'drawPz: 91 tasche');
 
 console.log('\n2) layoutView: Save! scrive il SUB_POS REALE, non l\'indice');
 lv.listPz = rows.filter(p => p.SUB_POS !== 3);   // buco: manca la 3
@@ -66,8 +73,11 @@ const saves = calls.filter(u => u.includes('updatePositionStatus'));
 check(saves.length === 90, '90 scritture per 90 righe');
 check(saves.some(u => u.includes('/12/4/')) && !saves.some(u => u.includes('/12/3/')), 'col buco sulla 3: si scrive la 4 (SUB_POS reale), MAI la 3');
 check(!saves.some(u => u.includes('/12/91/')) === false || saves.some(u => u.includes('/12/91/')), 'l\'ultima scrittura arriva al SUB_POS 91 (non si ferma a 90)');
-const tpl = readFileSync('src/views/layoutView.vue', 'utf8');
+// le etichette si disegnano nel componente, insieme al resto del disegno
+const tpl = readFileSync('src/components/layout/TrayPockets.vue', 'utf8');
 check(/p\.SUB_POS != null \? p\.SUB_POS : index\+1/.test(tpl), 'etichette tasca = SUB_POS reale (fallback indice solo senza campo)');
+// e il click esce col SUB_POS reale: il dialog robot ci manda il 39
+check(/subPos: p && p\.SUB_POS != null \? p\.SUB_POS : index \+ 1/.test(tpl), 'e il click porta fuori il SUB_POS reale, non l\'indice');
 
 console.log('\n3) Grating: flag saving anti doppio-tap');
 globalThis.fetch = async () => ({ ok: true, json: async () => [], text: async () => 'OK' });
