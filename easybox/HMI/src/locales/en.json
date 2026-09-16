@@ -539,6 +539,7 @@
       "cancel": "Cancel",
       "empty": "No items available",
       "slot": "Slot",
+      "palletNoPosition": "There is no known position to pick this pallet from or place it to: it is neither on a shelf nor in the machine. Assign it a warehouse slot, or use the from/to machine commands.",
       "position": "Position"
     },
     "auxBanner": "Auxiliaries not reset — press the reset before commanding missions",
@@ -801,6 +802,7 @@
     "noPallet": "none",
     "manualVice": "Manual vice",
     "declarePallet": "Declare pallet",
+    "palletNotInList": "The chosen pallet is no longer in the list: it may have been deleted or renumbered. The list has been reloaded, pick it again.",
     "removePallet": "Remove pallet",
     "waitingEcho": "Waiting for PLC confirmation…",
     "echoTimeout": "No PLC confirmation within 3 seconds: declaration NOT registered (pallet position unchanged)",
@@ -850,6 +852,7 @@
     "stopsSaveError": "The rest-point declaration could not be saved."
   },
   "pallet": {
+    "inMachine": "IN MACHINE",
     "welcome": "Pallet list",
     "add_Pallet": "Add pallet's type",
     "name": "Mag.Pos",

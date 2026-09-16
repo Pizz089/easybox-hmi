@@ -205,6 +205,20 @@ export default {
         },
         declarePallet() {
             if (this.rigBlockReason != '' || this.declWaiting || !(this.palletSel > 0)) return;
+            // (16/9) il 40 finisce dritto in DB_MC1.pallet e il PLC non lo
+            // valida: da li' in poi tutto quello che dipende dal pallet segue
+            // quel numero. L'ID puo' venire SOLO dall'elenco che si sta
+            // guardando — ricontrollato adesso, non quando il select e' stato
+            // popolato: una lista stantia (pallet cancellato, refresh perso)
+            // non deve poter mandare un ID che non esiste piu'.
+            const scelto = (this.palletsList || []).some(p => p.ID === this.palletSel);
+            if (!scelto) {
+                dataStored.alert.title = this.$t('WARNING');
+                dataStored.alert.desc = 'machine.palletNotInList';
+                dataStored.alert.type = 'warning';
+                this.getRigLists();
+                return;
+            }
             this.armDecl({ type: 'set', palletId: this.palletSel });
             dataStored.WS.socket.emit('TO_PLANT/CMD/MC1', '40;' + this.palletSel);
         },

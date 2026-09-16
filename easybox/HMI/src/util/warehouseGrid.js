@@ -67,3 +67,53 @@ export function palletPositionLabel(pal, t) {
     return t('fuori_magazzino');
   return t('Mag') + " " + pal.MAG_POS;
 }
+
+// ============================================================================
+// POSIZIONE nei comandi 13 (preleva) e 14 (deposita) — cantiere pallet 16/9
+//
+// Contratto PLC: "13;objectType;palletID;posizione" (e 14 simmetrico), con
+// objectType 3 = pallet. In FB7 il ramo e' esplicito:
+//   posizione = 0  -> MISSION_PickPallet_MC_HMI  (dalla MACCHINA)
+//   posizione > 0  -> MISSION_Load_Pallet        (dal magazzino, posto n)
+//
+// PERCHE' SERVE QUESTA FUNZIONE. Il pannello passava PALLET.MAG_POS grezzo.
+// Ma MAG_POS NEGATIVO vuol dire "fuori magazzino" (convenzione gia' usata da
+// palletPositionLabel qui sopra e da AttrezzaggiView), non "posizione -3":
+// per il pallet che sta in macchina si mandava un numero che FB7 non sa
+// leggere — non e' 0 e non e' un posto a scaffale. E il bottone era spento
+// prima ancora di provarci, perche' il gate chiedeva MAG_POS >= 0.
+// Dove sta davvero il pallet lo dice POS_PLANT (1000 = in pinza sul robot,
+// 100+n = macchina n), non MAG_POS.
+// ============================================================================
+
+export const PALLET_POS_MACHINE = 0;   // posizione 0 = dalla/alla macchina
+
+export function palletIsInMachine(pal) {
+  const pp = Number(pal && pal.POS_PLANT);
+  return pp >= 100 && pp < 1000;
+}
+
+export function palletIsOnRobot(pal) {
+  return Number(pal && pal.POS_PLANT) === 1000;
+}
+
+// PRELIEVO (13): da dove si va a prendere il pallet.
+//   in macchina -> 0 | a scaffale -> il posto | altrove -> null
+// null = non si sa da dove prenderlo: il comando NON si compone. Meglio un
+// bottone spento con la ragione scritta che una posizione inventata.
+export function palletPickPosition(pal) {
+  if (!pal) return null;
+  if (palletIsOnRobot(pal)) return null;          // gia' in pinza: non si preleva
+  if (palletIsInMachine(pal)) return PALLET_POS_MACHINE;
+  const mag = Number(pal.MAG_POS);
+  return mag > 0 ? mag : null;                    // negativo = fuori magazzino
+}
+
+// DEPOSITO (14): dove si va a posare. NON e' la posizione attuale — e' la
+// destinazione, e per il magazzino e' il posto assegnato al pallet. Per il
+// deposito IN MACCHINA la destinazione e' 0, e la sceglie il chiamante
+// (bottone dedicato), non si deduce da dove il pallet si trovava.
+export function palletPlacePosition(pal) {
+  const mag = Number(pal && pal.MAG_POS);
+  return mag > 0 ? mag : null;                    // senza posto assegnato non si deduce
+}

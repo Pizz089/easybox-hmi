@@ -15,6 +15,9 @@
   // (machines-gating) destinazioni macchina dinamiche dalla configurazione
   import { MACHINE_POSITIONS } from '../../util/machineBrands'
   import { dedupeGrippers } from '../../util/grippers.js'
+  // (pallet MC 16/9) stessa regola di posizione della pagina Pallet: MAG_POS
+  // grezzo mandava un numero NEGATIVO al PLC per il pallet fuori magazzino
+  import { palletPickPosition, palletPlacePosition } from '../../util/warehouseGrid'
 </script>
 
 <template>
@@ -1285,6 +1288,13 @@ export default {
           this.traysList = [];
         });
     },
+    // nessuna posizione componibile: si dice, non si manda un numero a caso
+    posizioneIgnota() {
+      this.closeDialog();
+      dataStored.alert.title = this.$t('WARNING');
+      dataStored.alert.desc = 'robot.dialog.palletNoPosition';
+      dataStored.alert.type = 'warning';
+    },
     openDialog(type) {
       // (fix) esclusione reciproca dei due overlay: aprendo un dialog missione
       // azzero l'eventuale conferma scarico pinza rimasta armata. Senza questo,
@@ -1947,12 +1957,20 @@ export default {
           // e' il bottone che si illumina. Comandi INVARIATI.
           this.sendMission('gripper', '11;' + sel.ID);
           break;
-        case 'palletLoad':
-          this.sendMission('pallet', '13;3;' + sel.ID + ';' + sel.MAG_POS);
+        case 'palletLoad': {
+          // la posizione non e' MAG_POS grezzo: in macchina vale 0, e un
+          // MAG_POS negativo ("fuori magazzino") non e' una posizione
+          const pos = palletPickPosition(sel);
+          if (pos === null) { this.posizioneIgnota(); return; }
+          this.sendMission('pallet', '13;3;' + sel.ID + ';' + pos);
           break;
-        case 'palletUnload':
-          this.sendMission('pallet', '14;3;' + sel.ID + ';' + sel.MAG_POS);
+        }
+        case 'palletUnload': {
+          const pos = palletPlacePosition(sel);
+          if (pos === null) { this.posizioneIgnota(); return; }
+          this.sendMission('pallet', '14;3;' + sel.ID + ';' + pos);
           break;
+        }
         case 'tray':
           this.sendMission('tray', '25;' + sel.FLOOR_MAG);
           break;

@@ -4,6 +4,10 @@
     
     import { ref, onMounted } from 'vue'
     import { dataStored } from '../../data';
+    // (pallet MC 16/9) la posizione dei comandi 13/14 NON e' MAG_POS grezzo:
+    // MAG_POS negativo vuol dire "fuori magazzino", e il pallet in macchina
+    // vuole posizione 0. Regola in un punto solo, condivisa con la pagina robot.
+    import { palletPickPosition, palletPlacePosition, palletIsInMachine } from '../../util/warehouseGrid';
     const el = ref()
 </script>
 
@@ -34,6 +38,9 @@
                     <tr :class="{'pure-table-odd':(dt.ID % 2==1)}">
                         <!--td>{{dt.ID}} </td-->
                         <td v-if="dt.MAG_POS>0">{{dt.MAG}}.{{dt.MAG_POS}} </td>
+                        <!-- (16/9) "OUT" non diceva DOVE: col pallet in macchina
+                             l'operatore non capiva perche' non poteva comandarlo -->
+                        <td v-else-if="inMachine(dt)"><strong>{{ $t('pallet.inMachine') }}</strong></td>
                         <td v-else><strong>OUT</strong></td>
                             
                         <!--td :class="dt.STATUS_DESC">{{ dt.STATUS_DESC.trim() }}</td-->
@@ -43,14 +50,20 @@
                         <!-- AF: cella Posizione rimossa (decodifica inline
                              morta con la colonna) -->
                         <td>
+                            <!-- (pallet MC 16/9) il gate del bottone chiedeva
+                                 MAG_POS >= 0: per il pallet FUORI magazzino, cioe'
+                                 proprio quello in macchina, non veniva nemmeno
+                                 renderizzato e l'operazione spariva dal pannello.
+                                 Adesso il gate e' "la posizione si sa comporre", e
+                                 per la macchina vale 0 come chiede FB7. -->
                             <orderCMD  
                                 modify="true"   @cmdModify="updatePallet(dt.ID)"
                                 del="true"      @cmdDel="sicurezza(dt.ID)"
-								:move="dt.MAG_POS>=0 && (palletID_OnRobot==0 || palletID_OnRobot==dt.ID)"     
+												:move="movePos(dt) !== null && (palletID_OnRobot==0 || palletID_OnRobot==dt.ID)"     
                                                 @cmdMove="sendToRobot( (dataGripper.STATUS==2?'13;':'14;')+
                                                     dataStored.Pallet+';'+
                                                     dt.ID+';'+
-                                                    dt.MAG_POS
+                                                    movePos(dt)
                                                 )"
                                 :moveDisable="!dataStored.cmdActiveMission"                                             
                             />
@@ -170,6 +183,19 @@ export default {
             if (this.showPopUp==i)
                 return true
             return false
+        },
+        // Posizione per il comando: PRELIEVO se la pinza pallet e' vuota
+        // (dataGripper.STATUS==2 -> 13), DEPOSITO altrimenti (14). Il prelievo
+        // sa leggere anche "dalla macchina" (0); il deposito vuole un posto
+        // assegnato, perche' la destinazione non si deduce da dove il pallet
+        // stava. null = comando non componibile -> bottone assente.
+        movePos(dt) {
+            return this.dataGripper && this.dataGripper.STATUS == 2
+                ? palletPickPosition(dt)
+                : palletPlacePosition(dt);
+        },
+        inMachine(dt) {
+            return palletIsInMachine(dt);
         },
         sendToRobot(val) {
             dataStored.WS.socket.emit("TO_PLANT/CMD/ROBOT", val);

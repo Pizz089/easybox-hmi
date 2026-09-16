@@ -539,6 +539,7 @@
       "cancel": "Annulla",
       "empty": "Nessun elemento disponibile",
       "slot": "Slot",
+      "palletNoPosition": "Non si sa da quale posizione prendere o dove posare questo pallet: non e' a scaffale ne' in macchina. Assegnargli un posto a magazzino, oppure usare i comandi da/su macchina.",
       "position": "Posizione"
     },
     "auxBanner": "Ausiliari non ripristinati — premere il ripristino prima di comandare missioni",
@@ -801,6 +802,7 @@
     "noPallet": "nessuno",
     "manualVice": "Morsa manuale",
     "declarePallet": "Dichiara pallet",
+    "palletNotInList": "Il pallet scelto non e' piu' nell'elenco: potrebbe essere stato cancellato o rinumerato. L'elenco e' stato ricaricato, riprovare la scelta.",
     "removePallet": "Rimuovi pallet",
     "waitingEcho": "In attesa di conferma dal PLC…",
     "echoTimeout": "Nessuna conferma dal PLC entro 3 secondi: dichiarazione NON registrata (posizione pallet invariata)",
@@ -850,6 +852,7 @@
     "stopsSaveError": "Non è stato possibile salvare la dichiarazione dell'appoggio."
   },
   "pallet": {
+    "inMachine": "IN MACCHINA",
     "welcome": "Elenco pallet",
     "add_Pallet": "Aggiungi tipo pallet",
     "name": "Mag.Pos",
