@@ -69,6 +69,40 @@ const check = (c, l) => { console.log((c ? '  ok   ' : '  FAIL ') + l); if (!c) 
 	check(srv.parseCenters([{ w: 'a', h: 1 }]) === null && srv.parseCenters([{ w: Infinity, h: 1 }]) === null, 'non finiti -> null');
 	check(srv.parseCenters(new Array(501).fill({ w: 1, h: 1 })) === null, 'oltre 500 tasche -> null');
 
+	console.log('\n5) pieceFitsPockets: il pezzo DICHIARATO entra nelle tasche che ci sono');
+	// (16/9) regola nuova, e come le altre vive in DUE copie: il backend la usa
+	// in declareTrayType (strada REST, cassetto chiuso), il pannello prima di
+	// mandare il comando 44 (cassetto aperto, lo scrive il PLC e nessuna
+	// guardia di backend puo' intercettarlo). Se le due divergono, una delle
+	// due strade lascia passare un pezzo che il robot va a sbattere.
+	// Griglia vera: 13 x 7, passo 60000 su Y robot e 80000 su X, cassetto 820x610.
+	const tasche = [];
+	for (let c = 0; c < 7; c++) for (let r = 0; r < 13; r++) tasche.push({ X: 45000 + 80000 * c, Y: 50000 + 60000 * r });
+	const casi = [
+		{ nome: 'il pezzo per cui la griglia e\' stata fatta (40x70)', pieceX: 40000, pieceY: 70000 },
+		{ nome: 'un pezzo piu\' grande (71x90): invade le vicine', pieceX: 71000, pieceY: 90000 },
+		{ nome: 'al limite del passo (60x80): entra esatto', pieceX: 60000, pieceY: 80000 },
+		{ nome: 'un micron oltre il passo: non entra', pieceX: 60001, pieceY: 80000 },
+		{ nome: 'misure assenti: nessun rifiuto inventato', pieceX: 0, pieceY: 0 },
+	];
+	for (const c of casi) {
+		const opt = { trayX: 820000, trayY: 610000, pieceX: c.pieceX, pieceY: c.pieceY };
+		const a = srv.pieceFitsPockets(tasche, opt), b = hmi.pieceFitsPockets(tasche, opt);
+		check(JSON.stringify(a) === JSON.stringify(b), c.nome + ' -> ' + JSON.stringify(a));
+	}
+	check(srv.pieceFitsPockets(tasche, { trayX: 820000, trayY: 610000, pieceX: 40000, pieceY: 70000 }).ok, '40x70 passa');
+	const grande = srv.pieceFitsPockets(tasche, { trayX: 820000, trayY: 610000, pieceX: 71000, pieceY: 90000 });
+	check(!grande.ok && grande.overPitchY === 11000 && grande.overPitchX === 10000, '71x90 rifiutato, e dice di quanto invade su ciascun asse');
+	check(srv.pieceFitsPockets(tasche, { trayX: 820000, trayY: 610000, pieceX: 60000, pieceY: 80000 }).ok, 'al limite del passo: passa (il rifiuto e\' la COLLISIONE, non il franco del modello)');
+	check(!srv.pieceFitsPockets(tasche, { trayX: 820000, trayY: 610000, pieceX: 60001, pieceY: 80000 }).ok, 'un micron oltre: non passa');
+	// contorno: una tasca sola, troppo vicina al bordo
+	const bordo = srv.pieceFitsPockets([{ X: 5000, Y: 5000 }], { trayX: 820000, trayY: 610000, pieceX: 40000, pieceY: 70000 });
+	check(!bordo.ok && bordo.overW === 15000 && bordo.overH === 30000, 'tasca a 5 mm dal bordo: il pezzo sporgerebbe, e si dice di quanto');
+	// una sola fila su un asse: il passo su quell'asse non esiste, non si vincola
+	const fila = srv.pieceFitsPockets([{ X: 45000, Y: 50000 }, { X: 45000, Y: 110000 }], { trayX: 820000, trayY: 610000, pieceX: 40000, pieceY: 500000 });
+	check(fila.overPitchX === 0, 'con una sola fila il passo su quell\' asse non esiste: nessun vincolo inventato');
+	check(srv.pieceFitsPockets([], { trayX: 1, trayY: 1, pieceX: 9e9, pieceY: 9e9 }).ok, 'nessuna tasca: niente da verificare');
+
 	console.log('\n' + (failed ? failed + ' CHECK FALLITI' : 'TUTTI I CHECK PASSATI'));
 	process.exit(failed ? 1 : 0);
 })().catch(e => { console.error(e); process.exit(1); });

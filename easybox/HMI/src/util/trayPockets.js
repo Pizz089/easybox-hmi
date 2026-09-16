@@ -59,17 +59,26 @@ function dimsFromPiece(server, partType) {
 
 // Risolve SEMPRE (mai una rejection non gestita): un cassetto vuoto o una
 // lettura fallita danno righe vuote, non un'eccezione da inseguire.
+// Contorno del cassetto (TRAY.X/Y in micron): serve a chi deve verificare che
+// un pezzo dichiarato non sporga dal cassetto. Assente = 0, e chi verifica
+// salta il controllo invece di inventarsi un limite.
+function trayExtents(server, floorMag) {
+	return getJson(server + 'api/conf/tray/show/all')
+		.then(l => (l || []).find(t => t.FLOOR_MAG == floorMag) || {})
+		.then(t => ({ trayX: Number(t.X) || 0, trayY: Number(t.Y) || 0 }))
+		.catch(() => ({ trayX: 0, trayY: 0 }));
+}
+
 export function loadTrayPockets(server, floorMag) {
 	return getJson(server + 'api/conf/tray/layout/' + floorMag)
 		.then(pz => {
 			const { rows, dups } = dedup(pz);
-			if (rows.length === 0) return { rows, dups, dimX: 0, dimY: 0, radius: 0 };
+			if (rows.length === 0) return { rows, dups, dimX: 0, dimY: 0, radius: 0, trayX: 0, trayY: 0 };
 			const dims = rows[0].partType == 0
 				? dimsFromGrating(server, floorMag, rows)
 				: dimsFromPiece(server, rows[0].partType);
-			return dims
-				.then(d => Object.assign({ rows, dups }, d))
-				.catch(() => ({ rows, dups, dimX: 0, dimY: 0, radius: 0 }));
+			return Promise.all([dims.catch(() => ({ dimX: 0, dimY: 0, radius: 0 })), trayExtents(server, floorMag)])
+				.then(([d, t]) => Object.assign({ rows, dups }, d, t));
 		})
-		.catch(() => ({ rows: [], dups: 0, dimX: 0, dimY: 0, radius: 0 }));
+		.catch(() => ({ rows: [], dups: 0, dimX: 0, dimY: 0, radius: 0, trayX: 0, trayY: 0 }));
 }

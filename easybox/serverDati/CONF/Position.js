@@ -6,6 +6,7 @@ var router 	= express.Router();
 const log 	= require('../LogFunct');
 const errorCodes = require('../errorCodes');
 const { trayParentPredicate } = require('../trayParent');
+const gratingFit = require('../gratingFit');
 
 var templatePATH = '.';
 
@@ -412,32 +413,102 @@ router.post('/resetTray/:floor', (req, res) => {
 // Conteggio con COUNT esplicita: su [POSITION] c'e' POSITION_trig e i suoi
 // numeri finiscono in rowsAffected prima di quelli della UPDATE.
 router.post('/declareTrayType/:floor/:pieceId', (req, res) => {
+	const floor = Number(req.params.floor);
 	const pred = trayParentPredicate(req.params.floor);
 	const predP = trayParentPredicate(req.params.floor, 'p.PARENT');
 	const pieceId = parseInt(req.params.pieceId, 10);
 	if (!pred || !Number.isInteger(pieceId) || pieceId < 1) { res.status(400).json({ ris: 'KO_BAD_INPUT', positions: 0 }); return; }
 	sql.connect(DBf.configDB, function (err) {
 		if (err) { log.error('err declareTrayType: ' + err); res.status(500).json({ ris: 'KO', positions: 0 }); return; }
-		const query = `SET NOCOUNT ON;
-			DECLARE @extract int = (SELECT TOP 1 ISNULL([EXTRACT],0) FROM TRAY WHERE FLOOR_MAG=${Number(req.params.floor)});
-			IF NOT EXISTS (SELECT 1 FROM PIECE WHERE ID=${pieceId})
-				SELECT '${errorCodes.KO_NO_PIECE_DECLARED}' AS ris, 0 AS positions;
-			ELSE IF @extract <> 0
-				SELECT '${errorCodes.KO_TRAY_EXTRACTED}' AS ris, 0 AS positions;
-			ELSE IF EXISTS (SELECT 1 FROM [POSITION] p JOIN WORKORDERS w ON w.ID = p.Order_ID WHERE ${predP} AND w.STATUS = 3)
-				SELECT '${errorCodes.KO_ACTIVE_ORDER}' AS ris, 0 AS positions;
-			ELSE BEGIN
-				DECLARE @n INT = (SELECT COUNT(*) FROM [POSITION] WHERE ${pred});
-				UPDATE [POSITION] SET Part_Type=${pieceId} WHERE ${pred};
-				SELECT 'OK' AS ris, @n AS positions;
-			END`;
-		log.info('query ' + query);
-		new sql.Request().query(query, function (err, result) {
+
+		// FASE 1 (sola lettura): tutto quello che serve a decidere, dal DB.
+		// Le tasche servono per la verifica di ingombro: sono la geometria VERA
+		// del cassetto, non quella teorica del modello.
+		const ctx = `SET NOCOUNT ON;
+			SELECT
+				(SELECT TOP 1 ISNULL([EXTRACT],0) FROM TRAY WHERE FLOOR_MAG=${floor}) AS EXTRACTED,
+				(SELECT TOP 1 X FROM TRAY WHERE FLOOR_MAG=${floor}) AS TX,
+				(SELECT TOP 1 Y FROM TRAY WHERE FLOOR_MAG=${floor}) AS TY,
+				(SELECT TOP 1 g.THICKNESS FROM GRATING g JOIN TRAY t ON t.FAMILY = g.NAME WHERE t.FLOOR_MAG=${floor}) AS THICKNESS,
+				p.ID AS PID, p.X AS PX, p.Y AS PY, p.Z_PICK, p.Z_PLACE,
+				-- IL CASSETTO E' IN USO DAL CICLO? Due modi, e servono entrambi:
+				-- 1) ha tasche PRENOTATE da un ordine attivo (Order_ID, scritto
+				--    all'avvio ordine) — e' anche dove tornera' il finito che il
+				--    robot ha a bordo, quindi vale anche a cassetto chiuso;
+				-- 2) ha grezzi del codice di un ordine attivo. Dal cambio di
+				--    modello PLC il ciclo NON guarda piu' Order_ID: pesca su
+				--    STATUS=4 AND Part_Type=<pezzo dell'ordine>. Quindi un cassetto
+				--    mai prenotato puo' essere lo stesso nel mucchio da cui il
+				--    ciclo sta attingendo ADESSO, e cambiargli il codice sotto
+				--    glielo toglierebbe di mano.
+				CASE WHEN EXISTS (SELECT 1 FROM [POSITION] p2 JOIN WORKORDERS w ON w.ID = p2.Order_ID WHERE ${trayParentPredicate(req.params.floor, 'p2.PARENT')} AND w.STATUS = 3) THEN 1 ELSE 0 END AS RESERVED,
+				CASE WHEN EXISTS (SELECT 1 FROM [POSITION] p3 WHERE ${trayParentPredicate(req.params.floor, 'p3.PARENT')} AND p3.STATUS = 4 AND p3.Part_Type IN (SELECT PIECE_ID FROM WORKORDERS WHERE STATUS = 3)) THEN 1 ELSE 0 END AS IN_POOL
+			FROM (SELECT 1 AS uno) d
+			LEFT JOIN PIECE p ON p.ID = ${pieceId};`;
+		log.info('query ' + ctx);
+		new sql.Request().query(ctx, function (err, ctxRes) {
 			if (err) { log.error('Err query: ' + err); res.status(500).json({ ris: 'KO', positions: 0 }); return; }
-			const row = result.recordset && result.recordset[0] ? result.recordset[0] : { ris: 'KO', positions: 0 };
-			res.json(row);
-			if (row.ris === 'OK')
-				log.standard('DICHIARA CONTENUTO CASSETTO ' + req.params.floor + ': ' + row.positions + ' tasche -> pezzo ' + pieceId);
+			const c = ctxRes.recordset && ctxRes.recordset[0];
+			if (!c) { res.status(500).json({ ris: 'KO', positions: 0 }); return; }
+
+			// il codice deve esistere: la vista del PLC aggancia PIECE con un
+			// join INTERNO, e un codice inventato renderebbe l'intero cassetto
+			// invisibile alla cella — pieno sul pannello, inesistente per il robot
+			if (!c.PID) { res.json({ ris: errorCodes.KO_NO_PIECE_DECLARED, positions: 0 }); return; }
+			// a cassetto fuori o in manovra la strada e' il comando 44 (pannello
+			// robot): il PLC dichiara quello che ha davvero davanti
+			if (Number(c.EXTRACTED) !== 0) { res.json({ ris: errorCodes.KO_TRAY_EXTRACTED, positions: 0 }); return; }
+			// SOLO il cassetto che il ciclo sta usando: su tutti gli altri il
+			// rifornimento a meta' produzione deve passare, ed e' il caso d'uso.
+			if (Number(c.RESERVED) === 1 || Number(c.IN_POOL) === 1) {
+				log.standard('declareTrayType ' + errorCodes.KO_ACTIVE_ORDER + ': cassetto ' + floor + ' in uso dal ciclo (prenotato ' + c.RESERVED + ', nel mucchio ' + c.IN_POOL + ')');
+				res.json({ ris: errorCodes.KO_ACTIVE_ORDER, positions: 0, reserved: Number(c.RESERVED), inPool: Number(c.IN_POOL) });
+				return;
+			}
+
+			// ANTI-URTO VERTICALE: quota di presa/rilascio sopra il grigliato
+			// (stessa regola dell'associazione, stessi valori dal DB)
+			const clr = gratingFit.pickClearance({ thickness: c.THICKNESS, zPick: c.Z_PICK, zPlace: c.Z_PLACE });
+			if (!clr.ok) {
+				log.standard('declareTrayType ' + errorCodes.KO_Z_BELOW_GRATING + ': cassetto ' + floor + ' pezzo ' + pieceId + ' min ' + clr.min);
+				res.json({ ris: errorCodes.KO_Z_BELOW_GRATING, positions: 0, min: clr.min, zPick: clr.zPick, zPlace: clr.zPlace, thickness: Number(c.THICKNESS) || 0 });
+				return;
+			}
+
+			// ANTI-URTO ORIZZONTALE: il pezzo dichiarato deve stare nelle tasche
+			// che ci sono. Prima era garantito per costruzione (la griglia nasceva
+			// dal pezzo); adesso il codice si dichiara a posteriori, quindi si puo'
+			// dichiarare un particolare piu' grande dell'alloggiamento. Nessun
+			// controllo a valle lo prenderebbe: la vista 4Robot somma le quote e
+			// basta, il robot ci andrebbe sopra.
+			new sql.Request().query(`SET NOCOUNT ON; SELECT X, Y FROM [POSITION] WHERE ${pred};`, function (err, posRes) {
+				if (err) { log.error('Err query: ' + err); res.status(500).json({ ris: 'KO', positions: 0 }); return; }
+				const tasche = (posRes.recordset || []);
+				const fit = gratingFit.pieceFitsPockets(tasche, { trayX: c.TX, trayY: c.TY, pieceX: c.PX, pieceY: c.PY });
+				if (!fit.ok) {
+					log.standard('declareTrayType ' + errorCodes.KO_PIECE_TOO_BIG + ': cassetto ' + floor + ' pezzo ' + pieceId + ' sforo ' + JSON.stringify(fit));
+					res.json({ ris: errorCodes.KO_PIECE_TOO_BIG, positions: 0,
+						pitch: Math.max(fit.overPitchX, fit.overPitchY), over: Math.max(fit.overW, fit.overH) });
+					return;
+				}
+
+				// Conteggio con COUNT esplicita: su [POSITION] c'e' POSITION_trig e
+				// i suoi numeri finiscono in rowsAffected prima di quelli della UPDATE.
+				// NON tocca STATUS ne' Order_ID: dire cosa c'e' dentro non e' dire
+				// quanto ce n'e'.
+				const upd = `SET NOCOUNT ON;
+					DECLARE @n INT = (SELECT COUNT(*) FROM [POSITION] WHERE ${pred});
+					UPDATE [POSITION] SET Part_Type=${pieceId} WHERE ${pred};
+					SELECT 'OK' AS ris, @n AS positions;`;
+				log.info('query ' + upd);
+				new sql.Request().query(upd, function (err, result) {
+					if (err) { log.error('Err query: ' + err); res.status(500).json({ ris: 'KO', positions: 0 }); return; }
+					const row = result.recordset && result.recordset[0] ? result.recordset[0] : { ris: 'KO', positions: 0 };
+					res.json(row);
+					if (row.ris === 'OK')
+						log.standard('DICHIARA CONTENUTO CASSETTO ' + floor + ': ' + row.positions + ' tasche -> pezzo ' + pieceId);
+				});
+			});
 		});
 	});
 });

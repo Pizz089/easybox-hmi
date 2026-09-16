@@ -250,6 +250,29 @@ check(vm.declErr.trayType === 20001 && vm.declErr.pocket === 0, '20001 durante i
 vm.declErr.trayType = 0; vm.pockets.typeBusy = false;
 vm.onAlarmRobot('20001');
 check(vm.declErr.pocket === 20001 && vm.declErr.trayType === 0, 'e fuori dal 44 va sulle tasche: si accende dove si stava guardando');
+// IL PEZZO DICHIARATO DEVE STARE NELLE TASCHE. Il 44 lo scrive il PLC:
+// nessuna guardia di backend puo' intercettarlo, quindi il controllo e' qui.
+// Senza, un pezzo piu' grande dell'alloggiamento arriverebbe al robot senza
+// che nessuno l'avesse guardato.
+sent.length = 0;
+vm.declPieces = [{ ID: 1033, X: 40000, Y: 70000 }, { ID: 22, X: 71000, Y: 90000 }];
+vm.pockets.trayX = 820000; vm.pockets.trayY = 610000;
+vm.pockets.rows = [];
+for (let c = 0; c < 7; c++) for (let rr = 0; rr < 13; rr++)
+	vm.pockets.rows.push({ SUB_POS: c * 13 + rr + 1, x: 45 + 80 * c, y: 50 + 60 * rr, status: 2, prisma: 1, order_ID: 0 });
+vm.pockets.typeSel = 22;               // 71x90 in tasche da 60x80 di passo
+vm.declareTrayType();
+await tick();
+check(cmdsTo('ROBOT').length === 0, "pezzo piu' grande dell'alloggiamento: il 44 NON parte");
+check(vm.declErr.trayType === 'tooBig' && vm.declErrParams.pitch === 11, 'e il dialog dice di quanto invade la tasca vicina');
+vm.pockets.typeSel = 1033;             // il pezzo per cui la griglia e' fatta
+vm.declErr.trayType = 0;
+vm.declareTrayType();
+await tick();
+check(cmdsTo('ROBOT')[0] === '44;1033', 'il pezzo che ci sta passa');
+fire('DECLARE/TRAYTYPE', '9;1033');
+await tick();
+
 // senza codice scelto non parte niente
 sent.length = 0; vm.pockets.typeSel = 0;
 vm.declareTrayType();

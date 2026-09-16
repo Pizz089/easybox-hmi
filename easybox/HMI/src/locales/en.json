@@ -74,6 +74,8 @@
         "activeOrder": "An order is running on this tray and the PLC is reading it right now. Stop production and repeat.",
         "extracted": "Tray out or moving. With the tray open, declare it from the robot page (Reset cell state); from here it is done with the tray closed.",
         "noPiece": "Invalid part code: it does not exist. Pick one from the list.",
+        "tooBig": "The chosen part does not fit these pockets: it overlaps the neighbouring pocket by {pitch} mm and sticks out of the tray by {over} mm. The robot would hit it. Use a part of the right size, or regenerate the grid for this part.",
+        "thickness": "The chosen part is picked too low for this grating: pick height {pick} mm and place height {place} mm are below the minimum {min} mm. The gripper would touch the grid.",
         "generic": "Declaration failed. Try again; if it happens again, call support."
       }
     },
@@ -641,6 +643,7 @@
       "trayTypeLabel": "Contains",
       "trayTypeSend": "Declare",
       "trayTypeHint": "The part code of every pocket in this tray. The pockets below say HOW MUCH is in it; this says WHAT.",
+      "trayTypeTooBig": "The chosen part does not fit these pockets: it overlaps the neighbour by {pitch} mm and sticks out of the tray by {over} mm. Command not sent.",
       "trayTypeDone": "Tray content declared",
       "done": "Cell state declared",
       "sectionRobot": "Robot: gripper and claws",

@@ -85,3 +85,57 @@ export function gridFit(centers, { width, height, halfW, halfH }) {
 	const overH = r6(Math.max(0, (maxH + hh) - height, -(minH - hh)));
 	return { ok: overW === 0 && overH === 0, overW, overH };
 }
+
+// (16/9) IL PEZZO DICHIARATO CI STA NELLE TASCHE?
+//
+// Prima questa domanda non esisteva: la griglia nasceva DAL pezzo, quindi il
+// contenuto ci stava per costruzione. Adesso il codice si dichiara a
+// posteriori — su un cassetto gia' generato, e anche a distanza di mesi —
+// quindi qualcuno puo' dichiarare un particolare piu' grande
+// dell'alloggiamento. Se passasse, il robot andrebbe a prendere un pezzo che
+// invade la tasca accanto, o che sporge dal contorno del cassetto: ci
+// sbatterebbe, e nessuno l'avrebbe guardato.
+//
+// Due misure, entrambe sui dati veri del cassetto (le tasche a DB), in
+// coordinate ROBOT e micron:
+//  - PASSO fra tasche adiacenti: l'ingombro non deve invadere la vicina.
+//    ROBOT_AXIS_ALONG dice l'accoppiamento — lungo Y robot (largo del
+//    cassetto) conta PIECE.X, lungo X robot conta PIECE.Y.
+//  - CONTORNO: mezzo ingombro oltre la tasca piu' esterna deve restare
+//    dentro TRAY.X / TRAY.Y, e non sotto zero (origine = angolo cassetto).
+//
+// Il franco SAFEX/SAFEY del modello NON viene richiesto qui: e' il margine
+// che si vuole in generazione, non il minimo fisico. Qui si rifiuta la
+// COLLISIONE, che e' un'altra soglia e piu' bassa.
+//
+// pockets = [{X, Y}] micron (coordinate robot, come stanno in [POSITION]).
+// Ritorna { ok, overPitchX, overPitchY, overW, overH } in MICRON di sforo.
+export function pieceFitsPockets(pockets, { trayX, trayY, pieceX, pieceY }) {
+	const zero = { ok: true, overPitchX: 0, overPitchY: 0, overW: 0, overH: 0 };
+	if (!pockets || pockets.length === 0) return zero;
+	const px = Number(pieceX) || 0, py = Number(pieceY) || 0;
+	if (px <= 0 || py <= 0) return zero;          // misure assenti: non si inventa un rifiuto
+	const xs = pockets.map(p => Number(p.X));
+	const ys = pockets.map(p => Number(p.Y));
+	// passo = minima distanza fra due valori DISTINTI sullo stesso asse: con
+	// una sola fila su un asse il passo non esiste e non si vincola
+	const passo = (v) => {
+		const u = Array.from(new Set(v.filter(n => !isNaN(n)))).sort((a, b) => a - b);
+		let m = Infinity;
+		for (let i = 1; i < u.length; i++) if (u[i] - u[i - 1] < m) m = u[i] - u[i - 1];
+		return m;
+	};
+	const passoX = passo(xs), passoY = passo(ys);
+	const overPitchX = passoX === Infinity ? 0 : Math.max(0, py - passoX);
+	const overPitchY = passoY === Infinity ? 0 : Math.max(0, px - passoY);
+	const minX = Math.min.apply(null, xs), maxX = Math.max.apply(null, xs);
+	const minY = Math.min.apply(null, ys), maxY = Math.max.apply(null, ys);
+	const tx = Number(trayX) || 0, ty = Number(trayY) || 0;
+	const overW = tx <= 0 ? 0 : Math.max(0, (maxY + px / 2) - tx, -(minY - px / 2));
+	const overH = ty <= 0 ? 0 : Math.max(0, (maxX + py / 2) - ty, -(minX - py / 2));
+	const r = (v) => Math.round(v);
+	return {
+		ok: overPitchX <= 0 && overPitchY <= 0 && overW <= 0 && overH <= 0,
+		overPitchX: r(overPitchX), overPitchY: r(overPitchY), overW: r(overW), overH: r(overH),
+	};
+}

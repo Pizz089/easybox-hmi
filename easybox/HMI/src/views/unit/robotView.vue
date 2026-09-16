@@ -5,6 +5,10 @@
   // che si vede, invece di far digitare un numero di tasca
   import TrayPockets from '../../components/layout/TrayPockets.vue'
   import { loadTrayPockets } from '../../util/trayPockets.js'
+  // (16/9) il 44 lo scrive il PLC: nessuna guardia lato backend puo'
+  // intercettarlo. La stessa regola di fit del declareTrayType va applicata
+  // QUI, prima di consegnare il comando.
+  import { pieceFitsPockets } from '../../util/gratingAxes.js'
   // (collaudo) campo numerico condiviso a contratto "emette sempre numeri
   // interi clampati" (AL 2c) — per la scelta subpos nei comandi 31/32
   import numericField from '../../components/numericField.vue'
@@ -745,7 +749,7 @@
                    questo dice DI CHE COSA. -->
               <div class="decl-section">
                 <h4 class="section-label">{{ $t('robot.decl.trayType') }}</h4>
-                <p v-if="declErr.trayType" class="decl-err">{{ $t('robot.declErr.' + declErr.trayType) }}</p>
+                <p v-if="declErr.trayType" class="decl-err">{{ $t(declErr.trayType === 'tooBig' ? 'robot.decl.trayTypeTooBig' : 'robot.declErr.' + declErr.trayType, declErrParams) }}</p>
                 <div class="decl-field">
                   <label>{{ $t('robot.decl.trayTypeLabel') }}</label>
                   <select v-model.number="pockets.typeSel" class="decl-select">
@@ -926,10 +930,13 @@ export default {
       // accendono con l'allarme e si spengono con l'eco del comando riuscito
       // (il PLC non pubblica nulla per dire "ora e' a posto").
       declErr: { mc: 0, box: 0, robot: 0, pocket: 0, trayType: 0 },
+      declErrParams: {},          // millimetri di sforo per il rifiuto locale del 44
       declPieces: [],          // anagrafica pezzi per il selettore morsa
       declEchoMs: 5000,        // attesa massima di UN eco, per passo
       // correzione tasche (39): griglia del cassetto ESTRATTO
       pockets: { rows: [], dimX: 0, dimY: 0, radius: 0, sel: null, busy: false,
+                 // contorno del cassetto: serve alla verifica di fit del 44
+                 trayX: 0, trayY: 0,
                  // (44) contenuto dichiarato del cassetto estratto
                  typeSel: 0, typeBusy: false },
       declGrippers: [],        // anagrafica COMPLETA (inclusa l'eventuale a bordo)
@@ -1690,11 +1697,14 @@ export default {
       this.pockets.sel = null;
       this.declErr.pocket = 0;
       this.declErr.trayType = 0;
+      this.declErrParams = {};
       loadTrayPockets(dataStored.server, this.extractedTray.FLOOR_MAG).then(d => {
         this.pockets.rows = d.rows;
         this.pockets.dimX = d.dimX;
         this.pockets.dimY = d.dimY;
         this.pockets.radius = d.radius;
+        this.pockets.trayX = d.trayX;
+        this.pockets.trayY = d.trayY;
         // si parte dal codice gia' dichiarato: si conferma o si cambia
         this.pockets.typeSel = d.rows.length ? (Number(d.rows[0].partType) || 0) : 0;
       });
@@ -1712,6 +1722,18 @@ export default {
         return;
       }
       const tipo = this.pockets.typeSel;
+      // IL PEZZO DICHIARATO CI STA NELLE TASCHE? Il 44 scrive Part_Type nel
+      // PLC: se il pezzo e' piu' grande dell'alloggiamento nessuno se ne
+      // accorge, e il robot ci va sopra. Sulla strada REST il controllo e'
+      // del backend; qui il backend non c'e' di mezzo, quindi si fa adesso.
+      const pz = (this.declPieces || []).find(x => x.ID == tipo);
+      const fit = pieceFitsPockets(this.pockets.rows.map(r => ({ X: Math.round(Number(r.x) * 1000), Y: Math.round(Number(r.y) * 1000) })),
+        { trayX: this.pockets.trayX, trayY: this.pockets.trayY, pieceX: pz ? pz.X : 0, pieceY: pz ? pz.Y : 0 });
+      if (!fit.ok) {
+        this.declErr.trayType = 'tooBig';
+        this.declErrParams = { pitch: Math.max(fit.overPitchX, fit.overPitchY) / 1000, over: Math.max(fit.overW, fit.overH) / 1000 };
+        return;
+      }
       this.pockets.typeBusy = true;
       this.sendToRobot('44;' + tipo);
       // codici di rifiuto del 44: il PLC ne pubblica solo uno di documentato,

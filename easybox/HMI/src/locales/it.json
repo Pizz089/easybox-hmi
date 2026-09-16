@@ -74,6 +74,8 @@
         "activeOrder": "C'è un ordine in lavorazione su questo cassetto: il PLC lo sta leggendo adesso. Fermare la produzione e ripetere.",
         "extracted": "Cassetto fuori o in manovra. A cassetto aperto si dichiara dal pannello robot (Reimposta stato cella); da qui si fa a cassetto chiuso.",
         "noPiece": "Codice pezzo non valido: non esiste in anagrafica. Sceglierne uno dall'elenco.",
+        "tooBig": "Il pezzo scelto non entra in queste tasche: invade la tasca vicina di {pitch} mm e sporge dal cassetto di {over} mm. Il robot ci andrebbe sopra. Serve un pezzo dell'ingombro giusto, o una griglia rifatta per questo pezzo.",
+        "thickness": "Il pezzo scelto si prende troppo in basso per questo grigliato: la quota di presa {pick} mm e di rilascio {place} mm sono sotto il minimo {min} mm. La pinza toccherebbe la griglia.",
         "generic": "Dichiarazione non riuscita. Riprovare; se l'errore torna, chiamare l'assistenza."
       }
     },
@@ -641,6 +643,7 @@
       "trayTypeLabel": "Contiene",
       "trayTypeSend": "Dichiara",
       "trayTypeHint": "Il codice pezzo di tutte le tasche di questo cassetto. Le tasche qui sotto dicono QUANTO c'è; questo dice DI CHE COSA.",
+      "trayTypeTooBig": "Il pezzo scelto non entra in queste tasche: invade la vicina di {pitch} mm e sporge dal cassetto di {over} mm. Comando non inviato.",
       "trayTypeDone": "Contenuto del cassetto dichiarato",
       "done": "Stato cella dichiarato",
       "sectionRobot": "Robot: pinza e chele",

@@ -5,7 +5,7 @@
     import TrayPockets from '../components/layout/TrayPockets.vue'
     import { ROBOT_AXIS_ALONG } from '../util/gratingAxes.js'
     import { loadTrayPockets } from '../util/trayPockets.js'
-    import { KO_ACTIVE_ORDER, KO_TRAY_EXTRACTED, KO_NO_PIECE_DECLARED } from '../util/errorCodes.js'
+    import { KO_ACTIVE_ORDER, KO_TRAY_EXTRACTED, KO_NO_PIECE_DECLARED, KO_PIECE_TOO_BIG, KO_Z_BELOW_GRATING } from '../util/errorCodes.js'
 </script>
 
 
@@ -117,7 +117,7 @@
                     {{ $t('layout.type.what', { n: listPz.length, code: trayType.pieceId }) }}
                 </div>
                 <div class="reset-text">{{ $t('layout.type.hint') }}</div>
-                <div class="reset-warn" v-if="trayType.error">{{ $t(trayType.error) }}</div>
+                <div class="reset-warn" v-if="trayType.error">{{ $t(trayType.error, trayType.errorParams) }}</div>
                 <div class="pure-g">
                     <div class="pure-u-1-2">
                         <button style="width:100%" class="button_pressed"
@@ -161,7 +161,7 @@
                 avanzamento:0,
                 trayReset: { open: false, busy: false },  // dialog AZZERA STATO CASSETTO
                 // dialog DICHIARA CONTENUTO: scrive Part_Type su tutte le tasche
-                trayType: { open: false, busy: false, pieceId: 0, error: '' },
+                trayType: { open: false, busy: false, pieceId: 0, error: '', errorParams: {} },
                 pieces: []
             }
         },
@@ -197,6 +197,7 @@
                 this.trayType.open = true;
                 this.trayType.busy = false;
                 this.trayType.error = '';
+                this.trayType.errorParams = {};
                 // si parte dal codice attuale: si CONFERMA o si cambia, non si
                 // riparte da vuoto con la lista davanti
                 this.trayType.pieceId = this.listPz.length ? (Number(this.listPz[0].partType) || 0) : 0;
@@ -205,6 +206,7 @@
                 if (this.trayType.busy || !(this.trayType.pieceId > 0)) return;
                 this.trayType.busy = true;
                 this.trayType.error = '';
+                this.trayType.errorParams = {};
                 fetch(dataStored.server + 'api/conf/position/declareTrayType/' +
                       this.$route.params.floorMag + '/' + this.trayType.pieceId, { method: 'POST' })
                     .then(r => { if (!r.ok) throw new Error('Network response was not ok'); return r.json(); })
@@ -218,7 +220,14 @@
                                 code == KO_ACTIVE_ORDER      ? 'layout.type.err.activeOrder' :
                                 code == KO_TRAY_EXTRACTED    ? 'layout.type.err.extracted' :
                                 code == KO_NO_PIECE_DECLARED ? 'layout.type.err.noPiece' :
+                                // il pezzo dichiarato non ci sta: si dicono i
+                                // millimetri di sforo, non "non valido"
+                                code == KO_PIECE_TOO_BIG     ? 'layout.type.err.tooBig' :
+                                code == KO_Z_BELOW_GRATING   ? 'layout.type.err.thickness' :
                                                                'layout.type.err.generic';
+                            this.trayType.errorParams =
+                                code == KO_PIECE_TOO_BIG   ? { pitch: (out.pitch || 0) / 1000, over: (out.over || 0) / 1000 } :
+                                code == KO_Z_BELOW_GRATING ? { min: (out.min || 0) / 1000, pick: (out.zPick || 0) / 1000, place: (out.zPlace || 0) / 1000 } : {};
                             return;
                         }
                         this.trayType.open = false;

@@ -24,6 +24,10 @@ exports.KO_DUP_NAME           = "KO_DUP_NAME";           // nome grigliato gia' 
 // decide QUALE pezzo il robot preleva e a CHE QUOTA (la vista 4Robot aggancia PIECE
 // con join INTERNO su quel campo e ne somma Z_PICK). Un grigliato senza pezzo
 // genererebbe tasche invisibili alla cella: l'associazione viene rifiutata.
+// (16/9) il pezzo DICHIARATO non entra nelle tasche che ci sono: prima era
+// impossibile per costruzione (la griglia nasceva dal pezzo), adesso il codice
+// si dichiara a posteriori. Nessun controllo a valle lo prenderebbe.
+exports.KO_PIECE_TOO_BIG     = "KO_PIECE_TOO_BIG";     // ingombro oltre il passo delle tasche o oltre il contorno del cassetto
 exports.KO_NO_PIECE_DECLARED = "KO_NO_PIECE_DECLARED"; // nessun codice pezzo dichiarato per il contenuto del cassetto
 exports.KO_Z_BELOW_GRATING   = "KO_Z_BELOW_GRATING";   // Z_PICK o Z_PLACE del pezzo < GRATING.THICKNESS + 1000 um: generazione rifiutata
 // Modello a DUE ASPETTI degli attrezzaggi (15/9): ogni ordine deve portare la
