@@ -733,6 +733,36 @@
                 {{ $t('robot.dialog.tray') }} {{ extractedTray.FLOOR_MAG }}
                 <span v-if="(extractedTray.DESCR || '').trim()"> - {{ extractedTray.DESCR.trim() }}</span>
               </div>
+
+              <!-- ===== CONTENUTO DEL CASSETTO (44) =====
+                   Dichiara COSA c'e' dentro: scrive Part_Type su tutte le
+                   tasche, ed e' il codice che il ciclo cerca. Sta qui, col
+                   cassetto aperto davanti, perche' e' il momento in cui si
+                   vede davvero cosa contiene. A cassetto chiuso la stessa
+                   dichiarazione si fa dalla pagina del cassetto (Cassetti >
+                   layout): il 44 legge DB_BOX_1.ExtractedTray e vale solo
+                   sul cassetto fuori. Le tasche (39) dicono QUANTO c'e';
+                   questo dice DI CHE COSA. -->
+              <div class="decl-section">
+                <h4 class="section-label">{{ $t('robot.decl.trayType') }}</h4>
+                <p v-if="declErr.trayType" class="decl-err">{{ $t('robot.declErr.' + declErr.trayType) }}</p>
+                <div class="decl-field">
+                  <label>{{ $t('robot.decl.trayTypeLabel') }}</label>
+                  <select v-model.number="pockets.typeSel" class="decl-select">
+                    <option :value="0">-</option>
+                    <option v-for="pc in declPieces" :key="'tt'+pc.ID" :value="pc.ID">
+                      #{{ pc.ID }} {{ (pc.DESCR || pc.FAMILY || '').trim() }}
+                    </option>
+                  </select>
+                  <button class="button_pressed"
+                    :class="[pockets.typeBusy || !(pockets.typeSel > 0) ? 'pure-button-disable' : 'pure-button-micromission']"
+                    @click="(pockets.typeBusy || !(pockets.typeSel > 0)) ? '' : declareTrayType()">
+                    {{ $t('robot.decl.trayTypeSend') }}
+                  </button>
+                </div>
+                <small class="cmd-hint decl-note">{{ $t('robot.decl.trayTypeHint') }}</small>
+              </div>
+
               <div class="pockets-wrap">
                 <TrayPockets
                   :pockets="pockets.rows"
@@ -895,11 +925,13 @@ export default {
       // rifiuti del PLC, uno per sezione: il codice, 0 = nessuno. Si
       // accendono con l'allarme e si spengono con l'eco del comando riuscito
       // (il PLC non pubblica nulla per dire "ora e' a posto").
-      declErr: { mc: 0, box: 0, robot: 0, pocket: 0 },
+      declErr: { mc: 0, box: 0, robot: 0, pocket: 0, trayType: 0 },
       declPieces: [],          // anagrafica pezzi per il selettore morsa
       declEchoMs: 5000,        // attesa massima di UN eco, per passo
       // correzione tasche (39): griglia del cassetto ESTRATTO
-      pockets: { rows: [], dimX: 0, dimY: 0, radius: 0, sel: null, busy: false },
+      pockets: { rows: [], dimX: 0, dimY: 0, radius: 0, sel: null, busy: false,
+                 // (44) contenuto dichiarato del cassetto estratto
+                 typeSel: 0, typeBusy: false },
       declGrippers: [],        // anagrafica COMPLETA (inclusa l'eventuale a bordo)
       // terzo campo di FROM_PLANT/DECLARE/MC1 (aggiunta del PLC): pezzo che
       // la macchina crede di avere in morsa. Serve a PRESELEZIONARE la
@@ -1508,6 +1540,9 @@ export default {
     onDeclTray() {
       this.declErr.pocket = 0;  // eco del 39
     },
+    onDeclTrayType() {
+      this.declErr.trayType = 0;   // eco del 44 ("trayID;tipo")
+    },
     onTrayExtract(payload) {
       this.declErr.box = 0;     // eco del 38
       const n = parseInt(String(payload).trim(), 10);
@@ -1527,10 +1562,17 @@ export default {
     onAlarmMc1(payload) { this.setDeclErr('mc', payload, [947, 948]); },
     onAlarmBox(payload) { this.setDeclErr('box', payload, [99, 996, 997, 999]); },
     onAlarmRobot(payload) {
-      // 944/945/946 sono il 35 (sezione robot); la serie 200xx e' il 39,
-      // cioe' la correzione delle tasche: sezioni diverse, avvisi diversi
+      // 944/945/946 sono il 35 (sezione robot); la serie 200xx e' il 39 e il
+      // 44, cioe' le correzioni sul cassetto estratto: sezioni diverse,
+      // avvisi diversi. Il 20001 (nessun cassetto estratto) vale per
+      // entrambi, e si accende dove l'operatore stava guardando.
       this.setDeclErr('robot', payload, [944, 945, 946]);
-      this.setDeclErr('pocket', payload, [20001, 20002, 20005, 20006]);
+      this.setDeclErr('pocket', payload, [20002, 20005, 20006]);
+      // 20001 (nessun cassetto estratto) vale sia per il 39 sia per il 44: si
+      // accende dove l'operatore stava guardando
+      const code = parseInt(String(payload).trim(), 10);
+      if (code === 20001)
+        this.setDeclErr(this.pockets.typeBusy ? 'trayType' : 'pocket', payload, [20001]);
     },
     getPiecesList() {
       fetch(dataStored.server + 'api/conf/piece/show/all', { method: 'GET' })
@@ -1647,11 +1689,51 @@ export default {
       this.declDialog.step = 3;
       this.pockets.sel = null;
       this.declErr.pocket = 0;
+      this.declErr.trayType = 0;
       loadTrayPockets(dataStored.server, this.extractedTray.FLOOR_MAG).then(d => {
         this.pockets.rows = d.rows;
         this.pockets.dimX = d.dimX;
         this.pockets.dimY = d.dimY;
         this.pockets.radius = d.radius;
+        // si parte dal codice gia' dichiarato: si conferma o si cambia
+        this.pockets.typeSel = d.rows.length ? (Number(d.rows[0].partType) || 0) : 0;
+      });
+    },
+    // 44;partType — dichiara il CONTENUTO del cassetto estratto. Stesso gate
+    // del 39 (cassetto fuori + cella in HOLD: il PLC legge
+    // DB_BOX_1.ExtractedTray), stesso modo di aspettare l'eco.
+    declareTrayType() {
+      if (this.pockets.typeBusy || !(this.pockets.typeSel > 0)) return;
+      if (!this.pocketsEnabled) {
+        this.declDialog.step = 2;
+        dataStored.alert.title = this.$t('WARNING');
+        dataStored.alert.desc = 'robot.dialog.stateChanged';
+        dataStored.alert.type = 'warning';
+        return;
+      }
+      const tipo = this.pockets.typeSel;
+      this.pockets.typeBusy = true;
+      this.sendToRobot('44;' + tipo);
+      // codici di rifiuto del 44: il PLC ne pubblica solo uno di documentato,
+      // 20001 (nessun cassetto estratto). Se ne usasse altri arriverebbero
+      // comunque al toast globale, e qui scatterebbe l'attesa scaduta: meglio
+      // che inventarsi numeri e mostrare la frase sbagliata.
+      this.waitEcho('DECLARE/TRAYTYPE', 'ALARM/ROBOT', [20001], this.declEchoMs).then(r => {
+        this.pockets.typeBusy = false;
+        if (!r.ok) {
+          if (!this.declErr.trayType) {
+            dataStored.alert.title = this.$t('WARNING');
+            dataStored.alert.desc = 'robot.decl.noEcho';
+            dataStored.alert.type = 'warning';
+          }
+          return;
+        }
+        // riuscito: le tasche adesso sono di quel codice. Si rilegge il
+        // cassetto invece di indovinare cosa sia cambiato a DB.
+        dataStored.alert.title = 'INFO';
+        dataStored.alert.desc = 'robot.decl.trayTypeDone';
+        dataStored.alert.type = 'message';
+        this.openPockets();
       });
     },
     pickPocket(ev) {
@@ -2162,6 +2244,7 @@ export default {
     dataStored.WS.socket.on('DECLARE/ROBOT', this.onDeclRobot);
     dataStored.WS.socket.on('DECLARE/MC1', this.onDeclMc1);
     dataStored.WS.socket.on('DECLARE/TRAY', this.onDeclTray);
+    dataStored.WS.socket.on('DECLARE/TRAYTYPE', this.onDeclTrayType);
     dataStored.WS.socket.on('TRAY/EXTRACT', this.onTrayExtract);
     dataStored.WS.socket.on('ALARM/MC1', this.onAlarmMc1);
     dataStored.WS.socket.on('ALARM/BOX', this.onAlarmBox);
@@ -2189,6 +2272,7 @@ export default {
     dataStored.WS.socket.off('DECLARE/ROBOT', this.onDeclRobot);
     dataStored.WS.socket.off('DECLARE/MC1', this.onDeclMc1);
     dataStored.WS.socket.off('DECLARE/TRAY', this.onDeclTray);
+    dataStored.WS.socket.off('DECLARE/TRAYTYPE', this.onDeclTrayType);
     dataStored.WS.socket.off('TRAY/EXTRACT', this.onTrayExtract);
     dataStored.WS.socket.off('ALARM/MC1', this.onAlarmMc1);
     dataStored.WS.socket.off('ALARM/BOX', this.onAlarmBox);

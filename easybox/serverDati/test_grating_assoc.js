@@ -44,8 +44,10 @@ function call(key, params, body, resultQueue) {
 	routes[key]({ params, query: params, body }, res);
 	return { res, n: queries.length - before, q: queries.slice(before).map(norm) };
 }
-// THICKNESS null = spessore non misurato (nessun vincolo), Z_PICK/Z_PLACE del pezzo dal DB
-const ctx = { recordset: [{ ID: 7, PIECE_ID: 21, THICKNESS: null, PX: 40000, PY: 70000, Z_PICK: 15000, Z_PLACE: 15000, TX: 820000, TY: 610000 }] };
+// THICKNESS null = spessore non misurato (nessun vincolo). PID/PX/PY/Z_* sono
+// le misure del pezzo su cui la route lavora: il CONTENUTO dichiarato dal
+// chiamante, con ripiego sul pezzo del modello quando non viene dichiarato.
+const ctx = { recordset: [{ ID: 7, PIECE_ID: 21, PID: 21, THICKNESS: null, PX: 40000, PY: 70000, Z_PICK: 15000, Z_PLACE: 15000, TX: 820000, TY: 610000 }] };
 const ok = n => ({ recordset: [{ ris: 'OK', n }] });
 
 console.log('1) associateGrating: COPIA da cassetto tarato (default)');
@@ -72,17 +74,17 @@ check(r.n === 2 && r.res.body.ris === 'OK', 'griglia dentro il contorno -> scrit
 t = r.q[1];
 check(/FROM \(VALUES \(1, 45000, 50000\), \(2, 45000, 110000\)/.test(t), 'UNA INSERT multi-riga (VALUES): SUB_POS 1,2,... con X/Y robot (origine = angolo cassetto: tasca 1 = (h1, w1), origin-fix 14/9)');
 check(/\(91, 525000, 770000\)\) AS v\(SUB_POS, X, Y\)/.test(t), '91 tasche, ultima (13a riga, 7a colonna) coerente con la convenzione assi');
-check(/COALESCE\(t\.X_ROT,0\), COALESCE\(t\.Y_ROT,0\), COALESCE\(t\.Z_ROT,0\), COALESCE\(t\.APPROACH_TYPE,3\), COALESCE\(t\.APPROACH_X,100000\)[\s\S]*, 21 FROM \(VALUES/.test(t), 'eredita teaching TRAY come insertPositionTray, Part_Type = PIECE_ID del modello (dal DB)');
+check(/COALESCE\(t\.X_ROT,0\), COALESCE\(t\.Y_ROT,0\), COALESCE\(t\.Z_ROT,0\), COALESCE\(t\.APPROACH_TYPE,3\), COALESCE\(t\.APPROACH_X,100000\)[\s\S]*, 21 FROM \(VALUES/.test(t), 'eredita teaching TRAY come insertPositionTray, Part_Type = contenuto dichiarato (dal DB)');
 // stessa griglia TRASLATA fuori dal contorno: il client "stantio" la manda, il server la RIFIUTA
 const shifted = centers.map(p => ({ w: p.w + 300, h: p.h }));
 r = call('POST /associateGrating/:floor', { floor: '9' }, { gratingId: 7, replace: false, source: { centers: shifted } }, [ctx, ok(91)]);
 check(r.n === 1 && r.res.body.ris === errorCodes.KO_OUT_OF_TRAY && r.res.body.overW > 0, 'griglia FUORI ingombro (misure TRAY/PIECE dal DB, non dal payload) -> KO_OUT_OF_TRAY, nessuna transazione');
 // misure cassetto piu' piccole nel DB (client con dati vecchi): stessa griglia rifiutata
-const ctxSmall = { recordset: [{ ID: 7, PIECE_ID: 21, PX: 40000, PY: 70000, TX: 700000, TY: 610000 }] };
+const ctxSmall = { recordset: [{ ID: 7, PIECE_ID: 21, PID: 21, PX: 40000, PY: 70000, TX: 700000, TY: 610000 }] };
 r = call('POST /associateGrating/:floor', { floor: '9' }, { gratingId: 7, replace: false, source: { centers } }, [ctxSmall, ok(91)]);
 check(r.n === 1 && r.res.body.ris === errorCodes.KO_OUT_OF_TRAY, 'cassetto a DB piu\' stretto della griglia del client -> rifiutata');
-r = call('POST /associateGrating/:floor', { floor: '9' }, { gratingId: 7, replace: false, source: { centers } }, [{ recordset: [{ ID: 7, PIECE_ID: 0, PX: null, PY: null, TX: 820000, TY: 610000 }] }]);
-check(r.n === 1 && r.res.body.ris === errorCodes.KO_GRATING_NO_PIECE, 'modello senza pezzo -> KO_GRATING_NO_PIECE (niente generazione)');
+r = call('POST /associateGrating/:floor', { floor: '9' }, { gratingId: 7, replace: false, source: { centers } }, [{ recordset: [{ ID: 7, PIECE_ID: 0, PID: null, PX: null, PY: null, TX: 820000, TY: 610000 }] }]);
+check(r.n === 1 && r.res.body.ris === errorCodes.KO_NO_PIECE_DECLARED, 'nessun contenuto dichiarato e modello senza pezzo -> KO_NO_PIECE_DECLARED (niente generazione)');
 
 console.log('\n3) associateGrating: replace (Sostituisci/Rigenera) e input');
 r = call('POST /associateGrating/:floor', { floor: '12' }, { gratingId: 7, replace: true, source: { centers } }, [ctx, ok(91)]);
@@ -114,7 +116,7 @@ r = call('POST /associateGrating/:floor', { floor: '9' }, { gratingId: 7, replac
 check(r.n === 2 && r.res.body.ris === 'OK', 'spessore 0 = non misurato: nessun vincolo');
 r = call('POST /associateGrating/:floor', { floor: '9' }, { gratingId: 7, replace: false, source: { centers } }, [ctxThick(null), ok(91)]);
 check(r.n === 2 && r.res.body.ris === 'OK', 'spessore NULL = non misurato: nessun vincolo (grigliati esistenti invariati)');
-check(/g\.THICKNESS, p\.X AS PX, p\.Y AS PY, p\.Z_PICK, p\.Z_PLACE/.test(r.q[0]), 'spessore e quote del pezzo letti DAL DB nella query di contesto (mai dal payload)');
+check(/g\.THICKNESS, p\.ID AS PID, p\.X AS PX, p\.Y AS PY, p\.Z_PICK, p\.Z_PLACE/.test(r.q[0]), 'spessore e quote del pezzo letti DAL DB nella query di contesto (mai dal payload)');
 
 console.log('\n4) dissociateGrating: guardie + cancellazione tasche, anche a FAMILY vuota');
 r = call('POST /dissociateGrating/:floor', { floor: '9' }, {}, [ok(91)]);
@@ -157,36 +159,43 @@ check(/g\.NAME = \(select TOP 1 FAMILY from TRAY where FLOOR_MAG=12\)/.test(r.q[
 r = call('GET /showFromTray/:Tray_ID', { Tray_ID: '12; DROP' }, null);
 check(r.n === 0 && r.res.body === 'KO_BAD_INPUT', 'showFromTray: piano non intero -> KO_BAD_INPUT');
 
-console.log('\nX) Part_Type: viene dal MODELLO che si associa, mai ereditato (16/9)');
-// PERCHE'. Dal cambio di modello PLC il ciclo trova i grezzi con
-// STATUS=4 AND Part_Type=<pezzo dell'ordine>, e la vista 4Robot aggancia PIECE
-// con un join INTERNO su Part_Type per sommarne Z_PICK: quel campo decide
-// QUALE pezzo il robot prende e a CHE QUOTA scende. La copia lo ereditava
-// dalla tasca sorgente: copiando un cassetto tarato su un codice per
-// associarne un altro della STESSA SAGOMA, le tasche nascevano col codice
-// vecchio mentre il pannello mostrava il grigliato nuovo. Nessun allarme.
+console.log('\nX) Part_Type e\' il CONTENUTO DICHIARATO del cassetto (16/9)');
+// IL MODELLO. Il GRIGLIATO porta la geometria: quante tasche, che passo, che
+// ingombro. Finito quel calcolo GRATING.PIECE_ID non serve piu' a nessuno, e
+// puo' mancare — lo stesso grigliato ospita piu' particolari, due pezzi di
+// sagoma identica con programmi HAAS diversi sono codici distinti. Il
+// CASSETTO dichiara cosa contiene, ed e' POSITION.Part_Type: e' quello che il
+// ciclo cerca (STATUS=4 AND Part_Type=<pezzo dell'ordine>) e di cui la vista
+// 4Robot usa Z_PICK. Nessun conflitto: il pezzo dichiarato E' il pezzo
+// presente.
 
-// modello 7 -> pezzo 21; la sorgente TRAY_12 e' tarata su un ALTRO codice
-// della stessa sagoma (e' quello che rendeva il difetto invisibile)
-r = call('POST /associateGrating/:floor', { floor: '1' }, { gratingId: 7, replace: false, source: { floor: 12 } }, [ctx, ok(91)]);
+// il contenuto lo dice il CHIAMANTE, e finisce nelle tasche: qui il cassetto
+// sorgente e' tarato su un altro codice della stessa sagoma — e' il caso che
+// rendeva il difetto invisibile
+const ctxDich = { recordset: [{ ID: 7, PIECE_ID: 21, PID: 1033, THICKNESS: null, PX: 40000, PY: 70000, Z_PICK: 15000, Z_PLACE: 15000, TX: 820000, TY: 610000 }] };
+r = call('POST /associateGrating/:floor', { floor: '1' }, { gratingId: 7, pieceId: 1033, replace: false, source: { floor: 12 } }, [ctxDich, ok(91)]);
+check(/LEFT JOIN PIECE p ON p\.ID = 1033/.test(r.q[0]), 'le misure si leggono per il pezzo DICHIARATO, non per quello del modello');
 t = r.q[1];
-check(/APPROACH_Z_ROT, 21, 0 FROM \[POSITION\] s/.test(t), 'COPIA: le tasche nascono col PIECE_ID del modello (21), non con quello della sorgente');
+check(/APPROACH_Z_ROT, 1033, 0 FROM \[POSITION\] s/.test(t), 'COPIA: le tasche nascono col contenuto dichiarato (1033), non con quello della sorgente');
 check(!/s\.Part_Type/.test(t), 'e il campo della tasca sorgente non viene piu\' letto');
 check(/s\.X, s\.Y, 0, s\.X_CORR, s\.Y_CORR, s\.Z_CORR/.test(t), 'quello che si copia restano le MISURE tarate della griglia');
+r2 = call('POST /associateGrating/:floor', { floor: '9' }, { gratingId: 7, pieceId: 1033, replace: false, source: { centers } }, [ctxDich, ok(91)]);
+check(/COALESCE\(t\.APPROACH_Z,100000\), 1033 FROM \(VALUES/.test(r2.q[1]), 'GENERA: stesso contenuto dichiarato');
 
-// stesso modello, ramo genera: stesso valore — i due rami non possono piu'
-// raccontare due cose diverse sullo stesso cassetto
-r2 = call('POST /associateGrating/:floor', { floor: '9' }, { gratingId: 7, replace: false, source: { centers } }, [ctx, ok(91)]);
-check(/COALESCE\(t\.APPROACH_Z,100000\), 21 FROM \(VALUES/.test(r2.q[1]), 'GENERA: stesso PIECE_ID del modello');
+// UN GRIGLIATO SENZA PIECE_ID E' LEGITTIMO: la geometria non sa quale pezzo
+// ci metteranno. Quello che serve e' il contenuto, e se c'e' si procede.
+const ctxModelloNudo = { recordset: [{ ID: 7, PIECE_ID: null, PID: 1033, THICKNESS: null, PX: 40000, PY: 70000, Z_PICK: 15000, Z_PLACE: 15000, TX: 820000, TY: 610000 }] };
+r = call('POST /associateGrating/:floor', { floor: '1' }, { gratingId: 7, pieceId: 1033, replace: false, source: { floor: 12 } }, [ctxModelloNudo, ok(91)]);
+check(r.n === 2 && r.res.body.ris === 'OK', 'modello SENZA pezzo ma con contenuto dichiarato: associazione accettata');
+check(/APPROACH_Z_ROT, 1033, 0 FROM/.test(r.q[1]), 'e le tasche prendono il contenuto dichiarato');
 
-// guardia: modello senza pezzo agganciabile -> nessuna tasca, in NESSUNO dei
-// due rami. Un cassetto invisibile alla cella e' peggio di un rifiuto.
-const ctxNoPiece = { recordset: [{ ID: 7, PIECE_ID: 0, THICKNESS: null, PX: null, PY: null, Z_PICK: 15000, Z_PLACE: 15000, TX: 820000, TY: 610000 }] };
-r = call('POST /associateGrating/:floor', { floor: '1' }, { gratingId: 7, replace: false, source: { floor: 12 } }, [ctxNoPiece]);
-check(r.n === 1 && r.res.body.ris === errorCodes.KO_GRATING_NO_PIECE, 'COPIA senza pezzo nel modello: rifiutata, nessuna transazione');
-const ctxGhost = { recordset: [{ ID: 7, PIECE_ID: 999, THICKNESS: null, PX: null, PY: null, Z_PICK: 15000, Z_PLACE: 15000, TX: 820000, TY: 610000 }] };
-r = call('POST /associateGrating/:floor', { floor: '1' }, { gratingId: 7, replace: false, source: { floor: 12 } }, [ctxGhost]);
-check(r.n === 1 && r.res.body.ris === errorCodes.KO_GRATING_NO_PIECE, 'PIECE_ID che non aggancia nessun PIECE: rifiutata (sarebbe invisibile al robot)');
+// senza contenuto e senza pezzo del modello non si puo' scrivere niente:
+// tasche con un codice inesistente sarebbero invisibili al ciclo
+const ctxNulla = { recordset: [{ ID: 7, PIECE_ID: null, PID: null, THICKNESS: null, PX: null, PY: null, Z_PICK: 15000, Z_PLACE: 15000, TX: 820000, TY: 610000 }] };
+r = call('POST /associateGrating/:floor', { floor: '1' }, { gratingId: 7, replace: false, source: { floor: 12 } }, [ctxNulla]);
+check(r.n === 1 && r.res.body.ris === errorCodes.KO_NO_PIECE_DECLARED, 'COPIA senza contenuto dichiarato: rifiutata, nessuna transazione');
+r = call('POST /associateGrating/:floor', { floor: '1' }, { gratingId: 7, pieceId: 999, replace: false, source: { floor: 12 } }, [ctxNulla]);
+check(r.n === 1 && r.res.body.ris === errorCodes.KO_NO_PIECE_DECLARED, 'codice che non aggancia nessun PIECE: rifiutata (sarebbe invisibile al robot)');
 
 // e in tutto il test non resta nessuna INSERT che scriva Part_Type 0
 const tutte = queries.map(norm).filter(q => /INSERT INTO \[POSITION\]/.test(q));

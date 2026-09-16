@@ -381,6 +381,67 @@ router.post('/resetTray/:floor', (req, res) => {
 	});
 });
 
+// ===========================================================================
+// DICHIARA IL CONTENUTO DEL CASSETTO (16/9): Part_Type su TUTTE le tasche.
+//
+// PERCHE' ESISTE. POSITION.Part_Type e' il codice pezzo che il cassetto
+// CONTIENE: il ciclo cerca le tasche con STATUS=4 AND Part_Type=<pezzo
+// dell'ordine>, e la vista 4Robot aggancia PIECE su quel campo per sapere a
+// che quota prendere. Finora nasceva con la griglia e si poteva cambiare solo
+// riassociando il grigliato — cioe' rifacendo l'attrezzaggio per svuotare un
+// cassetto e riempirlo con un altro particolare. Il grigliato e' la GEOMETRIA
+// (quante tasche, che passo) e non cambia: quello che cambia e' cosa c'e'
+// dentro. Qui si dichiara, senza toccare la geometria.
+//
+// In campo, col cassetto FUORI, la stessa dichiarazione la fa il PLC col
+// comando 44 (dialog Reimposta stato cella). Questa e' la strada a cassetto
+// CHIUSO: il 44 legge DB_BOX_1.ExtractedTray e vale solo sul cassetto
+// estratto, quindi non servirebbe quando si prepara la produzione.
+//
+// TRE GUARDIE, tutte con l'ordine attivo in mente:
+//  - il pezzo deve esistere in PIECE: un codice inventato renderebbe l'intero
+//    cassetto invisibile alla cella (join INTERNO), pieno sul pannello;
+//  - nessun ordine in STATUS=3 sulle tasche di QUESTO cassetto: il PLC legge
+//    [POSITION] in tempo reale e cambiare il tipo sotto un ciclo in corso
+//    significa cambiargli il pezzo sotto le mani;
+//  - il cassetto non deve essere fuori o in manovra (guardia conservativa,
+//    come nell'associazione): a cassetto aperto la strada e' il comando 44.
+//
+// NON tocca STATUS ne' Order_ID: dire cosa c'e' dentro non e' dire quanto ce
+// n'e'. Il conteggio dei grezzi resta il gesto separato che gia' esiste.
+// Conteggio con COUNT esplicita: su [POSITION] c'e' POSITION_trig e i suoi
+// numeri finiscono in rowsAffected prima di quelli della UPDATE.
+router.post('/declareTrayType/:floor/:pieceId', (req, res) => {
+	const pred = trayParentPredicate(req.params.floor);
+	const predP = trayParentPredicate(req.params.floor, 'p.PARENT');
+	const pieceId = parseInt(req.params.pieceId, 10);
+	if (!pred || !Number.isInteger(pieceId) || pieceId < 1) { res.status(400).json({ ris: 'KO_BAD_INPUT', positions: 0 }); return; }
+	sql.connect(DBf.configDB, function (err) {
+		if (err) { log.error('err declareTrayType: ' + err); res.status(500).json({ ris: 'KO', positions: 0 }); return; }
+		const query = `SET NOCOUNT ON;
+			DECLARE @extract int = (SELECT TOP 1 ISNULL([EXTRACT],0) FROM TRAY WHERE FLOOR_MAG=${Number(req.params.floor)});
+			IF NOT EXISTS (SELECT 1 FROM PIECE WHERE ID=${pieceId})
+				SELECT '${errorCodes.KO_NO_PIECE_DECLARED}' AS ris, 0 AS positions;
+			ELSE IF @extract <> 0
+				SELECT '${errorCodes.KO_TRAY_EXTRACTED}' AS ris, 0 AS positions;
+			ELSE IF EXISTS (SELECT 1 FROM [POSITION] p JOIN WORKORDERS w ON w.ID = p.Order_ID WHERE ${predP} AND w.STATUS = 3)
+				SELECT '${errorCodes.KO_ACTIVE_ORDER}' AS ris, 0 AS positions;
+			ELSE BEGIN
+				DECLARE @n INT = (SELECT COUNT(*) FROM [POSITION] WHERE ${pred});
+				UPDATE [POSITION] SET Part_Type=${pieceId} WHERE ${pred};
+				SELECT 'OK' AS ris, @n AS positions;
+			END`;
+		log.info('query ' + query);
+		new sql.Request().query(query, function (err, result) {
+			if (err) { log.error('Err query: ' + err); res.status(500).json({ ris: 'KO', positions: 0 }); return; }
+			const row = result.recordset && result.recordset[0] ? result.recordset[0] : { ris: 'KO', positions: 0 };
+			res.json(row);
+			if (row.ris === 'OK')
+				log.standard('DICHIARA CONTENUTO CASSETTO ' + req.params.floor + ': ' + row.positions + ' tasche -> pezzo ' + pieceId);
+		});
+	});
+});
+
 router.delete('/deletePositionsTray/:ID', (req, res) => {
      console.log("delete TRAY's position "+req.params.ID);
 	// (tray-parent-predicate) :ID = numero cassetto (FLOOR_MAG), validato

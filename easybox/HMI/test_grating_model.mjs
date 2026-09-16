@@ -147,8 +147,11 @@ post = calls.find(c => c.u.includes('associateGrating'));
 body = JSON.parse(post.opt.body);
 check(body.source.centers && body.source.centers.length === expected.listPz.length && body.source.floor === undefined, 'payload genera: source.centers in coordinate DISEGNO (il server verifica l\'ingombro dal DB)');
 
-// (z-pick 14/9) modello con pezzo a Z_PICK 0: generazione RIFIUTATA con messaggio
-tv.assoc.gratingId = 9; tv.onAssocGratingChange();
+// (z-pick 14/9) pezzo a Z_PICK 0 (presa dal fondo): generazione RIFIUTATA.
+// (16/9) il controllo riguarda il pezzo che ci finira' DENTRO, cioe' il
+// contenuto dichiarato: e' quello che il robot andra' a prendere. Il pezzo
+// del modello serve solo come proposta quando il contenuto non e' scelto.
+tv.assoc.gratingId = 9; tv.assoc.pieceId = 23; tv.onAssocGratingChange();
 check(tv.assoc.preview === null && tv.assoc.error === 'tray.assoc.err.zPick' && tv.assocReady === false, 'pezzo con Z_PICK 0 (quota di presa dal fondo): nessuna anteprima, errore dedicato, conferma bloccata');
 
 // (grating-thickness 14/9) spessore grigliato + franco: blocco in TUTTI i modi, copia compresa

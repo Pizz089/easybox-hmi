@@ -265,8 +265,10 @@ client.on('message', function (topic, message, packet) {
 	// FROM_PLANT/DECLARE/MC1 ("pallet;manualVice;pieceInMorsa" — il terzo
 	// campo e' l'aggiunta del cantiere "stato cella", i vecchi consumatori
 	// leggono i primi due e lo ignorano), /ROBOT ("gripper;c1;c2") e
-	// /TRAY ("trayID;subpos;stato", eco del 39: topic NUOVO).
-	if (param[1] == "DECLARE" && (param[2] == "MC1" || param[2] == "ROBOT" || param[2] == "TRAY")) {
+	// /TRAY ("trayID;subpos;stato", eco del 39) e /TRAYTYPE ("trayID;tipo",
+	// eco del 44: dichiara il CONTENUTO del cassetto estratto). Entrambi
+	// topic nuovi.
+	if (param[1] == "DECLARE" && (param[2] == "MC1" || param[2] == "ROBOT" || param[2] == "TRAY" || param[2] == "TRAYTYPE")) {
 		declareCache[param[2]] = message.toString();
 		DBf.io.emit('DECLARE/' + param[2], message.toString());
 		insertLog('DECLARE/' + param[2] + ': ' + message.toString(), 'PLC', 'DECLARE');
@@ -651,6 +653,8 @@ DBf.io.on('connection', (socket) => {
 		socket.emit('DECLARE/ROBOT', declareCache.ROBOT);
 	if (declareCache.TRAY !== undefined)
 		socket.emit('DECLARE/TRAY', declareCache.TRAY);
+	if (declareCache.TRAYTYPE !== undefined)
+		socket.emit('DECLARE/TRAYTYPE', declareCache.TRAYTYPE);
 	if (extractCache !== undefined)
 		socket.emit('TRAY/EXTRACT', extractCache);
 	if (Object.keys(gripperStateCache).length === 0)

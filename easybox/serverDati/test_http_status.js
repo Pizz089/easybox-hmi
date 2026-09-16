@@ -79,7 +79,7 @@ check(r.code === 200 && r.body === 'KO_DUP', 'insertPositionTray riga gia\' pres
 r = call('DELETE /deletePositionsTray/:ID', { ID: '9' }, null, [{ recordset: [{ ris: errorCodes.KO_ACTIVE_ORDER }] }]);
 check(r.code === 200 && r.body === errorCodes.KO_ACTIVE_ORDER, 'delete tasche con ordine attivo -> 200 KO_ACTIVE_ORDER');
 r = call('POST /associateGrating/:floor', { floor: '1' }, { gratingId: 7, source: { floor: 12 } },
-	[{ recordset: [{ ID: 7, PIECE_ID: 21, THICKNESS: null, PX: 40000, PY: 70000, Z_PICK: 15000, Z_PLACE: 15000, TX: 820000, TY: 610000 }] },
+	[{ recordset: [{ ID: 7, PIECE_ID: 21, PID: 21, THICKNESS: null, PX: 40000, PY: 70000, Z_PICK: 15000, Z_PLACE: 15000, TX: 820000, TY: 610000 }] },
 	 { recordset: [{ ris: errorCodes.KO_TRAY_EXTRACTED, n: 0 }] }]);
 check(r.code === 200 && r.body.ris === errorCodes.KO_TRAY_EXTRACTED, 'associa con cassetto estratto -> 200 KO_TRAY_EXTRACTED');
 r = call('GET /updateGrating', { ID: '7', NAME: 'G', DESCR: 'd', GRIPPER_ID: '1', PIECE_ID: '1', SAFEX: '20', SAFEY: '10' }, null, [{ recordset: [{ ris: errorCodes.KO_DUP_NAME }] }]);

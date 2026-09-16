@@ -571,15 +571,16 @@ const TRAY_TEACH_COLS = 'MAG, X_ROT, Y_ROT, Z_ROT, APPROACH_TYPE, APPROACH_X, AP
 // ripiego sul valore della tasca sorgente se il target non e' mai stato
 // insegnato (NULL). Stato vuoto (2), Order_ID 0.
 //
-// Part_Type viene dal MODELLO che si sta associando (GRATING.PIECE_ID), NON
-// dalla tasca sorgente. Prima si copiava s.Part_Type: copiando un cassetto
-// tarato su un codice per associarne un altro della stessa sagoma, le tasche
-// nascevano col codice VECCHIO mentre il pannello mostrava il grigliato
-// nuovo. Dal cambio di modello PLC (16/9) quel campo decide sia QUALE pezzo
-// il robot preleva sia a CHE QUOTA: la vista 4Robot aggancia PIECE via
-// Part_Type e ne somma Z_PICK. Un codice ereditato a sproposito manda il
-// robot sul pezzo sbagliato alla quota di un altro pezzo, in silenzio.
-// Quello che si copia sono le MISURE tarate della griglia, non il contenuto.
+// Part_Type e' il CONTENUTO DICHIARATO del cassetto, passato dal chiamante,
+// NON la tasca sorgente. Prima si copiava s.Part_Type: copiando un cassetto
+// che conteneva un codice per associarne un altro della stessa sagoma, le
+// tasche nascevano col codice VECCHIO mentre il pannello mostrava il
+// grigliato nuovo. Dal cambio di modello PLC (16/9) quel campo decide sia
+// QUALE pezzo il robot preleva sia a CHE QUOTA: la vista 4Robot aggancia
+// PIECE via Part_Type e ne somma Z_PICK. Un codice ereditato a sproposito
+// manda il robot sul pezzo sbagliato alla quota di un altro pezzo, in
+// silenzio. Quello che si copia sono le MISURE tarate della griglia: la
+// geometria e' del grigliato, il contenuto e' del cassetto.
 function copyInsertSql(floor, srcFloor, pieceId) {
 	return `INSERT INTO [POSITION] (PARENT, POS, SUB_POS, STATUS, X, Y, Z, X_CORR, Y_CORR, Z_CORR, X_ROT, Y_ROT, Z_ROT, X_ROT_CORR, Y_ROT_CORR, Z_ROT_CORR, APPROACH_TYPE, APPROACH_X, APPROACH_Y, APPROACH_Z, APPROACH_X_ROT, APPROACH_Y_ROT, APPROACH_Z_ROT, Part_Type, Order_ID)
 		SELECT 'TRAY_${floor}', t.MAG, s.SUB_POS, 2, s.X, s.Y, 0, s.X_CORR, s.Y_CORR, s.Z_CORR,
@@ -624,6 +625,10 @@ router.post('/associateGrating/:floor', (req, res) => {
 	const copy = src.floor !== undefined && src.floor !== null;
 	const srcFloor = copy ? Number(src.floor) : null;
 	const centers = copy ? null : gratingFit.parseCenters(src.centers);
+	// pezzo DICHIARATO come contenuto del cassetto (prima associazione). Se il
+	// chiamante non lo dice si ripiega sul pezzo del modello, per i consumatori
+	// che non sono ancora stati aggiornati.
+	const declared = parseInt(body.pieceId, 10);
 	if (!pred || !Number.isInteger(gratingId) || gratingId < 1 ||
 		(copy && (!trayParentPredicate(srcFloor) || srcFloor === floor)) ||
 		(!copy && !centers)) {
@@ -632,12 +637,27 @@ router.post('/associateGrating/:floor', (req, res) => {
 	}
 	sql.connect(DBf.configDB, function (err) {
 		if (err) { log.error("err associateGrating: " + err); res.status(500).json({ ris: "KO", n: 0 }); return; }
-		// FASE 1 (sola lettura): misure cassetto target e pezzo del modello
-		// DAL DB — il payload non puo' portare misure proprie (client stantio).
+		// FASE 1 (sola lettura): misure cassetto target e misure del PEZZO
+		// DICHIARATO, dal DB — il payload non puo' portare misure proprie
+		// (client stantio).
+		//
+		// DUE COSE DIVERSE, e prima erano la stessa (16/9):
+		//  - GRATING.PIECE_ID e' il pezzo su cui e' stata CALCOLATA la
+		//    geometria: quante tasche, che passo. Finito il calcolo non serve
+		//    piu' a nessuno, e puo' benissimo mancare (grigliati misurati dal
+		//    vero). Lo stesso grigliato ospita piu' particolari: due pezzi di
+		//    sagoma identica con programmi HAAS diversi sono codici distinti.
+		//  - POSITION.Part_Type e' il CONTENUTO del cassetto, dichiarato qui
+		//    dal chiamante. E' quello che il PLC cerca e di cui usa le quote,
+		//    perche' e' quello che c'e' davvero dentro.
+		// Le misure per la verifica d'ingombro e per la protezione anti-urto
+		// si prendono dal pezzo DICHIARATO: e' quello che ci finira' dentro.
+		const declaredPiece = Number.isInteger(declared) && declared > 0 ? declared : null;
+		const pieceRef = declaredPiece !== null ? String(declaredPiece) : 'g.PIECE_ID';
 		const ctx = `SET NOCOUNT ON;
-			SELECT g.ID, g.PIECE_ID, g.THICKNESS, p.X AS PX, p.Y AS PY, p.Z_PICK, p.Z_PLACE, t.X AS TX, t.Y AS TY
+			SELECT g.ID, g.PIECE_ID, g.THICKNESS, p.ID AS PID, p.X AS PX, p.Y AS PY, p.Z_PICK, p.Z_PLACE, t.X AS TX, t.Y AS TY
 			FROM GRATING g
-			LEFT JOIN PIECE p ON p.ID = g.PIECE_ID
+			LEFT JOIN PIECE p ON p.ID = ${pieceRef}
 			CROSS JOIN (SELECT TOP 1 X, Y FROM TRAY WHERE FLOOR_MAG=${floor}) t
 			WHERE g.ID=${gratingId};`;
 		log.info('query ' + ctx);
@@ -657,19 +677,19 @@ router.post('/associateGrating/:floor', (req, res) => {
 				res.json({ ris: errorCodes.KO_Z_BELOW_GRATING, n: 0, min: clr.min, zPick: clr.zPick, zPlace: clr.zPlace, thickness: Number(row.THICKNESS) || 0 });
 				return;
 			}
-			// GUARDIA PEZZO (16/9), valida per ENTRAMBI i rami: le tasche
-			// nascono con Part_Type = PIECE_ID del modello, e la vista del PLC
-			// aggancia PIECE con un join INTERNO su quel campo. Un modello
-			// senza pezzo (PIECE_ID 0/NULL) o che punta a un PIECE inesistente
-			// genererebbe tasche INVISIBILI al robot: il cassetto risulterebbe
-			// associato e pieno sul pannello, e per la cella non esisterebbe.
-			// Meglio non generarle: un'associazione rifiutata si vede, un
-			// cassetto invisibile no. row.PX viene da LEFT JOIN PIECE: NULL
-			// significa che la riga PIECE non c'e'.
-			const pieceId = Math.round(Number(row.PIECE_ID));
-			if (!Number.isInteger(pieceId) || pieceId < 1 || row.PX === null || row.PX === undefined) {
-				log.standard("associateGrating " + errorCodes.KO_GRATING_NO_PIECE + ": grigliato " + gratingId + " PIECE_ID [" + row.PIECE_ID + "]");
-				res.json({ ris: errorCodes.KO_GRATING_NO_PIECE, n: 0, pieceId: Number(row.PIECE_ID) || 0 });
+			// GUARDIA CONTENUTO (16/9), per ENTRAMBI i rami. NON e' una guardia
+			// sul modello: un grigliato senza PIECE_ID e' legittimo, la
+			// geometria non sa quale pezzo ci metteranno. E' una guardia su
+			// cosa va scritto in Part_Type, che il PLC aggancia a PIECE con un
+			// join INTERNO: tasche con un codice che non esiste sono
+			// INVISIBILI alla cella — cassetto pieno sul pannello, inesistente
+			// per il robot. Meglio non generarle: un'associazione rifiutata si
+			// vede, un cassetto invisibile no.
+			// row.PID viene da LEFT JOIN PIECE: NULL = quella riga non c'e'.
+			const pieceId = Math.round(Number(row.PID));
+			if (!Number.isInteger(pieceId) || pieceId < 1) {
+				log.standard("associateGrating " + errorCodes.KO_NO_PIECE_DECLARED + ": cassetto " + floor + " pieceId [" + body.pieceId + "] grigliato " + gratingId + " PIECE_ID [" + row.PIECE_ID + "]");
+				res.json({ ris: errorCodes.KO_NO_PIECE_DECLARED, n: 0 });
 				return;
 			}
 			let insert;

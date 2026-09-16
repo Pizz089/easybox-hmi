@@ -69,7 +69,8 @@ function vmOf(extra) {
 const WIRING = [
 	['DECLARE/ROBOT', 'onDeclRobot'], ['DECLARE/MC1', 'onDeclMc1'],
 	['DECLARE/TRAY', 'onDeclTray'], ['TRAY/EXTRACT', 'onTrayExtract'],
-	['ALARM/MC1', 'onAlarmMc1'], ['ALARM/BOX', 'onAlarmBox'], ['ALARM/ROBOT', 'onAlarmRobot']
+	['ALARM/MC1', 'onAlarmMc1'], ['ALARM/BOX', 'onAlarmBox'], ['ALARM/ROBOT', 'onAlarmRobot'],
+	['DECLARE/TRAYTYPE', 'onDeclTrayType']
 ];
 function wire(vm) {
 	for (const [ev, m] of WIRING) dataStored.WS.socket.on(ev, vm[m]);
@@ -226,6 +227,39 @@ vm.declarePocket(dataStored.status_raw);
 await tick();
 check(cmdsTo('ROBOT').length === 0 && vm.declDialog.step === 2,
 	'cella ripartita col dialog aperto: niente comando, si torna indietro con l\'avviso');
+
+console.log('\n8-bis) CONTENUTO DEL CASSETTO (44): dice DI CHE COSA, non quanto');
+// Le tasche (39) dichiarano quante sono piene; il 44 dichiara il CODICE di
+// tutto il cassetto — quello che il ciclo cerca e di cui usa le quote. Stesso
+// gate del 39 (cassetto fuori + HOLD: il PLC legge DB_BOX_1.ExtractedTray).
+sent.length = 0;
+vm.dataRobot = { STATUS: dataStored.status_hold };
+vm.pockets.typeSel = 1033;
+vm.declareTrayType();
+await tick();
+check(cmdsTo('ROBOT')[0] === '44;1033', 'parte 44;1033 sul canale robot');
+check(vm.pockets.typeBusy === true, 'e si aspetta la conferma prima di dire che e\' fatta');
+fire('DECLARE/TRAYTYPE', '9;1033');
+await tick();
+check(vm.pockets.typeBusy === false && String(dataStored.alert.desc) === 'robot.decl.trayTypeDone', 'eco DECLARE/TRAYTYPE: dichiarato');
+// rifiuto instradato sulla sua sezione, non su quella delle tasche
+vm.declErr.trayType = 0; vm.declErr.pocket = 0;
+vm.pockets.typeBusy = true;
+vm.onAlarmRobot('20001');
+check(vm.declErr.trayType === 20001 && vm.declErr.pocket === 0, '20001 durante il 44 va sulla sezione contenuto');
+vm.declErr.trayType = 0; vm.pockets.typeBusy = false;
+vm.onAlarmRobot('20001');
+check(vm.declErr.pocket === 20001 && vm.declErr.trayType === 0, 'e fuori dal 44 va sulle tasche: si accende dove si stava guardando');
+// senza codice scelto non parte niente
+sent.length = 0; vm.pockets.typeSel = 0;
+vm.declareTrayType();
+await tick();
+check(cmdsTo('ROBOT').length === 0, 'codice non scelto: nessun comando');
+// cella ripartita col dialog aperto: re-check sui dati freschi
+sent.length = 0; vm.pockets.typeSel = 1033; vm.dataRobot = { STATUS: dataStored.status_auto };
+vm.declareTrayType();
+await tick();
+check(cmdsTo('ROBOT').length === 0 && vm.declDialog.step === 2, 'fuori da HOLD non parte: il PLC lo ignorerebbe in silenzio');
 
 console.log('\n9) LA GRIGLIA E\' QUELLA DEL LAYOUT, non una seconda copia');
 const rsrc = readFileSync('src/views/unit/robotView.vue', 'utf8');

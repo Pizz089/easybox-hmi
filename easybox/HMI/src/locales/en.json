@@ -60,6 +60,23 @@
     "retry": "Retry"
   },
   "layout": {
+    "type": {
+      "button": "Declare content",
+      "title": "Content of tray {floor}",
+      "current": "Currently declared: {code}",
+      "none": "no code (the cycle cannot see this tray)",
+      "choose": "Contains",
+      "what": "All {n} pockets switch to code {code}.",
+      "hint": "The cycle looks for raw parts by code: from now on this tray will serve orders for that code, with that part’s heights. It does not change how many pockets are full.",
+      "confirm": "Declare",
+      "done": "Tray declared: {n} pockets, code {code}",
+      "err": {
+        "activeOrder": "An order is running on this tray and the PLC is reading it right now. Stop production and repeat.",
+        "extracted": "Tray out or moving. With the tray open, declare it from the robot page (Reset cell state); from here it is done with the tray closed.",
+        "noPiece": "Invalid part code: it does not exist. Pick one from the list.",
+        "generic": "Declaration failed. Try again; if it happens again, call support."
+      }
+    },
     "dupRows": "ANOMALY on tray {floor}: {n} duplicated rows in the database (same SUB_POS). Only one position per SUB_POS is shown — clean [POSITION] before producing: duplicates skew the PLC count.",
     "reset": {
       "button": "Reset tray state",
@@ -235,6 +252,7 @@
         "dissociate": "Dissociate the grating from tray {n}"
       },
       "chooseGrating": "Grating model",
+      "choosePiece": "What this tray will contain",
       "currentGrating": "Current grating",
       "sourceHint": "Pockets will be COPIED from a tray already taught with the same grating (suggested: the one with the most pockets in the database).",
       "copyFrom": "Copy from tray {n} ({k} pockets)",
@@ -259,7 +277,7 @@
       "err": {
         "load": "Data loading failed.",
         "noModel": "The grating of this tray no longer exists in the catalog: use Replace.",
-        "noPiece": "The grating model does not say which part it holds: the pockets would be invisible to the robot. Set the part code on the grating and try again.",
+        "noPiece": "What the tray will contain has not been declared: without a part code the pockets would be invisible to the cycle. Pick it above.",
         "emptyGrid": "No pocket can be generated with these sizes.",
         "outOfTray": "Grid OUTSIDE the tray outline (exceeds by {w} mm along Y, {h} mm along X): no pocket written.",
         "extracted": "Refused: the tray appears extracted or moving (TRAY.EXTRACT). If it is inside, the PLC did not update the state.",
@@ -287,8 +305,9 @@
     "safeY": "Gap between parts Y",
     "pitchX": "Resulting pitch X (center-to-center)",
     "pitchY": "Resulting pitch Y (center-to-center)",
-    "importPieceHint": "Which part sits in these pockets. One outline holds every part with that footprint: only whoever has the tray in front of them knows the code.",
-    "importNoPiece": "Choose the part code: without it the grating would generate pockets the robot cannot see.",
+    "refPart": "Reference part",
+    "refPartNone": "not given",
+    "refPartHint": "Optional: which part these pockets were measured on. It is not the tray content — that is declared when the grating is associated, and changed from the tray page.",
     "part": "Code type",
     "comands": "Comands",
     "sizes": "Size grating",
@@ -618,6 +637,11 @@
       "send": "DECLARE",
       "waiting": "Waiting for PLC confirmation…",
       "noEcho": "No confirmation from the PLC: check and retry",
+      "trayType": "Tray content",
+      "trayTypeLabel": "Contains",
+      "trayTypeSend": "Declare",
+      "trayTypeHint": "The part code of every pocket in this tray. The pockets below say HOW MUCH is in it; this says WHAT.",
+      "trayTypeDone": "Tray content declared",
       "done": "Cell state declared",
       "sectionRobot": "Robot: gripper and claws",
       "sectionMc": "Machine: part in vice",

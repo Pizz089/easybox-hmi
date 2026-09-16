@@ -60,6 +60,23 @@
     "retry": "Riprova"
   },
   "layout": {
+    "type": {
+      "button": "Dichiara contenuto",
+      "title": "Contenuto del cassetto {floor}",
+      "current": "Adesso dichiara: {code}",
+      "none": "nessun codice (il ciclo non vede questo cassetto)",
+      "choose": "Contiene",
+      "what": "Tutte le {n} tasche passano al codice {code}.",
+      "hint": "Il ciclo cerca i grezzi per codice: da qui in poi questo cassetto servirà gli ordini di quel codice, con le quote di quel pezzo. Non cambia quante tasche sono piene.",
+      "confirm": "Dichiara",
+      "done": "Cassetto dichiarato: {n} tasche, codice {code}",
+      "err": {
+        "activeOrder": "C'è un ordine in lavorazione su questo cassetto: il PLC lo sta leggendo adesso. Fermare la produzione e ripetere.",
+        "extracted": "Cassetto fuori o in manovra. A cassetto aperto si dichiara dal pannello robot (Reimposta stato cella); da qui si fa a cassetto chiuso.",
+        "noPiece": "Codice pezzo non valido: non esiste in anagrafica. Sceglierne uno dall'elenco.",
+        "generic": "Dichiarazione non riuscita. Riprovare; se l'errore torna, chiamare l'assistenza."
+      }
+    },
     "dupRows": "ANOMALIA sul cassetto {floor}: {n} righe duplicate a database (stesso SUB_POS). Mostrata una sola tasca per posizione — bonificare [POSITION] prima di produrre: i duplicati falsano il conteggio del PLC.",
     "reset": {
       "button": "Azzera stato cassetto",
@@ -235,6 +252,7 @@
         "dissociate": "Dissocia il grigliato dal cassetto {n}"
       },
       "chooseGrating": "Modello di grigliato",
+      "choosePiece": "Cosa conterrà questo cassetto",
       "currentGrating": "Grigliato attuale",
       "sourceHint": "Le tasche verranno COPIATE da un cassetto già tarato con lo stesso grigliato (proposto: quello con più tasche a database).",
       "copyFrom": "Copia da cassetto {n} ({k} tasche)",
@@ -259,7 +277,7 @@
       "err": {
         "load": "Caricamento dati non riuscito.",
         "noModel": "Il grigliato di questo cassetto non esiste più nel catalogo: usare Sostituisci.",
-        "noPiece": "Il modello grigliato non dice quale pezzo ospita: le tasche nascerebbero invisibili al robot. Assegnare il codice pezzo al grigliato e riprovare.",
+        "noPiece": "Non è stato dichiarato cosa conterrà il cassetto: senza codice pezzo le tasche sarebbero invisibili al ciclo. Sceglierlo qui sopra.",
         "emptyGrid": "Nessuna tasca generabile con queste misure.",
         "outOfTray": "Griglia FUORI dal contorno del cassetto (sfora {w} mm lungo Y, {h} mm lungo X): nessuna tasca scritta.",
         "extracted": "Rifiutato: il cassetto risulta estratto o in manovra (TRAY.EXTRACT). Se è dentro, il PLC non ha aggiornato lo stato.",
@@ -287,8 +305,9 @@
     "safeY": "Distanza tra i pezzi Y",
     "pitchX": "Interasse X (centro-centro)",
     "pitchY": "Interasse Y (centro-centro)",
-    "importPieceHint": "Quale particolare sta in queste tasche. Una sagoma ospita tutti i pezzi con quell'ingombro: il codice lo sa solo chi ha il cassetto davanti.",
-    "importNoPiece": "Scegliere il codice pezzo: senza, il grigliato genererebbe tasche che il robot non vede.",
+    "refPart": "Pezzo di riferimento",
+    "refPartNone": "non indicato",
+    "refPartHint": "Facoltativo: su quale particolare sono state misurate queste tasche. Non è il contenuto del cassetto — quello si dichiara quando il grigliato viene associato, e si cambia dalla pagina del cassetto.",
     "part": "Codice pezzo",
     "comands": "Comandi",
     "sizes": "Grandezze grigliato",
@@ -618,6 +637,11 @@
       "send": "DICHIARA",
       "waiting": "In attesa di conferma dal PLC…",
       "noEcho": "Nessuna conferma dal PLC: verificare e riprovare",
+      "trayType": "Contenuto del cassetto",
+      "trayTypeLabel": "Contiene",
+      "trayTypeSend": "Dichiara",
+      "trayTypeHint": "Il codice pezzo di tutte le tasche di questo cassetto. Le tasche qui sotto dicono QUANTO c'è; questo dice DI CHE COSA.",
+      "trayTypeDone": "Contenuto del cassetto dichiarato",
       "done": "Stato cella dichiarato",
       "sectionRobot": "Robot: pinza e chele",
       "sectionMc": "Macchina: pezzo in morsa",

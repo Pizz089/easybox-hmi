@@ -5,7 +5,7 @@
     import TrayPockets from '../components/layout/TrayPockets.vue'
     import { ROBOT_AXIS_ALONG } from '../util/gratingAxes.js'
     import { loadTrayPockets } from '../util/trayPockets.js'
-    import { KO_ACTIVE_ORDER } from '../util/errorCodes.js'
+    import { KO_ACTIVE_ORDER, KO_TRAY_EXTRACTED, KO_NO_PIECE_DECLARED } from '../util/errorCodes.js'
 </script>
 
 
@@ -64,6 +64,17 @@
             <button class="pure-button-micromission specialCMD" @click="openTrayReset()">
                 {{ $t('layout.reset.button') }}
             </button>
+            <!-- DICHIARA CONTENUTO (16/9): il codice pezzo del cassetto e'
+                 POSITION.Part_Type, ed e' quello che il ciclo cerca. Finora
+                 si poteva cambiare solo riassociando il grigliato, cioe'
+                 rifacendo l'attrezzaggio per svuotare un cassetto e
+                 riempirlo con un altro particolare. Il grigliato e' la
+                 geometria e non cambia: cambia cosa c'e' dentro. Sta qui
+                 perche' questa e' la pagina del CONTENUTO del cassetto, la
+                 stessa dove si dichiara quali tasche sono piene. -->
+            <button class="pure-button-micromission specialCMD" @click="openTrayType()">
+                {{ $t('layout.type.button') }}
+            </button>
         </div>
 
         <div v-if="trayReset.open" class="mission-dialog-overlay">
@@ -81,6 +92,42 @@
                     </div>
                     <div class="pure-u-1-2">
                         <button style="width:100%" class="btn-ghost" @click="trayReset.open=false">
+                            {{ $t('robot.dialog.cancel') }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- si sceglie il codice, e la conferma dice quante tasche cambiano e
+             che il ciclo guardera' quel codice: non e' un'etichetta -->
+        <div v-if="trayType.open" class="mission-dialog-overlay">
+            <div class="mission-dialog">
+                <h3 class="command-section-title">{{ $t('layout.type.title', { floor: $route.params.floorMag }) }}</h3>
+                <div class="reset-text">{{ $t('layout.type.current', { code: currentTypeLabel }) }}</div>
+                <div class="type-field">
+                    <label for="tray-type">{{ $t('layout.type.choose') }}</label>
+                    <select id="tray-type" v-model.number="trayType.pieceId" class="type-select">
+                        <option :value="0">-</option>
+                        <option v-for="p in pieces" :key="p.ID" :value="p.ID">
+                            #{{ p.ID }} {{ (p.FAMILY || '').trim() }} - {{ (p.DESCR || '').trim() }}
+                        </option>
+                    </select>
+                </div>
+                <div class="reset-warn" v-if="trayType.pieceId > 0">
+                    {{ $t('layout.type.what', { n: listPz.length, code: trayType.pieceId }) }}
+                </div>
+                <div class="reset-text">{{ $t('layout.type.hint') }}</div>
+                <div class="reset-warn" v-if="trayType.error">{{ $t(trayType.error) }}</div>
+                <div class="pure-g">
+                    <div class="pure-u-1-2">
+                        <button style="width:100%" class="button_pressed"
+                            :class="[trayType.busy || !(trayType.pieceId > 0) ? 'pure-button-disable' : 'pure-button-mission']"
+                            @click="(trayType.busy || !(trayType.pieceId > 0)) ? '' : confirmTrayType()">
+                            {{ $t('layout.type.confirm') }}
+                        </button>
+                    </div>
+                    <div class="pure-u-1-2">
+                        <button style="width:100%" class="btn-ghost" @click="trayType.open=false">
                             {{ $t('robot.dialog.cancel') }}
                         </button>
                     </div>
@@ -112,7 +159,10 @@
                 radius:0,
                 robotSide:false,   //visualizzazione del layout da parte del robot o dell'operatore
                 avanzamento:0,
-                trayReset: { open: false, busy: false }   // dialog AZZERA STATO CASSETTO
+                trayReset: { open: false, busy: false },  // dialog AZZERA STATO CASSETTO
+                // dialog DICHIARA CONTENUTO: scrive Part_Type su tutte le tasche
+                trayType: { open: false, busy: false, pieceId: 0, error: '' },
+                pieces: []
             }
         },
         methods: {
@@ -136,6 +186,48 @@
                         this.radius = d.radius;
                         this.avanzamento = 0;
                     });
+            },
+            getPieces() {
+                fetch(dataStored.server + 'api/conf/piece/show/all', { method: 'GET' })
+                    .then(r => { if (!r.ok) throw new Error('Network response was not ok'); return r.json(); })
+                    .then(d => { this.pieces = (d || []).filter(p => p.X > 0 && p.Y > 0); })
+                    .catch(e => { console.info(e); this.pieces = []; });
+            },
+            openTrayType() {
+                this.trayType.open = true;
+                this.trayType.busy = false;
+                this.trayType.error = '';
+                // si parte dal codice attuale: si CONFERMA o si cambia, non si
+                // riparte da vuoto con la lista davanti
+                this.trayType.pieceId = this.listPz.length ? (Number(this.listPz[0].partType) || 0) : 0;
+            },
+            confirmTrayType() {
+                if (this.trayType.busy || !(this.trayType.pieceId > 0)) return;
+                this.trayType.busy = true;
+                this.trayType.error = '';
+                fetch(dataStored.server + 'api/conf/position/declareTrayType/' +
+                      this.$route.params.floorMag + '/' + this.trayType.pieceId, { method: 'POST' })
+                    .then(r => { if (!r.ok) throw new Error('Network response was not ok'); return r.json(); })
+                    .then(out => {
+                        this.trayType.busy = false;
+                        // (http-status) l'esito applicativo viaggia nel CORPO: va
+                        // letto, altrimenti un rifiuto passa per dichiarazione fatta
+                        if (!out || out.ris != 'OK') {
+                            const code = out ? out.ris : 'KO';
+                            this.trayType.error =
+                                code == KO_ACTIVE_ORDER      ? 'layout.type.err.activeOrder' :
+                                code == KO_TRAY_EXTRACTED    ? 'layout.type.err.extracted' :
+                                code == KO_NO_PIECE_DECLARED ? 'layout.type.err.noPiece' :
+                                                               'layout.type.err.generic';
+                            return;
+                        }
+                        this.trayType.open = false;
+                        dataStored.alert.title = 'INFO';
+                        dataStored.alert.desc = this.$t('layout.type.done', { n: out.positions, code: this.trayType.pieceId });
+                        dataStored.alert.type = 'message';
+                        this.getDataTable();
+                    })
+                    .catch(e => { console.info(e); this.trayType.busy = false; this.trayType.error = 'layout.type.err.generic'; });
             },
             changeSide(){
                 this.robotSide =! this.robotSide;
@@ -302,10 +394,20 @@
             // fra assi robot e assi disegno (width <-> Y, height <-> X). La
             // conversione la fa TrayPockets con robotToDrawing: qui non c'e'
             // nessuna formula, e non deve tornarci.
-            robotAxisAlong() { return ROBOT_AXIS_ALONG; }
+            robotAxisAlong() { return ROBOT_AXIS_ALONG; },
+            // codice dichiarato ADESSO: viene dalle tasche, non dal grigliato.
+            // 0 o assente = nessun codice, cassetto invisibile al ciclo: si
+            // dice, non si mostra un numero che sembra un dato.
+            currentTypeLabel() {
+                const t = this.listPz.length ? Number(this.listPz[0].partType) : 0;
+                if (!(t > 0)) return this.$t('layout.type.none');
+                const p = this.pieces.find(x => x.ID == t);
+                return '#' + t + (p ? ' ' + String(p.FAMILY || '').trim() : '');
+            }
         },
         mounted(){
             this.getDataTable()
+            this.getPieces()
         }
     }
 </script>    

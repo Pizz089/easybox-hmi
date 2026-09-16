@@ -14,7 +14,7 @@ export const KO_IN_USE             = "KO_IN_USE";             // grigliato in us
 export const KO_DUP_NAME           = "KO_DUP_NAME";           // nome grigliato duplicato
 // (16/9) grigliato senza pezzo: genererebbe tasche con Part_Type non agganciabile
 // a nessun PIECE, quindi invisibili al robot. Associazione rifiutata.
-export const KO_GRATING_NO_PIECE  = "KO_GRATING_NO_PIECE";
+export const KO_NO_PIECE_DECLARED = "KO_NO_PIECE_DECLARED";
 // (grating-thickness 14/9) Z_PICK/Z_PLACE del pezzo sotto spessore grigliato + franco
 export const KO_Z_BELOW_GRATING   = "KO_Z_BELOW_GRATING";   // generazione rifiutata dal server
 // (rig-two-aspects 15/9) ordine senza geometria: il PLC non saprebbe a che quota depositare

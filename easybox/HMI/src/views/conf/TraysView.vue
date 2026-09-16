@@ -10,7 +10,7 @@
     // stessa util dell'anteprima modello, ingombro e avviso taratura
     import { buildGrid, gridCenters, taughtMismatch, pickClearance } from '../../util/gratingGrid.js'
     import { gridFit } from '../../util/gratingAxes.js'
-    import { KO_TRAY_EXTRACTED, KO_ACTIVE_ORDER, KO_ALREADY_ASSOCIATED, KO_SOURCE_EMPTY, KO_OUT_OF_TRAY, KO_Z_BELOW_GRATING, KO_GRATING_NO_PIECE } from '../../util/errorCodes.js'
+    import { KO_TRAY_EXTRACTED, KO_ACTIVE_ORDER, KO_ALREADY_ASSOCIATED, KO_SOURCE_EMPTY, KO_OUT_OF_TRAY, KO_Z_BELOW_GRATING, KO_NO_PIECE_DECLARED } from '../../util/errorCodes.js'
     import StatoElenco from '../../components/StatoElenco.vue'
     import { caricaElenco, STATO } from '../../util/caricaElenco.js'
     const el = ref()
@@ -309,6 +309,24 @@
             </template>
             <div class="teach-hint" v-else>{{ $t('tray.assoc.currentGrating') }}: <strong>{{ assoc.currentName }}</strong></div>
 
+            <!-- (16/9) COSA CONTERRA' IL CASSETTO. Il grigliato porta la
+                 GEOMETRIA (quante tasche, che passo) e basta: lo stesso
+                 grigliato ospita piu' particolari, due pezzi di sagoma
+                 identica con programmi HAAS diversi sono codici distinti.
+                 Il contenuto e' un'altra cosa, e va detto: finisce in
+                 POSITION.Part_Type, che e' cio' che il ciclo cerca e di cui
+                 usa le quote. Si puo' cambiare dopo senza riassociare, dalla
+                 pagina del cassetto. -->
+            <template v-if="assoc.mode!='dissociate'">
+              <div class="teach-hint">{{ $t('tray.assoc.choosePiece') }}</div>
+              <select class="pure-u-1" v-model.number="assoc.pieceId" @change="onAssocGratingChange()">
+                <option :value="0"> </option>
+                <option v-for="p in assoc.pieces" :key="p.ID" :value="p.ID">
+                  #{{ p.ID }} {{ (p.FAMILY||'').trim() }} - {{ (p.DESCR||'').trim() }}
+                </option>
+              </select>
+            </template>
+
             <template v-if="assoc.mode!='dissociate' && assoc.gratingId>0">
               <template v-if="assoc.mode!='regenerate' && assoc.candidates.length">
                 <div class="teach-hint">{{ $t('tray.assoc.sourceHint') }}</div>
@@ -390,6 +408,7 @@ export default {
                 gratingId: 0,        // modello scelto
                 positions: [],       // [POSITION] TRAY_% (conteggi sorgenti, avviso taratura)
                 pieces: [],          // anagrafica PIECE (ingombro per la generazione)
+                pieceId: 0,          // CONTENUTO dichiarato del cassetto -> POSITION.Part_Type
                 candidates: [],      // sorgenti [{floor, n}] ordinate per n DESC (prima = piu' completa)
                 sourceFloor: null,   // sorgente scelta; null = genera dall'header
                 preview: null,       // { n_row, n_cln, tot, centers } (generazione)
@@ -501,6 +520,7 @@ export default {
             a.open = true; a.mode = mode; a.floor = dt.FLOOR_MAG; a.tray = dt;
             a.currentName = (dt.FAMILY || '').trim(); a.currentCount = 0;
             a.gratingId = 0; a.gratings = []; a.positions = []; a.pieces = [];
+            a.pieceId = 0;
             a.candidates = []; a.sourceFloor = null; a.preview = null; a.mismatch = null;
             a.ack = false; a.error = ''; a.errorParams = {}; a.busy = false;
             const get = url => fetch(dataStored.server + url, { method: 'GET' })
@@ -511,6 +531,12 @@ export default {
                     a.positions = (positions || []).filter(p => this.trayFloorOf(p) > 0);
                     a.pieces = pieces || [];
                     a.currentCount = this.pocketsOf(a.floor).length;
+                    // contenuto: si riparte dal codice gia' dichiarato nelle
+                    // tasche (se c'e'), non da vuoto — su Sostituisci e
+                    // Rigenera di solito il contenuto non cambia, cambia la
+                    // geometria. Va letto QUI: nel reset le posizioni non
+                    // erano ancora arrivate e sarebbe sempre stato 0.
+                    a.pieceId = Number((this.pocketsOf(a.floor)[0] || {}).Part_Type) || 0;
                     if (mode == 'regenerate' || mode == 'dissociate') {
                         // modello FISSO = quello del cassetto (FAMILY = NAME)
                         const g = a.gratings.find(x => (x.NAME || '').trim() == a.currentName);
@@ -534,13 +560,20 @@ export default {
             a.error = ''; a.errorParams = {};
             const g = a.gratings.find(x => x.ID == a.gratingId);
             if (!g || a.mode == 'dissociate') return;
+            // proposta di contenuto: il pezzo su cui e' stata calcolata la
+            // geometria, se il modello ce l'ha. E' una proposta da confermare,
+            // non una verita': lo stesso grigliato ospita piu' particolari.
+            if (!(a.pieceId > 0) && Number(g.PIECE_ID) > 0) a.pieceId = Number(g.PIECE_ID);
             // (grating-thickness 14/9) protezione anti-urto PRIMA di qualunque
             // sorgente o anteprima, in TUTTI i modi (copia compresa): Z_PICK e
             // Z_PLACE del pezzo del modello >= spessore grigliato + 1 mm.
             // Spessore NULL/0 = non misurato = nessun vincolo. Il server
             // ripete il controllo sui valori del DB.
             {
-                const piece = a.pieces.find(p => p.ID == g.PIECE_ID);
+                // (16/9) le misure che contano sono quelle del pezzo che ci
+                // finira' DENTRO: il pezzo del modello e' solo il ripiego di
+                // quando il contenuto non e' ancora stato scelto
+                const piece = a.pieces.find(p => p.ID == (a.pieceId > 0 ? a.pieceId : g.PIECE_ID));
                 const c = pickClearance({ thickness: g.THICKNESS, zPick: piece ? piece.Z_PICK : 0, zPlace: piece ? piece.Z_PLACE : 0 });
                 if (piece && !c.ok) {
                     a.error = 'tray.assoc.err.thickness';
@@ -564,7 +597,8 @@ export default {
         // ripete dal DB), avviso taratura in "Rigenera".
         buildAssocPreview(g){
             const a = this.assoc;
-            const piece = a.pieces.find(p => p.ID == g.PIECE_ID);
+            // idem qui: la griglia si verifica sull'ingombro del contenuto
+            const piece = a.pieces.find(p => p.ID == (a.pieceId > 0 ? a.pieceId : g.PIECE_ID));
             if (!piece || !(piece.X > 0) || !(piece.Y > 0)) { a.error = 'tray.assoc.err.noPiece'; return; }
             // (z-pick 14/9) Z_PICK = quota di presa dal fondo: con 0 ogni tasca
             // generata e' imprendibile (il robot chiuderebbe sul fondo). Blocco.
@@ -593,6 +627,7 @@ export default {
             } else {
                 url = 'api/conf/tray/associateGrating/' + a.floor;
                 body = { gratingId: a.gratingId, replace: a.mode != 'associate',
+                         pieceId: a.pieceId,
                          source: a.sourceFloor != null ? { floor: a.sourceFloor } : { centers: a.preview.centers } };
             }
             return fetch(dataStored.server + url, { method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -618,7 +653,7 @@ export default {
                     map[KO_Z_BELOW_GRATING] = 'tray.assoc.err.thickness';
                     // (16/9) il modello non dice che pezzo ospita: le tasche
                     // nascerebbero invisibili al robot, quindi non nascono
-                    map[KO_GRATING_NO_PIECE] = 'tray.assoc.err.noPiece';
+                    map[KO_NO_PIECE_DECLARED] = 'tray.assoc.err.noPiece';
                     a.error = map[code] || 'tray.assoc.err.generic';
                     a.errorParams = code == KO_OUT_OF_TRAY
                         ? { w: Math.ceil(out.overW || 0), h: Math.ceil(out.overH || 0) }
@@ -762,6 +797,9 @@ export default {
             if (!a.open || a.busy || a.error) return false;
             if (a.mode == 'dissociate') return true;
             if (!(a.gratingId > 0)) return false;
+            // senza contenuto dichiarato le tasche nascerebbero con un
+            // Part_Type che non aggancia nessun PIECE: invisibili al ciclo
+            if (!(a.pieceId > 0)) return false;
             if (a.sourceFloor != null) return true;
             if (!a.preview) return false;
             if (a.mismatch && !a.ack) return false;

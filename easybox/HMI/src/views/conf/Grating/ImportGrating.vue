@@ -56,22 +56,23 @@ const el = ref()
             </button>
           </div>
 
-          <!-- (16/9) IL CODICE PEZZO SI CHIEDE. Prima questa pagina scriveva
-               PIECE_ID = 0 di suo: il grigliato nasceva senza pezzo, e le
-               tasche generate da quel modello prendevano Part_Type = 0. La
-               vista del PLC aggancia PIECE con un join INTERNO su Part_Type,
-               quindi quelle tasche non esistevano per la cella. Una sagoma
-               ospita tutti i pezzi con quell'ingombro: quale sia, lo sa solo
-               chi ha il cassetto davanti. -->
-          <label class="mt" style="text-align:center">{{ $t('grating.part') }}</label>
+          <!-- (16/9) PEZZO DI RIFERIMENTO, FACOLTATIVO. Serve solo a ricordare
+               su quale particolare sono state misurate queste tasche: la
+               geometria qui nasce dalle misure reali, non da un calcolo
+               sull'ingombro del pezzo, quindi il campo non e' necessario.
+               NON e' il contenuto del cassetto: quello si dichiara quando il
+               grigliato viene associato, e si cambia quando serve dalla
+               pagina del cassetto. Lo stesso grigliato ospita piu'
+               particolari. -->
+          <label class="mt" style="text-align:center">{{ $t('grating.refPart') }}</label>
           <select class="pure-u-1" name="partList" v-model="grating.pieceIndex"
             :disabled="dataStored.userLevel < 0">
-            <option :value="0"> </option>
+            <option :value="0">{{ $t('grating.refPartNone') }}</option>
             <option v-for="(p, index) in partList" :key="p.ID" :value="index + 1">
               {{ p.FAMILY }} - {{ p.DESCR }}
             </option>
           </select>
-          <small class="piece-hint">{{ $t('grating.importPieceHint') }}</small>
+          <small class="piece-hint">{{ $t('grating.refPartHint') }}</small>
         </fieldset>
       </form>
 
@@ -140,13 +141,9 @@ const el = ref()
       
       <!----------------------------------->
       <div class="pure-u-1 save-row">
-        <!-- senza pezzo NON si salva: un grigliato senza codice produce
-             cassetti invisibili al robot, ed e' peggio di un import fallito -->
-        <button class="pure-button" :class="pieceChosen ? 'pure-button-primary' : 'pure-button-disable'"
-          @click="pieceChosen ? saveData() : ''">
+        <button class="pure-button pure-button-primary" @click="saveData()">
           Save
         </button>
-        <small class="piece-missing" v-if="!pieceChosen">{{ $t('grating.importNoPiece') }}</small>
       </div>
       <!----------------------------------->
       <div class="stats" v-if="ready">
@@ -273,12 +270,6 @@ export default {
   },
 
   computed: {
-    // il pezzo va SCELTO: senza, il modello nascerebbe con PIECE_ID 0 e i
-    // cassetti che ne derivano sarebbero invisibili al robot
-    pieceChosen() {
-      const i = Number(this.grating.pieceIndex);
-      return Number.isInteger(i) && i > 0 && !!(this.partList || [])[i - 1];
-    },
     canCalc() {
       return this.widthPiece > 0 &&
         this.heightPiece > 0 &&
@@ -471,14 +462,14 @@ export default {
     setGratingAssociated(){ this.gratingAssociated=!this.gratingAssociated; }, 
 
     saveData() {
-      // RIFIUTO invece di scrivere zero: senza codice pezzo il modello
-      // genererebbe tasche che il robot non vede (vedi il commento sul
-      // selettore). Il bottone e' gia' spento, questo e' il re-check.
-      if (!this.pieceChosen) return;
       this.updateGratingInTray()
 
       this.grating.GRIPPER_ID=0;
-      this.grating.PIECE_ID = this.partList[this.grating.pieceIndex - 1].ID;
+      // pezzo di riferimento, se indicato: e' memoria di come sono state
+      // misurate le tasche, non il contenuto del cassetto. 0 = non indicato,
+      // ed e' legittimo — la geometria non sa quale pezzo ci metteranno.
+      const i = Number(this.grating.pieceIndex);
+      this.grating.PIECE_ID = (i > 0 && this.partList[i - 1]) ? this.partList[i - 1].ID : 0;
       this.grating.SAFEX=this.SAFEX;
       this.grating.SAFEY=this.SAFEY;
 
