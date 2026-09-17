@@ -1,3 +1,36 @@
+-- ###########################################################################
+-- ATTENZIONE — SCRITTO SU DEV, NON CORRISPONDE ALLA CELLA. SUPERSEDED.
+-- (aggiunto il 2026-09-17, dopo averci sbattuto contro)
+--
+-- L'ALTER VIEW qui sotto NON e' la vista che gira in cella. Le due sono
+-- sempre state diverse nella derivata che calcola PRODUCTED:
+--
+--     questo file (DEV)                 cella (letta 2026-09-17)
+--     ------------------------------    --------------------------------
+--     on w.ORDER_ID = x.Order_ID        on w.ID = x.Order_ID
+--     group by Order_ID, status         group by Order_ID
+--     count(Order_ID)                   count(*)
+--
+-- Non e' un refuso di trascrizione: il blocco ROLLBACK in coda, salvato da
+-- dev il 2026-07-20, ha gia' la stessa forma. Dev e cella erano divergenti
+-- PRIMA di questo cantiere; v1 e v2 hanno modificato correttamente le
+-- colonne su entrambe, ma ognuna sulla propria derivata.
+--
+-- In cella w.ID e' la chiave dell'ordine, quella che POSITION.Order_ID
+-- contiene davvero; WORKORDER.ORDER_ID e' NULL su tutte le righe, colonna
+-- morta. Il testo dev, se applicato in cella, ROMPEREBBE il conteggio
+-- (PRODUCTED sempre 0) e potrebbe duplicare le righe degli ordini con
+-- tasche in stati misti. La guardia aggiunta sotto lo impedisce.
+--
+-- STATO CORRENTE DELLA VISTA IN CELLA: lo definisce
+--   workorders-producted-finished.sql  (v3, PRODUCTED conta solo status 5).
+-- Questo file resta come storia di v1/v2 e per dev. NON rieseguirlo in cella.
+--
+-- REGOLA, da qui in avanti: prima di scrivere una ALTER VIEW per la cella,
+-- leggere la definizione REALE con
+--   SELECT definition FROM sys.sql_modules WHERE object_id = OBJECT_ID('<vista>');
+-- e partire da QUELLA. Gli script nel repo non sono la fonte di verita'.
+-- ###########################################################################
 -- ===========================================================================
 -- workorders-view-pp.sql — cantiere AG fase 2, decisioni B (C1) + A (C2)
 -- v2: rappresenta lo STATO FINALE INTERO della vista WORKORDERS.
@@ -49,7 +82,15 @@
 -- ===========================================================================
 
 DECLARE @def NVARCHAR(MAX) = OBJECT_DEFINITION(OBJECT_ID('WORKORDERS'));
-IF @def LIKE '%left join GRIPPER%'
+-- (2026-09-17) la vista di cella aggancia la derivata a w.ID: applicarci il
+-- testo dev qui sotto azzererebbe PRODUCTED. Meglio fermarsi.
+IF REPLACE(REPLACE(REPLACE(ISNULL(@def, N''), CHAR(13), N' '), CHAR(10), N' '), CHAR(9), N' ')
+   LIKE N'%x on w.ID = x.Order_ID%'
+BEGIN
+    PRINT 'workorders-view-pp: questa e'' la vista di CELLA (derivata su w.ID).';
+    PRINT 'Questo script e'' scritto su DEV e la romperebbe. FERMO — vedi testata.';
+END
+ELSE IF @def LIKE '%left join GRIPPER%'
 BEGIN
     PRINT 'workorders-view-pp: v2 gia'' applicata, nessuna modifica.';
 END

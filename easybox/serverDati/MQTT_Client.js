@@ -16,10 +16,10 @@ console.log("DEBUG HAAS_MC1_IP=", JSON.stringify(process.env.HAAS_MC1_IP));
 const client = mqtt.connect(process.env.MQTT_BROKER_URL || "mqtt://HMI:HMI@127.0.0.1:9001",
 							{clientId:'API_' + Math.random().toString(16).substr(2, 8),qos:2});
 
-// Nome tabella ordini di lavoro. Il PLC legge/scrive su 'WORKORDERS' (con la S;
-// esiste anche WORKORDERS_COUNTER con lo stesso prefisso). Centralizzato per
-// evitare che backend e PLC operino su tabelle diverse.
-const TABLE_WORKORDERS = 'WORKORDERS';
+// Stati ordine/tasca usati dalla chiusura automatica (stessi numeri di
+// _STATUS_TYPE e di dataStored: 3 in lavorazione, 5 finito)
+const STATUS_WORKING = 3;
+const STATUS_FINISHED = 5;
 
 // Brand macchina selezionabile a runtime (DB_MC<n> lato PLC, giugno 2026).
 // Range valido di brandID (1..16, id 3..16 riservati). Deve combaciare con
@@ -1027,12 +1027,30 @@ function handleHaasCmd(mcNum, message, packet) {
 }
 
 // ============================================================================
-// CYCLE_DONE — avanzamento produzione a fine ciclo.
+// CYCLE_DONE — fine ciclo macchina. NON TOCCA PIU' IL DATABASE (17/9).
 //
 // Il PLC pubblica su FROM_PLANT/CYCLE_DONE/<MC> con payload = ID del workorder
-// appena prodotto. Qui incrementiamo PRODUCTED e, se raggiunta QUANTITY, marchiamo
-// l'ordine FINISHED (STATUS=5), poi notifichiamo la HMI con PRODUCTION/CHANGED
-// (stesso evento usato dagli altri cambi di stato produzione).
+// appena lavorato. Qui c'erano due UPDATE, e nessuno dei due poteva funzionare:
+//
+//   UPDATE WORKORDERS SET PRODUCTED = PRODUCTED + 1 ...
+//     impossibile. PRODUCTED non e' una colonna: e' il conteggio delle tasche
+//     finite calcolato dalla vista. SQL Server rifiutava con
+//     "Update or insert of view or function 'WORKORDERS' failed because it
+//     contains a derived or constant field" — verificato nel log di cella.
+//     E i due statement stavano nello STESSO batch: il primo falliva, il
+//     callback entrava nel ramo d'errore e il secondo non partiva mai. Da qui
+//     l'ordine che restava a STATUS=3 con PRODUCTED gia' uguale a QUANTITY.
+//
+//   UPDATE WORKORDERS SET STATUS = 5 ... AND PRODUCTED >= QUANTITY
+//     giusto nell'intento, sbagliato nel momento: PRODUCTED sale al DEPOSITO
+//     del finito nel cassetto, che avviene DOPO il fine ciclo macchina.
+//     All'ultimo pezzo il conteggio e' indietro di uno e la condizione non
+//     scatta. Migrato in setPositionStatus, dove il conteggio e' gia'
+//     aggiornato per costruzione.
+//
+// Resta il log (l'arrivo del messaggio e' gia' tracciato a monte da
+// client.on('message')) e la notifica alla tabella di produzione, che serve al
+// pannello per rinfrescare l'avanzamento.
 // ============================================================================
 function handleCycleDone(mcTopic, orderID) {
 	// Validazione: orderID deve essere intero positivo. Payload PLC = untrusted.
@@ -1041,27 +1059,9 @@ function handleCycleDone(mcTopic, orderID) {
 		log.standard("CYCLE_DONE: orderID non valido [" + String(orderID) + "] da MC " + String(mcTopic) + " — ignorato");
 		return;
 	}
-
-	sql.connect(DBf.configDB, function (err) {
-		if (err) {
-			log.standard("CYCLE_DONE: err connessione DB: " + err);
-			return;
-		}
-		// 1) incrementa il prodotto; 2) se raggiunta la quantità → FINISHED (STATUS=5).
-		// id è un intero validato sopra → sicuro in interpolazione.
-		const query =
-			`UPDATE ${TABLE_WORKORDERS} SET PRODUCTED = PRODUCTED + 1 WHERE ID = ${id}; ` +
-			`UPDATE ${TABLE_WORKORDERS} SET STATUS = 5 WHERE ID = ${id} AND PRODUCTED >= QUANTITY;`;
-		log.info("query: " + query);
-		var request = new sql.Request();
-		request.query(query, function (err, recordset) {
-			if (err) {
-				log.standard("CYCLE_DONE: err query: " + err);
-				return;
-			}
-			DBf.io.emit('PRODUCTION/CHANGED');  //aggiorno la tabella di produzione
-		});
-	});
+	log.standard("CYCLE_DONE: ordine " + id + " da MC " + String(mcTopic)
+		+ " — fine ciclo macchina; l'avanzamento si conta al deposito del finito");
+	DBf.io.emit('PRODUCTION/CHANGED');  //aggiorno la tabella di produzione
 }
 
 // ============================================================================
@@ -1199,6 +1199,25 @@ function setDescrOnDB(_unit, _descr){
     })
 }
 
+// La CHIUSURA DELL'ORDINE vive qui, non in CYCLE_DONE (17/9).
+//
+// PERCHE' QUI. PRODUCTED non e' una colonna: e' il conteggio delle tasche
+// finite, calcolato dalla vista WORKORDERS. Sale quando una tasca passa a
+// stato 5, cioe' quando il finito viene DEPOSITATO nel cassetto — che avviene
+// DOPO il fine ciclo macchina. Al momento di CYCLE_DONE il conteggio e'
+// indietro di uno e PRODUCTED >= QUANTITY non scatta mai sull'ultimo pezzo.
+// Questo e' l'unico punto in cui il conteggio e' gia' aggiornato per
+// costruzione: e' la stessa UPDATE qui sotto ad averlo alzato.
+//
+// SOLO SUI FINITI: la funzione viene chiamata a ogni cambio di stato di
+// qualunque tasca (2 vuota, 4 grezzo, ...). La chiusura si accoda solo
+// quando la tasca appena marcata e' un FINITO, altrimenti si interrogherebbe
+// il database a ogni movimento senza motivo.
+//
+// SI SCRIVE SULLA TABELLA, SI LEGGE DALLA VISTA. L'UPDATE va su WORKORDER
+// (tabella base, aggiornabile senza ambiguita'); il conteggio si legge da
+// WORKORDERS, che resta la sola definizione di "prodotto". Scrivere sulla
+// vista e' esattamente cio' che faceva fallire CYCLE_DONE.
 function setPositionStatus(_status, _TrayID, _subPos){
 	// (tray-parent-predicate) il vecchio LIKE 'TRAY_<n>%' (senza spazio)
 	// agganciava anche TRAY_10 sui messaggi del tray 1 ('_' jolly + prefisso):
@@ -1219,6 +1238,18 @@ function setPositionStatus(_status, _TrayID, _subPos){
 
 		query = query.replace("@STATUS@",_status);
 		query = query.replace("@SUBPOS@",_subPos);
+
+		// tasca appena marcata FINITA -> l'ordine potrebbe essere completo.
+		// Stesso batch: il conteggio letto subito dopo include questa tasca.
+		// STATUS=3 nella WHERE evita di riscrivere un ordine gia' chiuso.
+		if (parseInt(_status, 10) === STATUS_FINISHED) {
+			query += `
+				UPDATE WORKORDER SET STATUS=${STATUS_FINISHED}
+				 WHERE ID IN (SELECT Order_ID FROM [POSITION]
+					   WHERE ${pred} AND SUB_POS=${Number(_subPos)} AND Order_ID > 0)
+				   AND STATUS = ${STATUS_WORKING}
+				   AND ID IN (SELECT ID FROM WORKORDERS WHERE PRODUCTED >= QUANTITY);`;
+		}
 		
 		log.info("query: "+query)
         // create Request object
@@ -1228,7 +1259,12 @@ function setPositionStatus(_status, _TrayID, _subPos){
         request.query(query, function (err, recordset) {
             if (err) {
                 log.standard("Err query: " + err)
+                return;
             }
+            // la tabella produzione deve accorgersi della chiusura: stesso
+            // evento usato da tutti gli altri cambi di stato ordine
+            if (parseInt(_status, 10) === STATUS_FINISHED)
+                DBf.io.emit('PRODUCTION/CHANGED');
 		});
     })
 }

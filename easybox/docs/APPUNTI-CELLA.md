@@ -1,5 +1,54 @@
 # Appunti cella — interventi manuali da eseguire in impianto
 
+## [ ] 2026-09-17 — ALTER VIEW WORKORDERS **v3**: PRODUCTED conta solo i finiti
+
+Script: `serverDati/scripts/workorders-producted-finished.sql` (idempotente,
+con guardie che lo FERMANO se la vista non e' quella attesa).
+
+Una sola modifica nella derivata che calcola PRODUCTED: `status IN (5,6,7)`
+diventa `status = 5`. 6 = in pausa, 7 = abortito: non sono pezzi prodotti.
+Finche' il numero serviva solo a mostrare l'avanzamento era un'imprecisione;
+da adesso ci si appoggia la **chiusura automatica dell'ordine**
+(`setPositionStatus` in `MQTT_Client.js`), quindi contare gli abortiti
+chiuderebbe l'ordine prima della quantita' richiesta.
+
+**Va eseguito PRIMA di deployare il backend nuovo.** Backend nuovo + vista
+vecchia: la chiusura scatta sul conteggio gonfiato. Vista nuova + backend
+vecchio: nessun danno, cambia solo il numero mostrato.
+
+**Effetto collaterale da annunciare:** sugli ordini in corso con tasche 6/7
+l'avanzamento mostrato CALA. E' il numero giusto. La query 2 nello script,
+lanciata PRIMA, dice quali ordini e di quanto.
+
+### La lezione: gli script nel repo NON sono la fonte di verita'
+
+La v3 e' stata scritta una prima volta partendo da `workorders-view-pp.sql`
+(v2) e buttata via: quel file descrive la vista come sta su **dev**, e la
+cella e' diversa da sempre nella derivata.
+
+| | `workorders-view-pp.sql` (dev) | cella (letta 2026-09-17) |
+|---|---|---|
+| join | `on w.ORDER_ID = x.Order_ID` | `on w.ID = x.Order_ID` |
+| group by | `Order_ID, status` | `Order_ID` |
+| count | `count(Order_ID)` | `count(*)` |
+
+In cella `w.ID` e' la chiave dell'ordine, la stessa che `POSITION.Order_ID`
+contiene; `WORKORDER.ORDER_ID` e' NULL su tutte le righe, colonna morta. Il
+difetto di duplicazione che il testo dev lascerebbe supporre **in cella non
+esiste**. `workorders-view-pp.sql` e' stato marcato in testata e gli e' stata
+aggiunta una guardia che lo ferma se lo si punta sulla vista di cella.
+
+**Regola da qui in avanti:** prima di scrivere una ALTER VIEW per la cella,
+leggere la definizione REALE e partire da quella —
+
+```
+SELECT definition FROM sys.sql_modules WHERE object_id = OBJECT_ID('<vista>');
+```
+
+(`OBJECT_DEFINITION(...)` va bene uguale, ma da sqlcmd ricordarsi `-y 8000`:
+altrimenti il testo esce troncato e sembra un'altra vista.)
+
+
 ## [x] 2026-09-15 — composizione attrezzatura: NESSUNO script da eseguire
 
 La vista `FIXTURES` in cella e' gia' stata estesa (PALLET_Z, VICE_Z, Z_CALC,
@@ -301,8 +350,9 @@ senza errori. Il select del PLC non cambia.
    ```
    sqlcmd -S 172.20.70.80\SQLEXPRESS -U plc -P plc -d ADMG -Q "SELECT OBJECT_DEFINITION(OBJECT_ID('WORKORDERS'));" -y 8000
    ```
-   Se differisce, FERMARSI e riconciliare (l'identità dev/cella su questo
-   oggetto finora è estrapolata, non provata).
+   Se differisce, FERMARSI e riconciliare. **AGGIORNAMENTO 2026-09-17: NON
+   sono identiche** — la derivata PRODUCTED e' diversa; vedi la scheda v3 in
+   testa a questo documento. Questo script resta valido per dev.
 2. Eseguire lo script:
    ```
    sqlcmd -S 172.20.70.80\SQLEXPRESS -U plc -P plc -d ADMG -i workorders-view-pp.sql
