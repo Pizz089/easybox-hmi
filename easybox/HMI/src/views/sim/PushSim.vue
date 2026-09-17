@@ -139,6 +139,29 @@
           </span>
         </div>
 
+        <!-- (comp-push) la corsa che RESTA, accanto al campo: sull'ordine in
+             produzione la corsa nominale e' 3,3 mm, e senza questo riscontro
+             una compensazione si dichiara alla cieca. -->
+        <p v-if="compPreview.travelMm !== null" class="sim-hint">
+          {{ compPreview.comp
+             ? t("pushSim.compTravel", { base: compPreview.baseMm, travel: compPreview.travelMm })
+             : t("pushSim.compTravelNone", { travel: compPreview.travelMm }) }}
+        </p>
+
+        <!-- la compensazione ha portato la corsa sotto zero: la spinta si
+             DISABILITA, e il PLC non alza allarmi su questo ramo. Se non lo
+             dice il pannello non lo dice nessuno. -->
+        <p v-if="compPreview.noRoomByComp" class="sim-warn">
+          {{ t("pushSim.compNoRoom", { base: compPreview.baseMm, comp: compPreview.comp / 1000 }) }}
+        </p>
+
+        <!-- senza riga PIECE_ON_VICE la compensazione non ha dove scriversi:
+             lo si dice PRIMA di far compilare il campo, non dopo il salvataggio.
+             La riga nasce dichiarando l'appoggio: e' quello l'ordine giusto. -->
+        <p v-if="compNeedsRow" class="sim-warn">
+          {{ t("pushSim.compNoRow") }}
+        </p>
+
         <p v-if="stopDeclaredReal === null && exceeds" class="sim-warn">
           {{ t("pushSim.stopMissing") }}
         </p>
@@ -434,12 +457,14 @@ export default {
       stops: [],
       sel: { pieceID: 0, viceID: 0, gripperID: 0, machineID: 1 },
       // valori SIMULATI, in millimetri (quelli che si toccano)
-      sim: { pieceLen: null, pieceWid: null, viceClaw: null, toolClaw: null, stopBeyond: null },
+      sim: { pieceLen: null, pieceWid: null, viceClaw: null, toolClaw: null, stopBeyond: null, compPush: null },
       // copia dei valori REALI letti dal database, in millimetri
-      real: { pieceLen: null, pieceWid: null, viceClaw: null, toolClaw: null, stopBeyond: null },
+      real: { pieceLen: null, pieceWid: null, viceClaw: null, toolClaw: null, stopBeyond: null, compPush: null },
       phase: 0,
       timers: [],
       viewRow: null,
+      // riga PIECE_ON_VICE della coppia morsa+pezzo, o null se non esiste
+      stopRow: null,
       // conferma in corso: { key, text, warn, run }
       confirm: null,
       saving: false,
@@ -449,6 +474,10 @@ export default {
         { key: "viceClaw", label: "pushSim.fViceClaw" },
         { key: "toolClaw", label: "pushSim.fToolClaw" },
         { key: "stopBeyond", label: "pushSim.fStopBeyond" },
+        // (comp-push) compensazione per SEMILAVORATI: accorcia la corsa, il
+        // pezzo si ferma prima della battuta. Stessa chiave e stesso
+        // salvataggio dell'appoggio dichiarato: segue la morsa, non il pallet.
+        { key: "compPush", label: "pushSim.fCompPush" },
       ],
       phaseLabels: ["pushSim.phPlace", "pushSim.phPush", "pushSim.phStop"],
     };
@@ -470,6 +499,7 @@ export default {
         viceClaw: toMicron(this.sim.viceClaw) || 0,
         toolClaw: toMicron(this.sim.toolClaw) || 0,
         stopBeyond: toMicron(this.sim.stopBeyond),
+        compPush: toMicron(this.sim.compPush),
       };
     },
 
@@ -505,7 +535,46 @@ export default {
         viceClawLength: this.m.viceClaw,
         gripperClawLength: this.m.toolClaw,
         stopBeyondClaw: this.m.stopBeyond,
+        compPush: this.m.compPush,
       });
+    },
+
+    // (comp-push) LA CORSA CHE RESTA, in millimetri, accanto al campo. La
+    // corsa nominale e' di pochi millimetri: senza questo riscontro
+    // l'operatore dichiara una compensazione alla cieca.
+    compPreview() {
+      const c = this.check;
+      // corsa SENZA compensazione: il riferimento da cui si parte
+      const base = pushQuotes({
+        enabled: true,
+        hasVice: !!this.sel.viceID,
+        xPlace: this.xPlace,
+        pieceY: this.m.pieceLen,
+        viceClawLength: this.m.viceClaw,
+        gripperClawLength: this.m.toolClaw,
+        stopBeyondClaw: this.m.stopBeyond,
+      });
+      return {
+        // la nominale si mostra solo quando ha senso (senza compensazione
+        // l'esito sarebbe OK): altrimenti il numero mentirebbe
+        baseMm: base.clearance === null ? null : base.clearance / 1000,
+        travelMm: c.clearance === null ? null : c.clearance / 1000,
+        comp: this.m.compPush,
+        // NO_ROOM CAUSATO DALLA COMPENSAZIONE: senza compensazione l'esito
+        // sarebbe stato OK. E' il caso che va detto a voce alta — la spinta
+        // si disabilita e il PLC non alza allarmi su questo ramo.
+        noRoomByComp:
+          c.status === PUSH_STATUS.NO_ROOM &&
+          base.status === PUSH_STATUS.OK &&
+          !!(this.m.compPush),
+      };
+    },
+
+    // la compensazione si scrive su una riga che deve gia' esistere: senza
+    // appoggio dichiarato non c'e' riga, e il campo e' inutile finche' non
+    // si passa da li'. stopRow e' la riga letta da /stops, non un calcolo.
+    compNeedsRow() {
+      return !!this.sel.viceID && !!this.sel.pieceID && !this.stopRow;
     },
 
     ok() {
@@ -702,6 +771,8 @@ export default {
     onSelectionChange() {
       this.recomputeReal();
       this.real.stopBeyond = null;
+      this.real.compPush = null;
+      this.stopRow = null;
       this.copyRealToSim();
       this.phase = 0;
       if (this.sel.viceID) this.loadStop(true);
@@ -714,8 +785,17 @@ export default {
       return this.get("api/conf/vice/stops/" + this.sel.viceID)
         .then((rows) => {
           const row = (rows || []).find((x) => x.PIECE_ID == this.sel.pieceID) || null;
+          // la riga serve anche a sapere se la compensazione ha dove scriversi
+          this.stopRow = row;
           this.real.stopBeyond = row ? Number(row.STOP_BEYOND_CLAW) / 1000 : null;
-          if (syncSim) this.sim.stopBeyond = this.real.stopBeyond;
+          // COMP_PUSH e' NULL quando non c'e' compensazione: resta null, non
+          // diventa zero — il campo deve restare vuoto, non mostrare "0"
+          this.real.compPush = row && row.COMP_PUSH !== null && row.COMP_PUSH !== undefined
+            ? Number(row.COMP_PUSH) / 1000 : null;
+          if (syncSim) {
+            this.sim.stopBeyond = this.real.stopBeyond;
+            this.sim.compPush = this.real.compPush;
+          }
         })
         .catch(console.info);
     },
@@ -781,6 +861,33 @@ export default {
           warn: this.t("pushSim.confirmPieceWarn"),
           run: () => this.send("api/conf/piece/setSize", { ID: this.sel.pieceID, X: x, Y: y }),
         };
+      } else if (key === "compPush") {
+        if (!this.sel.viceID || !this.sel.pieceID) return;
+        // senza riga il backend rifiuterebbe: lo si dice qui, senza far
+        // partire una richiesta che si sa gia' come finisce
+        if (this.compNeedsRow) {
+          dataStored.alert.title = this.t("WARNING");
+          dataStored.alert.desc = this.t("pushSim.compNoRow");
+          dataStored.alert.type = "warning";
+          return;
+        }
+        // qui il vuoto e lo zero vogliono dire la stessa cosa (nessuna
+        // compensazione): niente conferma di cancellazione separata come per
+        // l'appoggio dichiarato, si scrive NULL e basta.
+        this.confirm = {
+          key,
+          text: this.t(now === null ? "pushSim.confirmCompClear" : "pushSim.confirmComp", {
+            ...args,
+            obj: this.objName(this.vices, this.sel.viceID, "pushSim.vice"),
+            piece: this.objName(this.pieces, this.sel.pieceID, "pushSim.piece"),
+          }),
+          // se la compensazione azzera la spinta va detto PRIMA di salvare
+          warn: this.compPreview.noRoomByComp ? this.t("pushSim.compNoRoomWarn") : undefined,
+          run: () => this.send("api/conf/vice/setCompPush", {
+            VICE_ID: this.sel.viceID, PIECE_ID: this.sel.pieceID,
+            COMP_PUSH: now === null ? "" : now,
+          }),
+        };
       } else if (key === "stopBeyond") {
         if (!this.sel.viceID || !this.sel.pieceID) return;
         if (now === null) {
@@ -820,7 +927,12 @@ export default {
           this.confirm = null;
           if (String(body).trim() === KO_NOT_FOUND) {
             dataStored.alert.title = this.t("WARNING");
-            dataStored.alert.desc = this.t("pushSim.saveNotFound");
+            // la compensazione ha un motivo suo per non trovare la riga, e
+            // soprattutto una via d'uscita precisa: dichiarare prima
+            // l'appoggio. Dirlo genericamente lascerebbe l'operatore fermo.
+            dataStored.alert.desc = this.t(
+              c.key === "compPush" ? "pushSim.compNoRow" : "pushSim.saveNotFound"
+            );
             dataStored.alert.type = "warning";
             return;
           }

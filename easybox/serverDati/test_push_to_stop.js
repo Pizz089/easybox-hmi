@@ -116,6 +116,36 @@ check(oltre(undefined).status === 'NO_FIT' && oltre(undefined).stopRef === srv.S
 check(srv.pushQuotes(Object.assign({}, cella, { pieceY: 120000, stopBeyondClaw: 25000 })).clearance === 15000, 'pezzo DENTRO la ganascia: la dichiarazione si ignora, si ferma prima sulla ganascia');
 // stesso troncamento verso lo zero di SQL Server su differenza NEGATIVA
 check(srv.pushQuotes(Object.assign({}, cella, { pieceY: 180001, stopBeyondClaw: 25000 })).clearance === 10000, 'differenza negativa dispari: troncamento verso lo zero, come la divisione intera di SQL');
+// ---------------------------------------------------------------------------
+// COMPENSAZIONE SPINTA (COMP_PUSH): i semilavorati non arrivano in battuta.
+// Accorcia la corsa e basta: la quota di SPINTA non cambia, perche' si
+// accorcia il tragitto, non si sposta il punto di partenza.
+// Base: pezzo 1029 dentro la ganascia, corsa nominale 15000.
+const comp = (c) => srv.pushQuotes(Object.assign({}, cella, { compPush: c }));
+check(comp(null).clearance === 15000 && comp(undefined).clearance === 15000,
+	'compensazione assente: corsa invariata (15000)');
+check(comp(0).clearance === 15000, 'compensazione ZERO = nessuna compensazione: qui assenza e zero coincidono');
+check(comp(5000).status === 'OK' && comp(5000).clearance === 10000, 'compensazione 5000: corsa 10000, ancora positiva');
+check(comp(5000).xPush === r1.xPush, 'e la quota di SPINTA non cambia: si accorcia il tragitto, non si sposta la partenza');
+check(comp(5000).xStop === comp(5000).xPush + 10000, 'arrivo = spinta + corsa compensata');
+check(comp(15000).status === 'OK' && comp(15000).clearance === 0,
+	'compensazione pari alla corsa: corsa ZERO e status OK — pezzo gia\' a contatto, il confronto e\' < 0 e NON <= 0');
+check(comp(15001).status === 'NO_ROOM', 'un micron oltre: la spinta andrebbe all\'indietro -> NO_ROOM');
+check(comp(20000).status === 'NO_ROOM' && comp(20000).clearance === null,
+	'compensazione maggiore della corsa: NO_ROOM, e le quote sono NULL come nella vista');
+check(comp(20000).stopRef === srv.STOP_REF.CLAW, 'su NO_ROOM il riferimento resta valorizzato: serve al pannello per spiegare');
+// si somma all'appoggio dichiarato, non lo sostituisce: pezzo oltre la
+// ganascia (180000), appoggio 25000 -> corsa 10000, meno 4000 di
+// compensazione -> 6000
+const oltreComp = srv.pushQuotes(Object.assign({}, cella, { pieceY: LUNGO, stopBeyondClaw: 25000, compPush: 4000 }));
+check(oltreComp.status === 'OK' && oltreComp.clearance === 6000,
+	'pezzo oltre la ganascia: la compensazione si sottrae ANCHE al tratto dichiarato');
+check(oltreComp.stopRef === srv.STOP_REF.DECLARED, 'e il riferimento resta quello dichiarato');
+// troncamento: la compensazione si sottrae DOPO la divisione intera
+check(srv.pushQuotes(Object.assign({}, cella, { pieceY: 120001, compPush: 1 })).clearance
+	=== srv.pushQuotes(Object.assign({}, cella, { pieceY: 120001 })).clearance - 1,
+	'la compensazione si sottrae DOPO il troncamento, non dentro');
+
 const casi = [
 	{ name: 'bit spento', v: Object.assign({}, cella, { enabled: false }), st: 'DISABLED' },
 	{ name: 'nessuna morsa sul pallet', v: Object.assign({}, cella, { hasVice: false }), st: 'NO_VICE' },
@@ -131,6 +161,11 @@ const casi = [
 	{ name: 'pezzo esattamente lungo come la ganascia', v: Object.assign({}, cella, { pieceY: 150000 }), st: 'OK' },
 	{ name: 'pezzo girato (entrerebbe la X): resta un caso valido ma diverso', v: Object.assign({}, cella, { pieceY: PIECE_X }), st: 'OK' },
 	{ name: 'valori dispari (troncamento come SQL)', v: Object.assign({}, cella, { pieceY: 120001, viceClawLength: 150001, gripperClawLength: 30001 }), st: 'OK' },
+	{ name: 'compensazione assente', v: Object.assign({}, cella, { compPush: null }), st: 'OK' },
+	{ name: 'compensazione che lascia corsa positiva', v: Object.assign({}, cella, { compPush: 5000 }), st: 'OK' },
+	{ name: 'compensazione che porta la corsa a ZERO', v: Object.assign({}, cella, { compPush: 15000 }), st: 'OK' },
+	{ name: 'compensazione che porta la corsa NEGATIVA', v: Object.assign({}, cella, { compPush: 20000 }), st: 'NO_ROOM' },
+	{ name: 'compensazione su pezzo oltre la ganascia', v: Object.assign({}, cella, { pieceY: LUNGO, stopBeyondClaw: 25000, compPush: 4000 }), st: 'OK' },
 ];
 for (const c of casi) {
 	const a = srv.pushQuotes(c.v), b = hmi.pushQuotes(c.v);

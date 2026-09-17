@@ -233,7 +233,7 @@ router.get('/stops/:viceID', (req, res) => {
 			res.status(500).send("KO");
 			return;
 		}
-		let query = `select pv.VICE_ID, pv.PIECE_ID, pv.STOP_BEYOND_CLAW,
+		let query = `select pv.VICE_ID, pv.PIECE_ID, pv.STOP_BEYOND_CLAW, pv.COMP_PUSH,
 							rtrim(p.FAMILY) as PIECE_FAMILY, rtrim(p.DESCR) as PIECE_DESCR,
 							p.X as PIECE_X, p.Y as PIECE_Y, p.PUSH_TO_STOP
 					 from PIECE_ON_VICE pv
@@ -288,6 +288,67 @@ router.get('/setStop', (req, res) => {
 					audit.SRC_PUSH_SIM, 'PIECE_ON_VICE:' + viceID + ':' + pieceID);
 				res.send("OK");
 			}
+		});
+	});
+})
+
+// COMPENSAZIONE SPINTA (COMP_PUSH): accorcia la corsa, per i semilavorati che
+// non devono arrivare in battuta. Stessa chiave di STOP_BEYOND_CLAW.
+//
+// SOLO UPDATE, NESSUN UPSERT — e' una scelta, non una dimenticanza. Creare la
+// riga qui vorrebbe dire inventare uno STOP_BEYOND_CLAW, e lo ZERO non e'
+// "nessun appoggio": e' l'appoggio dichiarato alla fine ESATTA della ganascia.
+// Per un pezzo che sporge l'ordine passerebbe da NO_FIT ("manca un dato,
+// compilalo") a NO_ROOM ("la geometria non ci sta"), mandando l'operatore in
+// un vicolo cieco su un dato che non ha mai inserito.
+// Riga assente -> KO_NOT_FOUND: prima si dichiara l'appoggio, poi si compensa.
+//
+// A differenza dell'appoggio dichiarato, qui lo ZERO e l'assenza vogliono dire
+// la stessa cosa (nessuna compensazione): il campo vuoto e' ammesso e scrive
+// NULL, senza bisogno di una rotta di cancellazione separata.
+router.get('/setCompPush', (req, res) => {
+	const viceID  = parseInt(req.query.VICE_ID, 10);
+	const pieceID = parseInt(req.query.PIECE_ID, 10);
+	const raw     = req.query.COMP_PUSH;
+	const vuoto   = raw === undefined || String(raw).trim() === '';
+	const comp    = vuoto ? null : parseInt(raw, 10);
+	if (!Number.isInteger(viceID) || viceID < 1
+		|| !Number.isInteger(pieceID) || pieceID < 1
+		|| (!vuoto && (!Number.isInteger(comp) || comp < 0))) { res.status(400).send("KO_BAD_INPUT"); return; }
+	const val = vuoto ? 'NULL' : String(comp);
+	sql.connect(DBf.configDB, function (err) {
+		if (err) {
+			log.error("err setCompPush: " + err);
+			res.status(500).send("KO");
+			return;
+		}
+		// UPDATE a zero righe = riga assente, e va DETTO: una UPDATE che non
+		// tocca niente e risponde OK e' il difetto silenzioso costato l'errore
+		// 799 sugli attrezzaggi. @@ROWCOUNT esplicito, SET NOCOUNT ON perche'
+		// su [PIECE_ON_VICE] i conteggi di eventuali trigger lo falserebbero.
+		let query = `SET NOCOUNT ON;
+					UPDATE PIECE_ON_VICE SET COMP_PUSH=${val}
+					 WHERE VICE_ID=${viceID} AND PIECE_ID=${pieceID};
+					SELECT @@ROWCOUNT AS n;`;
+		var request = new sql.Request();
+		log.info('query ' + query);
+		request.query(query, function (err, result) {
+			if (err) {
+				log.error("Err query: " + err);
+				res.status(500).send("KO");
+				return;
+			}
+			const row = result.recordset && result.recordset[0];
+			if (!row || !row.n) {
+				log.standard('setCompPush ' + ERR.KO_NOT_FOUND + ': morsa ' + viceID
+					+ ' pezzo ' + pieceID + ' senza riga PIECE_ON_VICE');
+				res.send(ERR.KO_NOT_FOUND);
+				return;
+			}
+			audit.audit('Morsa ID ' + viceID + ', pezzo ID ' + pieceID
+				+ ': compensazione spinta ' + (vuoto ? 'rimossa' : comp + ' um'),
+				audit.SRC_PUSH_SIM, 'PIECE_ON_VICE:' + viceID + ':' + pieceID);
+			res.send("OK");
 		});
 	});
 })

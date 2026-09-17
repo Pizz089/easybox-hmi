@@ -27,6 +27,18 @@
 //   corsa = (ganascia - pezzo)/2               pezzo <= ganascia -> 'CLAW'
 //   corsa = (ganascia - pezzo)/2 + dichiarata  pezzo >  ganascia -> 'DECLARED'
 //
+// COMPENSAZIONE SPINTA (PIECE_ON_VICE.COMP_PUSH, micron, NULL = nessuna).
+// Per i SEMILAVORATI il pezzo non deve arrivare in battuta: si ferma prima, e
+// di quanto lo dice questo valore. Si SOTTRAE dalla corsa, in entrambi i casi
+// sopra — non dipende da dove appoggia il pezzo, dipende dal pezzo.
+//
+//   corsa = (ganascia - pezzo)/2 [+ dichiarata] - compensazione
+//
+// La quota di SPINTA non cambia: si accorcia il tragitto, non si sposta il
+// punto di partenza. Se la compensazione porta la corsa sotto zero la spinta
+// andrebbe all'indietro: e' NO_ROOM. Corsa ZERO resta OK per scelta: vuol
+// dire pezzo gia' a contatto.
+//
 // Col pezzo DENTRO la ganascia il valore dichiarato si ignora: la fine della
 // ganascia arriva prima e il pezzo si ferma li'. La quota di SPINTA invece non
 // cambia mai, perche' la chela tocca il bordo vicino del pezzo e dove sta quel
@@ -77,7 +89,7 @@ export const PUSH_BIT = 2;
 // Ritorna { status, xPush, xStop, clearance, stopRef }: quote null se status
 // non e' OK, esattamente come la vista. stopRef e' valorizzato anche su NO_FIT
 // e NO_ROOM, perche' li' la geometria il riferimento lo implica gia'.
-export function pushQuotes({ enabled, hasVice, xPlace, pieceY, viceClawLength, gripperClawLength, stopBeyondClaw }) {
+export function pushQuotes({ enabled, hasVice, xPlace, pieceY, viceClawLength, gripperClawLength, stopBeyondClaw, compPush }) {
 	const none = (s, ref) => ({ status: s, xPush: null, xStop: null, clearance: null, stopRef: ref || null });
 	if (!enabled) return none(PUSH_STATUS.DISABLED);
 	if (!hasVice) return none(PUSH_STATUS.NO_VICE);
@@ -90,7 +102,11 @@ export function pushQuotes({ enabled, hasVice, xPlace, pieceY, viceClawLength, g
 	const declared = stopBeyondClaw === null || stopBeyondClaw === undefined || stopBeyondClaw === ''
 		? null : Number(stopBeyondClaw);
 	if (exceeds && (declared === null || isNaN(declared))) return none(PUSH_STATUS.NO_FIT, ref);
-	const clearance = div2(claw - py) + (exceeds ? declared : 0);
+	// la compensazione si sottrae in ENTRAMBI i casi: accorcia il tragitto,
+	// non sposta il punto di partenza
+	const comp = Number(compPush) || 0;
+	const clearance = div2(claw - py) + (exceeds ? declared : 0) - comp;
+	// < 0 e NON <= 0: corsa zero e' valida, vuol dire pezzo gia' a contatto
 	if (clearance < 0) return none(PUSH_STATUS.NO_ROOM, ref);
 	const xPush = Number(xPlace) - div2(py) - div2(tool);
 	return { status: PUSH_STATUS.OK, xPush, xStop: xPush + clearance, clearance, stopRef: ref };

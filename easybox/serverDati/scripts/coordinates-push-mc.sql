@@ -25,6 +25,23 @@
 --   corsa = (ganascia - pezzo)/2               se pezzo <= ganascia -> 'CLAW'
 --   corsa = (ganascia - pezzo)/2 + dichiarata  se pezzo >  ganascia -> 'DECLARED'
 --
+-- COMPENSAZIONE SPINTA (PIECE_ON_VICE.COMP_PUSH, micron, NULL = nessuna).
+-- I SEMILAVORATI non devono arrivare in battuta: si fermano PRIMA, e di quanto
+-- lo dice questo valore. Si SOTTRAE dalla corsa in entrambi i casi sopra —
+-- non dipende da dove appoggia il pezzo, dipende dal pezzo.
+--
+--   corsa = (ganascia - pezzo)/2 [+ dichiarata] - compensazione
+--
+-- La quota di SPINTA non cambia: si accorcia il tragitto, non si sposta il
+-- punto di partenza. Se la compensazione porta la corsa sotto zero la spinta
+-- andrebbe all'indietro: e' NO_ROOM, come per un appoggio dichiarato troppo
+-- vicino. Corsa ZERO resta OK per scelta: pezzo gia' a contatto.
+--
+-- Stessa chiave di STOP_BEYOND_CLAW: la compensazione segue la MORSA, non il
+-- pallet. A differenza dell'appoggio dichiarato, qui NULL e 0 coincidono:
+-- non compensare e compensare di zero sono la stessa cosa, e non serve
+-- distinguere l'assenza dal valore.
+--
 -- Quando il pezzo sta DENTRO la ganascia il valore dichiarato viene ignorato,
 -- perche' la fine della ganascia arriva prima e il pezzo si ferma li'. E' una
 -- regola del modello, allo stesso titolo del deposito centrato qui sotto.
@@ -66,9 +83,11 @@
 --   'NO_VICE'  nessuna morsa sul pallet dell'ordine  -> NULL
 --   'NO_DATA'  manca la ganascia della morsa o la lunghezza della chela -> NULL
 --   'NO_FIT'   pezzo oltre la ganascia E appoggio NON dichiarato -> NULL
---   'NO_ROOM'  appoggio dichiarato piu' vicino di quanto il pezzo gia' sporge:
---              al deposito il pezzo sarebbe GIA' oltre la battuta e la corsa
---              verrebbe negativa, cioe' la spinta andrebbe all'indietro -> NULL
+--   'NO_ROOM'  la corsa verrebbe NEGATIVA, cioe' la spinta andrebbe
+--              all'indietro -> NULL. Due modi di arrivarci: appoggio
+--              dichiarato piu' vicino di quanto il pezzo gia' sporge (al
+--              deposito sarebbe GIA' oltre la battuta), oppure compensazione
+--              piu' grande della corsa disponibile
 --   'OK'       quote valorizzate (corsa zero compresa: pezzo gia' a contatto)
 -- X_PUSH/X_STOP sono NULL quando non sono utilizzabili: un PLC che leggesse
 -- le quote ignorando l'esito fallisce la lettura invece di muoversi male.
@@ -85,8 +104,8 @@
 --
 -- IDEMPOTENTE: CREATE o ALTER secondo che la vista esista.
 -- ORDINE DI DEPLOY: DOPO piece-push-to-stop.sql, vice-claw-length.sql,
--- gripper-claw-length.sql e piece-on-vice.sql (li nomina tutti), a cella
--- ferma con -E.
+-- gripper-claw-length.sql e piece-on-vice.sql (li nomina tutti), piu' la
+-- colonna PIECE_ON_VICE.COMP_PUSH (int NULL, micron), a cella ferma con -E.
 --   sqlcmd -S .\SQLEXPRESS -E -d ADMG -i coordinates-push-mc.sql
 -- ===========================================================================
 SET NOCOUNT ON;
@@ -95,8 +114,9 @@ IF COL_LENGTH('dbo.PIECE', 'PUSH_TO_STOP') IS NULL
    OR COL_LENGTH('dbo.VICE', 'CLAW_LENGTH') IS NULL
    OR COL_LENGTH('dbo.GRIPPER', 'CLAW_LENGTH') IS NULL
    OR OBJECT_ID('dbo.PIECE_ON_VICE') IS NULL
+   OR COL_LENGTH('dbo.PIECE_ON_VICE', 'COMP_PUSH') IS NULL
 BEGIN
-	PRINT 'MANCANO colonne o tabelle: eseguire prima piece-push-to-stop.sql, vice-claw-length.sql, gripper-claw-length.sql e piece-on-vice.sql.';
+	PRINT 'MANCANO colonne o tabelle: eseguire prima piece-push-to-stop.sql, vice-claw-length.sql, gripper-claw-length.sql, piece-on-vice.sql e la colonna PIECE_ON_VICE.COMP_PUSH (int NULL, micron).';
 	SET NOEXEC ON;
 END
 GO
@@ -116,6 +136,7 @@ select	q.ORDER_ID,
 		case when q.PUSH_STATUS = 'OK' then q.TRAVEL_RAW end				as CLEARANCE,
 		q.STOP_REF,
 		q.STOP_BEYOND_CLAW,
+		q.COMP_PUSH,
 		q.PUSH_ENABLED,
 		q.PUSH_STATUS
 from (
@@ -126,11 +147,14 @@ from (
 			p.Z + pz.Z_PLACE + f.Z									as Z_PLACE,
 			p.X - pz.Y/2 - g.CLAW_LENGTH/2							as X_PUSH_RAW,
 			-- corsa: fino alla fine della ganascia, piu' il tratto dichiarato
-			-- SOLO quando il pezzo la eccede
+			-- SOLO quando il pezzo la eccede, MENO la compensazione (che vale
+			-- sempre: il semilavorato si ferma prima, comunque appoggi)
 			(v.CLAW_LENGTH - pz.Y)/2
 				+ case when pz.Y > v.CLAW_LENGTH
-					   then ISNULL(pv.STOP_BEYOND_CLAW, 0) else 0 end	as TRAVEL_RAW,
+					   then ISNULL(pv.STOP_BEYOND_CLAW, 0) else 0 end
+				- ISNULL(pv.COMP_PUSH, 0)							as TRAVEL_RAW,
 			pv.STOP_BEYOND_CLAW										as STOP_BEYOND_CLAW,
+			pv.COMP_PUSH											as COMP_PUSH,
 			case when (ISNULL(w.OPTION2,0) & 2) = 0					then null
 				 when v.ID is null									then null
 				 when ISNULL(v.CLAW_LENGTH,0) <= 0
@@ -148,7 +172,8 @@ from (
 				  and pv.VICE_ID is null							then 'NO_FIT'
 				 when (v.CLAW_LENGTH - pz.Y)/2
 					  + case when pz.Y > v.CLAW_LENGTH
-							 then ISNULL(pv.STOP_BEYOND_CLAW, 0) else 0 end < 0
+							 then ISNULL(pv.STOP_BEYOND_CLAW, 0) else 0 end
+					  - ISNULL(pv.COMP_PUSH, 0) < 0
 																	then 'NO_ROOM'
 				 else 'OK' end										as PUSH_STATUS
 	from WORKORDER w
@@ -181,8 +206,15 @@ GO
 -- con appoggio dichiarato a 10000: CLEARANCE = -5000 -> PUSH_STATUS 'NO_ROOM'
 -- senza riga in PIECE_ON_VICE:                        -> PUSH_STATUS 'NO_FIT'
 --
+-- COMPENSAZIONE (semilavorato) — 1029 dentro la ganascia, corsa nominale 15000:
+--   COMP_PUSH NULL o 0  -> CLEARANCE 15000            (nessuna compensazione)
+--   COMP_PUSH  5000     -> CLEARANCE 10000
+--   COMP_PUSH 15000     -> CLEARANCE 0      PUSH_STATUS 'OK' (gia' a contatto)
+--   COMP_PUSH 16000     -> CLEARANCE -1000  PUSH_STATUS 'NO_ROOM'
+-- La quota X_PUSH non cambia in nessuno di questi casi.
+--
 -- SELECT ORDER_ID, MC, X_PLACE, X_PUSH, X_STOP, CLEARANCE, STOP_REF,
---        STOP_BEYOND_CLAW, PUSH_ENABLED, PUSH_STATUS
+--        STOP_BEYOND_CLAW, COMP_PUSH, PUSH_ENABLED, PUSH_STATUS
 --   FROM COORDINATES_PUSH_MC ORDER BY ORDER_ID;
 -- ===========================================================================
 
