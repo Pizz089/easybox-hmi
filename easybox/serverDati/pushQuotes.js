@@ -30,16 +30,34 @@
 //   corsa = (ganascia - pezzo)/2 + dichiarata  pezzo >  ganascia -> 'DECLARED'
 //
 // COMPENSAZIONE SPINTA (PIECE_ON_VICE.COMP_PUSH, micron, NULL = nessuna).
-// Per i SEMILAVORATI il pezzo non deve arrivare in battuta: si ferma prima, e
-// di quanto lo dice questo valore. Si SOTTRAE dalla corsa, in entrambi i casi
-// sopra — non dipende da dove appoggia il pezzo, dipende dal pezzo.
+// Serve ai SEMILAVORATI, che non devono arrivare in battuta come il grezzo:
+// dice di quanto il pezzo si deve fermare PRIMA della battuta teorica, quindi
+// e' SEMPRE POSITIVO e SI SOTTRAE. La corsa effettiva risulta MINORE della
+// corsa geometrica.
 //
-//   corsa = (ganascia - pezzo)/2 [+ dichiarata] - compensazione
+// E' uno scostamento fine sulla SOLA QUOTA DI ARRIVO: xPush e corsa restano il
+// valore geometrico TEORICO, cosi' la compensazione resta LEGGIBILE come
+// differenza fra le quote —
 //
-// La quota di SPINTA non cambia: si accorcia il tragitto, non si sposta il
-// punto di partenza. Se la compensazione porta la corsa sotto zero la spinta
-// andrebbe all'indietro: e' NO_ROOM, come per un appoggio dichiarato troppo
-// vicino. Corsa ZERO resta OK per scelta: vuol dire pezzo gia' a contatto.
+//   (xPush + corsa) - xStop = compensazione
+//
+// — e si distingue a colpo d'occhio cosa viene dal modello e cosa dalla
+// taratura.
+//
+// NO_ROOM resta un fatto di GEOMETRIA (corsa teorica negativa: la spinta
+// andrebbe all'indietro) e la compensazione non lo produce. Ma una
+// compensazione PIU' GRANDE della corsa ha il suo esito, 'NO_COMP': l'arrivo
+// finirebbe dietro la partenza e il robot spingerebbe nel verso opposto
+// contro il pezzo gia' in morsa. In cella non c'e' niente che lo fermi (il
+// controllo di plausibilita' di FB7 guarda la distanza da X_PLACE, non il
+// verso), quindi lo deve dire questo modulo, mentre l'operatore digita.
+//
+// LA SIMULAZIONE DEVE DIRE QUELLO CHE FA IL PLC. Questa formula e' la stessa
+// della vista COORDINATES_PUSH_MC: un pannello che mostrasse NO_ROOM mentre
+// la cella parte si farebbe smettere di credere, e allora tanto vale non
+// averlo. Riscontro di campo 17/9, ordine 1104: pezzo 1034 Y 100000, ganascia
+// morsa 107200, chela pinza 42000, deposito 311000, compensazione 300 ->
+// xPush 240000, corsa 3600, xStop 243300 (corsa effettiva 3300).
 //
 // Col pezzo DENTRO la ganascia il valore dichiarato si ignora: la fine della
 // ganascia arriva prima e il pezzo si ferma li'. La quota di SPINTA invece non
@@ -66,11 +84,12 @@ const div2 = (v) => Math.trunc(Number(v) / 2);
 
 // Stessi esiti della colonna PUSH_STATUS della vista.
 //   NO_FIT  = il pezzo eccede la ganascia e NESSUNO ha dichiarato dove appoggia
-//   NO_ROOM = la corsa verrebbe NEGATIVA, cioe' la spinta andrebbe
-//             all'indietro. Due modi di arrivarci: l'appoggio dichiarato e'
-//             piu' vicino di quanto il pezzo gia' sporge, oppure la
-//             compensazione e' piu' grande della corsa disponibile
-const PUSH_STATUS = { DISABLED: 'DISABLED', NO_VICE: 'NO_VICE', NO_DATA: 'NO_DATA', NO_FIT: 'NO_FIT', NO_ROOM: 'NO_ROOM', OK: 'OK' };
+//   NO_ROOM = l'appoggio dichiarato e' piu' vicino di quanto il pezzo gia'
+//             sporge: al deposito il pezzo sarebbe gia' oltre la battuta e la
+//             corsa verrebbe negativa, cioe' la spinta andrebbe all'indietro
+//   NO_COMP = la compensazione supera la corsa: l'arrivo finirebbe DIETRO la
+//             partenza e la spinta si rovescerebbe
+const PUSH_STATUS = { DISABLED: 'DISABLED', NO_VICE: 'NO_VICE', NO_DATA: 'NO_DATA', NO_FIT: 'NO_FIT', NO_ROOM: 'NO_ROOM', NO_COMP: 'NO_COMP', OK: 'OK' };
 // Su cosa appoggia il pezzo a fine corsa.
 const STOP_REF = { CLAW: 'CLAW', DECLARED: 'DECLARED' };
 exports.PUSH_STATUS = PUSH_STATUS;
@@ -86,14 +105,16 @@ exports.STOP_REF = STOP_REF;
 //   dichiarato; lo ZERO e' un valore legittimo e diverso (appoggio dichiarato
 //   sulla fine della ganascia anche per un pezzo che sporge). Il "non
 //   dichiarato" sta nell'assenza, mai dentro il numero.
-// compPush: PIECE_ON_VICE.COMP_PUSH, la compensazione che ACCORCIA la corsa
-//   (semilavorati). null/undefined/assente = nessuna compensazione = 0. Qui
-//   l'assenza e lo zero coincidono, a differenza di stopBeyondClaw: non
+// compPush: PIECE_ON_VICE.COMP_PUSH, di quanto il pezzo si ferma PRIMA della
+//   battuta teorica (semilavorati): sempre positivo, si sottrae dal solo
+//   ARRIVO. null/undefined/assente = nessuna compensazione = 0.
+//   Qui l'assenza e lo zero coincidono, a differenza di stopBeyondClaw: non
 //   compensare e compensare di zero sono la stessa cosa.
 // Tutto in micron; per le altre misure null/0 = dato mancante.
 // Ritorna { status, xPush, xStop, clearance, stopRef }: quote null se status
-// non e' OK, esattamente come la vista. stopRef e' valorizzato anche su NO_FIT
-// e NO_ROOM, perche' li' la geometria il riferimento lo implica gia'.
+// non e' OK, esattamente come la vista. stopRef e' valorizzato anche su
+// NO_FIT, NO_ROOM e NO_COMP, perche' li' la geometria il riferimento lo
+// implica gia'.
 exports.pushQuotes = function ({ enabled, hasVice, xPlace, pieceY, viceClawLength, gripperClawLength, stopBeyondClaw, compPush }) {
 	const none = (s, ref) => ({ status: s, xPush: null, xStop: null, clearance: null, stopRef: ref || null });
 	if (!enabled) return none(PUSH_STATUS.DISABLED);
@@ -107,14 +128,18 @@ exports.pushQuotes = function ({ enabled, hasVice, xPlace, pieceY, viceClawLengt
 	const declared = stopBeyondClaw === null || stopBeyondClaw === undefined || stopBeyondClaw === ''
 		? null : Number(stopBeyondClaw);
 	if (exceeds && (declared === null || isNaN(declared))) return none(PUSH_STATUS.NO_FIT, ref);
-	// la compensazione si sottrae in ENTRAMBI i casi: accorcia il tragitto,
-	// non sposta il punto di partenza
-	const comp = Number(compPush) || 0;
-	const clearance = div2(claw - py) + (exceeds ? declared : 0) - comp;
+	// corsa TEORICA: la compensazione non entra qui
+	const clearance = div2(claw - py) + (exceeds ? declared : 0);
 	// < 0 e NON <= 0: corsa zero e' valida, vuol dire pezzo gia' a contatto
 	if (clearance < 0) return none(PUSH_STATUS.NO_ROOM, ref);
+	// la compensazione arretra il solo ARRIVO, quindi
+	// (xPush + clearance) - xStop resta uguale a comp: e' cosi' che si legge
+	const comp = Number(compPush) || 0;
+	// ma se supera la corsa l'arrivo finisce DIETRO la partenza: la spinta si
+	// rovescerebbe contro il pezzo in morsa. Meglio nessuna spinta.
+	if (clearance - comp < 0) return none(PUSH_STATUS.NO_COMP, ref);
 	const xPush = Number(xPlace) - div2(py) - div2(tool);
-	return { status: PUSH_STATUS.OK, xPush, xStop: xPush + clearance, clearance, stopRef: ref };
+	return { status: PUSH_STATUS.OK, xPush, xStop: xPush + clearance - comp, clearance, stopRef: ref };
 };
 
 // Bit 1 di WORKORDER.OPTION2 = istantanea di PIECE.PUSH_TO_STOP (il bit 0

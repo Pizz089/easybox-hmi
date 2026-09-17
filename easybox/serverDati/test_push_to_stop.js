@@ -117,34 +117,57 @@ check(srv.pushQuotes(Object.assign({}, cella, { pieceY: 120000, stopBeyondClaw: 
 // stesso troncamento verso lo zero di SQL Server su differenza NEGATIVA
 check(srv.pushQuotes(Object.assign({}, cella, { pieceY: 180001, stopBeyondClaw: 25000 })).clearance === 10000, 'differenza negativa dispari: troncamento verso lo zero, come la divisione intera di SQL');
 // ---------------------------------------------------------------------------
-// COMPENSAZIONE SPINTA (COMP_PUSH): i semilavorati non arrivano in battuta.
-// Accorcia la corsa e basta: la quota di SPINTA non cambia, perche' si
-// accorcia il tragitto, non si sposta il punto di partenza.
-// Base: pezzo 1029 dentro la ganascia, corsa nominale 15000.
+// COMPENSAZIONE SPINTA (COMP_PUSH): di quanto il pezzo si ferma PRIMA della
+// battuta teorica (semantica ratificata il 17/9). Sempre positiva, SI SOTTRAE
+// dalla sola quota di arrivo: corsa e spinta restano la geometria teorica, la
+// corsa effettiva risulta minore, e la taratura si legge come differenza fra
+// le quote. Non puo' produrre NO_ROOM.
+// Base: pezzo 1029 dentro la ganascia, corsa 15000.
 const comp = (c) => srv.pushQuotes(Object.assign({}, cella, { compPush: c }));
 check(comp(null).clearance === 15000 && comp(undefined).clearance === 15000,
-	'compensazione assente: corsa invariata (15000)');
+	'compensazione assente: corsa 15000');
 check(comp(0).clearance === 15000, 'compensazione ZERO = nessuna compensazione: qui assenza e zero coincidono');
-check(comp(5000).status === 'OK' && comp(5000).clearance === 10000, 'compensazione 5000: corsa 10000, ancora positiva');
-check(comp(5000).xPush === r1.xPush, 'e la quota di SPINTA non cambia: si accorcia il tragitto, non si sposta la partenza');
-check(comp(5000).xStop === comp(5000).xPush + 10000, 'arrivo = spinta + corsa compensata');
-check(comp(15000).status === 'OK' && comp(15000).clearance === 0,
-	'compensazione pari alla corsa: corsa ZERO e status OK — pezzo gia\' a contatto, il confronto e\' < 0 e NON <= 0');
-check(comp(15001).status === 'NO_ROOM', 'un micron oltre: la spinta andrebbe all\'indietro -> NO_ROOM');
-check(comp(20000).status === 'NO_ROOM' && comp(20000).clearance === null,
-	'compensazione maggiore della corsa: NO_ROOM, e le quote sono NULL come nella vista');
-check(comp(20000).stopRef === srv.STOP_REF.CLAW, 'su NO_ROOM il riferimento resta valorizzato: serve al pannello per spiegare');
-// si somma all'appoggio dichiarato, non lo sostituisce: pezzo oltre la
-// ganascia (180000), appoggio 25000 -> corsa 10000, meno 4000 di
-// compensazione -> 6000
+check(comp(200).clearance === 15000 && comp(200).xPush === r1.xPush,
+	'compensazione 200: corsa e spinta NON cambiano, restano la geometria teorica');
+check(comp(200).xStop === r1.xStop - 200, 'si arretra il solo ARRIVO, e di 200: il pezzo si ferma prima');
+check((comp(200).xPush + comp(200).clearance) - comp(200).xStop === 200,
+	'(spinta + corsa) - arrivo = compensazione: e\' cosi\' che si legge, come nella vista');
+// COMPENSAZIONE OLTRE LA CORSA -> NO_COMP, non OK e non NO_ROOM.
+// L'arrivo finirebbe DIETRO la partenza e il robot spingerebbe nel verso
+// opposto contro il pezzo gia' in morsa. In cella non lo ferma nessuno: il
+// controllo di plausibilita' di FB7 guarda la DISTANZA da X_PLACE, non il
+// verso, quindi 3300 e -300 gli passano uguale. Con l'esito diverso da OK le
+// quote escono NULL e FB7 le scarta: meglio nessuna spinta che una rovesciata.
+check(comp(15000).status === 'OK' && comp(15000).xStop === comp(15000).xPush,
+	'compensazione PARI alla corsa: arrivo sulla partenza, corsa effettiva zero — ancora valido');
+check(comp(15001).status === 'NO_COMP', 'un micron oltre: la spinta si rovescerebbe -> NO_COMP');
+check(comp(20000).status === 'NO_COMP' && comp(20000).xPush === null && comp(20000).xStop === null
+	&& comp(20000).clearance === null,
+	'e le quote escono NULL, come per ogni altro esito diverso da OK');
+check(comp(20000).stopRef === srv.STOP_REF.CLAW,
+	'su NO_COMP il riferimento resta valorizzato: serve al pannello per spiegare');
+check(comp(20000).status !== 'NO_ROOM',
+	'e NON e\' NO_ROOM: quello resta il caso geometrico, questo e\' la taratura');
+// pezzo oltre la ganascia: la corsa resta quella dichiarata, la compensazione
+// non la tocca e finisce tutta sull'arrivo
 const oltreComp = srv.pushQuotes(Object.assign({}, cella, { pieceY: LUNGO, stopBeyondClaw: 25000, compPush: 4000 }));
-check(oltreComp.status === 'OK' && oltreComp.clearance === 6000,
-	'pezzo oltre la ganascia: la compensazione si sottrae ANCHE al tratto dichiarato');
+check(oltreComp.status === 'OK' && oltreComp.clearance === 10000,
+	'pezzo oltre la ganascia: corsa 10000, la compensazione non la tocca');
+check(oltreComp.xStop === oltreComp.xPush + 10000 - 4000, 'e l\'arrivo la toglie tutta');
 check(oltreComp.stopRef === srv.STOP_REF.DECLARED, 'e il riferimento resta quello dichiarato');
-// troncamento: la compensazione si sottrae DOPO la divisione intera
-check(srv.pushQuotes(Object.assign({}, cella, { pieceY: 120001, compPush: 1 })).clearance
-	=== srv.pushQuotes(Object.assign({}, cella, { pieceY: 120001 })).clearance - 1,
+// NO_ROOM resta SOLO geometrico: ci si arriva per l'appoggio dichiarato
+check(srv.pushQuotes(Object.assign({}, cella, { pieceY: LUNGO, stopBeyondClaw: 10000, compPush: 5000 })).status === 'NO_ROOM',
+	'NO_ROOM resta un fatto di geometria: lo produce l\'appoggio dichiarato, mai la compensazione');
+// il troncamento riguarda la sola divisione: la compensazione si somma dopo
+check(srv.pushQuotes(Object.assign({}, cella, { pieceY: 120001, compPush: 1 })).xStop
+	=== srv.pushQuotes(Object.assign({}, cella, { pieceY: 120001 })).xStop - 1,
 	'la compensazione si sottrae DOPO il troncamento, non dentro');
+// RISCONTRO DI CAMPO, ordine 1104 (17/9): sono i numeri letti in cella, con la
+// geometria vera del pezzo 1034. Il segno sbagliato qui darebbe 243900.
+const o1104 = srv.pushQuotes({ enabled: true, hasVice: true, xPlace: 311000,
+	pieceY: 100000, viceClawLength: 107200, gripperClawLength: 42000, compPush: 300 });
+check(o1104.xPush === 240000 && o1104.clearance === 3600 && o1104.xStop === 243300,
+	'ordine 1104: spinta 240000, corsa 3600, arrivo 243300 — corsa effettiva 3300');
 
 const casi = [
 	{ name: 'bit spento', v: Object.assign({}, cella, { enabled: false }), st: 'DISABLED' },
@@ -162,9 +185,11 @@ const casi = [
 	{ name: 'pezzo girato (entrerebbe la X): resta un caso valido ma diverso', v: Object.assign({}, cella, { pieceY: PIECE_X }), st: 'OK' },
 	{ name: 'valori dispari (troncamento come SQL)', v: Object.assign({}, cella, { pieceY: 120001, viceClawLength: 150001, gripperClawLength: 30001 }), st: 'OK' },
 	{ name: 'compensazione assente', v: Object.assign({}, cella, { compPush: null }), st: 'OK' },
-	{ name: 'compensazione che lascia corsa positiva', v: Object.assign({}, cella, { compPush: 5000 }), st: 'OK' },
-	{ name: 'compensazione che porta la corsa a ZERO', v: Object.assign({}, cella, { compPush: 15000 }), st: 'OK' },
-	{ name: 'compensazione che porta la corsa NEGATIVA', v: Object.assign({}, cella, { compPush: 20000 }), st: 'NO_ROOM' },
+	{ name: 'compensazione: il pezzo si ferma prima', v: Object.assign({}, cella, { compPush: 200 }), st: 'OK' },
+	{ name: 'compensazione pari alla corsa: arrivo sulla partenza', v: Object.assign({}, cella, { compPush: 15000 }), st: 'OK' },
+	{ name: 'compensazione oltre la corsa: spinta rovesciata', v: Object.assign({}, cella, { compPush: 20000 }), st: 'NO_COMP' },
+	{ name: 'compensazione oltre la corsa su pezzo dichiarato', v: Object.assign({}, cella, { pieceY: LUNGO, stopBeyondClaw: 25000, compPush: 12000 }), st: 'NO_COMP' },
+	{ name: 'riscontro di campo ordine 1104', v: { enabled: true, hasVice: true, xPlace: 311000, pieceY: 100000, viceClawLength: 107200, gripperClawLength: 42000, compPush: 300 }, st: 'OK' },
 	{ name: 'compensazione su pezzo oltre la ganascia', v: Object.assign({}, cella, { pieceY: LUNGO, stopBeyondClaw: 25000, compPush: 4000 }), st: 'OK' },
 ];
 for (const c of casi) {
@@ -287,8 +312,29 @@ check(/case when pz\.Y > v\.CLAW_LENGTH[\s\S]{0,80}ISNULL\(pv\.STOP_BEYOND_CLAW,
 check(/left  join PIECE_ON_VICE pv\s+on pv\.VICE_ID = v\.ID and pv\.PIECE_ID = w\.PIECE_ID/.test(viewSql), 'la dichiarazione e\' agganciata alla MORSA, non al pallet');
 check(/'NO_FIT'/.test(viewSql) && /pv\.VICE_ID is null/.test(viewSql), 'NO_FIT solo quando la dichiarazione manca');
 check(/'NO_ROOM'/.test(viewSql), 'esito NO_ROOM presente nella vista');
+// NO_COMP: stessa corsa geometrica del ramo NO_ROOM, meno la compensazione
+check(/- ISNULL\(pv\.COMP_PUSH, 0\) < 0\s+then 'NO_COMP'/.test(viewSql),
+	'esito NO_COMP: la compensazione oltre la corsa rovescerebbe la spinta');
+check(viewSql.indexOf("'NO_COMP'") < viewSql.indexOf("else 'OK'"),
+	'e il ramo sta PRIMA di OK, altrimenti non scatterebbe mai');
+// (comp-push 17/9) la compensazione sta sulla SOLA quota di arrivo
+check(/q\.X_PUSH_RAW \+ q\.TRAVEL_RAW - q\.COMP_PUSH end\s+as X_STOP/.test(viewSql),
+	'X_STOP SOTTRAE la compensazione; X_PUSH e CLEARANCE restano geometria');
+// il segno va cercato nel SOLO corpo della vista: le guardie nominano apposta
+// anche la variante col piu', perche' devono riconoscerla per correggerla
+const viewBody = viewSql.slice(viewSql.indexOf('ALTER VIEW dbo.COORDINATES_PUSH_MC AS'));
+check(!/q\.TRAVEL_RAW \+ q\.COMP_PUSH/.test(viewBody),
+	'nel corpo non resta traccia della variante col piu\', quella finita in cella per sbaglio');
+check(/q\.TRAVEL_RAW \+ q\.COMP_PUSH end\s+as X_STOP/.test(viewSql),
+	'ma le guardie la nominano: il segno sbagliato va CORRETTO, non scambiato per lavoro gia\' fatto');
+check(!/- ISNULL\(pv\.COMP_PUSH, 0\)\s+as TRAVEL_RAW/.test(viewSql),
+	'la compensazione non si sottrae da TRAVEL_RAW: la corsa esposta resta geometrica');
+check(/else 0 end < 0\s+then 'NO_ROOM'/.test(viewSql),
+	'e non entra nel ramo NO_ROOM, che resta il solo caso geometrico');
+check(/ISNULL\(pv\.COMP_PUSH, 0\)\s+as COMP_PUSH/.test(viewSql),
+	'COMP_PUSH esposto con ISNULL: e\' NULL sui pezzi non tarati e il ponte SQL non lo converte in zero');
 check(/'DECLARED'/.test(viewSql) && /'CLAW'/.test(viewSql), 'la vista dice su cosa appoggia il pezzo');
-const viewStatuses = ['DISABLED', 'NO_VICE', 'NO_DATA', 'NO_FIT', 'NO_ROOM', 'OK'];
+const viewStatuses = ['DISABLED', 'NO_VICE', 'NO_DATA', 'NO_FIT', 'NO_ROOM', 'NO_COMP', 'OK'];
 check(viewStatuses.every(st => Object.values(srv.PUSH_STATUS).includes(st) && new RegExp("'" + st + "'").test(viewSql)), 'gli esiti della vista e quelli del modulo sono lo stesso insieme');
 check(!/p\.Y - pz\./.test(viewSql) && !/pz\.X/.test(viewSql), 'la vista non spinge sulla Y e non usa PIECE.X');
 check(/RTRIM\(p\.PARENT\) = CONCAT\('MC_', w\.MACHINE_ID\)/.test(view), 'posizione legata alla macchina dell\'ordine (la query storica non filtrava)');

@@ -371,7 +371,7 @@ router.get('/pushQuotes/:orderID', (req, res) => {
 			return;
 		}
 		let query = `select ORDER_ID, MC, X_PLACE, Y_PLACE, Z_PLACE,
-							X_PUSH, X_STOP, CLEARANCE, STOP_REF, STOP_BEYOND_CLAW,
+							X_PUSH, X_STOP, CLEARANCE, STOP_REF, STOP_BEYOND_CLAW, COMP_PUSH,
 							PUSH_ENABLED, PUSH_STATUS
 					 from COORDINATES_PUSH_MC where ORDER_ID = ${orderID};`;
 		var request = new sql.Request();

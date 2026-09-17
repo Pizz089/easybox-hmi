@@ -1071,10 +1071,8 @@
     "fToolClaw": "Chela della pinza",
     "fStopBeyond": "Appoggio oltre la ganascia",
     "fCompPush": "Compensazione spinta",
-    "compTravel": "Corsa: {travel} mm (nominale {base} mm)",
+    "compTravel": "Corsa: {travel} mm — si ferma {comp} mm prima",
     "compTravelNone": "Corsa: {travel} mm",
-    "compNoRoom": "La compensazione supera la corsa disponibile: {comp} mm su {base} mm. Con questi valori la spinta si DISABILITA e il PLC non segnala niente. Ridurre la compensazione.",
-    "compNoRoomWarn": "Con questo valore la spinta non verra' eseguita: la corsa risulterebbe negativa.",
     "compNoRow": "Per questa morsa e questo pezzo non esiste ancora una dichiarazione: la compensazione non ha dove essere scritta. Dichiarare prima l'appoggio oltre la ganascia, poi la compensazione.",
     "confirmComp": "Compensazione spinta di {obj} per {piece}: da {from} a {to}.",
     "confirmCompClear": "Togliere la compensazione spinta di {obj} per {piece}? Il pezzo tornera' a essere spinto fino in battuta.",
@@ -1121,6 +1119,7 @@
       "NO_VICE": "Nessuna morsa",
       "NO_DATA": "Misura mancante",
       "NO_FIT": "Appoggio non dichiarato",
+      "NO_COMP": "Compensazione eccessiva",
       "NO_ROOM": "Appoggio troppo vicino"
     },
     "reason": {
@@ -1129,6 +1128,7 @@
       "NO_VICE": "Sul pallet non c'\u00e8 una morsa: il ciclo non \u00e8 eseguibile.",
       "NO_DATA": "Manca una misura fisica: la ganascia della morsa, la chela della pinza o la dimensione del pezzo.",
       "NO_FIT": "Il pezzo \u00e8 lungo {piece} mm e la ganascia {claw} mm: sporge {over} mm per lato, e nessuno ha dichiarato dove appoggia davvero. Si dichiara nella pagina della morsa.",
+      "NO_COMP": "La compensazione e' {comp} mm ma la corsa e' {travel} mm: il pezzo dovrebbe fermarsi dietro il punto di partenza e il robot spingerebbe nel verso opposto contro il pezzo in morsa. La spinta non viene eseguita: ridurre la compensazione.",
       "NO_ROOM": "Il pezzo sporge {over} mm per lato, ma l'appoggio \u00e8 dichiarato a {stop} mm dalla fine della ganascia: il pezzo sarebbe oltre la battuta prima ancora di essere spinto."
     }
   }

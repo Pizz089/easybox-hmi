@@ -139,20 +139,14 @@
           </span>
         </div>
 
-        <!-- (comp-push) la corsa che RESTA, accanto al campo: sull'ordine in
-             produzione la corsa nominale e' 3,3 mm, e senza questo riscontro
-             una compensazione si dichiara alla cieca. -->
+        <!-- (comp-push) la CORSA accanto al campo: sull'ordine in produzione
+             e' 3,3 mm, e senza questo riscontro una compensazione da qualche
+             decimo si dichiara alla cieca. La corsa NON la tocca: quando c'e'
+             una compensazione si dice anche quanto prima si ferma il pezzo. -->
         <p v-if="compPreview.travelMm !== null" class="sim-hint">
           {{ compPreview.comp
-             ? t("pushSim.compTravel", { base: compPreview.baseMm, travel: compPreview.travelMm })
+             ? t("pushSim.compTravel", { travel: compPreview.travelMm, comp: compPreview.comp / 1000 })
              : t("pushSim.compTravelNone", { travel: compPreview.travelMm }) }}
-        </p>
-
-        <!-- la compensazione ha portato la corsa sotto zero: la spinta si
-             DISABILITA, e il PLC non alza allarmi su questo ramo. Se non lo
-             dice il pannello non lo dice nessuno. -->
-        <p v-if="compPreview.noRoomByComp" class="sim-warn">
-          {{ t("pushSim.compNoRoom", { base: compPreview.baseMm, comp: compPreview.comp / 1000 }) }}
         </p>
 
         <!-- senza riga PIECE_ON_VICE la compensazione non ha dove scriversi:
@@ -539,13 +533,19 @@ export default {
       });
     },
 
-    // (comp-push) LA CORSA CHE RESTA, in millimetri, accanto al campo. La
-    // corsa nominale e' di pochi millimetri: senza questo riscontro
-    // l'operatore dichiara una compensazione alla cieca.
+    // (comp-push) LA CORSA, in millimetri, accanto al campo. E' di pochi
+    // millimetri: senza questo riscontro l'operatore dichiara una
+    // compensazione alla cieca.
+    //
+    // (17/9) la compensazione NON entra nella corsa: si sottrae dalla sola
+    // quota di arrivo, e quando la supera l'esito e' NO_COMP.
+    //
+    // La corsa si calcola SENZA compensazione apposta: e' il tetto oltre il
+    // quale la spinta si rovescia, ed e' il numero che serve per scegliere il
+    // valore. Su NO_COMP le quote di this.check sono NULL — come nella vista —
+    // quindi da li' non si potrebbe leggere proprio quando serve di piu'.
     compPreview() {
-      const c = this.check;
-      // corsa SENZA compensazione: il riferimento da cui si parte
-      const base = pushQuotes({
+      const geom = pushQuotes({
         enabled: true,
         hasVice: !!this.sel.viceID,
         xPlace: this.xPlace,
@@ -555,18 +555,8 @@ export default {
         stopBeyondClaw: this.m.stopBeyond,
       });
       return {
-        // la nominale si mostra solo quando ha senso (senza compensazione
-        // l'esito sarebbe OK): altrimenti il numero mentirebbe
-        baseMm: base.clearance === null ? null : base.clearance / 1000,
-        travelMm: c.clearance === null ? null : c.clearance / 1000,
+        travelMm: geom.clearance === null ? null : geom.clearance / 1000,
         comp: this.m.compPush,
-        // NO_ROOM CAUSATO DALLA COMPENSAZIONE: senza compensazione l'esito
-        // sarebbe stato OK. E' il caso che va detto a voce alta — la spinta
-        // si disabilita e il PLC non alza allarmi su questo ramo.
-        noRoomByComp:
-          c.status === PUSH_STATUS.NO_ROOM &&
-          base.status === PUSH_STATUS.OK &&
-          !!(this.m.compPush),
       };
     },
 
@@ -606,6 +596,9 @@ export default {
         claw: this.m.viceClaw / 1000,
         over: Math.trunc((this.m.pieceLen - this.m.viceClaw) / 2) / 1000,
         stop: this.stopDeclared === null ? "-" : this.stopDeclared / 1000,
+        // per NO_COMP: la corsa GEOMETRICA e la compensazione che la supera
+        travel: this.compPreview.travelMm === null ? "-" : this.compPreview.travelMm,
+        comp: this.m.compPush === null ? "-" : this.m.compPush / 1000,
       };
     },
 
@@ -881,8 +874,6 @@ export default {
             obj: this.objName(this.vices, this.sel.viceID, "pushSim.vice"),
             piece: this.objName(this.pieces, this.sel.pieceID, "pushSim.piece"),
           }),
-          // se la compensazione azzera la spinta va detto PRIMA di salvare
-          warn: this.compPreview.noRoomByComp ? this.t("pushSim.compNoRoomWarn") : undefined,
           run: () => this.send("api/conf/vice/setCompPush", {
             VICE_ID: this.sel.viceID, PIECE_ID: this.sel.pieceID,
             COMP_PUSH: now === null ? "" : now,

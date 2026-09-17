@@ -1071,10 +1071,8 @@
     "fToolClaw": "Gripper claw",
     "fStopBeyond": "Rest point beyond the jaw",
     "fCompPush": "Push compensation",
-    "compTravel": "Travel: {travel} mm (nominal {base} mm)",
+    "compTravel": "Travel: {travel} mm — stops {comp} mm short",
     "compTravelNone": "Travel: {travel} mm",
-    "compNoRoom": "The compensation exceeds the available travel: {comp} mm out of {base} mm. With these values the push is DISABLED and the PLC reports nothing. Reduce the compensation.",
-    "compNoRoomWarn": "With this value the push will not run: the travel would be negative.",
     "compNoRow": "There is no declaration yet for this vice and part: the compensation has nowhere to be written. Declare the rest point beyond the jaw first, then the compensation.",
     "confirmComp": "Push compensation of {obj} for {piece}: from {from} to {to}.",
     "confirmCompClear": "Remove the push compensation of {obj} for {piece}? The part will again be pushed all the way to the stop.",
@@ -1121,6 +1119,7 @@
       "NO_VICE": "No vice",
       "NO_DATA": "Missing measurement",
       "NO_FIT": "Rest point not declared",
+      "NO_COMP": "Compensation too large",
       "NO_ROOM": "Rest point too close"
     },
     "reason": {
@@ -1129,6 +1128,7 @@
       "NO_VICE": "There is no vice on the pallet: the cycle cannot run.",
       "NO_DATA": "A physical measurement is missing: the vice jaw, the gripper claw or the part size.",
       "NO_FIT": "The part is {piece} mm long and the jaw is {claw} mm: it overhangs {over} mm per side, and nobody declared where it really rests. Declare it on the vice page.",
+      "NO_COMP": "The compensation is {comp} mm but the travel is {travel} mm: the part would stop behind the starting point and the robot would push the opposite way against the part in the vice. The push will not run: reduce the compensation.",
       "NO_ROOM": "The part overhangs {over} mm per side, but the rest point is declared {stop} mm from the end of the jaw: the part would be past the stop before being pushed at all."
     }
   }
