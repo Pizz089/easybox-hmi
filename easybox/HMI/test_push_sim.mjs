@@ -54,7 +54,11 @@ const PIECES = [
 	{ ID: 1029, FAMILY: 'P1029', DESCR: '', X: 40000, Y: 120000, PUSH_TO_STOP: 1 },
 	{ ID: 1099, FAMILY: 'LUNGO', DESCR: '', X: 60000, Y: 180000, PUSH_TO_STOP: 1 },
 ];
-const VICES = [{ ID: 1, FAMILY: 'M', PALLET_ID: 9, X: 300000, Y: 200000, CLAW_LENGTH: 150000 }];
+const VICES = [
+	{ ID: 1, FAMILY: 'M', PALLET_ID: 9, X: 300000, Y: 200000, CLAW_LENGTH: 150000, Z_CLAW: 27300, Z_SINK_CLAW: 5000 },
+	// morsa mai misurata: in cella e' la 2, con CLAW_LENGTH a NULL
+	{ ID: 2, FAMILY: 'M2', PALLET_ID: 3, X: 300000, Y: 300000, CLAW_LENGTH: null, Z_CLAW: 20000, Z_SINK_CLAW: 10000 },
+];
 const GRIPPERS = [{ ID: 26, FAMILY: 'G', CLAW_LENGTH: 30000, TICKNESS_CLAW: 5000 }];
 const POSITIONS = [{ ID: 9, PARENT: 'MC_1', X: -16084, Y: -18298, Z: 4071 }];
 
@@ -261,6 +265,82 @@ check(vm.sel.viceID === 1, 'la morsa si risolve dal pallet');
 check(calls.some(u => u.startsWith('api/order/pushQuotes/82')), 'con un ordine vero si LEGGE la vista del PLC');
 check(vm.viewRow && vm.viewRow.PUSH_STATUS === 'OK', 'la riga della vista arriva alla pagina');
 check(/viewStale/.test(src) && /v-if="diverged"/.test(src), 'se i parametri cambiano, la lettura della vista viene dichiarata superata');
+
+console.log('\n6b) le TRE misure della chela, in un punto solo');
+// Quando l'operatore sostituisce le chele cambiano insieme: lunghezza, altezza
+// ganascia e affondamento del pezzo. Prima solo la lunghezza era salvabile da
+// qui; le altre due si potevano toccare solo da updateVice, che riscrive tutta
+// la riga (il form morsa infatti se le rilegge fresche pur di non perderle).
+vm = await page({ level: 2, pieceID: 1029 });
+const chiavi = vm.fields.map(f => f.key);
+check(chiavi.indexOf('zClaw') === chiavi.indexOf('viceClaw') + 1
+	&& chiavi.indexOf('zSink') === chiavi.indexOf('viceClaw') + 2,
+	'le tre misure della chela stanno una accanto all\'altra, non sparse nella pagina');
+check(vm.real.zClaw === 27.3 && vm.real.zSink === 5,
+	'lette dall\'anagrafica in millimetri (27,3 e 5 della morsa 1)');
+
+const quoteA = JSON.stringify(vm.check);
+vm.sim.zClaw = 30; vm.sim.zSink = 8;
+await tick();
+check(JSON.stringify(vm.check) === quoteA,
+	'e NON entrano nel calcolo della spinta: servono al soffiaggio, le quote non si muovono');
+
+calls.length = 0;
+vm.askSave('zClaw');
+check(/obj=M #1/.test(vm.confirm.text) && /from=27.3 mm/.test(vm.confirm.text) && /to=30 mm/.test(vm.confirm.text),
+	'altezza ganascia: la conferma nomina la morsa e dice da quanto a quanto');
+vm.doSave(); await tick(); await tick();
+let w2 = calls.filter(u => /setClaw/i.test(u));
+check(w2.length === 1 && /api\/conf\/vice\/setClawHeight/.test(w2[0]) && /ID=1&Z_CLAW=30000/.test(w2[0]),
+	'e va sulla rotta mirata, con il valore in micron');
+
+calls.length = 0;
+vm.askSave('zSink');
+vm.doSave(); await tick(); await tick();
+w2 = calls.filter(u => /setClaw/i.test(u));
+check(w2.length === 1 && /api\/conf\/vice\/setClawSink/.test(w2[0]) && /ID=1&Z_SINK_CLAW=8000/.test(w2[0]),
+	'affondamento: rotta sua, mai la stessa dell\'altezza');
+
+// lo ZERO e' un valore vero per l'affondamento (ganascia piatta), non per
+// l'altezza: una ganascia alta zero non esiste
+vm.confirm = null; vm.sim.zSink = 0; vm.askSave('zSink');
+check(!!vm.confirm, 'affondamento ZERO: si puo\' salvare, e\' una ganascia piatta e non un dato mancante');
+vm.confirm = null; vm.sim.zClaw = 0; vm.askSave('zClaw');
+check(vm.confirm === null, 'altezza ZERO: niente conferma, una ganascia alta zero non esiste');
+// IL VUOTO NON DEVE DIVENTARE UNO ZERO. Con Z_SINK_CLAW >= 0 lo zero e il "mai
+// misurato" finiscono nello stesso record, quindi salvare zero deve essere un
+// gesto VOLUTO e non l'inerzia di un campo svuotato e confermato. Si prova con
+// la stringa vuota, che e' quello che da' davvero un input number ripulito:
+// toMicron('') -> null, non 0.
+calls.length = 0;
+vm.confirm = null; vm.sim.zSink = ''; vm.askSave('zSink');
+check(vm.confirm === null, 'campo svuotato: niente conferma — svuotare non e\' mettere a zero');
+vm.doSave(); await tick(); await tick();
+check(calls.filter(u => /setClawSink/.test(u)).length === 0, 'e nessuna scrittura parte lo stesso');
+vm.confirm = null; vm.sim.zSink = null; vm.askSave('zSink');
+check(vm.confirm === null, 'idem col valore assente, non solo con la stringa vuota');
+// lo zero invece si salva, ma perche' l'operatore lo ha DIGITATO
+calls.length = 0;
+vm.sim.zSink = 0; vm.askSave('zSink'); vm.doSave(); await tick(); await tick();
+check(calls.some(u => /setClawSink/.test(u) && /Z_SINK_CLAW=0/.test(u)),
+	'lo zero DIGITATO invece si salva: e\' la ganascia piatta, ed e\' un gesto esplicito');
+
+// morsa mai misurata: il campo regge il valore assente e ci si puo' scrivere
+vm = await page({ level: 2, pieceID: 1029 });
+vm.sel.viceID = 2; vm.onSelectionChange(); await tick();
+check(vm.real.viceClaw === null && vm.sim.viceClaw === null,
+	'morsa senza lunghezza a DB: il campo resta VUOTO, non mostra uno zero che sembrerebbe una misura');
+check(vm.real.zClaw === 20 && vm.real.zSink === 10, 'le altre due misure si leggono lo stesso');
+calls.length = 0;
+vm.sim.viceClaw = 107.2;
+vm.askSave('viceClaw');
+check(/from=pushSim.notMeasured/.test(vm.confirm.text), 'e la conferma dice che prima non era misurata');
+vm.doSave(); await tick(); await tick();
+check(calls.some(u => /setClawLength/.test(u) && /ID=2&CLAW_LENGTH=107200/.test(u)),
+	'si salva un numero dove prima non c\'era niente');
+
+check(/api\/conf\/vice\/setClawHeight/.test(src) && /api\/conf\/vice\/setClawSink/.test(src),
+	'la pagina usa due rotte mirate anche per le misure nuove');
 
 console.log('\n7) i18n');
 const it = JSON.parse(readFileSync('src/locales/it.json', 'utf8')), en = JSON.parse(readFileSync('src/locales/en.json', 'utf8'));

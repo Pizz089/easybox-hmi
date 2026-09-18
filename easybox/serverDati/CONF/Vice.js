@@ -168,23 +168,38 @@ router.delete('/:ID', (req, res) => {
 // rispondere OK, e' il difetto silenzioso che e' costato l'errore 799.
 // La modifica viene tracciata in LOG (auditLog): la conferma a video copre
 // l'intenzione, la riga di log rende la provenienza ricostruibile dopo.
+//
+// (claw-geometry 18/9) LE MISURE DELLA CHELA SONO TRE, NON UNA.
+// CLAW_LENGTH (lunghezza), Z_CLAW (altezza della ganascia) e Z_SINK_CLAW
+// (affondamento del pezzo nella ganascia) descrivono la CHELA, non il corpo
+// morsa: quando l'operatore sostituisce le chele cambiano insieme, e devono
+// avere un unico punto dove impostarle. Finora solo CLAW_LENGTH aveva una
+// rotta di salvataggio singolo; le altre due si potevano toccare soltanto da
+// updateVice, che riscrive tutta la riga — tanto che il form morsa se le fa
+// restituire fresche dal database pur di non sovrascriverle.
+//
+// Una rotta per misura, e il NOME DELLA COLONNA sta scritto qui dentro, a
+// letterale: non arriva mai dalla richiesta.
 // ===========================================================================
-router.get('/setClawLength', (req, res) => {
-	const id = parseInt(req.query.ID, 10);
-	const len = parseInt(req.query.CLAW_LENGTH, 10);
-	if (!Number.isInteger(id) || id < 1 || !Number.isInteger(len) || len <= 0) {
+function salvaMisuraChela(req, res, m) {
+	const id  = parseInt(req.query.ID, 10);
+	const val = parseInt(req.query[m.param], 10);
+	// il minimo cambia per misura: una lunghezza e un'altezza a zero non
+	// esistono, un affondamento a zero SI' (ganascia piatta, il pezzo appoggia
+	// sopra), e non va confuso con "non misurato"
+	if (!Number.isInteger(id) || id < 1 || !Number.isInteger(val) || val < m.minimo) {
 		res.status(400).send("KO_BAD_INPUT");
 		return;
 	}
 	sql.connect(DBf.configDB, function (err) {
 		if (err) {
-			log.error("err setClawLength: " + err);
+			log.error("err " + m.rotta + ": " + err);
 			res.status(500).send("KO");
 			return;
 		}
 		let query = `SET NOCOUNT ON;
-					DECLARE @old int = (SELECT CLAW_LENGTH FROM VICE WHERE ID=${id});
-					UPDATE VICE SET CLAW_LENGTH=${len} WHERE ID=${id};
+					DECLARE @old int = (SELECT ${m.colonna} FROM VICE WHERE ID=${id});
+					UPDATE VICE SET ${m.colonna}=${val} WHERE ID=${id};
 					SELECT @@ROWCOUNT AS n, @old AS old, RTRIM(FAMILY) AS fam FROM VICE WHERE ID=${id};`;
 		var request = new sql.Request();
 		log.info('query ' + query);
@@ -196,13 +211,33 @@ router.get('/setClawLength', (req, res) => {
 			}
 			const row = recordset.recordset && recordset.recordset[0];
 			if (!row || !row.n) { res.send(ERR.KO_NOT_FOUND); return; }
-			audit.audit('Morsa ' + row.fam + ' (ID ' + id + '): lunghezza ganascia da '
-				+ (row.old == null ? 'non misurata' : row.old + ' um') + ' a ' + len + ' um',
+			audit.audit('Morsa ' + row.fam + ' (ID ' + id + '): ' + m.etichetta + ' da '
+				+ (row.old == null ? 'non misurata' : row.old + ' um') + ' a ' + val + ' um',
 				audit.SRC_PUSH_SIM, 'VICE:' + id);
 			res.send("OK");
 		});
 	});
-})
+}
+
+// lunghezza delle chele sull'asse di battuta: e' la base del calcolo della
+// spinta (COORDINATES_PUSH_MC) e del soffiaggio (COORDINATES_BLOW_MC)
+router.get('/setClawLength', (req, res) => salvaMisuraChela(req, res, {
+	rotta: 'setClawLength', colonna: 'CLAW_LENGTH', param: 'CLAW_LENGTH',
+	etichetta: 'lunghezza ganascia', minimo: 1,
+}))
+
+// altezza della ganascia
+router.get('/setClawHeight', (req, res) => salvaMisuraChela(req, res, {
+	rotta: 'setClawHeight', colonna: 'Z_CLAW', param: 'Z_CLAW',
+	etichetta: 'altezza ganascia', minimo: 1,
+}))
+
+// quanto il pezzo affonda dentro la ganascia. Lo ZERO e' un valore vero
+// (ganascia piatta), non un dato mancante: minimo 0.
+router.get('/setClawSink', (req, res) => salvaMisuraChela(req, res, {
+	rotta: 'setClawSink', colonna: 'Z_SINK_CLAW', param: 'Z_SINK_CLAW',
+	etichetta: 'affondamento pezzo', minimo: 0,
+}))
 // ===========================================================================
 // (push-to-stop 15/9) APPOGGIO DICHIARATO per i pezzi che ECCEDONO la ganascia
 // Un pezzo piu' lungo della ganascia non e' un errore: appoggia piu' avanti,

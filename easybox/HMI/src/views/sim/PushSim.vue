@@ -451,9 +451,9 @@ export default {
       stops: [],
       sel: { pieceID: 0, viceID: 0, gripperID: 0, machineID: 1 },
       // valori SIMULATI, in millimetri (quelli che si toccano)
-      sim: { pieceLen: null, pieceWid: null, viceClaw: null, toolClaw: null, stopBeyond: null, compPush: null },
+      sim: { pieceLen: null, pieceWid: null, viceClaw: null, zClaw: null, zSink: null, toolClaw: null, stopBeyond: null, compPush: null },
       // copia dei valori REALI letti dal database, in millimetri
-      real: { pieceLen: null, pieceWid: null, viceClaw: null, toolClaw: null, stopBeyond: null, compPush: null },
+      real: { pieceLen: null, pieceWid: null, viceClaw: null, zClaw: null, zSink: null, toolClaw: null, stopBeyond: null, compPush: null },
       phase: 0,
       timers: [],
       viewRow: null,
@@ -465,7 +465,15 @@ export default {
       fields: [
         { key: "pieceLen", label: "pushSim.fPieceLen" },
         { key: "pieceWid", label: "pushSim.fPieceWid" },
+        // (claw-geometry 18/9) le TRE misure della chela della morsa, una
+        // accanto all'altra: quando si sostituiscono le chele cambiano
+        // insieme, ed e' per questo che la pagina e' l'unico punto dove
+        // impostarle. Solo la lunghezza entra nel calcolo della spinta; le
+        // altre due servono al soffiaggio (COORDINATES_BLOW_MC) e non toccano
+        // le quote disegnate qui sotto.
         { key: "viceClaw", label: "pushSim.fViceClaw" },
+        { key: "zClaw", label: "pushSim.fZClaw" },
+        { key: "zSink", label: "pushSim.fZSink" },
         { key: "toolClaw", label: "pushSim.fToolClaw" },
         { key: "stopBeyond", label: "pushSim.fStopBeyond" },
         // (comp-push) compensazione per SEMILAVORATI: accorcia la corsa, il
@@ -757,7 +765,12 @@ export default {
       const grip = this.grippers.find((g) => g.ID == this.sel.gripperID);
       this.real.pieceLen = piece ? Number(piece.Y) / 1000 : null;
       this.real.pieceWid = piece ? Number(piece.X) / 1000 : null;
+      // != null copre NULL e undefined: CLAW_LENGTH e' NULL sulle morse mai
+      // misurate (la 2 lo e' adesso) e il campo deve restare VUOTO, non
+      // mostrare uno zero che sembrerebbe una misura presa
       this.real.viceClaw = vice && vice.CLAW_LENGTH != null ? Number(vice.CLAW_LENGTH) / 1000 : null;
+      this.real.zClaw = vice && vice.Z_CLAW != null ? Number(vice.Z_CLAW) / 1000 : null;
+      this.real.zSink = vice && vice.Z_SINK_CLAW != null ? Number(vice.Z_SINK_CLAW) / 1000 : null;
       this.real.toolClaw = grip && grip.CLAW_LENGTH != null ? Number(grip.CLAW_LENGTH) / 1000 : null;
     },
 
@@ -831,6 +844,22 @@ export default {
           key,
           text: this.t("pushSim.confirmVice", { ...args, obj: this.objName(this.vices, this.sel.viceID, "pushSim.vice") }),
           run: () => this.send("api/conf/vice/setClawLength", { ID: this.sel.viceID, CLAW_LENGTH: now }),
+        };
+      } else if (key === "zClaw") {
+        if (now === null || now <= 0) return;
+        this.confirm = {
+          key,
+          text: this.t("pushSim.confirmZClaw", { ...args, obj: this.objName(this.vices, this.sel.viceID, "pushSim.vice") }),
+          run: () => this.send("api/conf/vice/setClawHeight", { ID: this.sel.viceID, Z_CLAW: now }),
+        };
+      } else if (key === "zSink") {
+        // lo ZERO e' un valore vero (ganascia piatta), non un dato mancante:
+        // qui si rifiuta il VUOTO, non lo zero
+        if (now === null || now < 0) return;
+        this.confirm = {
+          key,
+          text: this.t("pushSim.confirmZSink", { ...args, obj: this.objName(this.vices, this.sel.viceID, "pushSim.vice") }),
+          run: () => this.send("api/conf/vice/setClawSink", { ID: this.sel.viceID, Z_SINK_CLAW: now }),
         };
       } else if (key === "toolClaw") {
         if (now === null || now <= 0) return;

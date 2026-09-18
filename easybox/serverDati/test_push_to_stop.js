@@ -285,6 +285,30 @@ check(r.res.code === 400 && r.n === 0, 'ganascia a zero -> 400 senza toccare il 
 r = callIn('vice', 'GET /setClawLength', { ID: 'x', CLAW_LENGTH: '1' }, []);
 check(r.res.code === 400 && r.n === 0, 'morsa non numerica -> 400');
 
+// (claw-geometry 18/9) le altre due misure della CHELA, ognuna con la sua
+// rotta: il nome della colonna e' scritto nel codice, non arriva dalla query
+r = callIn('vice', 'GET /setClawHeight', { ID: '1', Z_CLAW: '27300' }, [{ recordset: [{ n: 1, old: 25000, fam: 'ADMG' }] }, {}]);
+check(/UPDATE VICE SET Z_CLAW=27300 WHERE ID=1/.test(r.q[0]), 'altezza ganascia: scrive SOLO Z_CLAW');
+check(!/CLAW_LENGTH=|Z_SINK_CLAW=/.test(r.q[0]), 'e non tocca le altre due misure della chela');
+check(r.q.some(q => /INSERT INTO LOG/.test(q) && /altezza ganascia/.test(q)), 'a diario col nome della misura, non col nome della colonna');
+r = callIn('vice', 'GET /setClawSink', { ID: '1', Z_SINK_CLAW: '5000' }, [{ recordset: [{ n: 1, old: 4000, fam: 'ADMG' }] }, {}]);
+check(/UPDATE VICE SET Z_SINK_CLAW=5000 WHERE ID=1/.test(r.q[0]), 'affondamento: scrive SOLO Z_SINK_CLAW');
+r = callIn('vice', 'GET /setClawSink', { ID: '1', Z_SINK_CLAW: '0' }, [{ recordset: [{ n: 1, old: 5000, fam: 'ADMG' }] }, {}]);
+check(/UPDATE VICE SET Z_SINK_CLAW=0 WHERE ID=1/.test(r.q[0]) && r.res.code === 200,
+	'affondamento ZERO: e\' un valore vero (ganascia piatta), non un dato mancante');
+r = callIn('vice', 'GET /setClawHeight', { ID: '1', Z_CLAW: '0' }, []);
+check(r.res.code === 400 && r.n === 0, 'altezza ZERO invece e\' 400: una ganascia alta zero non esiste');
+// e se il vuoto arrivasse comunque fin qui, il backend NON lo interpreta come
+// zero: parseInt('') e' NaN -> 400. Lo zero si scrive solo se e' scritto.
+r = callIn('vice', 'GET /setClawSink', { ID: '1', Z_SINK_CLAW: '' }, []);
+check(r.res.code === 400 && r.n === 0, 'affondamento VUOTO -> 400: il vuoto non diventa zero nemmeno qui');
+r = callIn('vice', 'GET /setClawSink', { ID: '1' }, []);
+check(r.res.code === 400 && r.n === 0, 'affondamento assente -> 400, senza toccare il database');
+r = callIn('vice', 'GET /setClawHeight', { ID: '99', Z_CLAW: '27300' }, [{ recordset: [] }]);
+check(r.res.body === errorCodes.KO_NOT_FOUND, 'morsa inesistente -> KO_NOT_FOUND anche sulle rotte nuove');
+check(modRoutes.vice['GET /setClawHeight'] !== modRoutes.vice['GET /setClawSink'],
+	'due rotte distinte: la colonna non e\' un parametro');
+
 r = callIn('gripper', 'GET /setClawLength', { ID: '26', CLAW_LENGTH: '32000' }, [{ recordset: [{ n: 1, old: 30000, fam: 'P' }] }, {}]);
 check(/UPDATE GRIPPER SET CLAW_LENGTH=32000 WHERE ID=26/.test(r.q[0]), 'pinza: scrive SOLO la lunghezza chela');
 check(modRoutes.vice['GET /setClawLength'] !== modRoutes.gripper['GET /setClawLength'],
@@ -300,6 +324,22 @@ r = call('GET /setSize', { ID: '1029', X: '40000', Y: '0' }, []);
 check(r.res.code === 400 && r.n === 0, 'dimensione a zero -> 400');
 
 console.log('\n4) lo script della vista non nasconde la definizione');
+// (blow 18/9) la vista del SOFFIAGGIO: stesse regole, e una in piu' — la
+// query che la legge deve stare sotto i 254 caratteri di queryTemp del PLC
+const blow = fs.readFileSync(path.join(__dirname, 'scripts', 'coordinates-blow-mc.sql'), 'utf8');
+const blowSql = blow.split(/\r?\n/).filter(l => !/^\s*--/.test(l)).join('\n');
+check(!/WITH\s+ENCRYPTION/i.test(blowSql), 'soffiaggio: nessun WITH ENCRYPTION');
+check(/ALTER VIEW dbo\.COORDINATES_BLOW_MC AS/.test(blowSql), 'soffiaggio: definizione versionata nel repo');
+for (const col of ['ISNULL(v.CLAW_LENGTH, 0)', 'ISNULL(pz.Y, 0)', 'ISNULL(pv.STOP_BEYOND_CLAW, 0)'])
+	check(blowSql.includes(col), 'soffiaggio: ' + col + ' — il ponte SQL non converte NULL in zero');
+check(/left  join PIECE_ON_VICE pv on pv\.VICE_ID = v\.ID and pv\.PIECE_ID = w\.PIECE_ID/.test(blowSql),
+	'soffiaggio: la dichiarazione segue la MORSA, come nella vista della spinta');
+check(/inner join PIECE pz/.test(blowSql) && /left  join VICE v/.test(blowSql),
+	'soffiaggio: PIECE in INNER (c\'e\' sempre), VICE in LEFT (puo\' mancare)');
+const blowQuery = 'select CLAW_LENGTH,PART_WIDTH,STOP_BEYOND_CLAW from COORDINATES_BLOW_MC where ORDER_ID=1105';
+check(blowQuery.length < 254, 'soffiaggio: la query del PLC sta in ' + blowQuery.length
+	+ ' caratteri, sotto i 254 di queryTemp (con i join a mano erano 298: sarebbe arrivata troncata)');
+
 const view = fs.readFileSync(path.join(__dirname, 'scripts', 'coordinates-push-mc.sql'), 'utf8');
 // i commenti PARLANO di WITH ENCRYPTION (per dire che non si usa): il controllo
 // guarda il solo SQL eseguibile
