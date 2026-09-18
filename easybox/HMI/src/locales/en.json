@@ -549,7 +549,7 @@
       "position": "Position"
     },
     "auxBanner": "Auxiliaries not reset — press the reset before commanding missions",
-    "plcSilent": "Robot state unknown: the PLC is not responding. Manual commands stay disabled until it recovers.",
+    "plcSilent": "Robot state unavailable: the PLC has not answered yet. The panel keeps asking; the values shown may be the last known reading.",
     "hint": {
       "auxNotReset": "Auxiliaries not reset: press the reset",
       "notHold": "Robot not in HOLD: press HOLD to enable commands",

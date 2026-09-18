@@ -909,6 +909,21 @@ const CLAW_CMD = {
 // (244) missione preleva-finito + deposita-grezzo in un solo ingresso in MC1
 const PICKPLACE_CMD = '244';
 
+// (plc-silent-retry 18/9) PLC MUTO: attese del banner e del ritentativo.
+// PLC_SILENT_MS: quanto si aspetta un ROBOT/STATUS dopo un SNAPSHOT/MISS prima
+//   di dire che lo stato non c'e'.
+// PLC_RETRY_BASE_MS: prima attesa fra un PLC/REFRESH_REQUEST e il successivo.
+//   NON puo' scendere sotto i 5 s del throttle di requestPlcRefresh nel backend
+//   (MQTT_Client.js): una richiesta dentro quella finestra viene scartata in
+//   silenzio, senza pubblicare nessun 90. Ritentare piu' in fretta non
+//   anticipa niente, aggiunge solo traffico che nessuno leggera'.
+// PLC_RETRY_MAX_MS: tetto dell'attesa. Il ritentativo non si ferma mai da se',
+//   si dirada: a cella ferma puo' passare un turno intero prima che qualcuno
+//   guardi il pannello, e quando lo stato tornera' deve essere gia' li'.
+const PLC_SILENT_MS = 8000;
+const PLC_RETRY_BASE_MS = 8000;
+const PLC_RETRY_MAX_MS = 60000;
+
 export default {
   data() {
     return {
@@ -1013,9 +1028,15 @@ export default {
       missionArmTimer: null,  // ~5s: STATUS mai uscito da HOLD -> missione rifiutata
       missionMaxTimer: null,  // 180s: timeout assoluto di sicurezza
       // PLC muto: SNAPSHOT/MISS (cache backend vuota) senza ROBOT/STATUS
-      // entro il timeout -> banner + Riprova. Non tocca CMD_enabled().
+      // entro il timeout -> banner + Riprova. NON gatea i comandi: il gate
+      // e' dataStored.cmdActive (CMD_enabled), che questo flag non tocca —
+      // per questo il testo del banner non deve promettere un blocco.
       plcSilent: false,
-      plcSilentTimer: null
+      plcSilentTimer: null,
+      // ritentativo automatico del refresh 90 finche' lo stato non arriva:
+      // un solo timer in volo, attesa che raddoppia fino a PLC_RETRY_MAX_MS
+      plcRetryTimer: null,
+      plcRetryDelay: PLC_RETRY_BASE_MS
     }
   },
   methods: {
@@ -1046,7 +1067,24 @@ export default {
           return response.json()
         })
         .then(robot => {
-          this.dataRobot = robot[0];
+          const row = Array.isArray(robot) ? robot[0] : null;
+          // riga assente: non si assegna undefined a dataRobot, che tutta la
+          // view legge come dataRobot.STATUS, e non si spegne niente
+          if (!row) return;
+          this.dataRobot = row;
+          // (plc-silent-retry 18/9) LO STATO CE L'ABBIAMO GIA' IN MANO.
+          // Questa e' la riga UNIT che il backend riscrive a ogni cambio
+          // (setStatusOnDB): se e' valida, tenere acceso un banner che dice
+          // "stato sconosciuto" e' semplicemente falso. Si spegne, e si
+          // riallinea il gate dei comandi, che altrimenti resterebbe fermo al
+          // valore che aveva prima del riavvio del backend.
+          // STATUS 0 = status_notDef: li' lo stato davvero non si sa, e il
+          // banner deve restare acceso.
+          const st = parseInt(row.STATUS, 10);
+          if (Number.isInteger(st) && st !== dataStored.status_notDef) {
+            this.clearPlcSilent();
+            this.CMD_enabled();
+          }
         })
         .catch(error => {
           console.info("-------------")
@@ -1232,22 +1270,56 @@ export default {
       // vengono ripubblicati e lo stantio si corregge da solo.
       dataStored.WS.socket.emit('PLC/REFRESH_REQUEST');
     },
-    // PLC muto (vedi snapshotMissHandler): timer 8 s armato sul MISS, azzerato
-    // dal primo ROBOT/STATUS; Riprova rifa' il giro via PLC/REFRESH_REQUEST.
+    // PLC muto (vedi snapshotMissHandler): timer armato sul MISS, azzerato dal
+    // primo ROBOT/STATUS; Riprova rifa' il giro via PLC/REFRESH_REQUEST.
+    //
+    // (plc-silent-retry 18/9) E DA QUI IN POI SI RITENTA DA SOLI. Il PLC
+    // pubblica lo stato SOLO ON-CHANGE: a cella ferma in HOLD non cambia
+    // niente, quindi senza un nuovo 90 il banner resta acceso a tempo
+    // indefinito e l'unica uscita e' un operatore che clicca Riprova. Dopo un
+    // riavvio del backend e' successo davvero: cache vuota, un solo 90 al
+    // connect del broker, e nessuno che lo richiedesse piu'.
     armPlcSilentTimer() {
       clearTimeout(this.plcSilentTimer);
       this.plcSilentTimer = setTimeout(() => {
         this.plcSilentTimer = null;
         this.plcSilent = true;
-      }, 8000);
+        // il ritentativo parte da qui, non dal MISS: la prima richiesta l'ha
+        // gia' fatta requestSnapshots, e sono passati PLC_SILENT_MS, cioe'
+        // piu' del throttle di 5 s del backend
+        this.plcRetryDelay = PLC_RETRY_BASE_MS;
+        this.schedulePlcRetry();
+      }, PLC_SILENT_MS);
+    },
+    // Un solo ritentativo in volo per volta: alla scadenza chiede il refresh,
+    // raddoppia l'attesa fino al tetto e si riarma. Non ha un numero massimo
+    // di tentativi: si ferma solo quando lo stato arriva (clearPlcSilent) o
+    // quando la view si smonta.
+    schedulePlcRetry() {
+      clearTimeout(this.plcRetryTimer);
+      this.plcRetryTimer = setTimeout(() => {
+        this.plcRetryTimer = null;
+        // lo stato puo' essere arrivato mentre si aspettava: in quel caso il
+        // timer e' gia' stato azzerato, ma la guardia costa niente
+        if (!this.plcSilent) return;
+        dataStored.WS.socket.emit('PLC/REFRESH_REQUEST');
+        this.plcRetryDelay = Math.min(this.plcRetryDelay * 2, PLC_RETRY_MAX_MS);
+        this.schedulePlcRetry();
+      }, this.plcRetryDelay);
     },
     clearPlcSilent() {
       clearTimeout(this.plcSilentTimer);
       this.plcSilentTimer = null;
+      // spegne anche il ritentativo: e' la sola condizione di uscita
+      clearTimeout(this.plcRetryTimer);
+      this.plcRetryTimer = null;
+      this.plcRetryDelay = PLC_RETRY_BASE_MS;
       this.plcSilent = false;
     },
     retryPlcRefresh() {
-      this.plcSilent = false;
+      // il clic riazzera anche il backoff: dopo un intervento a mano si
+      // riparte dal passo corto invece di ereditare l'attesa accumulata
+      this.clearPlcSilent();
       dataStored.WS.socket.emit('PLC/REFRESH_REQUEST');
       this.armPlcSilentTimer();
     },
@@ -2452,6 +2524,10 @@ export default {
     dataStored.WS.socket.off('ROBOT/STATUS', this.statusHandler);
     dataStored.WS.socket.off('SNAPSHOT/MISS', this.snapshotMissHandler);
     clearTimeout(this.plcSilentTimer);
+    // il ritentativo non ha una fine sua: se non lo si spegne qui resta a
+    // chiedere il refresh 90 per una view che non c'e' piu'
+    clearTimeout(this.plcRetryTimer);
+    this.plcRetryTimer = null;
     dataStored.WS.socket.off('BOX/STATUS', this.boxStatusHandler);
     dataStored.WS.socket.off('GRIPPER/MOUNTED', this.gripperMountedHandler);
     dataStored.WS.socket.off('GRIPPER/CLOSED1', this.gripperClosed1Handler);

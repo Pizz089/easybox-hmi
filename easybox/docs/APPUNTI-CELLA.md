@@ -1,5 +1,62 @@
 # Appunti cella — interventi manuali da eseguire in impianto
 
+## [ ] 2026-09-18 — limite heap del servizio node (nssm): NON sta nel repo
+
+Dopo il crash `Fatal process out of memory: Zone` il backend gira con un tetto
+heap dichiarato. `serverDati/package.json` lo mette nello script di avvio:
+
+```
+"start": "node --max-old-space-size=1024 server.js"
+```
+
+**Ma vale solo se il servizio parte da `npm start`.** nssm di norma lancia
+`node.exe server.js` diretto, e in quel caso il flag non arriva: la
+configurazione del servizio vive nel registro del PC impianto, non qui.
+
+Due modi, uno basta. Da prompt amministratore, a servizio fermo:
+
+```
+nssm stop  EasyBoxServer
+
+# A) il flag nei parametri
+nssm set   EasyBoxServer AppParameters "--max-old-space-size=1024 server.js"
+
+# B) oppure via ambiente, se si preferisce non toccare i parametri
+nssm set   EasyBoxServer AppEnvironmentExtra NODE_OPTIONS=--max-old-space-size=1024
+
+nssm start EasyBoxServer
+```
+
+(Il nome del servizio va verificato con `nssm dump` o nell'elenco servizi:
+qui e' scritto come esempio.)
+
+### Come si CONTROLLA che sia arrivato
+
+Non si da' per buono: all'avvio il backend chiede il limite a V8 e lo scrive
+in `serverDati/log/access.log`.
+
+```
+-------- INIT --------  ... heap limit: 1024 MB
+```
+
+Se la riga dice ~2048 o ~4096 MB (il default di node secondo la versione), il
+flag NON e' arrivato al processo e si e' cambiato qualcosa che non conta.
+
+### La riga periodica
+
+Ogni 5 minuti compare una riga come:
+
+```
+STD ... memoria: rss 180 MB, heap 95/140 MB, external 12 MB, socket HMI 2, log scartate 0
+```
+
+Serve al prossimo incidente: con questa c'e' un ANDAMENTO invece di una sola
+riga fatale, e si distingue una crescita lenta di ore da un'esplosione in un
+minuto. `log scartate` diverso da zero vuol dire che il ponte sta ricevendo
+piu' di quanto riesca a raccontare — non e' un errore di per se', ma e' il
+segnale che si e' in raffica.
+
+
 ## [ ] 2026-09-17 — ALTER VIEW WORKORDERS **v3**: PRODUCTED conta solo i finiti
 
 Script: `serverDati/scripts/workorders-producted-finished.sql` (idempotente,

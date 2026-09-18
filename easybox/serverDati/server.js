@@ -9,6 +9,7 @@ const fs 			= require('node:fs')
 const os 			= require('node:os');
 const si 			= require('systeminformation');
 
+const v8 			= require('node:v8');
 const log 			= require('./LogFunct');
 const DBf 			= require('./DBFunct');
 //const robot		=  require('./robotComunication');
@@ -143,6 +144,25 @@ const server = app.listen(process.env.serverPort, () => {
     //HEIDENHAIN.getInfo(2,"192.168.30.31");
   //}, "5000");
   
+  // (oom 18/9) RETE DI SICUREZZA DOPO IL CRASH "Fatal process out of memory".
+  // Di quel crash e' rimasta una riga sola e nessun andamento: non si sapeva
+  // se la memoria fosse cresciuta piano per ore o esplosa in un minuto.
+  //
+  // Il limite dell'heap viene STAMPATO, non dato per buono: --max-old-space-size
+  // si imposta fuori dal repo (parametri del servizio nssm, vedi APPUNTI-CELLA)
+  // e l'unico modo di sapere se e' davvero attivo e' chiederlo a V8.
+  const mb = (v) => Math.round(v / 1048576);
+  log.init('heap limit: ' + mb(v8.getHeapStatistics().heap_size_limit) + ' MB'
+    + ' (se e\' il default, --max-old-space-size non e\' arrivato al processo)');
+  setInterval(() => {
+    const m = process.memoryUsage();
+    // una riga sola, di livello standard: deve sopravvivere a logLevel 2
+    log.standard('memoria: rss ' + mb(m.rss) + ' MB, heap ' + mb(m.heapUsed)
+      + '/' + mb(m.heapTotal) + ' MB, external ' + mb(m.external) + ' MB'
+      + ', socket HMI ' + (DBf.io && DBf.io.engine ? DBf.io.engine.clientsCount : '?')
+      + ', log scartate ' + log.righeScartate());
+  }, 5 * 60 * 1000);
+
   //delete old LOG TABLE entries...
   setInterval(() => {
 	var sql 	= require('mssql');

@@ -172,13 +172,39 @@ client.on('reconnect', function () {
 //client.publish("HMI/updateStatus/MC", "Working");
 
 
-client.subscribe({'FROM_PLANT/#':{qos:2, retain:true}}) 
+// (oom 18/9) QoS 0, non 2. In QoS 2 mqtt.js tiene ogni pacchetto in arrivo
+// nel suo incomingStore in memoria finche' non si chiude la stretta di mano a
+// quattro passaggi, e servono quattro pacchetti per ogni messaggio: su un
+// canale che pubblica stati ON-CHANGE, tutti ricostruibili col refresh 90, e'
+// un costo senza contropartita.
+// Il 'retain:true' che stava qui non voleva dire niente: retain e' un flag di
+// PUBLISH, nelle opzioni di subscribe viene ignorato.
+// RISCHIO ACCETTATO, non dimenticato (deciso da Dario il 18/9): l'unico topic
+// che porta stato NON ricostruibile e' FROM_PLANT/PART/# (stato delle tasche).
+// Il refresh 90 ripubblica marca, ausiliari, stati unita', dispatcher e
+// DECLARE, ma non il contenuto dei cassetti: un messaggio perso li' lascia la
+// tasca allo stato vecchio e l'ordine non si chiude. Va in QoS 0 lo stesso,
+// perche' tenerlo in QoS 2 richiederebbe una seconda subscribe sovrapposta a
+// questa e mosquitto, su sottoscrizioni sovrapposte, puo' consegnare lo stesso
+// messaggio due volte. La soluzione pulita — una radice di topic separata per
+// le tasche, lato PLC — e' in LAVORI-IN-CODA.md.
+client.subscribe('FROM_PLANT/#', { qos: 0 }) 
 				 		
 //GESTIONE PLC => HMI
 client.on('message', function (topic, message, packet) {
-	log.standard("ricevo MQTT: "+topic+":\t"+message.toString().trim())
+	// (oom 18/9) SI FILTRA PRIMA DI LAVORARE. Il log e la diagnostica stavano
+	// sopra questo controllo, quindi ogni messaggio che finiva comunque
+	// scartato due righe piu' sotto produceva lo stesso una riga di log (che
+	// e' una scrittura su file) e un oggetto in coda al pannello diagnostica.
+	// Con il PLC che pubblicava a raffica era lavoro puro a perdere.
+	let param = topic.toUpperCase().trim().split("/");
+	if (param[0] !="FROM_PLANT")
+		return;
+
+	// una sola conversione del payload: la usano sia il log sia la diagnostica
+	const payloadStr = message.toString();
+	log.standard("ricevo MQTT: "+topic+":\t"+payloadStr.trim())
 	try {
-		const payloadStr = message.toString();
 		diag.publish({
 			ts: Date.now(),
 			dir: "IN",
@@ -188,10 +214,6 @@ client.on('message', function (topic, message, packet) {
 			size: Buffer.byteLength(payloadStr)
 		});
 	} catch (_) {}
-
-	let param = topic.toUpperCase().trim().split("/");
-	if (param[0] !="FROM_PLANT")
-		return;
 
 	// Branch HAAS_CMD (N4-3b): per FROM_PLANT/HAAS_CMD/<MC> delego al dispatcher
 	// dedicato. Return per evitare fall-through nei rami sotto (LOG/ALARM/MC*/...).
