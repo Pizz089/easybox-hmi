@@ -1,0 +1,11 @@
+﻿DATA_BLOCK "InstDeserializeRows2"
+{ S7_Optimized_Access := 'TRUE' }
+AUTHOR : 'SIEMENS AG'
+VERSION : 3.0
+NON_RETAIN
+"DeserializeRows"
+
+BEGIN
+
+END_DATA_BLOCK
+

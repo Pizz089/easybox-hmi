@@ -1,0 +1,16 @@
+﻿DATA_BLOCK "SqlTdsReceive2"
+{ DB_Accessible_From_OPC_UA := 'FALSE' ;
+ S7_Optimized_Access := 'TRUE' }
+AUTHOR : 'SIEMENS SUP Applications'
+VERSION : 3.0
+NON_RETAIN
+   VAR 
+      tdsTelegramArrayLength { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : UDInt;
+      tdsTelegramArray { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Array[0..9999] of Byte;
+   END_VAR
+
+
+BEGIN
+
+END_DATA_BLOCK
+

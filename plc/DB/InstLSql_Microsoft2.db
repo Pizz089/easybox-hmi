@@ -1,0 +1,12 @@
+﻿DATA_BLOCK "InstLSql_Microsoft2"
+{ S7_Optimized_Access := 'TRUE' }
+AUTHOR : 'Roenz, Julian'
+FAMILY : '(family)'
+VERSION : 0.1
+NON_RETAIN
+"LSql_Microsoft"
+
+BEGIN
+
+END_DATA_BLOCK
+

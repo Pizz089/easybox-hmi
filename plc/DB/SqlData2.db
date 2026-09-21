@@ -1,0 +1,14 @@
+﻿DATA_BLOCK "SqlData2"
+{ S7_Optimized_Access := 'TRUE' }
+AUTHOR : 'SIEMENS SUP Applications'
+VERSION : 3.0
+NON_RETAIN
+   VAR 
+      data { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_SetPoint := 'False'} : "typeSqlData";
+   END_VAR
+
+
+BEGIN
+
+END_DATA_BLOCK
+

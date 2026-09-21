@@ -1,0 +1,68 @@
+﻿FUNCTION "FC_DBdata2" : Void
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_TEMP 
+      tempDataReceived : Bool;
+      tempAnalyzeDone : Bool;
+      tempMetaDataAndRowsAvailable : Bool;
+      queryTemp : String;
+   END_VAR
+
+
+BEGIN
+	// SECONDO PONTE SQL (22/9): copia di FC_DBdata sui DB del canale 2.
+	// Serve a FB204, che cosi' non si contende piu' SqlData con FB7. Le tre
+	// istanze della libreria sono nuove: seconda connessione TCP verso lo
+	// stesso SQL Server, con ID 16#0011 in SqlConfig2.
+	// La libreria Siemens (LSql_Microsoft, AnalyzeTokens, DeserializeRows)
+	// lavora solo su parametri: nessun DB globale nominato dentro. L'unico
+	// blocco che inchiodava i nomi era FB6, replicato come FB_ExecuteQuery2.
+	
+	REGION Client SQL
+	    "InstLSql_Microsoft2"(enable := "SqlConfig2".enableLSql,
+	                          connectionSettings := "SqlConfig2".connectionSettings,
+	                          command := "SqlCommands2".sqlCommands["SqlCommands2".currentSqlCommand],
+	                          executeCommand := "SqlConfig2".executeSqlCommand,
+	                          diagnostics => "SqlConfig2".diagnostics,
+	                          dataReceived => #tempDataReceived,
+	                          tdsTelegramArrayLength => "SqlTdsReceive2".tdsTelegramArrayLength,
+	                          tdsTelegramArray := "SqlTdsReceive2".tdsTelegramArray);
+	    
+	    IF "SqlTdsReceive2".tdsTelegramArrayLength > 0 THEN
+	        "SqlConfig2".executeSqlCommand := FALSE;
+	    END_IF;
+	END_REGION
+	
+	REGION Analisi token
+	    "InstAnalyzeTokens2"(tdsTelegramArrayLength := "SqlTdsReceive2".tdsTelegramArrayLength,
+	                         execute := #tempDataReceived,
+	                         done => #tempAnalyzeDone,
+	                         metaDataAndRowsAvailable => #tempMetaDataAndRowsAvailable,
+	                         tdsHeader => "SqlData2".data.tdsHeader,
+	                         columnCount => "SqlData2".data.columnCount,
+	                         rowCount => "SqlData2".data.rowCount,
+	                         rowDataStart => "SqlData2".data.rowDataStart,
+	                         rowDataLength => "SqlData2".data.rowDataLength,
+	                         errorToken => "SqlData2".data.errorToken,
+	                         tdsTelegramArray := "SqlTdsReceive2".tdsTelegramArray,
+	                         columns := "SqlData2".data.columns);
+	    
+	    IF "SqlData2".data.rowCount > 0 THEN
+	        "SqlData2".data.rowReceived := "SqlData2".data.rowCount;
+	    END_IF;
+	END_REGION
+	
+	REGION Deserializzazione righe
+	    "InstDeserializeRows2"(columnCount := "SqlData2".data.columnCount,
+	                           columns := "SqlData2".data.columns,
+	                           rowCount := "SqlData2".data.rowCount,
+	                           rowDataStart := "SqlData2".data.rowDataStart,
+	                           rowDataLength := "SqlData2".data.rowDataLength,
+	                           numberOfRowsPerCycle := "LSQL_NUMBER_OF_ROWS_PER_CYCLE",
+	                           execute := #tempMetaDataAndRowsAvailable,
+	                           rowOverflow => "SqlData2".data.rowOverflow,
+	                           tdsTelegramArray := "SqlTdsReceive2".tdsTelegramArray,
+	                           rows := "SqlData2".data.rows);
+	END_REGION
+END_FUNCTION
+

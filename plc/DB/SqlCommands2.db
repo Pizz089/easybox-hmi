@@ -1,0 +1,42 @@
+﻿DATA_BLOCK "SqlCommands2"
+{ S7_Optimized_Access := 'TRUE' }
+AUTHOR : 'SIEMENS SUP Applications'
+VERSION : 1.1
+NON_RETAIN
+   VAR 
+      currentSqlCommand { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : USInt;
+      sqlCommands { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Array[0..25] of String;
+   END_VAR
+
+
+BEGIN
+   currentSqlCommand := 1;
+   sqlCommands[0] := '';
+   sqlCommands[1] := '';
+   sqlCommands[2] := '';
+   sqlCommands[3] := 'SELECT c.Lunghezza,c.Larghezza from cassetto as c where id=1';
+   sqlCommands[4] := 'SELECT c.Lunghezza,c.Larghezza from cassetto as c where id=1';
+   sqlCommands[5] := 'SELECT c.Lunghezza,c.Larghezza from cassetto as c where id=1';
+   sqlCommands[6] := 'SELECT c.Lunghezza,c.Larghezza from cassetto as c where id=1';
+   sqlCommands[7] := 'SELECT c.Lunghezza,c.Larghezza from cassetto as c where id=1';
+   sqlCommands[8] := 'SELECT c.Lunghezza,c.Larghezza from cassetto as c where id=1';
+   sqlCommands[9] := 'declare @myout1 char(30),  @myout2 int execute myProcedureInOut @in1=$'pear$', @in2=$'yellow$', @in3=3, @out1=@myout1 OUTPUT, @out2=@myout2 OUTPUT select @myout1 as $'myOut1$', @myOut2 as $'myOut2$'';
+   sqlCommands[10] := 'INSERT INTO [dbo].[errors] ([Text]) VALUES ($'remotetest$')';
+   sqlCommands[11] := 'SELECT TOP (10) ValueReal1, ValueReal2, ValueReal3, ValueReal4, ValueReal5, ValueReal6, ValueReal7, ValueReal8, ValueReal9 FROM TestJulian';
+   sqlCommands[12] := 'SELECT * FROM KompressionLog ORDER BY StentNr';
+   sqlCommands[13] := 'execute SelectProc1';
+   sqlCommands[14] := 'insert into TestDateTime values ($'01.01.1990 12:00:00$')';
+   sqlCommands[15] := 'exec SetDateTime @Input1 = $'07.30.1990 12:00:00$'';
+   sqlCommands[16] := 'SELECT TOP (100) MesId, MesId2, MesId3 FROM TestJulian';
+   sqlCommands[17] := 'SELECT TOP (1) DateTime FROM TestDateTime';
+   sqlCommands[18] := 'SELECT TOP 2 * FROM FunctionTest ORDER BY ID';
+   sqlCommands[19] := 'INSERT INTO [dbo].[FunctionTest] DEFAULT VALUES';
+   sqlCommands[20] := 'use [SQLFromPLC] declare @myout1 bit  execute  NachtragDatensaetze @inDateiPfad= $'C:\Program Files\Microsoft SQL Server\MSSQL14.SQLEXPRESS\MSSQL\DATA\iO.csv$', @outDone=@myout1 OUTPUT select @myout1 as $'myOut1$'';
+   sqlCommands[21] := 'UPDATE [dbo].[KompressionLog] SET LotNummer = $'Test234$' WHERE KammerId = $'3$'';
+   sqlCommands[22] := '';
+   sqlCommands[23] := '';
+   sqlCommands[24] := '';
+   sqlCommands[25] := 'SELECT c.Lunghezza,c.Larghezza from cassetto as c where id=';
+
+END_DATA_BLOCK
+
