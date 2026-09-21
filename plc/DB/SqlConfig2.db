@@ -13,7 +13,7 @@ NON_RETAIN
 
 BEGIN
    connectionSettings.interfaceSettings.InterfaceId := 64;
-   connectionSettings.interfaceSettings.ID := 16#0010;
+   connectionSettings.interfaceSettings.ID := 16#0011;
    connectionSettings.interfaceSettings.ConnectionType := 16#0B;
    connectionSettings.interfaceSettings.ActiveEstablished := TRUE;
    connectionSettings.interfaceSettings.RemoteAddress.ADDR[1] := 16#AC;
