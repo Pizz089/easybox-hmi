@@ -165,10 +165,12 @@ BEGIN
 	REGION Manager MC
 	    // Dispatcher COMPLETO (ricetta MQTT -> start fisico -> fine ciclo).
 	    
-	    // NIENTE chiamata a DB_executeQuery qui: FB6 ha una sola istanza e la
-	    // chiama OB1 Network 7. Chiamandolo anche da qui, la rete di OB1 (che gira
-	    // DOPO) lo richiamava con query vuota e annullava la richiesta.
+	    // NIENTE chiamata a DB_executeQuery2 qui: il ponte lo chiama OB1 Network 7.
+	    // Chiamandolo anche da qui, la rete di OB1 (che gira DOPO) lo richiamava
+	    // con query vuota e annullava la richiesta.
 	    // Come FB7: si scrive #queryTemp + #queryStartExecution e OB1 fa il resto.
+	    // CANALE DEDICATO (22/9): DB_executeQuery2 / SqlCommands2 / SqlData2 sono
+	    // di FB204 e basta. FB7 sta sul canale 1 e non li tocca.
 	    
 	    CASE #Dispatcher["_master"] OF
 	            
@@ -249,43 +251,43 @@ BEGIN
 	            // fragile: FB6 puo' completare fra due valutazioni di questo stato
 	            // e la finestra si perde (visto 4/9, dispatcher fermo al 10 con
 	            // stringhe uguali e ponte gia' libero).
-	            IF "SqlCommands".sqlCommands[0] = #queryTemp THEN
+	            IF "SqlCommands2".sqlCommands[0] = #queryTemp THEN
 	                #Dispatcher["_master"] := 20;
 	            END_IF;
 	            
 	        20: // parsing risultato -> order
-	            IF "DB_executeQuery".dataReady AND "DB_executeQuery".noData THEN
+	            IF "DB_executeQuery2".dataReady AND "DB_executeQuery2".noData THEN
 	                // nessun ordine attivo per questa macchina: NON e' un errore,
 	                // torno a riposo e riprovero'.
-	                "DB_executeQuery".readyForNextQuery := TRUE;
+	                "DB_executeQuery2".readyForNextQuery := TRUE;
 	                #queryTemp := '';
 	                #queryStartExecution := FALSE;
 	                #Dispatcher["_master"] := 0;
 	                
-	            ELSIF "DB_executeQuery".dataReady AND NOT "DB_executeQuery".dataError THEN
+	            ELSIF "DB_executeQuery2".dataReady AND NOT "DB_executeQuery2".dataError THEN
 	                // LETTURA UNICA E VALIDATA PRIMA DELLA COPIA.
 	                // Prima le assegnazioni stavano FUORI dal controllo sull'ID: order
 	                // veniva riscritto a OGNI scansione in cui dataReady restava alto,
-	                // e SqlData e' condiviso con FB7 -> bastava una query del robot in
+	                // e SqlData era condiviso con FB7 -> bastava una query del robot in
 	                // mezzo per sovrascrivere order con dati altrui. Sintomo visto il
 	                // 3/9: PartProgID 100000 e GRIPPER4PALLET 0 con l'ordine a DB che
 	                // diceva 1 e 1 -> sottoprogramma sbagliato e ciclo pallet bloccato.
-	                // Ora si valida sui dati grezzi, si copia una volta sola e si esce
-	                // nello stesso scan.
-	                IF "SqlData".data.rows[0].col[0] > 0 THEN
-	                    #order.ID := "SqlData".data.rows[0].col[0];
-	                    #order.PIECE := "SqlData".data.rows[0].col[1];
-	                    #order.GRIPPER := "SqlData".data.rows[0].col[2];
-	                    #order.MACHINE := "SqlData".data.rows[0].col[3];
-	                    #order.PALLET := "SqlData".data.rows[0].col[4];
-	                    #order.VICE := "SqlData".data.rows[0].col[5];
-	                    #order.QUANTITY := "SqlData".data.rows[0].col[6];
-	                    #order.OPTION := "SqlData".data.rows[0].col[7];
-	                    #order.GRIPPER4PALLET := "SqlData".data.rows[0].col[8];
-	                    #order.PartProgID := "SqlData".data.rows[0].col[9];
+	                // Dal 22/9 il canale e' dedicato e la condivisione non c'e' piu',
+	                // ma la lettura validata resta: e' corretta a prescindere.
+	                IF "SqlData2".data.rows[0].col[0] > 0 THEN
+	                    #order.ID := "SqlData2".data.rows[0].col[0];
+	                    #order.PIECE := "SqlData2".data.rows[0].col[1];
+	                    #order.GRIPPER := "SqlData2".data.rows[0].col[2];
+	                    #order.MACHINE := "SqlData2".data.rows[0].col[3];
+	                    #order.PALLET := "SqlData2".data.rows[0].col[4];
+	                    #order.VICE := "SqlData2".data.rows[0].col[5];
+	                    #order.QUANTITY := "SqlData2".data.rows[0].col[6];
+	                    #order.OPTION := "SqlData2".data.rows[0].col[7];
+	                    #order.GRIPPER4PALLET := "SqlData2".data.rows[0].col[8];
+	                    #order.PartProgID := "SqlData2".data.rows[0].col[9];
 	                    #order.STATUS := "WORKING";
 	                    
-	                    "DB_executeQuery".readyForNextQuery := TRUE;
+	                    "DB_executeQuery2".readyForNextQuery := TRUE;
 	                    #queryTemp := '';
 	                    #queryStartExecution := FALSE;
 	                    #subState := 0;
@@ -293,14 +295,14 @@ BEGIN
 	                ELSE
 	                    // riga presente ma ID nullo: dato non valido, non lo copio.
 	                    // Torno a riposo e riprovo al giro dopo.
-	                    "DB_executeQuery".readyForNextQuery := TRUE;
+	                    "DB_executeQuery2".readyForNextQuery := TRUE;
 	                    #queryTemp := '';
 	                    #queryStartExecution := FALSE;
 	                    #Dispatcher["_master"] := 0;
 	                END_IF;
 	                
-	            ELSIF "DB_executeQuery".dataError THEN
-	                "DB_executeQuery".readyForNextQuery := TRUE;
+	            ELSIF "DB_executeQuery2".dataError THEN
+	                "DB_executeQuery2".readyForNextQuery := TRUE;
 	                #queryTemp := '';
 	                #queryStartExecution := FALSE;
 	                #Dispatcher["_master"] := 0;
@@ -441,7 +443,7 @@ BEGIN
 	            // caratteri. queryTemp e' String[254] e questa stringa ne usa ~190:
 	            // il group by la portava a 213, troppo vicino al limite per stare
 	            // tranquilli (il troncamento silenzioso e' il difetto del 15/9).
-	            IF "SqlCommands".sqlCommands[0] = '' THEN
+	            IF "SqlCommands2".sqlCommands[0] = '' THEN
 	                #queryTemp := CONCAT(
 	                                     IN1 := 'select top 1 CAST(SUBSTRING(PARENT,6,2) AS INT) T from [POSITION] where PARENT like $'TRAY%$' AND STATUS=4 AND Part_Type=',
 	                                     IN2 := "INT_TO_STRING_WITHOUT_SIGN"(DINT_TO_INT(#order.PIECE)),
@@ -456,13 +458,13 @@ BEGIN
 	            // ponte, non che sia ancora in corso. Aspettare "ponte occupato" e'
 	            // fragile: FB6 puo' completare fra due valutazioni di questo stato
 	            // e la finestra si perde (stesso difetto trovato al 10 il 4/9).
-	            IF "SqlCommands".sqlCommands[0] = #queryTemp THEN
+	            IF "SqlCommands2".sqlCommands[0] = #queryTemp THEN
 	                #Dispatcher["_master"] := 42;
 	            END_IF;
 	            
 	        42: // esito: cassetto trovato, oppure nessun grezzo disponibile
-	            IF "DB_executeQuery".dataReady THEN
-	                IF "DB_executeQuery".noData THEN
+	            IF "DB_executeQuery2".dataReady THEN
+	                IF "DB_executeQuery2".noData THEN
 	                    // Nessun grezzo a magazzino per quest'ordine.
 	                    // MA se il robot ha gia' un grezzo a bordo, o se in macchina
 	                    // c'e' un pezzo da lavorare, la produzione NON e' finita: quel
@@ -472,7 +474,7 @@ BEGIN
 	                    // bloccato dalla guardia sulle chele, cella ferma).
 	                    // materialeFinito resta alzato in ogni caso: fa chiudere il
 	                    // cassetto al 58, dopo che l'ultimo finito e' stato depositato.
-	                    "DB_executeQuery".readyForNextQuery := TRUE;
+	                    "DB_executeQuery2".readyForNextQuery := TRUE;
 	                    #queryTemp := '';
 	                    #queryStartExecution := FALSE;
 	                    #materialeFinito := TRUE;
@@ -489,14 +491,14 @@ BEGIN
 	                        #Dispatcher["_master"] := 96;
 	                    END_IF;
 	                    
-	                ELSIF "DB_executeQuery".dataError THEN
-	                    "DB_executeQuery".readyForNextQuery := TRUE;
+	                ELSIF "DB_executeQuery2".dataError THEN
+	                    "DB_executeQuery2".readyForNextQuery := TRUE;
 	                    #queryTemp := '';
 	                    #queryStartExecution := FALSE;
 	                    #Dispatcher["_master"] := 9999;
 	                ELSE
-	                    #trayNeeded := DINT_TO_INT("SqlData".data.rows[0].col[0]);
-	                    "DB_executeQuery".readyForNextQuery := TRUE;
+	                    #trayNeeded := DINT_TO_INT("SqlData2".data.rows[0].col[0]);
+	                    "DB_executeQuery2".readyForNextQuery := TRUE;
 	                    #queryTemp := '';
 	                    #queryStartExecution := FALSE;
 	                    #Dispatcher["_master"] := 43;
@@ -858,8 +860,8 @@ BEGIN
 	                    // all'UPDATE in volo e legge un risultato che non e' il suo
 	                    // -> zero righe -> 991.
 	                    IF "DB_Robot".MissionCode = 0
-	                        AND "SqlCommands".sqlCommands[0] = ''
-	                        AND "DB_executeQuery".readyForNextQuery
+	                        AND "SqlCommands2".sqlCommands[0] = ''
+	                        AND "DB_executeQuery2".readyForNextQuery
 	                    THEN
 	                        IF "DB_Robot".GripperOccuped[1] THEN
 	                            #subState := 5;          // grezzo gia' a bordo
@@ -882,7 +884,7 @@ BEGIN
 	                    // prelevato il terzo, e la 16 al fine ciclo lo ha depositato —
 	                    // perche' il 50 vede grezzo a bordo e pezzo in macchina, e fa
 	                    // la cosa che sa fare.
-	                    IF "SqlCommands".sqlCommands[0] = '' THEN
+	                    IF "SqlCommands2".sqlCommands[0] = '' THEN
 	                        #queryTemp := CONCAT(
 	                                             IN1 := 'select count(*),min(CAST(SUBSTRING(PARENT,6,2) AS INT)),(select QUANTITY-PRODUCTED from WORKORDERS where ID=',
 	                                             IN2 := "INT_TO_STRING_WITHOUT_SIGN"(DINT_TO_INT(#order.ID)),
@@ -893,25 +895,25 @@ BEGIN
 	                    END_IF;
 	                3: // presa in carico query. Il ritorno al 2 su timeout va fatto
 	                    // SOLO se il ponte non ha gia' la nostra query: altrimenti il 2
-	                    // trova sqlCommands[0] occupata dalla propria richiesta
+	                    // trova SqlCommands2[0] occupata dalla propria richiesta
 	                    // precedente e non puo' riscriverla -> stallo (visto 5/9).
 	                    #timer[2](IN := TRUE,
 	                              PT := T#3s);
-	                    IF "SqlCommands".sqlCommands[0] = #queryTemp THEN
+	                    IF "SqlCommands2".sqlCommands[0] = #queryTemp THEN
 	                        #timer[2](IN := FALSE,
 	                                  PT := T#3s);
 	                        #subState := 4;
-	                    ELSIF #timer[2].Q AND "SqlCommands".sqlCommands[0] = '' THEN
+	                    ELSIF #timer[2].Q AND "SqlCommands2".sqlCommands[0] = '' THEN
 	                        #timer[2](IN := FALSE,
 	                                  PT := T#3s);
 	                        #subState := 2;      // ritenta solo a ponte libero
 	                    END_IF;
 	                4: // esito conteggio
-	                    IF "DB_executeQuery".dataReady AND NOT "DB_executeQuery".dataError THEN
-	                        #grezziRimasti := DINT_TO_INT("SqlData".data.rows[0].col[0]);
-	                        #trayProssimoGrezzo := DINT_TO_INT("SqlData".data.rows[0].col[1]);
-	                        #residuoOrdine := DINT_TO_INT("SqlData".data.rows[0].col[2]);
-	                        "DB_executeQuery".readyForNextQuery := TRUE;
+	                    IF "DB_executeQuery2".dataReady AND NOT "DB_executeQuery2".dataError THEN
+	                        #grezziRimasti := DINT_TO_INT("SqlData2".data.rows[0].col[0]);
+	                        #trayProssimoGrezzo := DINT_TO_INT("SqlData2".data.rows[0].col[1]);
+	                        #residuoOrdine := DINT_TO_INT("SqlData2".data.rows[0].col[2]);
+	                        "DB_executeQuery2".readyForNextQuery := TRUE;
 	                        #queryTemp := '';
 	                        #queryStartExecution := FALSE;
 	                        
@@ -945,8 +947,8 @@ BEGIN
 	                        // scarica il finito nel cassetto corrente, poi il cambio
 	                        // avviene a robot scarico come il tray manager richiede.
 	                        #subState := 5;
-	                    ELSIF "DB_executeQuery".dataError THEN
-	                        "DB_executeQuery".readyForNextQuery := TRUE;
+	                    ELSIF "DB_executeQuery2".dataError THEN
+	                        "DB_executeQuery2".readyForNextQuery := TRUE;
 	                        #queryTemp := '';
 	                        #queryStartExecution := FALSE;
 	                        #subState := 5;   // in dubbio proseguo: il ciclo in corso va finito
@@ -1023,7 +1025,7 @@ BEGIN
 	            IF "DB_Robot".MissionCode = 0 THEN
 	                #timer[2](IN := TRUE,
 	                          PT := T#10s);
-	                IF #timer[2].Q AND "SqlCommands".sqlCommands[0] = '' THEN
+	                IF #timer[2].Q AND "SqlCommands2".sqlCommands[0] = '' THEN
 	                    #timer[2](IN := FALSE,
 	                              PT := T#10s);
 	                    #queryTemp := CONCAT(
@@ -1036,20 +1038,20 @@ BEGIN
 	            END_IF;
 	            
 	        98: // presa in carico della query di attesa
-	            IF "SqlCommands".sqlCommands[0] = #queryTemp THEN
+	            IF "SqlCommands2".sqlCommands[0] = #queryTemp THEN
 	                #Dispatcher["_master"] := 99;
 	            END_IF;
 	            
 	        99: // esito: c'e' un ordine da lavorare -> riparto dallo 0 (pull completo);
 	            // niente -> resto in attesa e ritento fra 10s.
-	            IF "DB_executeQuery".dataReady THEN
-	                "DB_executeQuery".readyForNextQuery := TRUE;
+	            IF "DB_executeQuery2".dataReady THEN
+	                "DB_executeQuery2".readyForNextQuery := TRUE;
 	                #queryTemp := '';
 	                #queryStartExecution := FALSE;
 	                
-	                IF NOT "DB_executeQuery".noData
-	                    AND NOT "DB_executeQuery".dataError
-	                    AND "SqlData".data.rows[0].col[0] > 0
+	                IF NOT "DB_executeQuery2".noData
+	                    AND NOT "DB_executeQuery2".dataError
+	                    AND "SqlData2".data.rows[0].col[0] > 0
 	                THEN
 	                    // ordine disponibile: pull da capo, cosi' si prende anche un
 	                    // ordine NUOVO e non solo il precedente
@@ -1085,8 +1087,8 @@ BEGIN
 	            // PRODUCTED<QUANTITY da solo non basta: PRODUCTED non conta il pezzo
 	            // in lavorazione, quindi all'ultimo giro l'ordine risulta ancora
 	            // aperto e il ciclo ne comincia un altro.
-	            IF "SqlCommands".sqlCommands[0] = ''
-	                AND "DB_executeQuery".readyForNextQuery
+	            IF "SqlCommands2".sqlCommands[0] = ''
+	                AND "DB_executeQuery2".readyForNextQuery
 	            THEN
 	                #queryTemp := CONCAT(
 	                                     IN1 := 'select top 1 id,PIECE_ID,GRIPPER_ID,MACHINE_ID,PALLET_ID,VICE_ID,QUANTITY,[OPTIONS],Gripper4Pallet,PP_id,QUANTITY-PRODUCTED ',
@@ -1098,32 +1100,32 @@ BEGIN
 	            END_IF;
 	            
 	        102: // esito rilettura: riallineo la copia e chiudo il ciclo
-	            IF "DB_executeQuery".dataReady THEN
-	                IF "DB_executeQuery".noData OR "DB_executeQuery".dataError THEN
+	            IF "DB_executeQuery2".dataReady THEN
+	                IF "DB_executeQuery2".noData OR "DB_executeQuery2".dataError THEN
 	                    // Nessun ordine piu' lavorabile (PRODUCTED = QUANTITY oppure
 	                    // ordine chiuso): PRODUZIONE FINITA. Deciso 4/9: a fine
 	                    // produzione il cassetto va SEMPRE chiuso, non solo quando
 	                    // finiscono i grezzi. Si passa dal 96 che lo rilascia.
-	                    "DB_executeQuery".readyForNextQuery := TRUE;
+	                    "DB_executeQuery2".readyForNextQuery := TRUE;
 	                    #queryTemp := '';
 	                    #queryStartExecution := FALSE;
 	                    #orderFresh := FALSE;
 	                    #Dispatcher["_master"] := 96;
-	                ELSIF "SqlData".data.rows[0].col[0] > 0 THEN
+	                ELSIF "SqlData2".data.rows[0].col[0] > 0 THEN
 	                    // RIALLINEO: il database ha ragione, la copia si adegua.
-	                    #order.ID := "SqlData".data.rows[0].col[0];
-	                    #order.PIECE := "SqlData".data.rows[0].col[1];
-	                    #order.GRIPPER := "SqlData".data.rows[0].col[2];
-	                    #order.MACHINE := "SqlData".data.rows[0].col[3];
-	                    #order.PALLET := "SqlData".data.rows[0].col[4];
-	                    #order.VICE := "SqlData".data.rows[0].col[5];
-	                    #order.QUANTITY := "SqlData".data.rows[0].col[6];
-	                    #order.OPTION := "SqlData".data.rows[0].col[7];
-	                    #order.GRIPPER4PALLET := "SqlData".data.rows[0].col[8];
-	                    #order.PartProgID := "SqlData".data.rows[0].col[9];
-	                    #residuoOrdine := DINT_TO_INT("SqlData".data.rows[0].col[10]);
+	                    #order.ID := "SqlData2".data.rows[0].col[0];
+	                    #order.PIECE := "SqlData2".data.rows[0].col[1];
+	                    #order.GRIPPER := "SqlData2".data.rows[0].col[2];
+	                    #order.MACHINE := "SqlData2".data.rows[0].col[3];
+	                    #order.PALLET := "SqlData2".data.rows[0].col[4];
+	                    #order.VICE := "SqlData2".data.rows[0].col[5];
+	                    #order.QUANTITY := "SqlData2".data.rows[0].col[6];
+	                    #order.OPTION := "SqlData2".data.rows[0].col[7];
+	                    #order.GRIPPER4PALLET := "SqlData2".data.rows[0].col[8];
+	                    #order.PartProgID := "SqlData2".data.rows[0].col[9];
+	                    #residuoOrdine := DINT_TO_INT("SqlData2".data.rows[0].col[10]);
 	                    
-	                    "DB_executeQuery".readyForNextQuery := TRUE;
+	                    "DB_executeQuery2".readyForNextQuery := TRUE;
 	                    #queryTemp := '';
 	                    #queryStartExecution := FALSE;
 	                    
@@ -1162,7 +1164,7 @@ BEGIN
 	                        #Dispatcher["_master"] := 0;
 	                    END_IF;
 	                ELSE
-	                    "DB_executeQuery".readyForNextQuery := TRUE;
+	                    "DB_executeQuery2".readyForNextQuery := TRUE;
 	                    #queryTemp := '';
 	                    #queryStartExecution := FALSE;
 	                    #orderFresh := FALSE;
@@ -1219,6 +1221,17 @@ BEGIN
 	                #io_out.startWork := FALSE;
 	                #materialeFinito := FALSE;
 	                #orderFresh := FALSE;
+	                
+	                // CANALE SQL DEDICATO (22/9): dal reset si libera anche il ponte.
+	                // Prima il canale era condiviso e lo resettava FB7; adesso e' di
+	                // FB204 e nessun altro lo tocca. Senza queste righe un reset a
+	                // meta' query lascia il ponte appeso fino al timeoutAbbandono.
+	                #queryTemp := '';
+	                #queryStartExecution := FALSE;
+	                "DB_executeQuery2".Dispatch["_master"] := 0;
+	                "DB_executeQuery2".readyForNextQuery := TRUE;
+	                "SqlCommands2".sqlCommands[0] := '';
+	                
 	                "FC_MQTT"(insert := TRUE,
 	                          send := FALSE,
 	                          topic := CONCAT(IN1 := 'FROM_PLANT/STATUS/MC',
