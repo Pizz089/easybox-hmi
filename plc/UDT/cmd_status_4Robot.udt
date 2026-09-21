@@ -1,0 +1,26 @@
+﻿TYPE "cmd_status_4Robot"
+VERSION : 0.1
+   STRUCT
+      Pallet_locked : Bool;
+      Pallet_unlocked : Bool;
+      "Vice locked" : Bool;
+      "Vice unlocked" : Bool;
+      DoorOpened : Bool;
+      DoorClosed : Bool;
+      PartLockedOnTableMC : Bool;
+      PartUnlockedOnTableMC : Bool;
+      Blowing : Bool;
+      Washing : Bool;
+      free : Bool;
+      free_1 : Bool;
+      free_2 : Bool;
+      free_3 : Bool;
+      free_4 : Bool;
+      free_5 : Bool;
+      StrobeNewMISSION : Bool;
+      Gripper1_Presence : Bool;
+      Gripper2_Presence : Bool;
+   END_STRUCT;
+
+END_TYPE
+

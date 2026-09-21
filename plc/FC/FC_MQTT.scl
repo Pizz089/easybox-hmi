@@ -1,0 +1,250 @@
+﻿FUNCTION "FC_MQTT" : Void
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      insert : Bool;
+      send : Bool;
+      topic : String;
+      payload : WString;
+   END_VAR
+
+   VAR_TEMP 
+      count : UInt;
+      i : Int;
+      index : DInt;
+      str : String;
+      separatorPos : Int;
+      J : Int;
+   END_VAR
+
+   VAR CONSTANT 
+      separator : String := '###';
+      max_index : Int := 10;
+   END_VAR
+
+
+BEGIN
+	REGION check_connection
+	    "DB_MQTT".timeout[0](IN := "DB_MQTT".control.enable AND "DB_MQTT".output.error,
+	                         PT := T#500ms);
+	    
+	    IF "DB_MQTT".timeout[0].Q THEN
+	        "DB_MQTT".control.enable := FALSE;
+	    END_IF;
+	    
+	    //SUBSCRIPTION
+	    "DB_MQTT".timeout[1](IN := NOT "DB_MQTT".control.enable,
+	                         PT := t#1s);
+	    
+	    IF "DB_MQTT".timeout[1].Q OR "testmqtt" OR "Start_AUX" OR "ResetAreaRobot" THEN
+	        "DB_MQTT".control.enable := TRUE;
+	        
+	        "DB_MQTT".mqttTopic := STRING_TO_WSTRING('TO_PLANT/CMD/#');
+	        "DB_MQTT".control.subscribe := TRUE;
+	    END_IF;
+	    
+	    "DB_MQTT".timeout[2](IN := "DB_MQTT".control.enable AND "DB_MQTT".control.subscribe,
+	                         PT := T#800ms);
+	    
+	    IF "DB_MQTT".timeout[2].Q THEN
+	        "DB_MQTT".control.subscribe := FALSE;
+	        "testmqtt" := FALSE;
+	    END_IF;
+	    
+	END_REGION
+	
+	
+	IF "DB_MQTT".control.publish THEN
+	    IF "DB_MQTT".output.done THEN
+	        (*
+	        FOR #i := 0 TO 2 DO
+	            "DB_MQTT".payload_text[#i] := '';
+	        END_FOR;
+	        *)
+	        //"DB_MQTT".publishMsgLen := 0;
+	        "DB_MQTT".control.publish := false;
+	        "DB_MQTT".index_send := "DB_MQTT".index_send + 1;
+	    END_IF;
+	END_IF;
+	
+	REGION PUBLISH_TIMEOUT
+	    "DB_MQTT".timeout[3](IN := "DB_MQTT".control.publish AND NOT "DB_MQTT".output.done,
+	                         PT := T#4s);
+	    
+	    IF "DB_MQTT".timeout[3].Q THEN
+	        "DB_MQTT".control.publish := false;
+	    END_IF;
+	END_REGION ;
+	
+	IF "send" AND "DB_MQTT".index_send > #max_index THEN
+	    FOR #i := 0 TO #max_index-4 BY 1 DO
+	        "DB_MQTT".BUFFER_SEND[#i] := STRING_TO_WSTRING(CONCAT(IN1 := 'FROM_PLANT/STATUS/ROBOT', IN2 := #separator, IN3:="INT_TO_STRING_WITHOUT_SIGN"(#i)));
+	    END_FOR;
+	    "send" := false;
+	END_IF;
+	
+	
+	REGION Receive_from_broker
+	    //implementare la sottoiscrizione al topic richiesto ANCHE quando cade la comunicazione (errore 9000)
+	    Chars_TO_Strg(Chars := "DB_MQTT".receivedMsgPayload,
+	                  pChars := 0,
+	                  Cnt := UDINT_TO_UINT("DB_MQTT".receivedMsgLen),
+	                  Strg => #str);
+	    
+	    (*
+	    IF "DB_MQTT".lastCmdReceived <> STRING_TO_INT(#str) AND #str <> '' THEN
+	        "DB_MQTT".lastCmdReceived := STRING_TO_INT(#str);
+	        #i := FIND(IN1 := WSTRING_TO_STRING("DB_MQTT".receivedTopic), IN2 := 'CMD/');
+	        #i := LEN("DB_MQTT".receivedTopic) - (#i + 3);
+	        "DB_MQTT".lastTopicReceived := WSTRING_TO_STRING(RIGHT(IN := "DB_MQTT".receivedTopic, L := #i));
+	        
+	        FOR #i := 0 TO 999 DO
+	            "DB_MQTT".receivedMsgPayload[#i] := 0;
+	        END_FOR;
+	        
+	    END_IF;
+	    *)
+	    
+	    //IF "DB_MQTT".lastCmdReceived <> STRING_TO_INT(#str) AND #str <> '' THEN
+	    //IF "DB_MQTT".lastCmdReceived = 0 AND #str <> '' THEN
+	        #i := FIND(IN1:=#str, IN2:=';');
+	        IF #i > 0 THEN
+	            "DB_MQTT".lastCmdReceived := STRING_TO_INT(LEFT(IN := #str, L := #i));
+	            //"DB_MQTT".lastParams[0] := STRING_TO_INT(MID(IN := #str, L := LEN(#str) - #i + 1, P := #i + 1));
+	            
+	            FOR #J:=0 TO 5 DO
+	                #str := MID(IN := #str, P := #i + 1, L := LEN(#str) - #i);
+	                #i := FIND(IN1 := #str, IN2 := ';');
+	                IF #i > 0 THEN
+	                    "DB_MQTT".lastParams[#J] := STRING_TO_INT(LEFT(IN := #str, L := #i));
+	                ELSE
+	                    "DB_MQTT".lastParams[#J] := STRING_TO_INT(#str);
+	                END_IF;
+	            END_FOR;
+	        ELSE
+	            "DB_MQTT".lastCmdReceived := STRING_TO_INT(#str);
+	        END_IF;
+	        
+	        //Search eg: TO_PLANT/CMD/ROBOT
+	        #i := FIND(IN1 := WSTRING_TO_STRING("DB_MQTT".receivedTopic), IN2 := 'CMD/'); 
+	        IF #i > 0 THEN
+	            #i := LEN("DB_MQTT".receivedTopic) - (#i + 3);      // -> isolate the unit name
+	        ELSE
+	            //Search eg: TO_PLANT/MC1/CHANGEPALLET
+	            #i := FIND(IN1 := WSTRING_TO_STRING("DB_MQTT".receivedTopic), IN2 := 'TO_PLANT/MC');
+	            IF #i > 0 THEN
+	                #i := LEN("DB_MQTT".receivedTopic) - (#i + 8);  // -> isolate MC1/CHANGEPALLET
+	            END_IF;
+	        END_IF;
+	        "DB_MQTT".lastTopicReceived := WSTRING_TO_STRING(RIGHT(IN := "DB_MQTT".receivedTopic, L := #i));
+	        
+	   //IF "DB_MQTT".lastCmdReceived = 0 THEN  //Paolo 4/7/25
+	            
+	        FOR #i := 0 TO 999 DO
+	            "DB_MQTT".receivedMsgPayload[#i] := 0;
+	        END_FOR;
+	        
+	    //END_IF;
+	    
+	END_REGION
+	
+	
+	REGION insertIntoBuffer
+	    IF #insert THEN
+	        IF (LEN(#topic) <= 0) OR (LEN(#payload) <= 0) THEN
+	            RETURN;
+	        END_IF;
+	        
+	       //"DB_MQTT".BUFFER_SEND["DB_MQTT".index_insert] := STRING_TO_WSTRING(CONCAT(IN1:=#topic,IN2:=#separator,IN3:=#payload));
+	        "DB_MQTT".BUFFER_SEND["DB_MQTT".index_insert] := CONCAT(IN1:=STRING_TO_WSTRING(#topic),IN2:=STRING_TO_WSTRING(#separator),IN3:=#payload);
+	        "DB_MQTT".index_insert := "DB_MQTT".index_insert + 1;
+	        
+	        IF "DB_MQTT".index_insert > #max_index THEN
+	            "DB_MQTT".index_insert := 0;
+	        END_IF;
+	    END_IF;
+	    
+	END_REGION
+	
+	REGION Prepare_to_SEND_To_Broker    
+	    IF #send THEN
+	        IF "DB_MQTT".index_send > #max_index THEN
+	            "DB_MQTT".index_send := 0;
+	        END_IF;
+	        
+	        IF NOT "DB_MQTT".control.enable THEN
+	            RETURN;
+	        END_IF;
+	        
+	        IF "DB_MQTT".output.done THEN
+	            RETURN;
+	        END_IF;
+	        
+	        IF "DB_MQTT".control.publish THEN
+	            RETURN;
+	        END_IF;
+	        
+	        IF "DB_MQTT".readyToSend THEN
+	            "DB_MQTT".control.publish := true;
+	            "DB_MQTT".readyToSend := false;
+	            RETURN;
+	        END_IF;
+	        
+	        IF LEN("DB_MQTT".BUFFER_SEND["DB_MQTT".index_send]) < 0 THEN
+	            RETURN;
+	        END_IF;
+	        
+	        #separatorPos := FIND(IN1 := "DB_MQTT".BUFFER_SEND["DB_MQTT".index_send], IN2 := STRING_TO_WSTRING(#separator));
+	        IF #separatorPos <= 0 THEN
+	            "DB_MQTT".index_send := "DB_MQTT".index_send + 1; //era //
+	            RETURN;
+	        END_IF;
+	        
+	        "DB_MQTT".mqttTopic := LEFT(IN := "DB_MQTT".BUFFER_SEND["DB_MQTT".index_send], L := #separatorPos-1);
+	        
+	        "DB_MQTT".BUFFER_SEND["DB_MQTT".index_send] := MID(IN := "DB_MQTT".BUFFER_SEND["DB_MQTT".index_send], L := 250, P := #separatorPos + LEN(#separator));
+	        
+	        IF ( LEN("DB_MQTT".BUFFER_SEND["DB_MQTT".index_send]) > 220 ) THEN
+	            "DB_MQTT".payload_text[0] := WSTRING_TO_STRING(MID(IN := "DB_MQTT".BUFFER_SEND["DB_MQTT".index_send], L := 200, P := 1));
+	            "DB_MQTT".payload_text[1] := WSTRING_TO_STRING(MID(IN := "DB_MQTT".BUFFER_SEND["DB_MQTT".index_send], L := 200, P := 201));
+	            "DB_MQTT".payload_text[2] := WSTRING_TO_STRING(MID(IN := "DB_MQTT".BUFFER_SEND["DB_MQTT".index_send], L := 200, P := 401));
+	        ELSE
+	            "DB_MQTT".payload_text[0] := WSTRING_TO_STRING("DB_MQTT".BUFFER_SEND["DB_MQTT".index_send]);
+	        END_IF;
+	        
+	        #count := 0;
+	        #index := 0;
+	        "DB_MQTT".publishMsgLen := 0;
+	        "DB_MQTT".publishMsgPayload[0] := 0;
+	        FOR #i := 0 TO 2 DO
+	            Strg_TO_Chars(Strg:= "DB_MQTT".payload_text[#i],  //with WString doesn't work
+	                          pChars:=#index,
+	                          Cnt=>#count,
+	                          Chars:="DB_MQTT".publishMsgPayload);
+	            "DB_MQTT".publishMsgLen := "DB_MQTT".publishMsgLen + UINT_TO_UDINT(INT_TO_UINT(LEN("DB_MQTT".payload_text[#i])));
+	            #index := #index + INT_TO_UINT(LEN("DB_MQTT".payload_text[#i]));
+	        END_FOR;
+	        
+	        (*
+	        Chars_TO_Strg(Chars:="DB_MQTT".publishMsgPayload,
+	                      pChars:=0,
+	                      Cnt:=#count,
+	                      Strg=>#str);
+	        IF ("DB_MQTT".payload_text[0] = #str AND LEN("DB_MQTT".payload_text[0]) = LEN(#str)) THEN
+	            "DB_MQTT".readyToSend := true;
+	            "DB_MQTT".BUFFER_SEND["DB_MQTT".index_send] := wstring#'';
+	        END_IF;
+	        *)
+	        "DB_MQTT".readyToSend := true;
+	        "DB_MQTT".BUFFER_SEND["DB_MQTT".index_send] := wstring#'';
+	        
+	    END_IF;
+	    
+	END_REGION
+	
+	
+	
+	
+	
+END_FUNCTION
+

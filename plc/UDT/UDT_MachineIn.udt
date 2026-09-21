@@ -1,0 +1,21 @@
+﻿TYPE "UDT_MachineIn"
+VERSION : 0.1
+   STRUCT
+      doorOpened : Bool;   // feedback porta aperta
+      doorClosed : Bool;   // feedback porta chiusa (se la macchina lo da)
+      viceOpened : Bool;   // feedback morsa aperta
+      viceClosed : Bool;   // feedback morsa chiusa
+      palletUnlocked : Bool;   // feedback pallet sbloccato
+      palletLocked : Bool;   // feedback pallet bloccato
+      autoMode : Bool;   // macchina in automatico
+      endWork : Bool;   // fine lavorazione
+      endClean : Bool;   // fine lavaggio
+      serviceCall : Bool;   // chiamata servizio
+      spare_in_1 : Bool;
+      spare_in_2 : Bool;
+      spare_in_3 : Bool;
+      spare_in_4 : Bool;
+   END_STRUCT;
+
+END_TYPE
+

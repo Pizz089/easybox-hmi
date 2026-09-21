@@ -1,0 +1,17 @@
+﻿TYPE "warehouse_interface?"
+VERSION : 0.1
+   STRUCT
+      Operator : Struct
+         ExtractedTray : Int;
+         RequestTray : Int;
+         enabled_to_work : Bool;
+      END_STRUCT;
+      Robot : Struct
+         ExtractedTray : Int;
+         RequestTray : Int;
+         enabled_to_work : Bool;
+      END_STRUCT;
+   END_STRUCT;
+
+END_TYPE
+

@@ -1,0 +1,27 @@
+﻿FUNCTION "FC_words_to_DINT" : DInt
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      int_H : Int;
+      int_L : Int;
+   END_VAR
+
+   VAR_TEMP 
+      ris : DInt;
+   END_VAR
+
+
+BEGIN
+	
+	#ris:=(INT_TO_DINT(#int_H) * 65536) +INT_TO_DINT(#int_L);
+	
+	IF #int_L < 0 THEN
+	    #ris := #ris + 65536;
+	END_IF;
+	IF #int_H < 0 THEN
+	    #ris := #ris - 65536;
+	END_IF;
+	
+	#FC_words_to_DINT := #ris;
+END_FUNCTION
+

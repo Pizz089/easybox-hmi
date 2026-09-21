@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Target .NET Framework 4.8: la Siemens.Engineering.dll installata con TIA V20
+    dichiara TargetFramework ".NETFramework,Version=v4.8" (vedi README).
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <PlatformTarget>x64</PlatformTarget>
+    <AssemblyName>tia-export</AssemblyName>
+    <RootNamespace>TiaExport</RootNamespace>
+    <!-- Cartella PublicAPI di TIA V20: serve solo alla compilazione.
+         A runtime la DLL si risolve dal registro (vedi Program.cs). -->
+    <TiaPublicApiDir Condition="'$(TiaPublicApiDir)' == ''">C:\Program Files\Siemens\Automation\Portal V20\PublicAPI\V20</TiaPublicApiDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Referenziata dall'installazione di TIA, mai copiata nel repo né nella bin. -->
+    <Reference Include="Siemens.Engineering">
+      <HintPath>$(TiaPublicApiDir)\Siemens.Engineering.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="System.Runtime.Serialization" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,20 @@
+﻿FUNCTION "GET_BIT" : Bool
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      inByte : Byte;
+      bit : USInt;   // 0..7
+   END_VAR
+
+   VAR_TEMP 
+      shifted : Byte;
+   END_VAR
+
+
+BEGIN
+	
+	// porta il bit richiesto in posizione 0 e lo legge (nessuna maschera/letterale)
+	#shifted := SHR(IN := #inByte, N := #bit);
+	#GET_BIT := #shifted.%X0;
+END_FUNCTION
+

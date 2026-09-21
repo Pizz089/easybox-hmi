@@ -1,0 +1,25 @@
+﻿FUNCTION "SET_BIT" : Byte
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      inByte : Byte;
+      bit : USInt;   // 0..7
+      val : Bool;
+   END_VAR
+
+   VAR_TEMP 
+      mask : Byte;
+   END_VAR
+
+
+BEGIN
+	#mask := 0;
+	#mask.%X0 := TRUE;                     // mask = 2#0000_0001
+	#mask := SHL(IN := #mask, N := #bit);  // sposta il bit in posizione
+	IF #val THEN
+	    #SET_BIT := #inByte OR #mask;
+	ELSE
+	    #SET_BIT := #inByte AND (NOT #mask);
+	END_IF;
+END_FUNCTION
+

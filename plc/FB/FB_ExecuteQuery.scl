@@ -16,6 +16,7 @@ VERSION : 0.1
       queryCounter : Int;
       timeoutConnection {InstructionName := 'TON_TIME'; LibVersion := '1.0'; S7_SetPoint := 'False'} : TON_TIME;
       timeoutRetrayConnection {InstructionName := 'TON_TIME'; LibVersion := '1.0'} : TON_TIME;
+      timeoutAbbandono {InstructionName := 'TON_TIME'; LibVersion := '1.0'} : TON_TIME;
    END_VAR
 
    VAR_TEMP 
@@ -73,12 +74,17 @@ BEGIN
 	
 	CASE #Dispatch["_master"] OF
 	    0:  //nothing to do
-	        
-	(*        IF #readyForNextQuery THEN    #####secondo ma va riattivato!!
-	            #Dispatch["_master"] := 5;
+	        // GUARDIA DI RIPRISTINO (5/9): a riposo il buffer DEVE essere vuoto.
+	        // Se qualcuno azzera Dispatch dall'esterno (resetDispatcher di FB7,
+	        // forzature da watch) senza svuotare sqlCommands[0], il ponte resta
+	        // occupato per sempre: nessun richiedente riesce piu' a scrivere la
+	        // propria query perche' tutti controllano sqlCommands[0] = ''.
+	        // Sintomo visto il 5/9: Dispatch a 0, readyForNextQuery TRUE,
+	        // dataReady FALSE e buffer pieno — cella ferma senza errori.
+	        IF "SqlCommands".sqlCommands[0] <> '' THEN
+	            "SqlCommands".sqlCommands[0] := '';
 	        END_IF;
-	    5:
-	*)    
+	        
 	        IF #exec THEN
 	            #Dispatch["_master"] := 10;
 	            #readyForNextQuery := FALSE;
@@ -95,13 +101,13 @@ BEGIN
 	            
 	            #Dispatch["_master"] := 20;
 	        END_IF;
+	        
 	    20: // execute query
 	        "SqlConfig".executeSqlCommand := TRUE;
 	        #Dispatch["_master"] := 30;
 	        
 	    30: // wait result 
 	        IF "SqlTdsReceive".tdsTelegramArrayLength > 0
-	            // AND "SqlData".data.rowCount>0
 	            AND NOT "SqlConfig".executeSqlCommand THEN
 	            #queryCounter := #queryCounter + 1;
 	            
@@ -109,8 +115,17 @@ BEGIN
 	        END_IF;
 	        
 	    35: //wait syncro from cycle plc
-	        IF #readyForNextQuery THEN  
-	            //#readyForNextQuery := FALSE;
+	        // TIMEOUT DI ABBANDONO (5/9): se il richiedente muore prima di leggere
+	        // il risultato (errore, reset, catena che cambia stato) nessuno alza
+	        // readyForNextQuery e il ponte resta appeso qui bloccando tutta la
+	        // cella. Dopo 60s si libera da solo: il risultato va perso, ma il
+	        // ponte torna disponibile invece di piantare l'impianto.
+	        #timeoutAbbandono(IN := TRUE,
+	                          PT := T#60s);
+	        
+	        IF #readyForNextQuery OR #timeoutAbbandono.Q THEN
+	            #timeoutAbbandono(IN := FALSE,
+	                              PT := T#60s);
 	            
 	            //save last query into log
 	            FOR #i := 5 TO 1 BY -1 DO
@@ -118,16 +133,29 @@ BEGIN
 	            END_FOR;
 	            "SqlCommands".sqlCommands[0] := '';
 	            
+	            #readyForNextQuery := TRUE;
 	            #Dispatch["_master"] := 0;
 	        END_IF;
+	    ELSE
+	        // stato non previsto (forzatura, corruzione): torno a riposo pulito
+	        "SqlCommands".sqlCommands[0] := '';
+	        #readyForNextQuery := TRUE;
+	        #Dispatch["_master"] := 0;
 	END_CASE;
 	
 	
-	#dataReady := #Dispatch["_master"] = 0 OR #Dispatch["_master"] = 35;
+	// dataReady: SOLO allo stato 35 il risultato e' effettivamente disponibile.
+	#dataReady := #Dispatch["_master"] = 35;
+	
 	#noData := "SqlData".data.rowCount = 0;
-	#dataError := (#dataReady AND #noData) OR
-	              ("SqlConfig".diagnostics.status > 8000) OR
-	              LEN(#queryTemp)=0; //altre condizioni???
+	
+	// dataError: SOLO errore vero del ponte.
+	// RIMOSSO il termine LEN(#queryTemp) = 0: #queryTemp e' la temporanea
+	// ricalcolata a OGNI chiamata dal parametro query, e OB1 Network 7 passa
+	// stringa vuota quando nessuno ha richieste pendenti. Cosi' dataError
+	// diventava vero su un risultato perfettamente valido, appena il flag del
+	// richiedente cadeva (visto 4/9: errore al parsing con SqlData corretto).
+	#dataError := "SqlConfig".diagnostics.status > 8000;
 	
 END_FUNCTION_BLOCK
 

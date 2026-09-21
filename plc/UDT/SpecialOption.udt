@@ -1,0 +1,12 @@
+﻿TYPE "SpecialOption"
+VERSION : 0.1
+   STRUCT
+      "Lock-Unlock_onMC" : Bool;
+      ReleasePart_CloseVice : Bool;
+      OpenVice_LockPart : Bool;
+      Gripper1_inverted : Bool;
+      Gripper2_inverted : Bool;
+   END_STRUCT;
+
+END_TYPE
+

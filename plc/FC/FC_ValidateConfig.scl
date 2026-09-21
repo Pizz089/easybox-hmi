@@ -1,0 +1,55 @@
+﻿FUNCTION "FC_ValidateConfig" : Int
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      cfg : "UDT_MachineIOConfig";
+   END_VAR
+
+   VAR_TEMP 
+      usedIn : Array[0..15] of Bool;
+      usedOut : Array[0..15] of Bool;
+      i : Int;
+      idx : Int;
+   END_VAR
+
+
+BEGIN
+	#FC_ValidateConfig := 0;
+	FOR #i := 0 TO 15 DO
+	    #usedIn[#i] := FALSE;
+	    #usedOut[#i] := FALSE;
+	END_FOR;
+	
+	// ---- INGRESSI ----
+	FOR #i := 0 TO 9 DO
+	    IF #cfg.in[#i].present THEN
+	        IF (#cfg.in[#i].byteOff > 1) OR (#cfg.in[#i].bitOff > 7) THEN
+	            #FC_ValidateConfig := 100 + #i;
+	            RETURN;
+	        END_IF;
+	        #idx := USINT_TO_INT(#cfg.in[#i].byteOff) * 8 + USINT_TO_INT(#cfg.in[#i].bitOff);
+	        IF #usedIn[#idx] THEN
+	            #FC_ValidateConfig := 200 + #i;
+	            RETURN;
+	        END_IF;
+	        #usedIn[#idx] := TRUE;
+	    END_IF;
+	END_FOR;
+	
+	// ---- USCITE ----
+	FOR #i := 0 TO 10 DO
+	    IF #cfg.out[#i].present THEN
+	        IF (#cfg.out[#i].byteOff > 1) OR (#cfg.out[#i].bitOff > 7) THEN
+	            #FC_ValidateConfig := 300 + #i;
+	            RETURN;
+	        END_IF;
+	        #idx := USINT_TO_INT(#cfg.out[#i].byteOff) * 8 + USINT_TO_INT(#cfg.out[#i].bitOff);
+	        IF #usedOut[#idx] THEN
+	            #FC_ValidateConfig := 400 + #i;
+	            RETURN;
+	        END_IF;
+	        #usedOut[#idx] := TRUE;
+	    END_IF;
+	END_FOR;
+END_FUNCTION
+

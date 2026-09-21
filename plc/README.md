@@ -17,79 +17,94 @@ radice lo esclude esplicitamente.
 
 ## Struttura
 
-| Cartella   | Contenuto                                              | Estensione generata da TIA |
-|------------|--------------------------------------------------------|----------------------------|
-| `blocks/`  | OB, FB, FC in SCL                                      | `.scl`                     |
-| `db/`      | Blocchi dati globali e DB di istanza                   | `.db`                      |
-| `types/`   | Tipi di dati utente (UDT / PLC data types)             | `.udt`                     |
-| `tags/`    | Tabelle delle variabili PLC e costanti utente          | `.csv` o `.xml` (vedi sotto) |
+| Cartella | Contenuto                                         | Estensione | Chi la scrive          |
+|----------|---------------------------------------------------|------------|------------------------|
+| `OB/`    | Blocchi organizzativi                             | `.scl`     | `tools/tia-export`     |
+| `FB/`    | Blocchi funzionali                                | `.scl`     | `tools/tia-export`     |
+| `FC/`    | Funzioni                                          | `.scl`     | `tools/tia-export`     |
+| `DB/`    | Blocchi dati globali, di istanza e array DB       | `.db`      | `tools/tia-export`     |
+| `UDT/`   | Tipi di dati PLC                                  | `.udt`     | `tools/tia-export`     |
+| `tags/`  | Tabelle delle variabili PLC e costanti utente     | `.csv`     | a mano (vedi sotto)    |
 
 Nome file = nome del blocco in TIA, così com'è (`FB7_Robot.scl`,
-`DB_MC1.db`, `UDT_Gripper.udt`). Niente numeri di versione nel nome: la
-versione è il commit.
+`DB_MC1.db`, `UDT_Gripper.udt`). I caratteri non ammessi nei nomi di file
+diventano `_`. Niente numeri di versione nel nome: la versione è il commit.
+Un eventuale blocco in STL finirebbe nella sua cartella con estensione `.awl`.
 
-## Come si esporta da TIA Portal
+Le cartelle `OB/ FB/ FC/ DB/ UDT/` sono **gestite dal tool**: ci scrive solo
+lui, e ci cancella i sorgenti dei blocchi che non esistono più nel progetto.
+Non metterci file a mano.
 
-1. Nell'albero del progetto, selezionare uno o più blocchi (anche a multi
-   selezione con Ctrl).
-2. Tasto destro → **Generate source from blocks** (in italiano: **Genera
-   sorgente da blocchi**). TIA chiede il nome del file e lo crea nella
-   cartella **External source files** (*File sorgente esterni*) del progetto.
-3. Nella cartella *External source files*, tasto destro sul file generato →
-   **Export** (*Esporta*) → salvare nella sottocartella giusta di `plc/`
-   (`blocks/`, `db/`, `types/`) sovrascrivendo il file precedente.
-4. Codifica: lasciare l'UTF-8 proposto da TIA.
+## Come si esporta
 
-Per le **tabelle variabili** e le **costanti** TIA offre solo l'esportazione
-in Excel (`.xlsx`, binario): aprire il file in Excel e salvarlo come **CSV**
-in `tags/`, oppure — quando ci sarà l'integrazione Openness — l'XML testuale.
-Non committare `.xlsx`.
+Con il tool `tools/tia-export` (TIA Portal Openness V20): apre il progetto
+senza interfaccia, genera il sorgente di **tutti** i blocchi della CPU (un
+file per blocco) e scrive solo i file il cui contenuto è cambiato. A progetto
+invariato non produce diff. Prerequisiti, configurazione e uso sono in
+[`tools/tia-export/README.md`](../tools/tia-export/README.md).
 
-## Blocchi in LAD / FBD (linguaggi grafici)
+A fine corsa stampa quanti blocchi ha esportato, quanti ne ha saltati (e
+perché) e l'elenco dei file aggiunti (`A`), modificati (`M`) e rimossi (`D`)
+rispetto alla corsa precedente.
 
-**Non generano sorgente**: "Genera sorgente da blocchi" funziona solo per
-SCL (e STL). Per questi blocchi si annota qui sotto il nome e si spiega che
-vanno letti in TIA; la loro storia resta solo quella del progetto. Se un
-blocco grafico viene convertito in SCL, si sposta nella tabella dei blocchi
-esportati.
+Il tool **non esporta** e lo dichiara nel riepilogo come "saltati":
+
+- **blocchi safety (F-)**: Openness non ne genera il sorgente;
+- **blocchi know-how protected**;
+- **blocchi LAD / FBD / GRAPH**: non hanno un sorgente testuale (vedi sotto);
+- **blocchi di sistema** generati da TIA.
+
+Per le **tabelle variabili** e le **costanti** l'esportazione resta manuale:
+TIA offre solo Excel (`.xlsx`, binario), quindi aprire il file in Excel e
+salvarlo come **CSV** in `tags/`. Non committare `.xlsx`.
+
+## Blocchi in LAD / FBD / GRAPH (linguaggi grafici)
+
+**Non generano sorgente**: la loro storia resta solo quella del progetto TIA
+e vanno letti lì. Il riepilogo del tool stampa già le righe pronte per questa
+tabella. Se un blocco grafico viene convertito in SCL, alla corsa successiva
+il tool lo esporta: toglierlo da qui.
 
 | Blocco | Linguaggio | Note                                             |
 |--------|------------|--------------------------------------------------|
-| _(da compilare)_ | LAD/FBD | Leggere in TIA Portal, non esportabile come testo |
+| Cyclic interrupt_1 | LAD | Leggere in TIA Portal, non esportabile come testo |
+| FC_DBdata | LAD | Leggere in TIA Portal, non esportabile come testo |
+| FC_ExtractGripper | LAD | Leggere in TIA Portal, non esportabile come testo |
+| Main | LAD | Leggere in TIA Portal, non esportabile come testo |
 
 ## Regola operativa
 
 Dopo **ogni sessione di modifiche al PLC**:
 
-1. rigenerare i sorgenti dei **soli blocchi toccati** (non l'intero progetto:
-   un'esportazione totale nasconde nel rumore la modifica vera);
-2. copiarli nella sottocartella giusta sovrascrivendo i precedenti;
-3. `git diff` per vedere esattamente cosa è cambiato — se il diff mostra più
-   di quello che si è modificato, fermarsi e capire perché prima di committare;
-4. **un commit con la stessa descrizione della modifica fatta in TIA**
+1. salvare il progetto in TIA e **chiuderlo** (il tool non apre un progetto
+   già aperto);
+2. lanciare `tools/tia-export`;
+3. leggere l'elenco dei file cambiati e `git diff -- plc/`: deve mostrare
+   **solo** quello che si è modificato in TIA. Se mostra di più, fermarsi e
+   capire perché prima di committare;
+4. **un commit per ogni modifica fatta in TIA**, con la stessa descrizione
    (es. `plc(FB7): refresh 90 ripubblica DECLARE/ROBOT`), sul branch di
-   lavoro corrente. Se la modifica PLC va di pari passo con una modifica del
-   pannello o del backend, stesso commit o commit consecutivi con lo stesso
-   prefisso: così il confronto "cosa ha cambiato il PLC quel giorno" è a
-   portata di `git log -- plc/`.
+   lavoro corrente. Se in una sessione si sono fatte più modifiche separate,
+   staging selettivo dei file di ciascuna. Se la modifica PLC va di pari passo
+   con una modifica del pannello o del backend, stesso commit o commit
+   consecutivi con lo stesso prefisso: così il confronto "cosa ha cambiato il
+   PLC quel giorno" è a portata di `git log -- plc/`.
+
+L'export è sempre totale, ma essendo idempotente il diff contiene solo i
+blocchi cambiati davvero: il legame fra commit e modifica lo garantisce il
+diff, non la scelta a mano di cosa esportare.
 
 Cosa NON fare:
 
 - non committare il progetto TIA (`.ap20`, archivi `.zap20`/`.al20`, cartelle
   `IM/ System/ XRef/ UserFiles/ TMP/ Logs/ Vci/ AdditionalFiles/`);
 - non modificare i sorgenti qui dentro a mano;
-- non committare esportazioni "a tappeto" dopo settimane: si perde il legame
-  fra commit e modifica, che è l'unico motivo per cui questa cartella esiste.
+- non lasciar accumulare settimane di modifiche prima di esportare: il diff
+  resta preciso, ma si perde il legame fra ogni commit e la sua modifica.
 
 ## Perché esiste
 
 A luglio 2026 una regressione su un blocco è stata trovata solo per confronto
 manuale, e il fix che l'aveva introdotta era invisibile perché il progetto
-TIA non ha storia. Con i sorgenti in repo, `git log -p -- plc/blocks/<blocco>.scl`
+TIA non ha storia. Con i sorgenti in repo, `git log -p -- plc/FB/<blocco>.scl`
 risponde in un minuto a "chi ha cambiato cosa e quando".
-
-## Fasi successive (non in questa cartella)
-
-Automazione dell'esportazione via TIA Openness e confronto automatico
-repo↔progetto: fase successiva, esplicitamente fuori scope. Qui c'è solo la
-struttura e la convenzione.

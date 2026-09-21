@@ -1,0 +1,11 @@
+﻿TYPE "UDT_SignalMap"
+VERSION : 0.1
+   STRUCT
+      present : Bool;   // il segnale esiste su questo brand
+      byteOff : USInt;   // offset byte nella finestra (0..1)
+      bitOff : USInt;   // bit nel byte (0..7)
+      inverted : Bool;   // contatto NC / logica invertita
+   END_STRUCT;
+
+END_TYPE
+

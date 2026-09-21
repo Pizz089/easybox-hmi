@@ -1,0 +1,13 @@
+﻿TYPE "Robot_mission_STATUS"
+VERSION : 0.1
+   STRUCT
+      StatusRegister { S7_SetPoint := 'False'} : "RST";
+      GripperCode : DInt;
+      AllarmCode : Int;
+      RequestCmd { S7_SetPoint := 'False'} : "cmd_rob-plc";
+      StatusCode { S7_SetPoint := 'True'} : Int;
+      systemsignals { S7_SetPoint := 'False'} : "systemSignals";
+   END_STRUCT;
+
+END_TYPE
+

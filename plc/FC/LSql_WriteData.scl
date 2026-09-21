@@ -1,0 +1,142 @@
+﻿FUNCTION "LSql_WriteData" : Void
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      inString : String;
+      offsetOwn : Word;
+      asPassword : Bool;
+   END_VAR
+
+   VAR_OUTPUT 
+      error : Bool;
+      status : Word;
+      offsetNext : Word;
+      length : Word;
+   END_VAR
+
+   VAR_IN_OUT 
+      data : Array[0..1023] of Byte;
+      writer : Int;
+   END_VAR
+
+   VAR_TEMP 
+      tempStatus : Word;
+      tempBytes : Array[0..1023] of Byte;
+      tempConvBytes : Array[0..123] of Byte;
+      tempLen : DInt;
+      tempCounter : DInt;
+      tempOffsetNext : Word;
+      tempLength : Word;
+      tempOffsetAsDInt : DInt;
+      tempLenAsUInt : UInt;
+   END_VAR
+
+   VAR CONSTANT 
+      BYTE_EMPTY : Byte := 16#00;
+      BYTE_EMPTY_PASSWORD : Byte := 16#A5;
+      STATUS_FINISHED_NO_ERROR : Word := 16#0000;
+      ERR_UNDEFINED : Word := 16#8000;
+      ERR_IN_BLOCK_OPERATION : Word := 16#8001;
+      ERR_PARAMETRIZATION : Word := 16#8200;
+      ERR_PROCESSING_EXTERN : Word := 16#8400;
+      ERR_PROCESSING_INTERN : Word := 16#8600;
+      ERR_AREA_RESERVED : Word := 16#8800;
+      ERR_USER_DEFINED_CLASSES : Word := 16#9000;
+   END_VAR
+
+
+BEGIN
+	REGION BLOCK INFO HEADER
+	  //===============================================================================
+	  // Siemens AG (c)Copyright (2022)
+	  //-------------------------------------------------------------------------------
+	  // Title:            LSql_WriteData
+	  // Comment/Function: serialize input string to array of bytes
+	  // Library/Family:   LSql
+	  // Author:           Siemens SUP Applications 
+	  // Target:           S7-1500 / FW 2.9
+	  // Engineering:      TIA Portal (V17)
+	  // Restrictions:     no
+	  // Requirements:     CPU 1500
+	  //-------------------------------------------------------------------------------
+	  // Change log table:
+	  // Version  | Date       | Expert in charge         | Changes applied
+	  //----------|------------|--------------------------|------------------------------
+	  // 01.00.00 | 2020-02-19 | Siemens SUP Applications | First released version
+	  // 01.10.00 | 2022-09-29 | Siemens SUP Applications | minor formatting changes, united FCs for password and non-password
+	  //===============================================================================
+	END_REGION
+	
+	REGION INITIALISATION  
+	  // TODO: Initialize functionality: reset of variables, diagnostics, etc.
+	  #tempLenAsUInt := 0;
+	  #tempLen := 0;
+	  #tempCounter := 0;
+	  #tempOffsetAsDInt := 0;
+	  #tempOffsetNext := 16#0000;
+	  #tempStatus := #STATUS_FINISHED_NO_ERROR;
+	END_REGION
+	
+	REGION PROGRAM LOGIC
+	  IF (NOT #asPassword) THEN
+	    REGION Non-password
+	      //convert string to char array
+	      Strg_TO_Chars(Strg   := #inString,
+	                    pChars := 0,
+	                    Cnt    => #tempLenAsUInt,
+	                    Chars  := #tempBytes);
+	      #tempLen := UINT_TO_DINT(#tempLenAsUInt);
+	      
+	      
+	      //fill in zero bytes between each letter
+	      FOR #tempCounter := 0 TO #tempLen - 1 DO
+	        #data[#writer] := #tempBytes[#tempCounter];
+	        #writer += 1;
+	        #data[#writer] := #BYTE_EMPTY;
+	        #writer += 1;
+	      END_FOR;
+	    END_REGION Non-password
+	  ELSE
+	    REGION Password
+	      Strg_TO_Chars(Strg   := #inString,
+	                    pChars := 0,
+	                    Cnt    => #tempLenAsUInt,
+	                    Chars  := #tempConvBytes);
+	      #tempLen := UINT_TO_DINT(#tempLenAsUInt);
+	      
+	      //convert password (switch low<->high bits and xor 16#A5)
+	      FOR #tempCounter := 0 TO #tempLen - 1 DO
+	        #tempConvBytes[#tempCounter] := ROR(IN := #tempConvBytes[#tempCounter], N := 4) XOR #BYTE_EMPTY_PASSWORD;
+	      END_FOR;
+	      
+	      //fill in 16#A5 bytes between each letter
+	      FOR #tempCounter := 0 TO #tempLen - 1 DO
+	        #data[#writer] := #tempConvBytes[#tempCounter];
+	        #writer += 1;
+	        #data[#writer] := #BYTE_EMPTY_PASSWORD;
+	        #writer += 1;
+	      END_FOR;
+	    END_REGION Password
+	  END_IF;
+	  
+	  //set offset to length * 2 cause of filled in zero bytes
+	  #tempOffsetAsDInt := WORD_TO_DINT(#offsetOwn);
+	  #tempOffsetAsDInt := ROR(IN := #tempOffsetAsDInt, N := 8) + #tempLen * 2;
+	  #tempOffsetNext := DINT_TO_WORD(#tempOffsetAsDInt);
+	  #tempOffsetNext := ROL(IN := #tempOffsetNext, N := 8);
+	  
+	  //set length to the number of letters(low Byte, high Byte)
+	  #tempLength := ROL(IN := DINT_TO_WORD(#tempLen), N := 8);
+	END_REGION
+	
+	REGION OUTPUTS
+	  #offsetNext := #tempOffsetNext;
+	  #length := #tempLength;
+	  #error := #tempStatus.%X15;
+	  #status := #tempStatus;
+	  // if ENO mechanism is not used / not wanted replace the following line by --> ENO := TRUE;
+	  ENO := NOT #tempStatus.%X15;
+	END_REGION
+	
+END_FUNCTION
+

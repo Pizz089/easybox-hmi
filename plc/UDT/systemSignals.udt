@@ -1,0 +1,23 @@
+﻿TYPE "systemSignals"
+VERSION : 0.1
+   STRUCT
+      Ready4Start : Bool;
+      ProgramExec : Bool;
+      free : Bool;
+      free_1 : Bool;
+      free_2 : Bool;
+      free_3 : Bool;
+      free_4 : Bool;
+      free_5 : Bool;
+      free_6 : Bool;
+      free_7 : Bool;
+      free_8 : Bool;
+      free_9 : Bool;
+      free_10 : Bool;
+      free_11 : Bool;
+      free_12 : Bool;
+      LIFE_BIT : Bool;
+   END_STRUCT;
+
+END_TYPE
+

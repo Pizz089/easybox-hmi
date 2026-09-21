@@ -1,0 +1,110 @@
+﻿FUNCTION "LMQTT_ConvertToUtf8" : Void
+{ S7_Optimized_Access := 'TRUE' }
+AUTHOR : SIEMENS
+FAMILY : LMQTT
+VERSION : 1.0
+   VAR_INPUT 
+      character : WChar;
+   END_VAR
+
+   VAR_OUTPUT 
+      convertedUtf8 : DWord;
+      bytesUsed : USInt;
+      error : Bool;
+      status : Word;
+   END_VAR
+
+   VAR_TEMP 
+      tempStatus : Word;
+      tempConvertedUtf8 : DWord;
+      tempBytesUsed : USInt;
+      tempCharacter : WChar;
+   END_VAR
+
+   VAR CONSTANT 
+      STATUS_NO_ERROR : Word := 16#0000;
+      STATUS_EXECUTION_FINISHED : Word := 16#0000;
+      ERR_UNDEFINED : Word := 16#8000;
+      USINT_NULL : USInt := 0;
+      DWORD_NULL : DWord := 16#0000_0000;
+      EMPTY_WCHAR : WChar := WCHAR#' ';
+      BELOW_7F : Word := 16#007F;
+      BELOW_7FF : Word := 16#07FF;
+      BELOW_MAX_FFFF : Word := 16#FFFF;
+      BYTE_3F : Byte := 16#3F;
+      BYTE_80 : Byte := 16#80;
+      BYTE_C0 : Byte := 16#C0;
+      BYTE_E0 : Byte := 16#E0;
+      USINT_ONE : USInt := 1;
+      USINT_TWO : USInt := 2;
+      USINT_THREE : USInt := 3;
+   END_VAR
+
+
+BEGIN
+	REGION BLOCK INFO HEADER
+	    //=============================================================================
+	    // SIEMENS AG
+	    // (c)Copyright 2020
+	    //-----------------------------------------------------------------------------
+	    // Library:       LMQTT
+	    // Tested with:   CPU 1516-3 PN/DP V2.8
+	    // Engineering:   TIA Portal V16
+	    // Restrictions:  --
+	    // Requirements:  --
+	    // Functionality: Converts a single WChar Character to a valid UTF-8 encoded byte sequence and saves this to a DWord.
+	    //                The amount of bytes saved is stored in bytesUsed Output.
+	    //-----------------------------------------------------------------------------
+	    // Change log table:
+	    // Version    Date         Expert in charge         Changes applied
+	    // 03.00.00   01.10.2020   Siemens Online Support   First released version
+	    //=============================================================================
+	END_REGION
+	
+	REGION INITIALISATION  
+	    // Initialize functionality: reset of variables, diagnostics, etc.
+	    #tempConvertedUtf8 := #DWORD_NULL;
+	    #tempBytesUsed := #USINT_NULL;
+	    #tempStatus := #STATUS_NO_ERROR;
+	    //assign temp value from input:
+	     #tempCharacter := #character;
+	    
+	END_REGION
+	
+	REGION PROGRAM LOGIC
+	    // Use this region for application specific code
+	    IF #tempCharacter = #EMPTY_WCHAR THEN
+	        //will be only 1 byte occupied
+	        #tempConvertedUtf8 := WCHAR_TO_DWORD(#tempCharacter);
+	        #tempBytesUsed := #USINT_ONE;
+	    ELSIF (WCHAR_TO_WORD(#tempCharacter) <= (#BELOW_7F)) THEN
+	        //will be only 1 byte occupied
+	        #tempConvertedUtf8 := WCHAR_TO_DWORD(#tempCharacter);
+	        #tempBytesUsed := #USINT_ONE;
+	    ELSIF (WCHAR_TO_WORD(#tempCharacter) <= (#BELOW_7FF)) THEN
+	        //will be 2 byte occupied
+	        #tempConvertedUtf8.%B1 := (WCHAR_TO_BYTE(#tempCharacter) AND #BYTE_3F) OR #BYTE_80;
+	        #tempConvertedUtf8.%B0 := WORD_TO_BYTE(SHR(IN := WCHAR_TO_WORD(#tempCharacter), N := 6)) OR #BYTE_C0;
+	        #tempBytesUsed := #USINT_TWO;
+	    ELSIF (WCHAR_TO_WORD(#tempCharacter) <= (#BELOW_MAX_FFFF)) THEN
+	        //will be 3 byte occupied
+	        #tempConvertedUtf8.%B2 := (WCHAR_TO_BYTE(#tempCharacter) AND #BYTE_3F) OR #BYTE_80;
+	        #tempConvertedUtf8.%B1 := (WORD_TO_BYTE(SHR(IN := WCHAR_TO_WORD(#tempCharacter), N := 6)) AND #BYTE_3F) OR #BYTE_80;
+	        #tempConvertedUtf8.%B0 := WORD_TO_BYTE(SHR(IN := WCHAR_TO_WORD(#tempCharacter), N := 12)) OR #BYTE_E0;
+	        #tempBytesUsed := #USINT_THREE;
+	    END_IF;
+	END_REGION
+	
+	REGION OUTPUTS
+	    // Write application specific temp values to outputs
+	    #bytesUsed := #tempBytesUsed;
+	    #convertedUtf8 := #tempConvertedUtf8;
+	    // Write error and status
+	    #error := #tempStatus.%X15;
+	    #status := #tempStatus;
+	    // ENO mechanism is not used --> ENO := TRUE;
+	    ENO := TRUE;
+	END_REGION
+	
+END_FUNCTION
+

@@ -1,0 +1,10 @@
+﻿DATA_BLOCK "DB_MC1_OLD"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+NON_RETAIN
+"FB_MC_Spinner"
+
+BEGIN
+
+END_DATA_BLOCK
+

@@ -1,0 +1,19 @@
+﻿FUNCTION "FC_Split_Dint" : Void
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      IN : DInt;
+   END_VAR
+
+   VAR_OUTPUT 
+      HIGH_Word : Int;
+      LOW_Word : Int;
+   END_VAR
+
+
+BEGIN
+	#HIGH_Word := DINT_TO_INT(SHR(IN:=#IN ,N:=16));
+	#LOW_Word := DINT_TO_INT(#IN MOD 65536);
+	
+END_FUNCTION
+

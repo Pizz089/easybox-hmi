@@ -1,0 +1,8 @@
+﻿TYPE "typeTokenRow"
+VERSION : 0.1
+   STRUCT
+      col : Array[0..20] of DInt;
+   END_STRUCT;
+
+END_TYPE
+

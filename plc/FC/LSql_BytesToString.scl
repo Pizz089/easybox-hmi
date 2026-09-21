@@ -1,0 +1,120 @@
+﻿FUNCTION "LSql_BytesToString" : String
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      numberOfBytes : UInt;
+      columnType : UInt;
+   END_VAR
+
+   VAR_IN_OUT 
+      byteArray : Array[*] of Byte;
+   END_VAR
+
+   VAR_TEMP 
+      tempCharFromByte : Char;
+      tempByteAddressCounter : UInt;
+      tempCharString : String;
+      tempArrayLowerBound : DInt;
+      tempArrayUpperBound : DInt;
+      tempNumberOfBytes : UInt;
+      tempBytesPerChar : USInt;
+   END_VAR
+
+   VAR CONSTANT 
+      STRING_MAXSIZE : UInt := 254;
+      CHARACTERSET_SINGLEBYTE : USInt := 1;
+      CHARACTERSET_MULTIBYTE : USInt := 2;
+      TDS_COLUMNTYPE_TEXT : USInt := 35;
+      TDS_COLUMNTYPE_NTEXT : USInt := 99;
+      TDS_COLUMNTYPE_VARCHAR : USInt := 167;
+      TDS_COLUMNTYPE_CHAR : USInt := 175;
+      TDS_COLUMNTYPE_NVARCHAR : USInt := 231;
+      TDS_COLUMNTYPE_NCHAR : USInt := 239;
+      BYTE_TO_CHAR_SPACE : Byte := 16#00;
+   END_VAR
+
+
+BEGIN
+	REGION BLOCK INFO HEADER
+	  //===============================================================================
+	  // Siemens AG (c)Copyright (2022)
+	  //-------------------------------------------------------------------------------
+	  // Title:            LSql_2BytesToString
+	  // Comment/Function: transforms an Array of Byte to Char and concatenates those to return value of datatype 'String' (2:1 or 1:1)
+	  // Library/Family:   LSql
+	  // Author:           Siemens SUP Applications 
+	  // Target:           S7-1500 / FW 2.9
+	  // Engineering:      TIA Portal (V17)
+	  // Restrictions:     no
+	  // Requirements:     CPU 1500
+	  //-------------------------------------------------------------------------------
+	  // Change log table:
+	  // Version  | Date       | Expert in charge         | Changes applied
+	  //----------|------------|--------------------------|------------------------------
+	  // 1.00.03  | 2022-09-29 | Siemens SUP Applications | First released version
+	  //===============================================================================
+	END_REGION
+	
+	REGION Initilaize Output
+	  #LSql_BytesToString := '';
+	END_REGION Initilaize Output
+	
+	IF #numberOfBytes > 0 THEN
+	  
+	  REGION Validate Input
+	    //get array boundaries
+	    #tempArrayLowerBound := LOWER_BOUND(ARR := #byteArray, DIM := 1);
+	    #tempArrayUpperBound := UPPER_BOUND(ARR := #byteArray, DIM := 1);
+	    
+	    //check numberOfBytes against array size
+	    IF (#numberOfBytes > #tempArrayUpperBound - #tempArrayLowerBound + 1) THEN
+	      #tempNumberOfBytes := DINT_TO_UINT(IN := #tempArrayUpperBound - #tempArrayLowerBound + 1);
+	    ELSE
+	      #tempNumberOfBytes := #numberOfBytes;
+	    END_IF;
+	    
+	    //a Character takes either 2 or 1 Byte - depending on the Column Type
+	    CASE #columnType OF
+	      #TDS_COLUMNTYPE_VARCHAR:
+	        #tempBytesPerChar := #CHARACTERSET_SINGLEBYTE;
+	      #TDS_COLUMNTYPE_TEXT:
+	        #tempBytesPerChar := #CHARACTERSET_SINGLEBYTE;
+	      #TDS_COLUMNTYPE_CHAR:
+	        #tempBytesPerChar := #CHARACTERSET_SINGLEBYTE;
+	      #TDS_COLUMNTYPE_NTEXT:
+	        #tempBytesPerChar := #CHARACTERSET_MULTIBYTE;
+	      #TDS_COLUMNTYPE_NVARCHAR:
+	        #tempBytesPerChar := #CHARACTERSET_MULTIBYTE;
+	      #TDS_COLUMNTYPE_NCHAR:
+	        #tempBytesPerChar := #CHARACTERSET_MULTIBYTE;
+	      ELSE //e.g. column titles are encoded 2 Byte per character. Input for columnType can be set to '0'
+	        #tempBytesPerChar := #CHARACTERSET_MULTIBYTE;
+	    END_CASE;
+	    
+	    //return value datatype 'String' can only take 254 characters --> check numberofBytes against limit of 254 or 508 byte
+	    IF (#tempNumberOfBytes > #STRING_MAXSIZE * #tempBytesPerChar) THEN
+	      #tempNumberOfBytes := #STRING_MAXSIZE * #tempBytesPerChar;
+	    END_IF;
+	    
+	  END_REGION Validate Input
+	  
+	  REGION Concatenate String
+	    //iteration through bytes
+	    FOR #tempByteAddressCounter := DINT_TO_UINT(#tempArrayLowerBound) TO (#tempNumberOfBytes - 1) BY USINT_TO_UINT(#tempBytesPerChar)
+	    DO
+	      IF (#byteArray[#tempByteAddressCounter] <> #BYTE_TO_CHAR_SPACE) THEN
+	        #tempCharFromByte := BYTE_TO_CHAR(IN := #byteArray[#tempByteAddressCounter]);
+	        #tempCharString := CONCAT(IN1 := #tempCharString, IN2 := #tempCharFromByte);
+	      ELSE
+	        #tempCharString := CONCAT(IN1 := #tempCharString, IN2 := ' ');
+	      END_IF;
+	    END_FOR;
+	  END_REGION Concatenate String
+	  
+	  REGION Write Output
+	    //write String output
+	    #LSql_BytesToString := #tempCharString;
+	  END_REGION Write Output
+	END_IF;
+END_FUNCTION
+

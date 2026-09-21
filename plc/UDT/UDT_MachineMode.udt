@@ -1,0 +1,9 @@
+﻿TYPE "UDT_MachineMode"
+VERSION : 0.1
+   STRUCT
+      AUTO : Bool;
+      MANUAL : Bool;
+   END_STRUCT;
+
+END_TYPE
+

@@ -1,0 +1,23 @@
+﻿TYPE "RST"
+VERSION : 0.1
+   STRUCT
+      Ready : Bool;
+      Executing : Bool;
+      Hold : Bool;
+      PowerOn : Bool;
+      Warning : Bool;
+      Alarm : Bool;
+      HOME_position : Bool;
+      TPEnable : Bool;
+      GripperMounted : Bool;
+      Gripper1_occuped : Bool;
+      Gripper2_occuped : Bool;
+      free : Bool;
+      Maintenance_position : Bool;
+      Manual_mode : Bool;
+      free_1 : Bool;
+      Robot_in_area : Bool;
+   END_STRUCT;
+
+END_TYPE
+

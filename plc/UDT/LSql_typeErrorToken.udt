@@ -1,0 +1,18 @@
+﻿TYPE "LSql_typeErrorToken"
+VERSION : 0.1
+   STRUCT
+      TokenLength { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : UInt;
+      SQLErrorNumber { ExternalVisible := 'False'; ExternalWritable := 'False'} : UDInt;
+      State { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Byte;
+      Class { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : USInt;
+      ErrorMessageLength { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : UInt;
+      ErrorMessage { ExternalVisible := 'False'; ExternalWritable := 'False'} : String;
+      ServerNameLength { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : USInt;
+      ServerName { ExternalVisible := 'False'; ExternalWritable := 'False'} : String;
+      ProcNameLength { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : USInt;
+      ProcName { ExternalVisible := 'False'; ExternalWritable := 'False'} : String;
+      LineNumber { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : UDInt;
+   END_STRUCT;
+
+END_TYPE
+

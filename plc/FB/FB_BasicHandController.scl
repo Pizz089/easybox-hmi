@@ -1,0 +1,80 @@
+﻿FUNCTION_BLOCK "FB_BasicHandController"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      SA_AUTOMode : Bool;
+      SB_Lock_Vice : Bool;
+      SB_Lock_Pallet : Bool;
+      viceOpened : Bool;
+      palletUnlocked : Bool;
+   END_VAR
+
+   VAR_OUTPUT 
+      HL_Lock_Vice : Bool;
+      HL_lock_Pallet : Bool;
+   END_VAR
+
+   VAR_IN_OUT 
+      cmd : "UDT_CMD";
+      MC_mode : Struct
+         AUTO : Bool;
+         MANUAL : Bool;
+      END_STRUCT;
+      MC_Status : Int;
+   END_VAR
+
+   VAR 
+      TON_lockVice {InstructionName := 'TP_TIME'; LibVersion := '1.0'} : TP_TIME;
+      TON_lockPallet {InstructionName := 'TP_TIME'; LibVersion := '1.0'} : TP_TIME;
+   END_VAR
+
+
+BEGIN
+	//BASIC HAND CONTROLLER
+	//  Author  : ADMG
+	//  Date    : April 2025 
+	
+	REGION handControl
+	    #TON_lockVice(IN:=#SB_Lock_Vice,PT:=T#1s);
+	    #TON_lockPallet(IN:=#SB_Lock_Pallet,PT:=T#1s);
+	    
+	    IF #MC_Status <> "WORKING" THEN
+	        #MC_mode.AUTO := #SA_AUTOMode;
+	        #MC_mode.MANUAL := NOT #MC_mode.AUTO;
+	    END_IF;
+	    
+	    IF NOT #SA_AUTOMode THEN
+	        IF #cmd.code = 0 THEN
+	            
+	            IF #TON_lockVice.Q AND #viceOpened THEN
+	                #cmd.code := "MC_closeVice";
+	            ELSIF #TON_lockVice.Q AND NOT #viceOpened THEN
+	                #cmd.code := "MC_openVice";
+	                
+	            ELSIF #TON_lockPallet.Q AND #palletUnlocked THEN
+	                #cmd.code := "MC_lockPallet";
+	            ELSIF #TON_lockPallet.Q AND NOT #palletUnlocked THEN
+	                #cmd.code := "MC_unlockPallet";
+	            END_IF;
+	            
+	        ELSIF #cmd.code > 0 AND (#cmd.executed OR #cmd.aborted) THEN
+	            #cmd.code := 0;
+	        END_IF;
+	       
+	    END_IF;
+	END_REGION ;
+	
+	REGION LAMPS
+	    #HL_Lock_Vice :=   ("Clock_2Hz" AND #cmd.code = "MC_openVice")
+	                    OR ("Clock_2Hz" AND #cmd.code = "MC_closeVice")
+	                    OR #viceOpened
+	                    OR "DB_plant".testLamps;
+	    
+	    #HL_lock_Pallet :=     ("Clock_2Hz" AND #cmd.code = "MC_unlockPallet")
+	                        OR ("Clock_2Hz" AND #cmd.code = "MC_lockPallet")
+	                        OR #palletUnlocked
+	                        OR "DB_plant".testLamps;
+	END_REGION
+	
+END_FUNCTION_BLOCK
+

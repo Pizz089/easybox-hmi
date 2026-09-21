@@ -1,0 +1,11 @@
+﻿DATA_BLOCK "DB_RobotMission"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 0.1
+NON_RETAIN
+"Robot_Mission"
+
+BEGIN
+   Command := 0;
+
+END_DATA_BLOCK
+

@@ -1,0 +1,61 @@
+﻿DATA_BLOCK "DB_MC1"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+NON_RETAIN
+   VAR 
+      MachineType : Int;   // // 0=none, 1=Spinner, 2=Autonomous (da pannello)
+      io_in { S7_SetPoint := 'False'} : "UDT_MachineIn";
+      io_out : "UDT_MachineOut";
+      Status { S7_SetPoint := 'True'} : Int;
+      Mode { S7_SetPoint := 'False'} : "UDT_MachineMode";
+      cmd : "UDT_CMD";
+      order : "UDT_Order";
+   END_VAR
+   VAR RETAIN
+      pallet { S7_SetPoint := 'True'} : Int;
+   END_VAR
+   VAR 
+      fixture : Int;
+   END_VAR
+   VAR RETAIN
+      ManualVice : Int;
+      piecepresent : Array[1..5] of Int;
+   END_VAR
+   VAR 
+      viceLocked : Bool;
+      viceUnlocked : Bool;
+      palletLocked : Bool;
+      changePalletReq : Bool;
+      LastMission : Int;
+      Dispatcher : Array[0..10] of Int;
+      subState : Int;
+      autoModePrev : Bool;
+   END_VAR
+   VAR RETAIN
+      brandID_req : Int;   // impostato dal PANNELLO (richiesta)
+      brandID_act : Int;   // brand attivo (latchato a macchina ferma) — usato dal codice
+   END_VAR
+   VAR 
+      brandID_act_old : Int;
+      cfgErr_old : Int;
+      brandID_req_old : Int;
+      cfgErrBrand_old : Int;
+      declPallet_old : Int;
+      declVice_old : Int;
+      declPiece_old : Int;
+      queryTemp : String;
+      queryStartExecution : Bool;
+   END_VAR
+
+
+BEGIN
+   brandID_act_old := -1;
+   cfgErr_old := -1;
+   brandID_req_old := -1;
+   cfgErrBrand_old := -1;
+   declPallet_old := -1;
+   declVice_old := -1;
+   declPiece_old := -1;
+
+END_DATA_BLOCK
+

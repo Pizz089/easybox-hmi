@@ -1,0 +1,148 @@
+﻿ORGANIZATION_BLOCK "OB_startUp"
+TITLE = "Complete Restart"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_TEMP 
+      i : Int;
+      vres : Int;
+   END_VAR
+
+
+BEGIN
+	"DB_executeQuery".readyForNextQuery := TRUE;
+	
+	"testmqtt" := true;
+	
+	REGION Config brand 2 HAAS
+	    // Mappa I/O HAAS su finestra MC1 (%IB43 / %QB45).
+	    // VALORI VERIFICATI FISICAMENTE IN CELLA il 4/9, filo per filo: lo schema
+	    // fornito era SBAGLIATO e anche i valori del 2/9 lo seguivano. Corrispondenza
+	    // reale di %IB43: bit 0 autoMode, bit 1 endWork, bit 2 doorClosed,
+	    // bit 3 libero, bit 4 viceOpened, bit 5 viceClosed, bit 6 palletUnlocked,
+	    // bit 7 palletLocked. FANNO FEDE QUESTI.
+	    "DB_MachineConfig".brand[2].name := 'HAAS';
+	    "DB_MachineConfig".brand[2].cycleArchetype := 2;
+	    
+	    // ---- INGRESSI ----
+	    // doorOpened = bit 2 INVERTITO (sensore singolo porta)
+	    "DB_MachineConfig".brand[2].in[0].present := TRUE;
+	    "DB_MachineConfig".brand[2].in[0].byteOff := 0;
+	    "DB_MachineConfig".brand[2].in[0].bitOff := 2;
+	    "DB_MachineConfig".brand[2].in[0].inverted := TRUE;
+	    // doorClosed = bit 2 diretto
+	    "DB_MachineConfig".brand[2].in[1].present := TRUE;
+	    "DB_MachineConfig".brand[2].in[1].byteOff := 0;
+	    "DB_MachineConfig".brand[2].in[1].bitOff := 2;
+	    "DB_MachineConfig".brand[2].in[1].inverted := FALSE;
+	    // viceOpened
+	    "DB_MachineConfig".brand[2].in[2].present := TRUE;
+	    "DB_MachineConfig".brand[2].in[2].byteOff := 0;
+	    "DB_MachineConfig".brand[2].in[2].bitOff := 4;
+	    "DB_MachineConfig".brand[2].in[2].inverted := FALSE;
+	    // viceClosed
+	    "DB_MachineConfig".brand[2].in[3].present := TRUE;
+	    "DB_MachineConfig".brand[2].in[3].byteOff := 0;
+	    "DB_MachineConfig".brand[2].in[3].bitOff := 5;
+	    "DB_MachineConfig".brand[2].in[3].inverted := FALSE;
+	    // palletUnlocked
+	    "DB_MachineConfig".brand[2].in[4].present := TRUE;
+	    "DB_MachineConfig".brand[2].in[4].byteOff := 0;
+	    "DB_MachineConfig".brand[2].in[4].bitOff := 6;
+	    "DB_MachineConfig".brand[2].in[4].inverted := FALSE;
+	    // palletLocked
+	    "DB_MachineConfig".brand[2].in[5].present := TRUE;
+	    "DB_MachineConfig".brand[2].in[5].byteOff := 0;
+	    "DB_MachineConfig".brand[2].in[5].bitOff := 7;
+	    "DB_MachineConfig".brand[2].in[5].inverted := FALSE;
+	    // autoMode = bit 0 (NON il bit 1: quello e' endWork)
+	    "DB_MachineConfig".brand[2].in[6].present := TRUE;
+	    "DB_MachineConfig".brand[2].in[6].byteOff := 0;
+	    "DB_MachineConfig".brand[2].in[6].bitOff := 0;
+	    "DB_MachineConfig".brand[2].in[6].inverted := FALSE;
+	    // endWork = bit 1, IMPULSO (il 95 lo prende sul fronte)
+	    "DB_MachineConfig".brand[2].in[7].present := TRUE;
+	    "DB_MachineConfig".brand[2].in[7].byteOff := 0;
+	    "DB_MachineConfig".brand[2].in[7].bitOff := 1;
+	    "DB_MachineConfig".brand[2].in[7].inverted := FALSE;
+	    // endClean = assente
+	    "DB_MachineConfig".brand[2].in[8].present := FALSE;
+	    "DB_MachineConfig".brand[2].in[8].byteOff := 0;
+	    "DB_MachineConfig".brand[2].in[8].bitOff := 0;
+	    "DB_MachineConfig".brand[2].in[8].inverted := FALSE;
+	    // serviceCall = assente
+	    "DB_MachineConfig".brand[2].in[9].present := FALSE;
+	    "DB_MachineConfig".brand[2].in[9].byteOff := 0;
+	    "DB_MachineConfig".brand[2].in[9].bitOff := 0;
+	    "DB_MachineConfig".brand[2].in[9].inverted := FALSE;
+	    
+	    // ---- USCITE ----
+	    // openDoor = assente (porta autonoma HAAS)
+	    "DB_MachineConfig".brand[2].out[0].present := FALSE;
+	    "DB_MachineConfig".brand[2].out[0].byteOff := 0;
+	    "DB_MachineConfig".brand[2].out[0].bitOff := 0;
+	    "DB_MachineConfig".brand[2].out[0].inverted := FALSE;
+	    // closeDoor = assente (porta autonoma HAAS)
+	    "DB_MachineConfig".brand[2].out[1].present := FALSE;
+	    "DB_MachineConfig".brand[2].out[1].byteOff := 0;
+	    "DB_MachineConfig".brand[2].out[1].bitOff := 0;
+	    "DB_MachineConfig".brand[2].out[1].inverted := FALSE;
+	    // openVice = Q45.2
+	    "DB_MachineConfig".brand[2].out[2].present := TRUE;
+	    "DB_MachineConfig".brand[2].out[2].byteOff := 0;
+	    "DB_MachineConfig".brand[2].out[2].bitOff := 2;
+	    "DB_MachineConfig".brand[2].out[2].inverted := FALSE;
+	    // closeVice = Q45.3
+	    "DB_MachineConfig".brand[2].out[3].present := TRUE;
+	    "DB_MachineConfig".brand[2].out[3].byteOff := 0;
+	    "DB_MachineConfig".brand[2].out[3].bitOff := 3;
+	    "DB_MachineConfig".brand[2].out[3].inverted := FALSE;
+	    // unlockPallet = Q45.4
+	    "DB_MachineConfig".brand[2].out[4].present := TRUE;
+	    "DB_MachineConfig".brand[2].out[4].byteOff := 0;
+	    "DB_MachineConfig".brand[2].out[4].bitOff := 4;
+	    "DB_MachineConfig".brand[2].out[4].inverted := FALSE;
+	    // lockPallet = Q45.5
+	    "DB_MachineConfig".brand[2].out[5].present := TRUE;
+	    "DB_MachineConfig".brand[2].out[5].byteOff := 0;
+	    "DB_MachineConfig".brand[2].out[5].bitOff := 5;
+	    "DB_MachineConfig".brand[2].out[5].inverted := FALSE;
+	    // unlockPartOnTable = assente
+	    "DB_MachineConfig".brand[2].out[6].present := FALSE;
+	    "DB_MachineConfig".brand[2].out[6].byteOff := 0;
+	    "DB_MachineConfig".brand[2].out[6].bitOff := 0;
+	    "DB_MachineConfig".brand[2].out[6].inverted := FALSE;
+	    // lockPartOnTable = assente
+	    "DB_MachineConfig".brand[2].out[7].present := FALSE;
+	    "DB_MachineConfig".brand[2].out[7].byteOff := 0;
+	    "DB_MachineConfig".brand[2].out[7].bitOff := 0;
+	    "DB_MachineConfig".brand[2].out[7].inverted := FALSE;
+	    // startWork = Q45.0
+	    "DB_MachineConfig".brand[2].out[8].present := TRUE;
+	    "DB_MachineConfig".brand[2].out[8].byteOff := 0;
+	    "DB_MachineConfig".brand[2].out[8].bitOff := 0;
+	    "DB_MachineConfig".brand[2].out[8].inverted := FALSE;
+	    // startWash = Q45.6 (StartClean)
+	    "DB_MachineConfig".brand[2].out[9].present := TRUE;
+	    "DB_MachineConfig".brand[2].out[9].byteOff := 0;
+	    "DB_MachineConfig".brand[2].out[9].bitOff := 6;
+	    "DB_MachineConfig".brand[2].out[9].inverted := FALSE;
+	    // fuoriIngombro = Q45.1
+	    "DB_MachineConfig".brand[2].out[10].present := TRUE;
+	    "DB_MachineConfig".brand[2].out[10].byteOff := 0;
+	    "DB_MachineConfig".brand[2].out[10].bitOff := 1;
+	    "DB_MachineConfig".brand[2].out[10].inverted := FALSE;
+	END_REGION
+	
+	// La validazione DEVE stare DOPO la scrittura della config: nel blocco
+	// precedente girava prima, quindi validava i valori vecchi del DB.
+	"DB_MachineConfig".lastError := 0;
+	"DB_MachineConfig".lastErrorBrand := 0;
+	FOR #i := 1 TO 16 DO
+	    #vres := "FC_ValidateConfig"(cfg := "DB_MachineConfig".brand[#i]);
+	    IF #vres <> 0 THEN
+	        "DB_MachineConfig".lastError := #vres;
+	        "DB_MachineConfig".lastErrorBrand := #i;
+	    END_IF;
+	END_FOR;
+END_ORGANIZATION_BLOCK
+

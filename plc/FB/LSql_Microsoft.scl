@@ -1,0 +1,856 @@
+﻿FUNCTION_BLOCK "LSql_Microsoft"
+{ S7_Optimized_Access := 'TRUE' }
+AUTHOR : 'Roenz, Julian'
+FAMILY : '(family)'
+VERSION : 0.1
+   VAR_INPUT 
+      enable { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := FALSE;
+      connectionSettings { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : "LSql_typeConnectionSettings" := (((), (), (), FALSE, ([()]), (), ()), ((), (), (), (), (), (), (), (), (), (), ()));
+      command { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : String;
+      executeCommand { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := FALSE;
+   END_VAR
+
+   VAR_OUTPUT 
+      valid { ExternalWritable := 'False'} : Bool := FALSE;
+      busy { ExternalWritable := 'False'} : Bool := FALSE;
+      error { ExternalWritable := 'False'} : Bool := FALSE;
+      status { ExternalWritable := 'False'} : Word := #STATUS_NO_CALL;
+      diagnostics { ExternalWritable := 'False'} : "LSql_typeDiagnostics";
+      dataReceived { ExternalWritable := 'False'} : Bool := FALSE;
+      tdsTelegramArrayLength { ExternalWritable := 'False'} : UDInt;
+   END_VAR
+
+   VAR_IN_OUT 
+      tdsTelegramArray : Array[*] of Byte;
+   END_VAR
+
+   VAR 
+      instTsend {InstructionName := 'TSEND'; LibVersion := '4.0'; ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_SetPoint := 'False'} : TSEND;
+      instTcon {InstructionName := 'TCON'; LibVersion := '4.0'; ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_SetPoint := 'False'} : TCON;
+      instTrcv {InstructionName := 'TRCV'; LibVersion := '4.0'; ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_SetPoint := 'False'} : TRCV;
+      instTdiscon {InstructionName := 'TDISCON'; LibVersion := '2.1'; ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_SetPoint := 'False'} : TDISCON;
+      statEnableOld { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := FALSE;
+      statEnable { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := FALSE;
+      statValid { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := FALSE;
+      statBusy { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := FALSE;
+      statError { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := FALSE;
+      statErrorUserCleared { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := FALSE;
+      statErrorAutoCleared { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := FALSE;
+      statStatus { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Word := #STATUS_NO_CALL;
+      statSubfunctionStatus { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Word;
+      statFBErrorState { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : DInt;
+      statFBState { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : DInt := #FB_STATE_NO_PROCESSING;
+      statDisablingCompleted { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := FALSE;
+      statEmptyDiagnostics { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_SetPoint := 'False'} : "LSql_typeDiagnostics";
+      statReceivedBytes { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : UDInt;
+      statExecuteSqlBatchOld { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := FALSE;
+      statSqlBatchData { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_SetPoint := 'False'} : "LSql_typeSqlBatchData";
+      statSqlBatch { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Array[0..2047] of Byte;
+      statSqlBatchLen { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : DInt;
+      statWriter { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Int;
+      statStatusSqlBatchIntToWord { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Word;
+      statLoginData { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_SetPoint := 'False'} : "LSql_typeLoginData";
+      statLogin { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Array[0..2047] of Byte;
+      statLoginLen { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : DInt;
+      statStatusLoginIntToWord { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Word;
+      statStatusPreLoginIntToWord { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Word;
+      statPreLogin { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Array[0..2047] of Byte;
+      statPreLoginLen { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : DInt;
+      statPreLoginCache { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Array[0..2047] of Byte;
+      statPreLoginData { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_SetPoint := 'False'} : "LSql_typePreloginData";
+      statErrorWriteData { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := FALSE;
+      statWriteData { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Word;
+      statTransmissionSqlCommand { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := FALSE;
+      statTdsDataReceived { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := FALSE;
+      statTdsTelegramBytesReceived { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : UDInt;
+      statTdsFragmBufferBytesFilled { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : UDInt;
+      statTdsFragmHeaderBytesFilled { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : UDInt;
+      statTdsFragmLengthFromHeader { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : UDInt;
+      statTdsTelegramLength { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : UDInt;
+      statTdsFragmStatus { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Byte;
+      statTrcvBlockBufferArray { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Array[0..2047] of Byte;
+      statTdsFragmHeaderBuffer { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Array[0..7] of Byte;
+      statTdsTelegramContinuing { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := FALSE;
+      statTdsTelegramArrayLowerBound { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : DInt;
+      statTdsTelegramArrayUpperBound { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : DInt;
+   END_VAR
+
+   VAR_TEMP 
+      tempPos : DInt;
+      tempLength : Word;
+      tempCounter : DInt;
+      tempGaps : Int;
+      tempLengthAsInt : DInt;
+      tempLengthRor : DInt;
+      tempTdsFragmDiff : UDInt;
+      tempTrcvBlockConsumedBytes : UDInt;
+      tempTrcvBlockRemainingBytes : UDInt;
+   END_VAR
+
+   VAR CONSTANT 
+      ERR_TDISCON_REMOTE_TERMINATION : Word := 16#80A3;
+      FB_STATE_NO_PROCESSING : DInt := 0;
+      FB_STATE_DISABLING : DInt := 1;
+      FB_STATE_INITIAL_DISCON : DInt := 2;
+      FB_STATE_CONNECT : DInt := 3;
+      FB_STATE_PRELOGIN : DInt := 4;
+      FB_STATE_LOGIN : DInt := 5;
+      FB_STATE_SENDLOGIN : DInt := 6;
+      FB_STATE_SQLBATCH : DInt := 7;
+      STATUS_NO_CALL : Word := 16#7000;
+      STATUS_FIRST_CALL : Word := 16#7001;
+      STATUS_SUBSEQUENT_CALL : Word := 16#7002;
+      STATUS_TDISCON_SUCCESSFUL : Word := 16#7011;
+      SUB_STATUS_NO_ERROR : Word := 16#0000;
+      ERR_IN_BLOCK_OPERATION : Word := 16#8001;
+      ERR_PARAMETRIZATION : Word := 16#8200;
+      ERR_PROCESSING_EXTERN : Word := 16#8400;
+      ERR_PROCESSING_INTERN : Word := 16#8600;
+      ERR_DISCONNECT : Word := 16#8601;
+      ERR_CONNECT : Word := 16#8602;
+      ERR_PRELOGIN : Word := 16#8603;
+      ERR_LOGIN : Word := 16#8604;
+      ERR_TRCV : Word := 16#8605;
+      ERR_ARCHIVE : Word := 16#8606;
+      ERR_PRELOGIN_DATA : Word := 16#8607;
+      ERR_LOGIN_DATA : Word := 16#8608;
+      ERR_SQLBATCH_DATA : Word := 16#8609;
+      ERR_SQLBATCHSEND : Word := 16#8610;
+      ERR_AREA_RESERVED : Word := 16#8800;
+      ERR_UNDEFINED_STATE : Word := 16#8900;
+      ERR_USER_DEFINED_CLASSES : Word := 16#9000;
+      TDS_HEADER_SIZE : USInt := 8;
+      TDS_HEADER_STATUSPOS : USInt := 1;
+      TDS_HEADER_LENGTHPOS : USInt := 2;
+      TDS_HEADER_STATUS_EOT : USInt := 16#01;
+      LSQL_WRITEDATA_OFFSETOWN : Word := 16#1E00;
+   END_VAR
+
+
+BEGIN
+	REGION BLOCK INFO HEADER
+	  //=============================================================================
+	  // Siemens AG (c)Copyright (2022)
+	  //-----------------------------------------------------------------------------
+	  // Library:       SQL
+	  // Target:        S7-1500 V2.9 / S7-1200 V4.5
+	  // Engineering:   TIA Portal V17
+	  // Restrictions:  no
+	  // Requirements:  S7-1500 CPU / S7-1200 CPU
+	  // Functionality: For database access:
+	  //                set up connection to SQL server via TDS, send batch and save answers from server
+	  //-----------------------------------------------------------------------------
+	  // Change log table:
+	  // Version    Date         Expert in charge           Changes applied
+	  // 01.00.00   30.05.2020   Siemens SUP Applications   First released version
+	  // 01.01.00   30.09.2020   Siemens SUP Applications   Added receiving of SQL database data
+	  // 03.00.00   31.01.2022   Siemens SUP Applications   new TRCV data input handling in section 'receive data', overall code revision
+	  // 03.00.03   29.09.2022   Siemens SUP Applications   minor formatting changes
+	  // 03.01.00   30.09.2022   Siemens SUP Applications   activated IEC check in block properties and adapted formatting including use of LGF functions
+	  // 03.01.01   26.10.2022   Siemens SUP Applications   sorted error Constants and eliminated duplicate 16#8600
+	  //=============================================================================
+	END_REGION
+	
+	#statEnable := #enable; // Work with temporary value / create process image
+	
+	REGION ENABLING/DISABLING
+	  IF (#statEnable = TRUE) AND (#statStatus = #STATUS_NO_CALL) THEN // Enable FB
+	    // First call; initialize FB
+	    #statValid := TRUE;
+	    #statBusy := TRUE;
+	    #statError := FALSE;
+	    #statErrorUserCleared := FALSE;
+	    #statErrorAutoCleared := FALSE;
+	    #statStatus := #STATUS_FIRST_CALL;
+	    #statSubfunctionStatus := #SUB_STATUS_NO_ERROR;
+	    #statFBErrorState := 0;
+	    #diagnostics := #statEmptyDiagnostics;
+	    #statDisablingCompleted := FALSE;
+	    #statTdsDataReceived := FALSE;
+	    #statTdsTelegramArrayLowerBound := LOWER_BOUND(ARR := #tdsTelegramArray, DIM := 1);
+	    #statTdsTelegramArrayUpperBound := UPPER_BOUND(ARR := #tdsTelegramArray, DIM := 1);
+	    
+	    // State machine - start functionality
+	    #statFBState := #FB_STATE_CONNECT;
+	    
+	    REGION initialization: call subsidiary FBs with FALSE
+	      #instTcon(REQ     := FALSE,
+	                ID      := #connectionSettings.interfaceSettings.ID,
+	                CONNECT := #connectionSettings.interfaceSettings);
+	      #instTrcv(EN_R  := FALSE,
+	                ID    := #connectionSettings.interfaceSettings.ID,
+	                LEN   := 0,
+	                ADHOC := TRUE,
+	                DATA  := #statTrcvBlockBufferArray);
+	      #instTdiscon(REQ := FALSE,
+	                   ID  := #connectionSettings.interfaceSettings.ID);
+	      #instTsend(REQ  := FALSE,
+	                 ID   := #connectionSettings.interfaceSettings.ID,
+	                 LEN  := DINT_TO_UINT(#statPreLoginLen),
+	                 DATA := #statPreLogin);
+	    END_REGION initialization: call subsidiary FBs with FALSE
+	    
+	  ELSIF (#statEnable = FALSE) AND (#statEnableOld = TRUE) THEN // Disable FB 
+	    #statFBState := #FB_STATE_DISABLING;
+	    
+	  ELSIF (#statStatus = #STATUS_FIRST_CALL) THEN // Set status identifier of subsequent call
+	    #statStatus := #STATUS_SUBSEQUENT_CALL;
+	  END_IF;
+	  
+	  // Edge detection 'enable' input
+	  #statEnableOld := #statEnable;
+	END_REGION ENABLING/DISABLING
+	
+	IF (#statStatus = #STATUS_NO_CALL) THEN // Nothing to do -> End here to reduce "system load"
+	  RETURN;
+	END_IF;
+	
+	REGION STATE_MACHINE
+	  CASE #statFBState OF // State machine of FB
+	    #FB_STATE_NO_PROCESSING:
+	      REGION no processing
+	        // No processing active (Note: this state must always be present and left empty)
+	        ;
+	      END_REGION no processing
+	      
+	    #FB_STATE_INITIAL_DISCON:
+	      REGION make sure no connection is open before connecting          
+	        #instTdiscon(REQ := TRUE,
+	                     ID  := #connectionSettings.interfaceSettings.ID);
+	        
+	        IF #instTdiscon.ERROR THEN
+	          #statStatus := #ERR_DISCONNECT;
+	          #statSubfunctionStatus := #instTdiscon.STATUS;
+	          #statFBErrorState := #statFBState;
+	          IF #ERR_TDISCON_REMOTE_TERMINATION = #instTdiscon.STATUS THEN
+	            // disconnect done - proceed with wait for setup
+	            // Error can be fixed by FB
+	            #statStatus := #STATUS_TDISCON_SUCCESSFUL;
+	            #instTdiscon(REQ := FALSE,
+	                         ID  := #connectionSettings.interfaceSettings.ID);
+	            #statErrorAutoCleared := TRUE;
+	            #statFBState := #FB_STATE_CONNECT;
+	          ELSE
+	            #statErrorUserCleared := TRUE;
+	            #instTdiscon(REQ := FALSE,
+	                         ID  := #connectionSettings.interfaceSettings.ID);
+	          END_IF;
+	        ELSIF #instTdiscon.DONE THEN
+	          #statStatus := #STATUS_TDISCON_SUCCESSFUL;
+	          #instTdiscon(REQ := FALSE,
+	                       ID  := #connectionSettings.interfaceSettings.ID);
+	          #statFBState := #FB_STATE_CONNECT;
+	        END_IF;
+	      END_REGION ;
+	      
+	    #FB_STATE_CONNECT:
+	      REGION connecting
+	        //if error was set in state before because of tdiscon error: #ERR_TDISCON_REMOTE_TERMINATION, reset
+	        #statErrorAutoCleared := FALSE;
+	        
+	        #instTcon(REQ     := TRUE,
+	                  ID      := #connectionSettings.interfaceSettings.ID,
+	                  CONNECT := #connectionSettings.interfaceSettings);
+	        
+	        IF #instTcon.ERROR THEN
+	          #statStatus := #ERR_CONNECT;
+	          #statSubfunctionStatus := #instTcon.STATUS;
+	          #statFBErrorState := #statFBState;
+	          #statErrorUserCleared := TRUE;
+	          #instTcon(REQ     := FALSE,
+	                    ID      := #connectionSettings.interfaceSettings.ID,
+	                    CONNECT := #connectionSettings.interfaceSettings);
+	        ELSIF #instTcon.DONE THEN
+	          #instTcon(REQ     := FALSE,
+	                    ID      := #connectionSettings.interfaceSettings.ID,
+	                    CONNECT := #connectionSettings.interfaceSettings);
+	          #statFBState := #FB_STATE_PRELOGIN;
+	        END_IF;
+	      END_REGION connecting
+	      
+	    #FB_STATE_PRELOGIN:
+	      REGION prelogin
+	        //copy data from data to cache
+	        #statStatusPreLoginIntToWord := INT_TO_WORD(Serialize(SRC_VARIABLE := #statPreLoginData, DEST_ARRAY => #statPreLoginCache, POS := #tempPos));
+	        
+	        IF #statStatusPreLoginIntToWord > #SUB_STATUS_NO_ERROR THEN
+	          #statStatus := #ERR_PRELOGIN_DATA;
+	          #statSubfunctionStatus := #statStatusPreLoginIntToWord;
+	          #statFBErrorState := #statFBState;
+	          #statErrorUserCleared := TRUE;
+	        END_IF;
+	        
+	        //copy data from cache to preLogin (without unwanted filled zero bytes)
+	        FOR #tempCounter := 0 TO #tempPos DO
+	          //when serializing prelogin data a zero is added in between types
+	          //delete these zeros
+	          CASE #tempCounter OF
+	            9, 15, 21, 27, 33, 39, 45, 51:
+	              #tempGaps += 1;
+	            ELSE
+	              #statPreLogin[#tempCounter - #tempGaps] := #statPreLoginCache[#tempCounter];
+	          END_CASE;
+	          
+	        END_FOR;
+	        
+	        //write number of bytes, that have to be transmitted, to preLoginLen (adjusted by the deleted gaps)
+	        #statPreLoginLen := #tempPos - #tempGaps;
+	        
+	        #instTsend(REQ  := TRUE,
+	                   ID   := #connectionSettings.interfaceSettings.ID,
+	                   LEN  := DINT_TO_UINT(#statPreLoginLen),
+	                   DATA := #statPreLogin);
+	        
+	        IF #instTsend.ERROR THEN
+	          #statStatus := #ERR_PRELOGIN;
+	          #statErrorUserCleared := TRUE;
+	          #statSubfunctionStatus := #instTsend.STATUS;
+	          #statFBErrorState := #statFBState;
+	          #instTsend(REQ  := FALSE,
+	                     ID   := #connectionSettings.interfaceSettings.ID,
+	                     DATA := #statPreLogin);
+	          
+	        ELSIF #instTsend.DONE THEN
+	          #instTsend(REQ  := FALSE,
+	                     ID   := #connectionSettings.interfaceSettings.ID,
+	                     DATA := #statPreLogin);
+	          #statFBState := #FB_STATE_LOGIN;
+	        END_IF;
+	        
+	      END_REGION prelogin
+	      
+	    #FB_STATE_LOGIN: // Login active
+	      REGION login
+	        REGION write login data to DB
+	          #statWriter := 0; //varible for iterating through data array
+	          #tempPos := 0;
+	          
+	          REGION write String TO data AND set length AND offset in offsetLength (hostName)
+	            "LSql_WriteData"(inString   := #connectionSettings.loginInformation.hostName,
+	                             offsetOwn  := #statLoginData.login.offsetLength.hostName.offset,
+	                             asPassword := FALSE,
+	                             offsetNext => #statLoginData.login.offsetLength.userName.offset,
+	                             length     => #statLoginData.login.offsetLength.hostName.length,
+	                             error      => #statErrorWriteData,
+	                             status     => #statWriteData,
+	                             data       := #statLoginData.login.data,
+	                             writer     := #statWriter);
+	            
+	            //write string to data and set length and offset in offsetLength (userName)
+	            "LSql_WriteData"(inString   := #connectionSettings.loginInformation.userName,
+	                             offsetOwn  := #statLoginData.login.offsetLength.userName.offset,
+	                             asPassword := FALSE,
+	                             offsetNext => #statLoginData.login.offsetLength.password.offset,
+	                             length     => #statLoginData.login.offsetLength.userName.length,
+	                             error      => #statErrorWriteData,
+	                             status     => #statWriteData,
+	                             data       := #statLoginData.login.data,
+	                             writer     := #statWriter);
+	            
+	            //write string to data and set length and offset in offsetLength (password)
+	            "LSql_WriteData"(inString   := #connectionSettings.loginInformation.password,
+	                             offsetOwn  := #statLoginData.login.offsetLength.password.offset,
+	                             asPassword := TRUE,
+	                             offsetNext => #statLoginData.login.offsetLength.appName.offset,
+	                             length     => #statLoginData.login.offsetLength.password.length,
+	                             error      => #statErrorWriteData,
+	                             status     => #statWriteData,
+	                             data       := #statLoginData.login.data,
+	                             writer     := #statWriter);
+	            
+	            //write string to data and set length and offset in offsetLength (appName)
+	            "LSql_WriteData"(inString   := #connectionSettings.loginInformation.appName,
+	                             offsetOwn  := #statLoginData.login.offsetLength.appName.offset,
+	                             asPassword := FALSE,
+	                             offsetNext => #statLoginData.login.offsetLength.serverName.offset,
+	                             length     => #statLoginData.login.offsetLength.appName.length,
+	                             error      => #statErrorWriteData,
+	                             status     => #statWriteData,
+	                             data       := #statLoginData.login.data,
+	                             writer     := #statWriter);
+	            
+	            //write string to data and set length and offset in offsetLength (serverName)
+	            "LSql_WriteData"(inString   := #connectionSettings.loginInformation.serverName,
+	                             offsetOwn  := #statLoginData.login.offsetLength.serverName.offset,
+	                             asPassword := FALSE,
+	                             offsetNext => #statLoginData.login.offsetLength.unused.offset,
+	                             length     => #statLoginData.login.offsetLength.serverName.length,
+	                             error      => #statErrorWriteData,
+	                             status     => #statWriteData,
+	                             data       := #statLoginData.login.data,
+	                             writer     := #statWriter);
+	            
+	            //write string to data and set length and offset in offsetLength (unused)
+	            "LSql_WriteData"(inString   := '',
+	                             offsetOwn  := #statLoginData.login.offsetLength.unused.offset,
+	                             asPassword := FALSE,
+	                             offsetNext => #statLoginData.login.offsetLength.libraryName.offset,
+	                             length     => #statLoginData.login.offsetLength.unused.length,
+	                             error      => #statErrorWriteData,
+	                             status     => #statWriteData,
+	                             data       := #statLoginData.login.data,
+	                             writer     := #statWriter);
+	            
+	            //write string to data and set length and offset in offsetLength (libraryName)
+	            "LSql_WriteData"(inString   := #connectionSettings.loginInformation.libraryName,
+	                             offsetOwn  := #statLoginData.login.offsetLength.libraryName.offset,
+	                             asPassword := FALSE,
+	                             offsetNext => #statLoginData.login.offsetLength.local.offset,
+	                             length     => #statLoginData.login.offsetLength.libraryName.length,
+	                             error      => #statErrorWriteData,
+	                             status     => #statWriteData,
+	                             data       := #statLoginData.login.data,
+	                             writer     := #statWriter);
+	            
+	            //wrtie string to data and set length and offset in offsetLength (local)
+	            "LSql_WriteData"(inString   := #connectionSettings.loginInformation.language,
+	                             offsetOwn  := #statLoginData.login.offsetLength.local.offset,
+	                             asPassword := FALSE,
+	                             offsetNext => #statLoginData.login.offsetLength.databaseName.offset,
+	                             length     => #statLoginData.login.offsetLength.local.length,
+	                             error      => #statErrorWriteData,
+	                             status     => #statWriteData,
+	                             data       := #statLoginData.login.data,
+	                             writer     := #statWriter);
+	            
+	            //write string to data and set length and offset in offsetLength (databaseName)
+	            "LSql_WriteData"(inString   := #connectionSettings.loginInformation.databaseName,
+	                             offsetOwn  := #statLoginData.login.offsetLength.databaseName.offset,
+	                             asPassword := FALSE,
+	                             offsetNext => #statLoginData.login.offsetLength.sspi.offset,
+	                             length     => #statLoginData.login.offsetLength.databaseName.length,
+	                             error      => #statErrorWriteData,
+	                             status     => #statWriteData,
+	                             data       := #statLoginData.login.data,
+	                             writer     := #statWriter);
+	            
+	            //string string to data and set length and offset in offsetLength (sspi)
+	            "LSql_WriteData"(inString   := #connectionSettings.loginInformation.sspi,
+	                             offsetOwn  := #statLoginData.login.offsetLength.sspi.offset,
+	                             asPassword := FALSE,
+	                             offsetNext => #statLoginData.login.offsetLength.atchDbFile.offset,
+	                             length     => #statLoginData.login.offsetLength.sspi.length,
+	                             error      => #statErrorWriteData,
+	                             status     => #statWriteData,
+	                             data       := #statLoginData.login.data,
+	                             writer     := #statWriter);
+	            
+	            //string to data and set length and offset in offsetLength (atchDbFile)
+	            "LSql_WriteData"(inString   := #connectionSettings.loginInformation.attachDbfile,
+	                             offsetOwn  := #statLoginData.login.offsetLength.atchDbFile.offset,
+	                             asPassword := FALSE,
+	                             offsetNext => #statLoginData.login.offsetLength.changePassword.offset,
+	                             length     => #statLoginData.login.offsetLength.atchDbFile.length,
+	                             error      => #statErrorWriteData,
+	                             status     => #statWriteData,
+	                             data       := #statLoginData.login.data,
+	                             writer     := #statWriter);
+	            
+	            //string to data and set length and offset in offsetLength (changePassword)
+	            "LSql_WriteData"(inString   := #connectionSettings.loginInformation.changePassword,
+	                             offsetOwn  := #statLoginData.login.offsetLength.changePassword.offset,
+	                             asPassword := TRUE,
+	                             offsetNext => #statLoginData.login.length,
+	                             length     => #statLoginData.login.offsetLength.changePassword.length,
+	                             error      => #statErrorWriteData,
+	                             status     => #statWriteData,
+	                             data       := #statLoginData.login.data,
+	                             writer     := #statWriter);
+	          END_REGION ;
+	          
+	          //set length parameters according to added data
+	          #tempLengthAsInt := DWORD_TO_DINT(#statLoginData.login.length);
+	          //rotate by 8 because word
+	          #tempLengthRor := ROR(IN := #tempLengthAsInt, N := 8) + 8;
+	          #statLoginData.header.length := DINT_TO_WORD(#tempLengthRor);
+	          
+	          //shift by 16 dword
+	          #statLoginData.login.length := SHL(IN := #statLoginData.login.length, N := 16);
+	          
+	        END_REGION write login data to DB
+	        
+	        //copy standard data to login
+	        #statStatusLoginIntToWord := INT_TO_WORD(Serialize(SRC_VARIABLE := #statLoginData, DEST_ARRAY => #statLogin, POS := #tempPos));
+	        //check for error in INT_TO_WORD
+	        IF #statStatusLoginIntToWord > #SUB_STATUS_NO_ERROR THEN
+	          #statStatus := #ERR_LOGIN_DATA;
+	          #statSubfunctionStatus := #statStatusLoginIntToWord;
+	          #statFBErrorState := #statFBState;
+	          #statErrorUserCleared := TRUE;
+	        END_IF;
+	        
+	        //write length to loginLen (adjusted by the length of the data (-1024+writer) and deleted gaps in the header)
+	        #statLoginLen := #tempPos - 1024 + #statWriter;
+	        
+	        //deletes last zero byte, if necessary
+	        #statLoginLen := #statLoginLen + #tempPos MOD 2;
+	        
+	        #statFBState := #FB_STATE_SENDLOGIN;
+	      END_REGION login
+	      
+	    #FB_STATE_SENDLOGIN:
+	      REGION send login data
+	        #instTsend(REQ  := #enable,
+	                   ID   := #connectionSettings.interfaceSettings.ID,
+	                   LEN  := DINT_TO_UINT(#statLoginLen),
+	                   DATA := #statLogin);
+	        
+	        IF #instTsend.ERROR THEN
+	          #statStatus := #ERR_LOGIN;
+	          #statSubfunctionStatus := #instTsend.STATUS;
+	          #statFBErrorState := #statFBState;
+	          #statErrorUserCleared := TRUE;
+	          #instTsend(REQ  := FALSE,
+	                     ID   := #connectionSettings.interfaceSettings.ID,
+	                     DATA := #statLogin);
+	        ELSIF #instTsend.DONE THEN
+	          #instTsend(REQ  := FALSE,
+	                     ID   := #connectionSettings.interfaceSettings.ID,
+	                     DATA := #statLogin);
+	          #statFBState := #FB_STATE_SQLBATCH;
+	        END_IF;
+	        // TBD: after sending is complete, receiving and evaluating the content is necessary to switch to the next state!
+	      END_REGION send login data
+	      
+	    #FB_STATE_SQLBATCH:
+	      REGION sqlbatch execution
+	        REGION receive data
+	          #instTrcv(EN_R     := TRUE,
+	                    ID       := #connectionSettings.interfaceSettings.ID,
+	                    LEN      := 0,
+	                    ADHOC    := TRUE,
+	                    DATA     := #statTrcvBlockBufferArray,
+	                    RCVD_LEN => #statReceivedBytes);
+	          
+	          IF NOT #executeCommand THEN
+	            #statTdsTelegramLength := 0;
+	            #statTdsFragmBufferBytesFilled := 0;
+	            #statTdsFragmHeaderBytesFilled := 0;
+	            #tempTrcvBlockConsumedBytes := 0;
+	            #statTdsDataReceived := FALSE;
+	            #statTdsTelegramContinuing := FALSE;
+	          END_IF;
+	          
+	          // IF (#statTdsDataReceived) THEN
+	          //   #statTdsDataReceived := FALSE;
+	          // END_IF;
+	          
+	          IF #executeCommand AND #instTrcv.NDR AND #statReceivedBytes > 0 THEN
+	            
+	            IF (NOT #statTdsTelegramContinuing) THEN
+	              #statTdsTelegramContinuing := TRUE;
+	              #statTdsTelegramBytesReceived := 0;
+	            END_IF;
+	            
+	            //NOT all data of TRCV block have been consumed yet:
+	            WHILE NOT (#tempTrcvBlockConsumedBytes >= #statReceivedBytes) DO
+	              
+	              REGION fill fragment header data
+	                IF #statTdsFragmHeaderBytesFilled < #TDS_HEADER_SIZE THEN
+	                  
+	                  //the TRCV block can fill up the header:
+	                  IF (#statReceivedBytes - #tempTrcvBlockConsumedBytes) >= (#TDS_HEADER_SIZE - #statTdsFragmHeaderBytesFilled) THEN
+	                    
+	                    //move hedaer bytes to header buffer:
+	                    MOVE_BLK(IN    := #statTrcvBlockBufferArray[UDINT_TO_DINT(#tempTrcvBlockConsumedBytes)],
+	                             COUNT := (#TDS_HEADER_SIZE - #statTdsFragmHeaderBytesFilled),
+	                             OUT   => #statTdsFragmHeaderBuffer[UDINT_TO_DINT(#statTdsFragmHeaderBytesFilled)]);
+	                    
+	                    //get TDS fragment information from that header:
+	                    #statTdsFragmLengthFromHeader := WORD_TO_UDINT("LGF_MergeBytesToWord"(byte0 := #statTdsFragmHeaderBuffer[#TDS_HEADER_LENGTHPOS + 1], byte1 := #statTdsFragmHeaderBuffer[#TDS_HEADER_LENGTHPOS]));
+	                    
+	                    #statTdsFragmStatus := #statTdsFragmHeaderBuffer[#TDS_HEADER_STATUSPOS];
+	                    
+	                    #tempTrcvBlockConsumedBytes += (#TDS_HEADER_SIZE - #statTdsFragmHeaderBytesFilled);
+	                    #statTdsFragmHeaderBytesFilled := #TDS_HEADER_SIZE;
+	                    #statTdsFragmBufferBytesFilled := #TDS_HEADER_SIZE;
+	                    
+	                    //only the very first header is moved to the target protocol data buffer array:
+	                    IF (#statTdsTelegramBytesReceived = 0) THEN
+	                      MOVE_BLK(IN    := #statTdsFragmHeaderBuffer[0],
+	                               COUNT := #TDS_HEADER_SIZE,
+	                               OUT   => #tdsTelegramArray[UDINT_TO_DINT(#statTdsTelegramBytesReceived)]);
+	                      
+	                      #statTdsTelegramBytesReceived := #TDS_HEADER_SIZE;
+	                      #statTdsTelegramLength += #statTdsFragmLengthFromHeader;
+	                      
+	                    ELSE
+	                      #statTdsTelegramLength += #statTdsFragmLengthFromHeader - #TDS_HEADER_SIZE;
+	                    END_IF;
+	                    
+	                  ELSE //(the rest of) the TRCV block only fills the header partially:
+	                    //move hedaer bytes to header buffer:
+	                    MOVE_BLK(IN    := #statTrcvBlockBufferArray[UDINT_TO_DINT(#tempTrcvBlockConsumedBytes)],
+	                             COUNT := #statReceivedBytes - #tempTrcvBlockConsumedBytes,
+	                             OUT   => #statTdsFragmHeaderBuffer[UDINT_TO_DINT(#statTdsFragmHeaderBytesFilled)]);
+	                    
+	                    #tempTrcvBlockConsumedBytes += (#statReceivedBytes - #tempTrcvBlockConsumedBytes);
+	                    #statTdsFragmHeaderBytesFilled += (#statReceivedBytes - #tempTrcvBlockConsumedBytes);
+	                    #statTdsFragmBufferBytesFilled += (#statReceivedBytes - #tempTrcvBlockConsumedBytes);
+	                  END_IF;
+	                  
+	                END_IF;
+	                
+	              END_REGION fill fragment header data
+	              
+	              REGION fill fragment payload data
+	                IF (#statTdsFragmBufferBytesFilled < #statTdsFragmLengthFromHeader) THEN
+	                  
+	                  //calculate temp values for how many bytes are missing in the fragment and how many are available from TRCV block:
+	                  #tempTdsFragmDiff := #statTdsFragmLengthFromHeader - #statTdsFragmBufferBytesFilled;
+	                  #tempTrcvBlockRemainingBytes := #statReceivedBytes - #tempTrcvBlockConsumedBytes;
+	                  
+	                  //(the rest of) the TRCV block data will NOT fill up the current TDS fragment data completely:
+	                  IF #tempTrcvBlockRemainingBytes < #tempTdsFragmDiff THEN
+	                    
+	                    //move those data to protocol buffer:
+	                    MOVE_BLK(IN    := #statTrcvBlockBufferArray[UDINT_TO_DINT(#tempTrcvBlockConsumedBytes)],
+	                             COUNT := #tempTrcvBlockRemainingBytes,
+	                             OUT   => #tdsTelegramArray[UDINT_TO_DINT(#statTdsTelegramBytesReceived)]);
+	                    
+	                    #statTdsTelegramBytesReceived += #tempTrcvBlockRemainingBytes;
+	                    #tempTrcvBlockConsumedBytes += #tempTrcvBlockRemainingBytes;
+	                    #statTdsFragmBufferBytesFilled += #tempTrcvBlockRemainingBytes;
+	                    
+	                  ELSE //(the rest of) the TRCV block data will fill up the current TDS fragment data completely:
+	                    
+	                    //move those data to protocol buffer array:
+	                    MOVE_BLK(IN    := #statTrcvBlockBufferArray[UDINT_TO_DINT(#tempTrcvBlockConsumedBytes)],
+	                             COUNT := #tempTdsFragmDiff,
+	                             OUT   => #tdsTelegramArray[UDINT_TO_DINT(#statTdsTelegramBytesReceived)]);
+	                    
+	                    #statTdsTelegramBytesReceived += #tempTdsFragmDiff;
+	                    #tempTrcvBlockConsumedBytes += #tempTdsFragmDiff;
+	                    #statTdsFragmBufferBytesFilled += #tempTdsFragmDiff;
+	                    
+	                    //both fragment and and whole TDS protocol are filled up and the TDS fragment was the last one:
+	                    IF #statTdsTelegramBytesReceived >= #statTdsTelegramLength THEN
+	                      IF #statTdsFragmBufferBytesFilled >= #statTdsFragmLengthFromHeader THEN
+	                        IF #statTdsFragmStatus = USINT_TO_BYTE(#TDS_HEADER_STATUS_EOT) THEN
+	                          
+	                          //fill only the very first TDS fragment header with general data of the whole TDS protocol, e.g. new total length:
+	                          "LGF_SplitWordToBytes"("word" := UDINT_TO_WORD(#statTdsTelegramLength),
+	                                                 byte1  => #tdsTelegramArray[#TDS_HEADER_LENGTHPOS],
+	                                                 byte0  => #tdsTelegramArray[#TDS_HEADER_LENGTHPOS + 1]);
+	                          
+	                          #tdsTelegramArray[#TDS_HEADER_STATUSPOS] := USINT_TO_BYTE(#TDS_HEADER_STATUS_EOT);
+	                          
+	                          #statTdsDataReceived := TRUE;
+	                          #statTdsTelegramContinuing := FALSE;
+	                          
+	                        END_IF;
+	                      END_IF;
+	                    END_IF;
+	                    
+	                    //reset header buffer and fragment buffer because a new fragment will be started:
+	                    #statTdsFragmHeaderBytesFilled := 0;
+	                    #statTdsFragmBufferBytesFilled := 0;
+	                    
+	                  END_IF;
+	                END_IF;
+	              END_REGION fill fragment payload data
+	              
+	            END_WHILE;
+	            
+	            //all data of current TRCV delivery are handled:
+	            #tempTrcvBlockConsumedBytes := 0;
+	            
+	            //ELSE
+	            //#statSqlDataReceived := FALSE;
+	          END_IF;
+	          
+	          IF #instTrcv.ERROR THEN
+	            #statStatus := #ERR_TRCV;
+	            #statErrorUserCleared := TRUE;
+	            #statSubfunctionStatus := #instTrcv.STATUS;
+	            #statFBErrorState := #statFBState;
+	          END_IF;
+	        END_REGION receive data
+	        
+	        
+	        REGION send sql command
+	          //get positive edge of executeSqlBatch
+	          IF #executeCommand AND NOT #statExecuteSqlBatchOld THEN
+	            
+	            #statWriter := 0;
+	            
+	            //write string to data and set length parameter accoding to the added data
+	            "LSql_WriteData"(inString   := #command,
+	                             offsetOwn  := #LSQL_WRITEDATA_OFFSETOWN,
+	                             asPassword := FALSE,
+	                             offsetNext => #statSqlBatchData.header.length,
+	                             error      => #statErrorWriteData,
+	                             status     => #statWriteData,
+	                             length     => #tempLength,
+	                             data       := #statSqlBatchData.sqlBatch.sqlText,
+	                             writer     := #statWriter);
+	            
+	            //transform (lowByte highByte) to (highByte lowByte)
+	            #statSqlBatchData.header.length := ROR(IN := #statSqlBatchData.header.length, N := 8);
+	            
+	            //copy data from data to cache
+	            #statStatusSqlBatchIntToWord := INT_TO_WORD(Serialize(SRC_VARIABLE := #statSqlBatchData, DEST_ARRAY => #statSqlBatch, POS := #tempPos));
+	            //check for error in Int_To_Word Function
+	            IF #statStatusSqlBatchIntToWord > #SUB_STATUS_NO_ERROR THEN
+	              #statStatus := #ERR_SQLBATCH_DATA;
+	              #statSubfunctionStatus := #statStatusSqlBatchIntToWord;
+	              #statFBErrorState := #statFBState;
+	              #statErrorUserCleared := TRUE;
+	            END_IF;
+	            //write length to DB, adjusted by the length of the data (-1024+writer)
+	            #statSqlBatchLen := #tempPos - 1024 + #statWriter;
+	            
+	            //deletes last zero byte, if necessary
+	            
+	            #statSqlBatchLen += #tempPos MOD 2;
+	            #statTransmissionSqlCommand := TRUE;
+	            #statExecuteSqlBatchOld := #executeCommand;
+	          END_IF; //finished creating stream 
+	          
+	          //get the negative edge 
+	          IF NOT #executeCommand AND #statExecuteSqlBatchOld THEN
+	            #statExecuteSqlBatchOld := #executeCommand;
+	          END_IF;
+	          
+	          //send data
+	          IF #statTransmissionSqlCommand THEN
+	            #instTsend(REQ  := TRUE,
+	                       ID   := #connectionSettings.interfaceSettings.ID,
+	                       LEN  := DINT_TO_UINT(#statSqlBatchLen),
+	                       DATA := #statSqlBatch);
+	            //check for error in Tsend
+	            IF #instTsend.ERROR THEN
+	              #statStatus := #ERR_SQLBATCHSEND;
+	              #statSubfunctionStatus := #instTsend.STATUS;
+	              #statFBErrorState := #statFBState;
+	              #statErrorUserCleared := TRUE;
+	              #statTransmissionSqlCommand := FALSE;
+	            ELSIF #instTsend.DONE THEN
+	              #instTsend(REQ  := FALSE,
+	                         ID   := #connectionSettings.interfaceSettings.ID,
+	                         LEN  := DINT_TO_UINT(#statSqlBatchLen),
+	                         DATA := #statSqlBatch);
+	              #statTransmissionSqlCommand := FALSE;
+	            END_IF;
+	          END_IF;
+	          
+	        END_REGION send sql command
+	        
+	      END_REGION sqlbatch execution
+	      
+	    #FB_STATE_DISABLING: // Disconnect active
+	      REGION disabling
+	        #instTrcv(EN_R  := FALSE,
+	                  ID    := #connectionSettings.interfaceSettings.ID,
+	                  LEN   := 0,
+	                  ADHOC := TRUE,
+	                  DATA  := #statTrcvBlockBufferArray);
+	      END_REGION disabling
+	      
+	      REGION disconnect
+	        //disconnect function, closes the connection to the server
+	        #instTdiscon(REQ := TRUE,
+	                     ID  := #connectionSettings.interfaceSettings.ID);
+	        
+	        IF #instTdiscon.ERROR THEN
+	          #statStatus := #ERR_DISCONNECT;
+	          #statSubfunctionStatus := #instTdiscon.STATUS;
+	          #statFBErrorState := #statFBState;
+	          IF #ERR_TDISCON_REMOTE_TERMINATION = #instTdiscon.STATUS THEN
+	            #statDisablingCompleted := TRUE;
+	            
+	            #instTdiscon(REQ := FALSE,
+	                         ID  := #connectionSettings.interfaceSettings.ID);
+	          ELSE
+	            
+	            #statErrorUserCleared := TRUE;
+	            #instTdiscon(REQ := FALSE,
+	                         ID  := #connectionSettings.interfaceSettings.ID);
+	          END_IF;
+	          
+	        ELSIF #instTdiscon.DONE THEN
+	          //#statSqlConnectionEstablished := FALSE;
+	          #instTdiscon(REQ := FALSE,
+	                       ID  := #connectionSettings.interfaceSettings.ID);
+	        END_IF;
+	        #statFBState := #FB_STATE_NO_PROCESSING;
+	        
+	        
+	        #statDisablingCompleted := TRUE;
+	      END_REGION disconnect
+	      
+	    ELSE // Undefined state in state machine reached
+	      REGION undefined state        
+	        #statStatus := #ERR_UNDEFINED_STATE;
+	        #statErrorUserCleared := TRUE;
+	      END_REGION undefined state
+	  END_CASE;
+	END_REGION STATE_MACHINE
+	
+	REGION OUTPUTS
+	  // Write outputs
+	  IF (#statDisablingCompleted = TRUE) THEN
+	    REGION disabling
+	      // Reset outputs if disabling completed
+	      #statValid := FALSE;
+	      #statBusy := FALSE;
+	      #statError := FALSE;
+	      #statErrorUserCleared := FALSE;
+	      #statErrorAutoCleared := FALSE;
+	      #statStatus := #STATUS_NO_CALL;
+	      
+	    END_REGION disabling
+	    
+	  ELSIF (#statErrorUserCleared = TRUE) AND (#statError = FALSE) THEN
+	    REGION error user cleared
+	      // Error can only be cleared by user; rising edge at enable input is needed to continue 
+	      #statValid := FALSE;
+	      #statBusy := FALSE;
+	      #statError := TRUE;
+	      // Write diagnostics
+	      #diagnostics.status := #statStatus;
+	      #diagnostics.subfunctionStatus := #statSubfunctionStatus;
+	      // execution aborted --> set state no processing
+	      #statFBState := #FB_STATE_NO_PROCESSING;
+	    END_REGION error user cleared
+	    
+	  ELSIF (#statErrorAutoCleared = TRUE) AND (#statError = FALSE) THEN
+	    REGION error auto cleared
+	      // Error can be reset by FB automatically
+	      #statValid := FALSE;
+	      #statBusy := TRUE;
+	      #statError := TRUE;
+	      // Write diagnostics
+	      #diagnostics.status := #statStatus;
+	      #diagnostics.subfunctionStatus := #statSubfunctionStatus;
+	    END_REGION error auto cleared
+	    
+	  ELSIF (#statErrorAutoCleared = FALSE) AND (#statErrorUserCleared = FALSE) AND (#statError = TRUE) THEN
+	    REGION after user/auto cleared
+	      // If autocleared error is acknowledged
+	      #statValid := TRUE;
+	      #statBusy := TRUE;
+	      #statError := FALSE;
+	      // TODO: remove this line if more detailed status information is used instead of "#STATUS_SUBSEQUENT_CALL"
+	      #statStatus := #STATUS_SUBSEQUENT_CALL;
+	    END_REGION after user/auto cleared
+	  END_IF;
+	  
+	  REGION Write static values to outputs
+	    #valid := #statValid;
+	    #busy := #statBusy;
+	    #error := #statError;
+	    #status := #statStatus;
+	    #dataReceived := #statTdsDataReceived;
+	    IF #statTdsDataReceived THEN
+	      #tdsTelegramArrayLength := #statTdsTelegramBytesReceived;
+	    ELSE
+	      #tdsTelegramArrayLength := 0;
+	    END_IF;
+	    // if ENO mechanism is not used / not wanted replace the following line by --> ENO := TRUE;
+	    ENO := NOT #statError;
+	    
+	  END_REGION Write static values to outputs
+	END_REGION OUTPUTS
+END_FUNCTION_BLOCK
+

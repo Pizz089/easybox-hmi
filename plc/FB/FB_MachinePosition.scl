@@ -1,0 +1,111 @@
+﻿FUNCTION_BLOCK "FB_MachinePosition"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      MachineType : Int;   // // 0=none, 1=Spinner, 2=Autonomous
+      MC_number : Int;
+      MC_inRemoteMode : Bool;
+      AutoModeFromHandController : Bool;
+   END_VAR
+
+   VAR_IN_OUT 
+      io_in : "UDT_MachineIn";
+      io_out : "UDT_MachineOut";
+      Status : Int;
+      Mode : "UDT_MachineMode";
+      cmd : "UDT_CMD";
+      order : "UDT_Order";
+      pallet : Int;
+      fixture : Int;
+      ManualVice : Int;
+      piecepresent : Array[1..5] of Int;
+      viceLocked : Bool;
+      viceUnlocked : Bool;
+      palletLocked : Bool;
+      changePalletReq : Bool;
+      lastMission : Int;
+      Dispatcher : Array[0..10] of Int;
+      subState : Int;
+      autoModePrev : Bool;
+      queryTemp : String;
+      queryStartExecution : Bool;
+   END_VAR
+
+   VAR 
+      iSpinner { S7_SetPoint := 'False'} : "FB_Machine_Spinner";
+      iAutonomous : "FB_Machine_Autonomous";
+   END_VAR
+
+
+BEGIN
+	    // ───── SPINNER (MachineType = 1) ─────
+	    #iSpinner(Enable := (#MachineType = 1),
+	              MC_number := #MC_number,
+	              MC_inRemoteMode := #MC_inRemoteMode,
+	              AutoModeFromHandController := #AutoModeFromHandController,
+	              io_in := #io_in,
+	              io_out := #io_out,
+	              Status := #Status,
+	              Mode := #Mode,
+	              cmd := #cmd,
+	              order := #order,
+	              pallet := #pallet,
+	              fixture := #fixture,
+	              ManualVice := #ManualVice,
+	              piecepresent := #piecepresent,
+	              viceLocked := #viceLocked,
+	              viceUnlocked := #viceUnlocked,
+	              palletLocked := #palletLocked,
+	              changePalletReq := #changePalletReq,
+	              lastMission := #lastMission,
+	              Dispatcher := #Dispatcher,
+	              subState := #subState,
+	              autoModePrev := #autoModePrev);
+	    
+	    #iAutonomous(Enable := (#MachineType = 2),
+	                 MC_number := #MC_number,
+	                 MC_inRemoteMode := #MC_inRemoteMode,
+	                 AutoModeFromHandController := #AutoModeFromHandController,
+	                 io_in := #io_in,
+	                 io_out := #io_out,
+	                 Status := #Status,
+	                 Mode := #Mode,
+	                 cmd := #cmd,
+	                 order := #order,
+	                 pallet := #pallet,
+	                 fixture := #fixture,
+	                 ManualVice := #ManualVice,
+	                 piecepresent := #piecepresent,
+	                 viceLocked := #viceLocked,
+	                 viceUnlocked := #viceUnlocked,
+	                 palletLocked := #palletLocked,
+	                 changePalletReq := #changePalletReq,
+	                 lastMission := #lastMission,
+	                 Dispatcher := #Dispatcher,
+	                 subState := #subState,
+	                 autoModePrev := #autoModePrev,
+	                 queryTemp := #queryTemp,
+	                 queryStartExecution := #queryStartExecution);
+	    
+	    
+	    // ───── AUTONOMOUS (MachineType = 2) — PASSO 3 futuro ─────
+	    // #iAutonomous(Enable := (#MachineType = 2), ... stessi parametri ...);
+	    
+	    // Nota: ogni FB-tipo con Enable=FALSE azzera da se' io_out (ENABLE_GATE).
+	    // Le uscite logiche restano quindi a 0 per i tipi non attivi.
+	    // Se NESSUN tipo e' selezionato, nessuno scrive io_out -> azzera qui:
+	    IF #MachineType = 0 THEN
+	        #io_out.openDoor := FALSE;
+	        #io_out.closeDoor := FALSE;
+	        #io_out.openVice := FALSE;
+	        #io_out.closeVice := FALSE;
+	        #io_out.unlockPallet := FALSE;
+	        #io_out.lockPallet := FALSE;
+	        #io_out.unlockPartOnTable := FALSE;
+	        #io_out.lockPartOnTable := FALSE;
+	        #io_out.startWork := FALSE;
+	        #io_out.startWash := FALSE;
+	        #io_out.fuoriIngombro := FALSE;
+	    END_IF;
+END_FUNCTION_BLOCK
+

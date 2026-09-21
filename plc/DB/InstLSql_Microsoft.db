@@ -1,0 +1,13 @@
+﻿DATA_BLOCK "InstLSql_Microsoft"
+{ DB_Accessible_From_OPC_UA := 'FALSE' ;
+ S7_Optimized_Access := 'TRUE' }
+AUTHOR : '(department/personInCharge/contact)'
+FAMILY : '(family)'
+VERSION : 0.1
+NON_RETAIN
+"LSql_Microsoft"
+
+BEGIN
+
+END_DATA_BLOCK
+

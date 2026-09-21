@@ -1,0 +1,976 @@
+﻿FUNCTION_BLOCK "FB_MC_Spinner"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      MC_number : Int;
+      I_doorOpened : Bool;
+      I_viceOpened : Bool;
+      I_palletUnlocked : Bool;
+      MC_inRemoteMode : Bool;   // Machine controlled from SUPERVISOR
+      MC_EndWork : Bool;
+      MC_endWash : Bool;
+      MachineMode : Int;
+      AutoModeFromHandController : Bool;
+      I_autoMode : Bool;
+      I_viceClosed : Bool;
+      I_serviceCall : Bool;
+      I_doorClosed : Bool;
+      I_palletLocked : Bool;
+   END_VAR
+
+   VAR_OUTPUT 
+      Q_openDoor : Bool;
+      Q_closeDoor : Bool;
+      Q_openVice : Bool;
+      Q_closeVice : Bool;
+      Q_unlockPallet : Bool;
+      Q_lockPallet : Bool;
+      Q_unlockPartOnTable : Bool;
+      Q_lockPartOnTable : Bool;
+      Q_startWork : Bool;
+      Q_startWash : Bool;
+      Q_fuoriIngombro : Bool;
+   END_VAR
+
+   VAR RETAIN
+      Mode : Struct
+         AUTO : Bool;
+         MANUAL : Bool;
+      END_STRUCT;
+   END_VAR
+   VAR 
+      Status : Int;
+      pallet : Int;
+      fixture : Int;
+      piecepresent : Array[1..5] of Int;
+      ManualVice : Int;
+      viceLocked : Bool;
+      viceUnlocked : Bool;
+      cmd { S7_SetPoint := 'False'} : "UDT_CMD";
+      order { S7_SetPoint := 'False'} : "UDT_Order";
+      Dispatcher : Array[0..10] of Int;
+      "timer" {InstructionName := 'TON_TIME'; LibVersion := '1.0'; S7_SetPoint := 'False'} : Array[0..10] of TON_TIME;
+      changePalletReq { S7_SetPoint := 'True'} : Bool;   // Machine ready for changepallet
+      queryTemp { S7_SetPoint := 'True'} : String;
+      lastMission : Int;
+      palletLocked : Bool;
+      doorOpened : Bool;
+      autoModePrev : Bool;
+      subState : Int;
+   END_VAR
+
+   VAR_TEMP 
+      timeout : Time;
+      i : Int;
+      countPieces : Int;
+      oldStatus : Int;
+      tmpUint : UInt;
+      Dispatcher_old : Array[0..10] of Int;
+   END_VAR
+
+
+BEGIN
+	//SPINNER MACHINE
+	//  Author  : ADMG
+	//  Date    : June 2025
+	
+	REGION GENERIC_implementation
+	    
+	    #countPieces := 0;
+	    FOR #i := 1 TO 5 DO
+	        IF #piecepresent[#i] > 0 THEN
+	            #countPieces := #countPieces + 1;
+	        END_IF;
+	    END_FOR;
+	    
+	    #oldStatus := #Status;
+	    IF #countPieces = 0 THEN
+	        IF #pallet = 0 AND #ManualVice = 0 THEN
+	            #Status := DINT_TO_INT("UNLOADED");     // totally empty machine
+	        ELSE
+	            #Status := DINT_TO_INT("EMPTY");        // pallet and fixture mounted on machine but not one piece inside
+	        END_IF;
+	        
+	    ELSIF "DB_Robot".MissionCode = 0 AND #lastMission = "MISSION_LoadPallet_MC" THEN
+	        #Status := DINT_TO_INT("EMPTY");
+	        #lastMission := 0;
+	        
+	    ELSIF "DB_Robot".MissionCode = 0 AND #lastMission = "MISSION_UnloadPallet_MC" THEN
+	        #Status := DINT_TO_INT("UNLOADED");
+	        #lastMission := 0;
+	        
+	    ELSIF "DB_Robot".MissionCode = 0 AND #lastMission = "MISSION_LoadManVice" THEN
+	        #Status := DINT_TO_INT("EMPTY");
+	        #lastMission := 0;
+	        
+	    ELSIF "DB_Robot".MissionCode = 0 AND #lastMission = "MISSION_UnloadManVice" THEN
+	        #Status := DINT_TO_INT("UNLOADED");
+	        #lastMission := 0;
+	        
+	    ELSIF FIND(IN1 := "DB_MQTT".lastTopicReceived, IN2 := 'MC1') >= 0 AND #MC_number = 1 THEN  //EG: MC1/CHANGEPALLET
+	        IF FIND(IN1 := "DB_MQTT".lastTopicReceived, IN2 := 'CHANGEPALLET') >= 0 THEN
+	            #changePalletReq := ("DB_MQTT".lastCmdReceived = 1);
+	        ELSIF FIND(IN1 := "DB_MQTT".lastTopicReceived, IN2 := 'CN_STATUS') >= 0 THEN
+	            #Status := "DB_MQTT".lastCmdReceived;
+	        END_IF;
+	        
+	    ELSIF FIND(IN1 := "DB_MQTT".lastTopicReceived, IN2 := 'MC2') >= 0 AND #MC_number = 2 THEN  //EG: MC2/CHANGEPALLET
+	        IF FIND(IN1 := "DB_MQTT".lastTopicReceived, IN2 := 'CHANGEPALLET') >= 0 THEN
+	            #changePalletReq := ("DB_MQTT".lastCmdReceived = 1);
+	        ELSIF FIND(IN1 := "DB_MQTT".lastTopicReceived, IN2 := 'CN_STATUS') >= 0 THEN
+	            #Status := "DB_MQTT".lastCmdReceived;
+	        END_IF;
+	    END_IF;
+	    
+	    //"RAW"         // -> updated from ROBOT cycle
+	    //"LOCKED"
+	    
+	    ////IF NOT #MC_inRemoteMode THEN
+	    ////    #Status := DINT_TO_INT("MANUAL");
+	    ////END_IF;
+	    
+	    IF (#Status >= 0 AND (#Status <> #oldStatus)) THEN
+	        "FC_MQTT"(insert := true,
+	                  send := false,
+	                  topic := CONCAT(IN1 := 'FROM_PLANT/STATUS/MC', IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#MC_number)),
+	                  payload := STRING_TO_WSTRING("INT_TO_STRING_WITHOUT_SIGN"(#Status)));
+	        #oldStatus := #Status;
+	    END_IF;
+	    
+	END_REGION ;
+	
+	(*IF NOT #MC_inRemoteMode THEN
+	    RETURN;
+	END_IF;
+	*)
+	FOR #i := 0 TO 10 DO
+	    #Dispatcher_old[#i] := #Dispatcher[#i];
+	END_FOR;
+	
+	REGION Manager CMD from HMI
+	    
+	    // In HAAS_SLAVE, i comandi HMI non devono interferire col dispatcher
+	    IF #MachineMode = 1 THEN
+	        IF "DB_MQTT".lastTopicReceived = CONCAT_STRING(IN1 := 'MC', IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#MC_number))
+	            AND "DB_RobotMissionStatus".StatusCode = "cmd_waitingNewCmd"
+	        THEN
+	            IF "DB_MQTT".lastCmdReceived > 0 THEN
+	                #cmd.code := "DB_MQTT".lastCmdReceived;
+	            END_IF;
+	        END_IF;
+	    END_IF;
+	END_REGION ;
+	
+	REGION Manager MC
+	    (*
+	    IF #Dispatcher["_master"] >= 20 AND #Dispatcher["_master"] <= 30 THEN
+	         "DB_executeQuery"(query := #queryTemp,
+	                           exec := #Dispatcher["_master"] = 20);
+	     END_IF;
+	    *)
+	    IF #MachineMode = 1 THEN
+	        CASE #Dispatcher["_master"] OF
+	            0: //nothing to do
+	                IF (#AutoModeFromHandController
+	                    AND "DB_Robot".MissionCode = 0
+	                    AND "DB_Robot".Auto
+	                    AND "DB_Robot".RemoteMode
+	                    AND #cmd.code <= 0
+	                    AND "DB_RobotMissionStatus".StatusCode = "cmd_waitingNewCmd") THEN
+	                    
+	                    CASE #Status OF
+	                        "UNLOADED":
+	                            //machine totally empty
+	                            #queryTemp := CONCAT(IN1 := 'select top 1 id,PIECE_ID,GRIPPER_ID,MACHINE_ID,PALLET_ID,VICE_ID,QUANTITY,[OPTIONS],Gripper4Pallet,PP_id ',
+	                                                 IN2 := 'from WORKORDERS where MACHINE_ID=',
+	                                                 IN3 := "INT_TO_STRING_WITHOUT_SIGN"(#MC_number),
+	                                                 IN4 := ' AND Status=3 AND PRODUCTED<QUANTITY');        //WORKING
+	                            #Dispatcher["_master"] := 10;
+	                            
+	                        "EMPTY":
+	                            //machine with pallet BUT WITHOUT PART to work
+	                            #queryTemp := CONCAT(IN1 := 'select top 1 id,PIECE_ID,GRIPPER_ID,MACHINE_ID,PALLET_ID,VICE_ID,QUANTITY,[OPTIONS],Gripper4Pallet,PP_id ',
+	                                                 IN2 := 'from WORKORDERS where MACHINE_ID=',
+	                                                 IN3 := "INT_TO_STRING_WITHOUT_SIGN"(#MC_number),
+	                                                 IN4 := ' AND Status=3 AND PRODUCTED<QUANTITY');        //WORKING
+	                            #Dispatcher["_master"] := 10;
+	                            
+	                        "READY_TO_WORK":
+	                            //nothing to do here....
+	                            #Dispatcher["_master"] := 100;
+	                            
+	                        "WORKING":
+	                            #Dispatcher["_master"] := 100;
+	                            
+	                        "FINISHED":
+	                            //machine finished to work
+	                            #Dispatcher["_master"] := 100;
+	                            
+	                        "RAW":
+	                            //machine with at least 1 raw part
+	                            "FC_MQTT"(insert := true,
+	                                      "send" := false,
+	                                      topic := CONCAT(IN1 := 'FROM_PLANT/STARTPP/MC', IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#MC_number)),
+	                                      payload := DINT_TO_WSTRING(#order.PartProgID));
+	                            //#Dispatcher["_master"] := 1000;
+	                            
+	                        "ABORTED":
+	                            ;//todo
+	                    END_CASE;
+	                END_IF;
+	            10: //Search a workorder
+	                IF "DB_executeQuery".readyForNextQuery THEN
+	                    #Dispatcher["_master"] := 20;
+	                END_IF;
+	            20: //wait DB answer
+	                IF "DB_executeQuery".dataReady AND NOT "DB_executeQuery".dataError THEN
+	                    #order.ID := "SqlData".data.rows[0].col[0];
+	                    #order.PIECE := "SqlData".data.rows[0].col[1];
+	                    #order.GRIPPER := "SqlData".data.rows[0].col[2];
+	                    #order.MACHINE := "SqlData".data.rows[0].col[3];
+	                    #order.PALLET := "SqlData".data.rows[0].col[4];
+	                    #order.VICE := "SqlData".data.rows[0].col[5];
+	                    #order.QUANTITY := "SqlData".data.rows[0].col[6];
+	                    #order.OPTION := "SqlData".data.rows[0].col[7];
+	                    #order.GRIPPER4PALLET := "SqlData".data.rows[0].col[8];
+	                    #order.PartProgID := "SqlData".data.rows[0].col[9];
+	                    #order.STATUS := "WORKING";
+	                    
+	                    IF #order.ID > 0 THEN
+	                        "DB_executeQuery".readyForNextQuery := TRUE;
+	                        #queryTemp := '';
+	                        #Dispatcher["_master"] := 30;
+	                    END_IF;
+	                    
+	                    //ELSIF "DB_executeQuery".dataError THEN
+	                    //    "DB_executeQuery".readyForNextQuery := TRUE;
+	                    //    #Dispatcher["_master"] := 0;
+	                END_IF;
+	                
+	            30: //check MC pallet
+	                IF (#order.VICE <= 0 AND #order.PALLET <> 0) THEN
+	                    IF #order.PALLET <> #pallet THEN
+	                        IF #pallet = 0 THEN
+	                            "DB_Robot".MissionCode := "MISSION_LoadPallet_MC";
+	                            #lastMission := "DB_Robot".MissionCode;
+	                            "DB_Robot".MCRequested := #MC_number;
+	                            #Dispatcher["_master"] := 100;
+	                        ELSIF #pallet <> #order.PALLET THEN
+	                            "DB_Robot".MissionCode := "MISSION_UnloadPallet_MC";
+	                            #lastMission := "DB_Robot".MissionCode;
+	                            "DB_Robot".MCRequested := #MC_number;
+	                            #Dispatcher["_master"] := 100;
+	                        END_IF;
+	                    ELSIF #order.PALLET = #pallet THEN
+	                        #Dispatcher["_master"] := 100;
+	                    END_IF;
+	                    
+	                ELSIF (#order.PALLET = 0 AND #order.VICE <> 0 AND #order.VICE <> #ManualVice) THEN
+	                    IF #ManualVice = 0 THEN
+	                        "DB_Robot".MissionCode := "MISSION_LoadManVice";
+	                        "DB_Robot".MCRequested := #MC_number;
+	                        #lastMission := "DB_Robot".MissionCode;
+	                    ELSIF #ManualVice <> #order.VICE THEN
+	                        "DB_Robot".MissionCode := "MISSION_UnloadManVice";
+	                        #lastMission := "DB_Robot".MissionCode;
+	                        "DB_Robot".MCRequested := #MC_number;
+	                    END_IF;
+	                    #Dispatcher["_master"] := 100;
+	                END_IF;
+	                //il caso in cui carico il pezzo direttamente sulla tavola??? TODO
+	                
+	            100:// ////////// SEARCH NEW PIECE TO WORK //////////
+	                IF "DB_Robot".MissionCode = 0 AND
+	                    "DB_RobotMissionStatus".StatusCode = "cmd_waitingNewCmd" AND
+	                    "DB_Robot".RemoteMode AND
+	                    #Status <> "READY_TO_WORK" AND
+	                    #Status <> "WORKING"
+	                THEN
+	                    IF #Status = "UNLOADED" THEN
+	                        //go back for preapring machine
+	                        #Dispatcher["_master"] := 0;
+	                    ELSE
+	                        
+	                        IF (#order.PIECE = 0) THEN
+	                            #Dispatcher["_master"] := 900;
+	                        ELSE
+	                            IF #piecepresent[1] = 0 THEN
+	                                //machine without part
+	                                IF NOT "DB_Robot".GripperOccuped[1] THEN
+	                                    "DB_Robot".MissionCode := "MISSION_LoadPartOnRobot";
+	                                    "DB_Robot".GripperRequested := DINT_TO_INT(#order.GRIPPER);
+	                                    "DB_Robot".MCRequested := #MC_number;
+	                                    #Dispatcher["_master"] := 110;
+	                                ELSIF "DB_Robot".GripperOccuped[1] THEN
+	                                    "DB_Robot".MissionCode := "MISSION_LoadPart_MC";
+	                                    "DB_Robot".MCRequested := #MC_number;
+	                                    #Dispatcher["_master"] := 900;
+	                                END_IF;
+	                                
+	                            ELSE
+	                                //machine with part
+	                                IF NOT "DB_Robot".GripperOccuped[1] THEN
+	                                    IF #order.OPTION.%X0 THEN
+	                                        //gripper double used single
+	                                        "DB_Robot".MissionCode := "MISSION_UnloadPart_MC";
+	                                        "DB_Robot".MCRequested := #MC_number;
+	                                        #Dispatcher["_master"] := 150;
+	                                    ELSE
+	                                        //gripper double used double
+	                                        "DB_Robot".MissionCode := "MISSION_LoadPartOnRobot";
+	                                        "DB_Robot".MCRequested := #MC_number;
+	                                        #Dispatcher["_master"] := 200;
+	                                    END_IF;
+	                                ELSE
+	                                    IF #order.OPTION.%X0 THEN
+	                                        //gripper double used single
+	                                        // SITUATION ERROR
+	                                        #Dispatcher["_master"] := 9999;
+	                                    ELSE
+	                                        //gripper double used double
+	                                        "DB_Robot".MissionCode := "MISSION_UnloadPart_MC";  //era solo questa il resto lo faceva il robot
+	                                        "DB_Robot".MCRequested := #MC_number;
+	                                        #Dispatcher["_master"] := 300;
+	                                    END_IF;
+	                                END_IF;
+	                                
+	                            END_IF;
+	                        END_IF;
+	                    END_IF;
+	                END_IF;
+	                
+	            110:////////////////////////
+	                IF "DB_Robot".MissionCode = 0 THEN
+	                    #Dispatcher["_master"] := 100; //go back for new analisys
+	                END_IF;
+	                
+	            150:////////////////////////
+	                IF "DB_Robot".MissionCode = 0 THEN
+	                    #piecepresent[1] := 0;
+	                    "DB_Robot".MissionCode := "MISSION_UnloadPartFromRobot";
+	                    #Dispatcher["_master"] := 160;
+	                END_IF;
+	            160:
+	                IF "DB_Robot".MissionCode = 0 THEN
+	                    "DB_Robot".MissionCode := "MISSION_LoadPartOnRobot";
+	                    #Dispatcher["_master"] := 170;
+	                END_IF;
+	            170:
+	                IF "DB_Robot".MissionCode = 0 THEN
+	                    "DB_Robot".MissionCode := "MISSION_LoadPartOnRobot";
+	                    #Dispatcher["_master"] := 100; //go back for new analisys
+	                END_IF;
+	                
+	            200:////////////////////////
+	                IF "DB_Robot".MissionCode = 0 THEN
+	                    "DB_Robot".MissionCode := "MISSION_UnloadPart_MC";
+	                    "DB_Robot".MCRequested := #MC_number;
+	                    #Dispatcher["_master"] := 210;
+	                END_IF;
+	            210:
+	                IF "DB_Robot".MissionCode = 0 THEN
+	                    #piecepresent[1] := 0;
+	                    //"DB_Robot".MissionCode := "MISSION_LoadPartOnRobot";
+	                    #Dispatcher["_master"] := 100; //go back for new analisys
+	                END_IF;
+	                
+	            300:////////////////////////
+	                IF "DB_Robot".MissionCode = 0 THEN
+	                    "DB_Robot".MissionCode := "MISSION_LoadPart_MC";
+	                    "DB_Robot".MCRequested := #MC_number;
+	                    #Dispatcher["_master"] := 900;
+	                END_IF;
+	                
+	                
+	            900:// wait until the machine is ready for work
+	                IF "DB_Robot".MissionCode = 0
+	                    AND ((#order.PALLET = #pallet) OR (#order.VICE = #ManualVice))
+	                    AND #order.PIECE = #piecepresent[1]
+	                THEN
+	                    #Status := DINT_TO_INT("READY_TO_WORK");
+	                    
+	                    IF "DB_Robot".GripperOccuped[1] OR "DB_Robot".GripperOccuped[2] THEN
+	                        "DB_Robot".MissionCode := "MISSION_UnloadPartFromRobot";  // Robot -> TRAY
+	                    END_IF;
+	                    
+	                    #Dispatcher["_master"] := 1000;
+	                END_IF;
+	                
+	            1000:// ////////// START TO WORK MC //////////
+	                #cmd.code := "MC_startWork";
+	                #Dispatcher["_master"] := 1010;
+	            1010:
+	                IF (#cmd.acquired OR #cmd.executing) THEN
+	                    "FC_MQTT"(insert := true,
+	                              "send" := false,
+	                              topic := CONCAT(IN1 := 'FROM_PLANT/STATUS/MC', IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#MC_number)),
+	                              payload := DINT_TO_WSTRING("WORKING"));
+	                    #Status := DINT_TO_INT("WORKING");
+	                    
+	                    #Dispatcher["_master"] := 0;
+	                ELSIF #cmd.aborted OR #cmd.rejected THEN
+	                    "FC_MQTT"(insert := true,
+	                              "send" := false,
+	                              topic := CONCAT(IN1 := 'FROM_PLANT/STATUS/MC', IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#MC_number)),
+	                              payload := DINT_TO_WSTRING("ABORTED"));
+	                    #Status := DINT_TO_INT("ABORTED");
+	                    
+	                    #Dispatcher["_master"] := 9999;
+	                END_IF;
+	                
+	            9999: //ERROR STATUS
+	                //TODO come resettarlo? (comando manuale? pulsante di aux?)
+	                ;
+	        END_CASE;
+	    ELSE
+	        // ================================================================
+	        // RAMO HAAS (MachineMode = 0) — LIVELLO 2
+	        // Logica pinza (50..58) = copia fedele del master (100..900).
+	        // Dopo 58 (ready): ricetta (90) -> start fisico (92) ->
+	        // fine ciclo AutoMode (95) -> CYCLE_DONE (100).
+	        // Morsa/pallet comandati dal robot via RequestCmd -> SPECIFIC (MachineMode=0).
+	        // Porta autonoma HAAS: si attende solo il feedback.
+	        // ================================================================
+	        
+	        // --- Trigger esecuzione query SQL (fuori dal CASE) ---
+	        IF #Dispatcher["_master"] >= 10 AND #Dispatcher["_master"] <= 20 THEN
+	            "DB_executeQuery"(query := #queryTemp,
+	                              exec := #Dispatcher["_master"] = 10);
+	        END_IF;
+	        
+	        CASE #Dispatcher["_master"] OF
+	                
+	            0:  // IDLE — attesa macchina pronta + robot disponibile, poi pull workorder
+	                #cmd.executing := FALSE;
+	                #cmd.aborted := FALSE;
+	                #Q_startWork := FALSE;
+	                #subState := 0;
+	                
+	                IF #AutoModeFromHandController
+	                    AND #I_autoMode
+	                    AND "DB_Robot".MissionCode = 0
+	                    AND "DB_Robot".Auto
+	                    AND "DB_Robot".RemoteMode
+	                    AND #cmd.code <= 0
+	                    AND "DB_RobotMissionStatus".StatusCode = "cmd_waitingNewCmd"
+	                THEN
+	                    #queryTemp := CONCAT(
+	                                         IN1 := 'select top 1 id,PIECE_ID,GRIPPER_ID,MACHINE_ID,PALLET_ID,VICE_ID,QUANTITY,[OPTIONS],Gripper4Pallet,PP_id ',
+	                                         IN2 := 'from WORKORDERS where MACHINE_ID=',
+	                                         IN3 := "INT_TO_STRING_WITHOUT_SIGN"(#MC_number),
+	                                         IN4 := ' AND Status=3 AND PRODUCTED<QUANTITY');
+	                    #autoModePrev := TRUE;
+	                    #Dispatcher["_master"] := 10;
+	                END_IF;
+	                
+	            10: // attesa che SQL sia pronto a ricevere
+	                IF "DB_executeQuery".readyForNextQuery THEN
+	                    #Dispatcher["_master"] := 20;
+	                END_IF;
+	                
+	            20: // parsing risultato -> order
+	                IF "DB_executeQuery".dataReady AND NOT "DB_executeQuery".dataError THEN
+	                    #order.ID := "SqlData".data.rows[0].col[0];
+	                    #order.PIECE := "SqlData".data.rows[0].col[1];
+	                    #order.GRIPPER := "SqlData".data.rows[0].col[2];
+	                    #order.MACHINE := "SqlData".data.rows[0].col[3];
+	                    #order.PALLET := "SqlData".data.rows[0].col[4];
+	                    #order.VICE := "SqlData".data.rows[0].col[5];
+	                    #order.QUANTITY := "SqlData".data.rows[0].col[6];
+	                    #order.OPTION := "SqlData".data.rows[0].col[7];
+	                    #order.GRIPPER4PALLET := "SqlData".data.rows[0].col[8];
+	                    #order.PartProgID := "SqlData".data.rows[0].col[9];
+	                    #order.STATUS := "WORKING";
+	                    
+	                    IF #order.ID > 0 THEN
+	                        "DB_executeQuery".readyForNextQuery := TRUE;
+	                        #queryTemp := '';
+	                        #subState := 0;
+	                        #Dispatcher["_master"] := 30;
+	                    END_IF;
+	                ELSIF "DB_executeQuery".dataError THEN
+	                    "DB_executeQuery".readyForNextQuery := TRUE;
+	                    #Dispatcher["_master"] := 0;
+	                END_IF;
+	                
+	            30: // CHECK PALLET — lancia le missioni; lock/unlock li fa il robot
+	                //    via RequestCmd (gestito in SPECIFIC). Solo pallet.
+	                CASE #subState OF
+	                    0:
+	                        IF #order.PALLET = #pallet OR #order.PALLET = 0 THEN
+	                            #Dispatcher["_master"] := 50;
+	                        ELSIF "DB_Robot".MissionCode = 0
+	                            AND "DB_RobotMissionStatus".StatusCode = "cmd_waitingNewCmd" THEN
+	                            IF #pallet <> 0 THEN
+	                                "DB_Robot".MissionCode := "MISSION_UnloadPallet_MC";
+	                                "DB_Robot".MCRequested := #MC_number;
+	                                #lastMission := "MISSION_UnloadPallet_MC";
+	                                #subState := 1;
+	                            ELSE
+	                                "DB_Robot".MissionCode := "MISSION_LoadPallet_MC";
+	                                "DB_Robot".MCRequested := #MC_number;
+	                                #lastMission := "MISSION_LoadPallet_MC";
+	                                #subState := 2;
+	                            END_IF;
+	                        END_IF;
+	                    1: // smontato -> monta il nuovo
+	                        IF "DB_Robot".MissionCode = 0
+	                            AND "DB_RobotMissionStatus".StatusCode = "cmd_waitingNewCmd" THEN
+	                            #pallet := 0;
+	                            "DB_Robot".MissionCode := "MISSION_LoadPallet_MC";
+	                            "DB_Robot".MCRequested := #MC_number;
+	                            #lastMission := "MISSION_LoadPallet_MC";
+	                            #subState := 2;
+	                        END_IF;
+	                    2: // montato (robot ha gia' bloccato via RequestCmd) -> prosegui
+	                        IF "DB_Robot".MissionCode = 0
+	                            AND "DB_RobotMissionStatus".StatusCode = "cmd_waitingNewCmd" THEN
+	                            #pallet := DINT_TO_INT(#order.PALLET);
+	                            #subState := 0;
+	                            #Dispatcher["_master"] := 50;
+	                        END_IF;
+	                END_CASE;
+	                
+	                // ---- SERVIZIO ROBOT — logica pinza (fedele al master 100..900) ----
+	                
+	            50: // (master 100) decisione missione
+	                IF "DB_Robot".MissionCode = 0
+	                    AND "DB_RobotMissionStatus".StatusCode = "cmd_waitingNewCmd"
+	                    AND "DB_Robot".RemoteMode
+	                THEN
+	                    IF #order.PIECE = 0 THEN
+	                        #Dispatcher["_master"] := 58;
+	                    ELSE
+	                        IF #piecepresent[1] = 0 THEN
+	                            IF NOT "DB_Robot".GripperOccuped[1] THEN
+	                                "DB_Robot".MissionCode := "MISSION_LoadPartOnRobot";
+	                                "DB_Robot".GripperRequested := DINT_TO_INT(#order.GRIPPER);
+	                                "DB_Robot".MCRequested := #MC_number;
+	                                #lastMission := "MISSION_LoadPartOnRobot";
+	                                #Dispatcher["_master"] := 51;
+	                            ELSE
+	                                "DB_Robot".MissionCode := "MISSION_LoadPart_MC";
+	                                "DB_Robot".MCRequested := #MC_number;
+	                                #lastMission := "MISSION_LoadPart_MC";
+	                                #piecepresent[1] := DINT_TO_INT(#order.PIECE);
+	                                #Dispatcher["_master"] := 58;
+	                            END_IF;
+	                        ELSE
+	                            IF NOT "DB_Robot".GripperOccuped[1] THEN
+	                                IF #order.OPTION.%X0 THEN
+	                                    // gripper doppio usato singolo
+	                                    "DB_Robot".MissionCode := "MISSION_UnloadPart_MC";
+	                                    "DB_Robot".MCRequested := #MC_number;
+	                                    #lastMission := "MISSION_UnloadPart_MC";
+	                                    #Dispatcher["_master"] := 52;
+	                                ELSE
+	                                    // gripper doppio usato doppio
+	                                    "DB_Robot".MissionCode := "MISSION_LoadPartOnRobot";
+	                                    "DB_Robot".MCRequested := #MC_number;
+	                                    #lastMission := "MISSION_LoadPartOnRobot";
+	                                    #Dispatcher["_master"] := 55;
+	                                END_IF;
+	                            ELSE
+	                                IF #order.OPTION.%X0 THEN
+	                                    #Dispatcher["_master"] := 9999;   // situazione errata
+	                                ELSE
+	                                    "DB_Robot".MissionCode := "MISSION_UnloadPart_MC";
+	                                    "DB_Robot".MCRequested := #MC_number;
+	                                    #lastMission := "MISSION_UnloadPart_MC";
+	                                    #Dispatcher["_master"] := 57;
+	                                END_IF;
+	                            END_IF;
+	                        END_IF;
+	                    END_IF;
+	                END_IF;
+	                
+	            51: // (master 110) -> rianalizza
+	                IF "DB_Robot".MissionCode = 0 THEN
+	                    #Dispatcher["_master"] := 50;
+	                END_IF;
+	                
+	            52: // (master 150) scarico fatto -> deposita finito a magazzino
+	                IF "DB_Robot".MissionCode = 0 THEN
+	                    #piecepresent[1] := 0;
+	                    "DB_Robot".MissionCode := "MISSION_UnloadPartFromRobot";
+	                    #lastMission := "MISSION_UnloadPartFromRobot";
+	                    #Dispatcher["_master"] := 53;
+	                END_IF;
+	                
+	            53: // (master 160) -> preleva grezzo
+	                IF "DB_Robot".MissionCode = 0 THEN
+	                    "DB_Robot".MissionCode := "MISSION_LoadPartOnRobot";
+	                    #lastMission := "MISSION_LoadPartOnRobot";
+	                    #Dispatcher["_master"] := 54;
+	                END_IF;
+	                
+	            54: // (master 170) -> preleva secondo grezzo, poi rianalizza
+	                IF "DB_Robot".MissionCode = 0 THEN
+	                    "DB_Robot".MissionCode := "MISSION_LoadPartOnRobot";
+	                    #lastMission := "MISSION_LoadPartOnRobot";
+	                    #Dispatcher["_master"] := 50;
+	                END_IF;
+	                
+	            55: // (master 200) grezzo in pinza -> scarica finito dalla macchina
+	                IF "DB_Robot".MissionCode = 0 THEN
+	                    "DB_Robot".MissionCode := "MISSION_UnloadPart_MC";
+	                    "DB_Robot".MCRequested := #MC_number;
+	                    #lastMission := "MISSION_UnloadPart_MC";
+	                    #Dispatcher["_master"] := 56;
+	                END_IF;
+	                
+	            56: // (master 210) -> rianalizza
+	                IF "DB_Robot".MissionCode = 0 THEN
+	                    #piecepresent[1] := 0;
+	                    #Dispatcher["_master"] := 50;
+	                END_IF;
+	                
+	            57: // (master 300) finito scaricato -> inserisci grezzo in macchina
+	                IF "DB_Robot".MissionCode = 0 THEN
+	                    "DB_Robot".MissionCode := "MISSION_LoadPart_MC";
+	                    "DB_Robot".MCRequested := #MC_number;
+	                    #lastMission := "MISSION_LoadPart_MC";
+	                    #piecepresent[1] := DINT_TO_INT(#order.PIECE);
+	                    #Dispatcher["_master"] := 58;
+	                END_IF;
+	                
+	            58: // (master 900) macchina pronta: deposita finito ancora in pinza, poi RICETTA
+	                IF "DB_Robot".MissionCode = 0
+	                    AND (#order.PALLET = #pallet OR #order.PALLET = 0)
+	                    AND #order.PIECE = #piecepresent[1]
+	                THEN
+	                    IF "DB_Robot".GripperOccuped[1] OR "DB_Robot".GripperOccuped[2] THEN
+	                        "DB_Robot".MissionCode := "MISSION_UnloadPartFromRobot";   // Robot -> TRAY
+	                        #lastMission := "MISSION_UnloadPartFromRobot";
+	                    ELSE
+	                        #Dispatcher["_master"] := 90;
+	                    END_IF;
+	                END_IF;
+	                
+	                // ---- SEQUENZA HAAS: ricetta -> start -> fine ciclo -> cycle done ----
+	                
+	            90: // DISPATCH RICETTA HAAS — setMacro #10200 = PartProgID
+	                "FC_MQTT"(insert := TRUE,
+	                          send := FALSE,
+	                          topic := CONCAT(IN1 := 'FROM_PLANT/HAAS_CMD/MC',
+	                                          IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#MC_number)),
+	                          payload := STRING_TO_WSTRING(CONCAT(
+	                                                                                           IN1 := '{"cmd":"setMacro","var":10200,"value":',
+	                                                                                           IN2 := DINT_TO_STRING(#order.PartProgID),
+	                                                                                           IN3 := '}')));
+	                #timer[1](IN := TRUE,
+	                          PT := T#10s);
+	                #Dispatcher["_master"] := 91;
+	                
+	            91: // attesa esito ricetta: HAAS_ACK -> ok ; HAAS_NACK -> fallita
+	                IF "DB_MQTT".lastTopicReceived
+	                    = CONCAT(IN1 := 'HAAS_ACK/MC',
+	                             IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#MC_number))
+	                THEN
+	                    #timer[1](IN := FALSE,
+	                              PT := T#10s);
+	                    #Dispatcher["_master"] := 92;
+	                ELSIF "DB_MQTT".lastTopicReceived
+	                    = CONCAT(IN1 := 'HAAS_NACK/MC',
+	                             IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#MC_number))
+	                THEN
+	                    #timer[1](IN := FALSE,
+	                              PT := T#10s);
+	                    #Dispatcher["_master"] := 9999;
+	                ELSIF #timer[1].Q THEN
+	                    #timer[1](IN := FALSE,
+	                              PT := T#10s);
+	                    #Dispatcher["_master"] := 9999;
+	                END_IF;
+	                
+	            92: // START — Q_startWork alto fino a caduta AutoMode (robot fuori ingombro)
+	                IF #Q_fuoriIngombro THEN
+	                    #Q_startWork := TRUE;
+	                    #timer[6](IN := TRUE,
+	                              PT := T#30s);   // safety conta solo da quando do lo start
+	                    IF #timer[6].Q THEN
+	                        #Q_startWork := FALSE;
+	                        #timer[6](IN := FALSE,
+	                                  PT := T#30s);
+	                        #Dispatcher["_master"] := 9999;
+	                    END_IF;
+	                END_IF;
+	                IF NOT #I_autoMode THEN
+	                    #Q_startWork := FALSE;
+	                    #autoModePrev := FALSE;
+	                    #timer[6](IN := FALSE,
+	                              PT := T#30s);
+	                    #Dispatcher["_master"] := 95;
+	                END_IF;
+	                
+	            95: // attesa fine ciclo — AutoMode torna alto (M30)
+	                IF #I_autoMode AND NOT #autoModePrev THEN
+	                    #autoModePrev := TRUE;
+	                    #Dispatcher["_master"] := 100;
+	                END_IF;
+	                IF #I_autoMode THEN
+	                    #autoModePrev := TRUE;
+	                END_IF;
+	                
+	            100: // CYCLE_DONE — notifica backend (incrementa PRODUCTED)
+	                "FC_MQTT"(insert := TRUE,
+	                          send := FALSE,
+	                          topic := CONCAT(IN1 := 'FROM_PLANT/CYCLE_DONE/MC',
+	                                          IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#MC_number)),
+	                          payload := STRING_TO_WSTRING(DINT_TO_STRING(#order.ID)));
+	                "FC_MQTT"(insert := TRUE,
+	                          send := FALSE,
+	                          topic := CONCAT(IN1 := 'FROM_PLANT/STATUS/MC',
+	                                          IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#MC_number)),
+	                          payload := STRING_TO_WSTRING('CYCLE_COMPLETED'));
+	                #Dispatcher["_master"] := 0;
+	                
+	            9999: // ERROR — reset via MQTT "MC_resetError" dall'HMI
+	                IF "DB_MQTT".lastTopicReceived
+	                    = CONCAT(IN1 := 'MC', IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#MC_number))
+	                    AND "DB_MQTT".lastCmdReceived = "MC_resetError"
+	                THEN
+	                    #Dispatcher["_master"] := 0;
+	                    #Status := DINT_TO_INT("UNLOADED");
+	                    #cmd.code := 0;
+	                    #cmd.executing := FALSE;
+	                    #cmd.aborted := FALSE;
+	                    #order.ID := 0;
+	                    #order.PIECE := 0;
+	                    #lastMission := 0;
+	                    #subState := 0;
+	                    #Q_startWork := FALSE;
+	                    "FC_MQTT"(insert := TRUE,
+	                              send := FALSE,
+	                              topic := CONCAT(IN1 := 'FROM_PLANT/STATUS/MC',
+	                                              IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#MC_number)),
+	                              payload := STRING_TO_WSTRING("INT_TO_STRING_WITHOUT_SIGN"(#Status)));
+	                END_IF;
+	                
+	        END_CASE;
+	    END_IF;
+	    
+	    // Fuori ingombro robot: alto quando il robot NON sta servendo questa MC
+	    #Q_fuoriIngombro := ("DB_Robot".MCRequested <> #MC_number);
+	END_REGION
+	
+	REGION Update HMI
+	    //Dispatchers value
+	    FOR #i := 0 TO 10 DO
+	        IF #Dispatcher_old[#i] <> #Dispatcher[#i] THEN
+	            "FC_MQTT"(insert := true,
+	                      send := false,
+	                      topic := CONCAT(IN1 := 'FROM_PLANT/DISPATCH/MC', IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#MC_number), IN3 := '/', IN4 := "INT_TO_STRING_WITHOUT_SIGN"(#i)),
+	                      payload := STRING_TO_WSTRING("INT_TO_STRING_WITHOUT_SIGN"(#Dispatcher[#i])));
+	            
+	            #Dispatcher_old[#i] := #Dispatcher[#i];
+	        END_IF;
+	    END_FOR;
+	END_REGION ;
+	
+	REGION Management cmd from robot to MC
+	    IF #Status <> "MANUAL"
+	        AND "DB_Robot".MCRequested = #MC_number
+	        AND NOT #cmd.executing
+	        AND #cmd.code = 0 THEN
+	        
+	        IF "DB_RobotMissionStatus".RequestCmd.Lock_Pallet THEN
+	            #cmd.code := "MC_lockPallet";
+	        ELSIF "DB_RobotMissionStatus".RequestCmd.Unlock_Pallet THEN
+	            #cmd.code := "MC_unlockPallet";
+	            
+	        ELSIF "DB_RobotMissionStatus".RequestCmd.Lock_Vice THEN
+	            #cmd.code := "MC_closeVice";
+	        ELSIF "DB_RobotMissionStatus".RequestCmd.Unlock_Vice THEN
+	            #cmd.code := "MC_openVice";
+	            
+	        ELSIF "DB_RobotMissionStatus".RequestCmd.Open_door THEN
+	            #cmd.code := "MC_openDoor";
+	        ELSIF "DB_RobotMissionStatus".RequestCmd.Close_door THEN
+	            #cmd.code := "MC_closeDoor";
+	            
+	        ELSIF "DB_RobotMissionStatus".RequestCmd.Lock_partOnTable THEN
+	            #cmd.code := "MC_lockPartOnTable";
+	        ELSIF "DB_RobotMissionStatus".RequestCmd.Unlock_partOnTable THEN
+	            #cmd.code := "MC_unlockPartOnTable";
+	        END_IF;
+	    END_IF;
+	END_REGION
+	
+	REGION SPECIFIC_implementation
+	    
+	    IF #MachineMode = 1 THEN
+	        CASE #cmd.code OF
+	            "MC_openVice":
+	                #timeout := T#1s;
+	                #Q_openVice := TRUE;
+	                #Q_closeVice := FALSE;
+	                #cmd.executing := TRUE;
+	            "MC_closeVice":
+	                #timeout := T#1s;
+	                #Q_openVice := FALSE;
+	                #Q_closeVice := TRUE;
+	                #cmd.executing := TRUE;
+	            "MC_unlockPallet":
+	                #timeout := T#5s;
+	                #Q_unlockPallet := TRUE;
+	                #Q_lockPallet := FALSE;
+	                #cmd.executing := TRUE;
+	            "MC_lockPallet":
+	                #timeout := T#5s;
+	                #Q_unlockPallet := FALSE;
+	                #Q_lockPallet := TRUE;
+	                #cmd.executing := TRUE;
+	            "MC_openDoor":
+	                #timeout := T#5s;
+	                #Q_openDoor := TRUE;
+	                #Q_closeDoor := FALSE;
+	                #cmd.executing := TRUE;
+	            "MC_closeDoor":
+	                #timeout := T#5s;
+	                #Q_openDoor := FALSE;
+	                #Q_closeDoor := TRUE;
+	                #cmd.executing := TRUE;
+	            "MC_lockPartOnTable":
+	                #timeout := T#1s;
+	                #Q_lockPartOnTable := TRUE;
+	                #Q_unlockPartOnTable := FALSE;
+	                #cmd.executing := TRUE;
+	            "MC_unlockPartOnTable":
+	                #timeout := T#1s;
+	                #Q_lockPartOnTable := FALSE;
+	                #Q_unlockPartOnTable := TRUE;
+	                #cmd.executing := TRUE;
+	            "MC_startWork":
+	                //TODO!
+	                #timeout := T#30s;
+	                #cmd.executing := TRUE;
+	            ELSE
+	                //unknown command
+	                #cmd.aborted := TRUE;
+	                #cmd.executing := FALSE;
+	                #cmd.executed := FALSE;
+	        END_CASE;
+	        
+	        #timer[0](IN := #cmd.executing,
+	                  PT := #timeout);
+	        
+	        IF (#timer[0].Q) THEN
+	            #cmd.executing := FALSE;
+	            
+	        END_IF;
+	        
+	        
+	        #cmd.executed := NOT (#cmd.executing);
+	        #cmd.aborted := NOT (#cmd.executing) AND NOT (#cmd.executed);
+	        
+	        IF #cmd.code = "MC_unlockPallet" AND (#cmd.executed OR #I_palletUnlocked) THEN
+	            #palletLocked := false;
+	        END_IF;
+	        IF #cmd.code = "MC_lockPallet" AND (#cmd.executed OR NOT #I_palletUnlocked) THEN
+	            #palletLocked := true;
+	        END_IF;
+	        
+	        IF #cmd.code = "MC_openVice" AND (#cmd.executed OR #I_viceOpened) THEN
+	            #viceLocked := false;
+	        END_IF;
+	        IF #cmd.code = "MC_closeVice" AND (#cmd.executed OR NOT #I_viceOpened) THEN
+	            #viceLocked := true;
+	        END_IF;
+	        
+	        
+	        IF #cmd.executed THEN
+	            #cmd.code := 0;
+	        END_IF;
+	        
+	    END_IF;
+	    
+	    // ================================================================
+	    // RAMO HAAS (MachineMode = 0): traduce le RequestCmd del robot nelle
+	    // uscite fisiche. Identico al master per morsa/pallet/partOnTable.
+	    // Porta autonoma HAAS: MC_openDoor/MC_closeDoor non pilotano uscite,
+	    // attendono solo il feedback I_doorOpened / I_doorClosed.
+	    // ================================================================
+	    IF #MachineMode = 0 THEN
+	        CASE #cmd.code OF
+	            "MC_openVice":
+	                #timeout := T#1s;
+	                #Q_openVice := TRUE;
+	                #Q_closeVice := FALSE;
+	                #cmd.executing := TRUE;
+	            "MC_closeVice":
+	                #timeout := T#1s;
+	                #Q_openVice := FALSE;
+	                #Q_closeVice := TRUE;
+	                #cmd.executing := TRUE;
+	            "MC_unlockPallet":
+	                #timeout := T#5s;
+	                #Q_unlockPallet := TRUE;
+	                #Q_lockPallet := FALSE;
+	                #cmd.executing := TRUE;
+	            "MC_lockPallet":
+	                #timeout := T#5s;
+	                #Q_unlockPallet := FALSE;
+	                #Q_lockPallet := TRUE;
+	                #cmd.executing := TRUE;
+	            "MC_lockPartOnTable":
+	                #timeout := T#1s;
+	                #Q_lockPartOnTable := TRUE;
+	                #Q_unlockPartOnTable := FALSE;
+	                #cmd.executing := TRUE;
+	            "MC_unlockPartOnTable":
+	                #timeout := T#1s;
+	                #Q_lockPartOnTable := FALSE;
+	                #Q_unlockPartOnTable := TRUE;
+	                #cmd.executing := TRUE;
+	            "MC_openDoor":
+	                // porta autonoma HAAS: nessuna uscita, attendo il feedback fisico
+	                #timeout := T#10s;
+	                #cmd.executing := NOT #I_doorOpened;
+	            "MC_closeDoor":
+	                #timeout := T#10s;
+	                #cmd.executing := NOT #I_doorClosed;
+	            "MC_startWork":
+	                // start gestito dal dispatcher (stato 92): qui no-op
+	                #timeout := T#30s;
+	                #cmd.executing := TRUE;
+	            ELSE
+	                //unknown command
+	                #cmd.aborted := TRUE;
+	                #cmd.executing := FALSE;
+	                #cmd.executed := FALSE;
+	        END_CASE;
+	        
+	        #timer[0](IN := #cmd.executing,
+	                  PT := #timeout);
+	        
+	        IF (#timer[0].Q) THEN
+	            #cmd.executing := FALSE;
+	        END_IF;
+	        
+	        #cmd.executed := NOT (#cmd.executing);
+	        #cmd.aborted := NOT (#cmd.executing) AND NOT (#cmd.executed);
+	        
+	        IF #cmd.code = "MC_unlockPallet" AND (#cmd.executed OR #I_palletUnlocked) THEN
+	            #palletLocked := false;
+	        END_IF;
+	        IF #cmd.code = "MC_lockPallet" AND (#cmd.executed OR NOT #I_palletUnlocked) THEN
+	            #palletLocked := true;
+	        END_IF;
+	        
+	        IF #cmd.code = "MC_openVice" AND (#cmd.executed OR #I_viceOpened) THEN
+	            #viceLocked := false;
+	        END_IF;
+	        IF #cmd.code = "MC_closeVice" AND (#cmd.executed OR NOT #I_viceOpened) THEN
+	            #viceLocked := true;
+	        END_IF;
+	        
+	        IF #cmd.executed THEN
+	            #cmd.code := 0;
+	        END_IF;
+	        
+	    END_IF;
+	END_REGION ;
+	
+END_FUNCTION_BLOCK
+

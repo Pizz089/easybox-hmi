@@ -1,0 +1,184 @@
+﻿FUNCTION_BLOCK "FB_plant"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR 
+      Num_MC : Int := 2;
+      unitsDataReady : Bool;
+      ReqOpenDoors {InstructionName := 'R_TRIG'; LibVersion := '1.0'; S7_SetPoint := 'False'} : Array[1..4] of R_TRIG;
+      HL_ReqOpenDoor { S7_SetPoint := 'True'} : Array[1..4] of Bool;
+      TON_ReqOpenDoor {InstructionName := 'TON_TIME'; LibVersion := '1.0'; S7_SetPoint := 'False'} : Array[1..4] of TON_TIME;
+      Hold : Bool;
+      FP_hold {InstructionName := 'R_TRIG'; LibVersion := '1.0'; S7_SetPoint := 'False'} : R_TRIG;
+      testLamps { S7_SetPoint := 'True'} : Bool;
+      alertOn : Array[1..10] of Bool;
+      FP_doorHold {InstructionName := 'R_TRIG'; LibVersion := '1.0'; S7_SetPoint := 'False'} : R_TRIG;
+      FN_doorHold {InstructionName := 'F_TRIG'; LibVersion := '1.0'} : F_TRIG;
+   END_VAR
+
+   VAR_TEMP 
+      unitIndex : SInt;
+   END_VAR
+
+
+BEGIN
+	//Appena metto in automatico l'impianto vado a vedere lo stato delle units
+	//IF () THEN
+	    //ottengo lo stato della units
+	    //////"DB_executeQuery"(query:= 'select STATUS, PALLET, FIXTURE from MACHINE_STATUS ms');
+	//END_IF;    
+	
+	//TODO: DA FARE SOLO AL PRIMO GIRO DEL PLC (e controllare che non ci siano differenze tra i valori in memoria ed il DB, alrimenti chiedere all'operatore la situazione reale)
+	// IF "DB_executeQuery".dataReady THEN
+	//     FOR #unitIndex := 1 TO UDINT_TO_SINT("SqlData".data.rowCount) DO
+	        
+	//         CASE #unitIndex OF
+	//             1:
+	//                 "DB_MC1".Status := DINT_TO_INT("SqlData".data.rows[#unitIndex].col[0]);
+	//                 "DB_MC1".pallet := DINT_TO_INT("SqlData".data.rows[#unitIndex].col[1]);
+	//                 "DB_MC1".fixture := DINT_TO_INT("SqlData".data.rows[#unitIndex].col[2]);
+	//             2:
+	//                 "DB_MC2".Status := DINT_TO_INT("SqlData".data.rows[#unitIndex].col[0]);
+	//                 "DB_MC2".pallet := DINT_TO_INT("SqlData".data.rows[#unitIndex].col[1]);
+	//                 "DB_MC2".fixture := DINT_TO_INT("SqlData".data.rows[#unitIndex].col[2]);
+	//                 //3:
+	//                 // "DB_MC3".Status := DINT_TO_INT("SqlData".data.rows[#unitIndex].col[0]);
+	//                 // "DB_MC3".pallet := DINT_TO_INT("SqlData".data.rows[#unitIndex].col[1]);
+	//                 // "DB_MC3".fixture := DINT_TO_INT("SqlData".data.rows[#unitIndex].col[2]);
+	//         END_CASE;
+	        
+	//     END_FOR;
+	// END_IF;
+	// 
+	// [Commentato perché viene dato dall'operatore in fase di start della produzione]
+	
+	
+	REGION Management_RobotArea_Door 1
+	    // #ReqOpenDoors[1](CLK:="ReqAccessAreaRobot");
+	    
+	    // IF (#ReqOpenDoors[1].Q) THEN
+	    //     #HL_ReqOpenDoor[1] := TRUE;
+	    // END_IF;
+	    
+	    IF ("ReqAccessAreaRobot") THEN
+	        #HL_ReqOpenDoor[1] := TRUE;
+	    END_IF;
+	    
+	    #TON_ReqOpenDoor[1](IN := "ReqAccessAreaRobot",
+	                        PT := T#2s);
+	    
+	    IF (#HL_ReqOpenDoor[1]
+	        AND #TON_ReqOpenDoor[1].Q
+	        AND #ReqOpenDoors[1].Q
+	        ) THEN
+	        #HL_ReqOpenDoor[1] := FALSE;
+	    END_IF;
+	    
+	    //request to unlock door area robot 
+	    "DoorOpenRequest" := #HL_ReqOpenDoor[1] AND ("ReqAccessAreaRobot" OR NOT "Main_Safety_RTG1_DB".Aux_OK);
+	    
+	    #HL_ReqOpenDoor[1] :=   NOT ("Door_Robot_locked") OR (#HL_ReqOpenDoor[1] AND "Clock_5Hz");
+	    
+	END_REGION //Management_RobotArea_Door 1
+	
+	
+	REGION HOLD_MANAGER
+	    // TOGGLE VERO (19/9): l'ELSE azzerava #Hold a ogni scan senza fronte —
+	    // cioe' praticamente sempre — quindi NOT #Hold era sempre TRUE e ogni
+	    // pressione scriveva HOLD := TRUE. Il pulsante metteva in hold e non lo
+	    // toglieva mai. La statica deve mantenere il suo stato fra un fronte e
+	    // l'altro, quindi niente ELSE.
+	    //
+	    // GERARCHIA (19/9): l'hold da PULSANTE e' il master e si toglie solo da
+	    // pulsante; quello da pannello si toglie da entrambi. Per distinguerli
+	    // serve che la sorgente sia visibile, non solo il risultato: DB_Robot.HOLD
+	    // dice CHE la cella e' in hold, holdButton dice CHI ce l'ha messa. FB7
+	    // legge holdButton e rifiuta il comando 80 quando e' alto.
+	    #FP_hold(CLK := "SB_Hold");
+	    
+	    IF #FP_hold.Q THEN
+	        #Hold := NOT #Hold;
+	        "DB_Robot".holdButton := #Hold;
+	        "DB_Robot".HOLD := #Hold;
+	    END_IF;
+	    
+	    // HOLD DA SAFETY SUI SOLI FRONTI (19/9): porta cella aperta con robot in
+	    // automatico.
+	    // Scritto SUL FRONTE e non a ogni scan, perche' DB_Robot.HOLD lo scrivono
+	    // anche il pulsante qui sopra e il comando 80 dal pannello: una scrittura
+	    // continua li sovrascriverebbe entrambi a ogni ciclo, e il tasto del
+	    // pannello smetterebbe di funzionare.
+	    // Cosi' invece l'apertura porta IMPONE l'hold, la richiusura lo toglie, e
+	    // in mezzo l'operatore resta padrone del comando.
+	    //
+	    // NB: e' un HOLD, non un veto. Il ciclo si ferma dov'e' e riprende da li'
+	    // alla richiusura — diverso da Aux_OK, che azzera MissionCode e abbandona
+	    // la missione in corso. Il robot NON si ferma a meta' movimento: FB204 non
+	    // assegna nuove missioni, ma quella gia' lanciata la porta a termine.
+	    #FP_doorHold(CLK := NOT "Door_Robot_locked" AND "sys_Robot_Auto_Mode");
+	    #FN_doorHold(CLK := NOT "Door_Robot_locked" AND "sys_Robot_Auto_Mode");
+	    
+	    IF #FP_doorHold.Q THEN
+	        "DB_Robot".HOLD := TRUE;
+	        #Hold := TRUE;              // allinea il toggle: la prossima pressione toglie
+	    ELSIF #FN_doorHold.Q AND NOT "DB_Robot".holdButton THEN
+	        // la porta si richiude: si toglie l'hold SOLO se sotto non c'e' quello
+	        // del pulsante — quello e' master e lo toglie solo l'operatore in campo.
+	        "DB_Robot".HOLD := FALSE;
+	        #Hold := FALSE;
+	    END_IF;
+	END_REGION
+	
+	
+	REGION EMERGENCY BUTTON
+	    IF NOT "EMG_MC1" THEN
+	        IF NOT #alertOn[2] THEN
+	            "FC_MQTT"(insert := true,
+	                      "send" := false,
+	                      topic := 'FROM_PLANT/ALARM',
+	                      payload := STRING_TO_WSTRING(DINT_TO_STRING(900001)));
+	            #alertOn[2] := true;
+	        END_IF;
+	    ELSE
+	        #alertOn[2] := FALSE;
+	    END_IF;
+	    
+	    IF NOT "EMG_MC2" THEN
+	        IF NOT #alertOn[3] THEN
+	            "FC_MQTT"(insert := true,
+	                      send := false,
+	                      topic := 'FROM_PLANT/ALARM',
+	                      payload := STRING_TO_WSTRING(DINT_TO_STRING(900002)));
+	            #alertOn[3] := true;
+	        END_IF;
+	    ELSE
+	        #alertOn[3] := FALSE;
+	    END_IF;
+	    
+	    IF NOT "EMG_Robot" THEN
+	        IF NOT #alertOn[1] THEN
+	            "FC_MQTT"(insert := true,
+	                      "send" := false,
+	                      topic := 'FROM_PLANT/ALARM',
+	                      payload := STRING_TO_WSTRING(DINT_TO_STRING(900010)));
+	            #alertOn[1] := true;
+	        END_IF;
+	    ELSE
+	        #alertOn[1] := FALSE;
+	    END_IF;
+	    
+	    IF NOT "EMG_OP" THEN
+	        IF NOT #alertOn[4] THEN
+	            "FC_MQTT"(insert := true,
+	                      send := false,
+	                      topic := 'FROM_PLANT/ALARM',
+	                      payload := STRING_TO_WSTRING(DINT_TO_STRING(900011)));
+	            #alertOn[4] := true;
+	        END_IF;
+	    ELSE
+	        #alertOn[4] := FALSE;
+	    END_IF;
+	    
+	END_REGION
+	
+END_FUNCTION_BLOCK
+

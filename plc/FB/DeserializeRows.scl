@@ -1,0 +1,368 @@
+﻿FUNCTION_BLOCK "DeserializeRows"
+{ S7_Optimized_Access := 'TRUE' }
+AUTHOR : 'SIEMENS AG'
+VERSION : 3.0
+   VAR_INPUT 
+      columnCount { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : UInt;
+      columns { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Array[0.."LSQL_NUMBER_OF_COLUMNS_MAX"] of "LSql_typeColumn";
+      rowCount { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : UDInt;
+      rowDataStart { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : UInt;
+      rowDataLength { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : UDInt;
+      numberOfRowsPerCycle { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : USInt;
+      execute { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+   END_VAR
+
+   VAR_OUTPUT 
+      busy { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := FALSE;
+      done { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := FALSE;
+      error { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := FALSE;
+      warning { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := FALSE;
+      rowOverflow { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool := FALSE;
+      status { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Word := 16#0;
+   END_VAR
+
+   VAR_IN_OUT 
+      tdsTelegramArray : Array[*] of Byte;
+      rows : Array[*] of "typeTokenRow";
+   END_VAR
+
+   VAR 
+      statRowOverflow { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      statBusy { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      statDone { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      statError { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      statWarning { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      statStatus { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Word;
+      statRowsDeserialized { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : UDInt;
+      statByteAddressCounter { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : DInt;
+   END_VAR
+
+   VAR_TEMP 
+      tempRowLoopCounter : DInt;
+      tempRowLoopCounterUpper : DInt;
+      tempColumnLoopCounter : UInt;
+      tempByteCharArray : Array[0..507] of Byte;
+      tempTokenRowsUpperBound : DInt;
+      tempTokenRowsLowerBound : DInt;
+      tempDWord : DWord;
+      tempValueLength : UDInt;
+      tempRowDataTextptrLen : USInt;
+      tempRowDataTextTotalLength : UDInt;
+   END_VAR
+
+   VAR CONSTANT 
+      BYTE_EMPTY : Byte := 16#0;
+      TDS_TOKENROW_COLUMNTYPE_TEXT : UInt := 35;
+      TDS_TOKENROW_COLUMNTYPE_NTEXT : UInt := 99;
+      TDS_TOKENROW_DATATEXTTIMESTAMP_LENGTH : USInt := 8;
+      TDS_COLUMN_SIZEFIELDSIZE_0 : USInt := 0;
+      TDS_COLUMN_SIZEFIELDSIZE_1 : USInt := 1;
+      TDS_COLUMN_SIZEFIELDSIZE_2 : USInt := 2;
+      TDS_COLUMN_SIZEFIELDSIZE_4 : USInt := 4;
+      TDS_COLUMN_SIZEFIELDSIZE_8 : USInt := 8;
+      ERR_NOERROR : Word := 16#0000;
+      ERR_ROWARRAY_SIZENOTDEFINED : Word := 16#8601;
+      ERR_ROWARRAY_SIZEINCORRECT : Word := 16#8602;
+      ERR_ROWDATA_LENGHTNOTDEFINED : Word := 16#8603;
+      ERR_COLUMNS_COUNTINCORRECT : Word := 16#8604;
+      ERR_COULMNS_COLUMNNOTEXISTING : Word := 16#8605;
+   END_VAR
+
+
+BEGIN
+	REGION BLOCK INFO HEADER
+	  //=============================================================================
+	  // Siemens AG (c)Copyright (2022)
+	  //-----------------------------------------------------------------------------
+	  // Library:       SQL
+	  // Target:        S7-1500 V2.9 / S7-1200 V4.5
+	  // Engineering:   TIA Portal V17
+	  // Restrictions:  no
+	  // Requirements:  S7-1500 CPU / S7-1200 CPU
+	  // Functionality: deserialize SELECT row data array into row tokens and transform values to use case data types
+	  //-----------------------------------------------------------------------------
+	  // Change log table:
+	  // Version    Date         Expert in charge           Changes applied
+	  // 01.00.00   31.01.2022   Siemens SUP Applications   initially added to project
+	  // 01.00.01   29.09.2022   Siemens SUP Applications   - minor formatting changes
+	  //                                                    - bugfix for datatypes TEXT and NTEXT; dynamic adaption to field lengths
+	  //                                                    - deleted section for clearing unused rows because the number of valid rows is explicitly given
+	  // 01.01.00   06.10.2022   Siemens SUP Applications   using FC 'Lsql_BytesToString' for transforming character-based bytes to String
+	  //=============================================================================
+	END_REGION
+	
+	IF (#execute AND NOT #statDone) THEN
+	  #statBusy := TRUE;
+	  
+	  REGION check boundaries
+	    //get upper and lower bound of Array[*]
+	    #tempTokenRowsUpperBound := UPPER_BOUND(ARR := #rows, DIM := 1);
+	    #tempTokenRowsLowerBound := LOWER_BOUND(ARR := #rows, DIM := 1);
+	    //check for incorrect array boundaries or input values
+	    IF #tempTokenRowsUpperBound - #tempTokenRowsLowerBound <= 0 THEN
+	      #statStatus := #ERR_ROWARRAY_SIZENOTDEFINED;
+	      #statError := TRUE;
+	      GOTO END;
+	    ELSIF #tempTokenRowsUpperBound <= 0 OR #tempTokenRowsLowerBound < 0 THEN
+	      #statStatus := #ERR_ROWARRAY_SIZEINCORRECT;
+	      #statError := TRUE;
+	      GOTO END;
+	    ELSIF #rowDataLength <= 0 THEN
+	      #statStatus := #ERR_ROWDATA_LENGHTNOTDEFINED;
+	      #statError := TRUE;
+	      GOTO END;
+	    ELSIF #columnCount <= 0 THEN
+	      #statStatus := #ERR_COLUMNS_COUNTINCORRECT;
+	      #statError := TRUE;
+	      GOTO END;
+	    END_IF;
+	  END_REGION check boundaries  
+	  
+	  REGION check row overflow
+	    //check if SELECT fills more rows than the number of available rows in tokenRow array
+	    IF (#tempTokenRowsUpperBound - #tempTokenRowsLowerBound + 1 >= #rowCount) THEN
+	      #statRowOverflow := FALSE;
+	    ELSE
+	      #statRowOverflow := TRUE;
+	    END_IF;
+	  END_REGION check row overflow
+	  
+	  REGION svuoto la struttura dati
+	      FOR #tempRowLoopCounter := 0 TO #tempTokenRowsUpperBound BY 1 DO
+	          FOR #tempColumnLoopCounter := 0 TO "LSQL_NUMBER_OF_COLUMNS_MAX" - 1 BY 1 DO
+	              #rows[#tempRowLoopCounter].col[#tempColumnLoopCounter] := 0;
+	          END_FOR;
+	      END_FOR;
+	  END_REGION
+	  
+	  REGION deserialize data
+	    //start at lower array boundary on first call
+	    IF (#statRowsDeserialized = 0) THEN
+	      #statRowsDeserialized := DINT_TO_UDINT(#tempTokenRowsLowerBound);
+	      #statByteAddressCounter := #rowDataStart;
+	    END_IF;
+	    
+	    IF #numberOfRowsPerCycle <= 0 THEN
+	      //number of rows to be deserialized per cycle is not set, so do all available rows at once
+	      #tempRowLoopCounterUpper := #tempTokenRowsUpperBound;
+	    ELSIF #tempTokenRowsLowerBound + UDINT_TO_DINT(#statRowsDeserialized) + #numberOfRowsPerCycle - 1 < #tempTokenRowsUpperBound THEN
+	      //do the next batch of rows while upper bound of the array will not be reached yet
+	      #tempRowLoopCounterUpper := #tempTokenRowsLowerBound + UDINT_TO_DINT(#statRowsDeserialized) + #numberOfRowsPerCycle - 1;
+	    ELSE
+	      //do the next batch of rows until the upper bound of the array will be reached
+	      #tempRowLoopCounterUpper := #tempTokenRowsUpperBound;
+	    END_IF;
+	    
+	    //iteration over rows of the row array
+	    FOR #tempRowLoopCounter := (#tempTokenRowsLowerBound + UDINT_TO_DINT(#statRowsDeserialized)) TO #tempRowLoopCounterUpper BY 1
+	    DO
+	      //check if the array place will be occupied by a received row
+	      IF #tempRowLoopCounter - #tempTokenRowsLowerBound < #rowCount THEN
+	        
+	        //each row token is started by one byte '0xd1' identifying it as a TokenType
+	        #statByteAddressCounter += 1;
+	        
+	        //iteration over all columns given from ColumnMetaData
+	        FOR #tempColumnLoopCounter := 0 TO #columnCount - 1 BY 1
+	        DO
+	          //datatypes TEXT and NTEXT bring additional Data: 'Data Textptr Len', 'Data Textptr' and 'Data Text timestamp'
+	          IF (#columns[#tempColumnLoopCounter].columnType = #TDS_TOKENROW_COLUMNTYPE_TEXT OR #columns[#tempColumnLoopCounter].columnType = #TDS_TOKENROW_COLUMNTYPE_NTEXT) THEN
+	            #tempRowDataTextptrLen := BYTE_TO_USINT(#tdsTelegramArray[#statByteAddressCounter]);
+	            
+	            #tempRowDataTextTotalLength := 1 + #tempRowDataTextptrLen + #TDS_TOKENROW_DATATEXTTIMESTAMP_LENGTH;
+	            #statByteAddressCounter += UDINT_TO_DINT(#tempRowDataTextTotalLength);
+	          ELSE
+	            #tempRowDataTextTotalLength := 0;
+	          END_IF;
+	          
+	          //check if there is a field for the column size
+	          IF (#columns[#tempColumnLoopCounter].columnSizeFieldSize > 0) THEN
+	            
+	            #tempValueLength := 0;
+	            
+	            //read out the actual length
+	            CASE #columns[#tempColumnLoopCounter].columnSizeFieldSize OF
+	              #TDS_COLUMN_SIZEFIELDSIZE_1:
+	                #tempValueLength := DWORD_TO_UDINT("LGF_MergeBytesToDWord"(byte0 := #tdsTelegramArray[#statByteAddressCounter], byte1 := #BYTE_EMPTY, byte2 := #BYTE_EMPTY, byte3 := #BYTE_EMPTY));
+	              #TDS_COLUMN_SIZEFIELDSIZE_2:
+	                #tempValueLength := DWORD_TO_UDINT("LGF_MergeBytesToDWord"(byte0 := #tdsTelegramArray[#statByteAddressCounter], byte1 := #tdsTelegramArray[#statByteAddressCounter + 1], byte2 := #BYTE_EMPTY, byte3 := #BYTE_EMPTY));
+	              #TDS_COLUMN_SIZEFIELDSIZE_4:
+	                #tempValueLength := DWORD_TO_UDINT("LGF_MergeBytesToDWord"(byte0 := #tdsTelegramArray[#statByteAddressCounter], byte1 := #tdsTelegramArray[#statByteAddressCounter + 1], byte2 := #tdsTelegramArray[#statByteAddressCounter + 2], byte3 := #tdsTelegramArray[#statByteAddressCounter + 3]));
+	              ELSE
+	                #tempValueLength := #columns[#tempColumnLoopCounter].columnSize;
+	            END_CASE;
+	            
+	            IF (#tempValueLength < 0 OR #tempValueLength > #columns[#tempColumnLoopCounter].columnSize) THEN
+	              #tempValueLength := 0;
+	            END_IF;
+	            
+	          ELSE
+	            #tempValueLength := #columns[#tempColumnLoopCounter].columnSize;
+	          END_IF;
+	          
+	          //increment address counter
+	          #statByteAddressCounter += #columns[#tempColumnLoopCounter].columnSizeFieldSize;
+	          
+	          REGION --> use case deserializaition
+	              
+	              //#rows[#tempRowLoopCounter].col[#tempColumnLoopCounter] := WORD_TO_INT("LGF_MergeBytesToWord"(byte0 := #tdsTelegramArray[#statByteAddressCounter], byte1 := #tdsTelegramArray[#statByteAddressCounter + 1]));
+	              #rows[#tempRowLoopCounter].col[#tempColumnLoopCounter] := DWORD_TO_DINT("LGF_MergeBytesToDWord"(
+	                                                                                                                                                                                      byte0 := #tdsTelegramArray[#statByteAddressCounter],
+	                                                                                                                                                                                      byte1 := #tdsTelegramArray[#statByteAddressCounter + 1],
+	                                                                                                                                                                                      byte2 := #tdsTelegramArray[#statByteAddressCounter + 2],
+	                                                                                                                                                                                      byte3 := #tdsTelegramArray[#statByteAddressCounter + 3]));
+	                
+	            //IF - ELSIF case selection on the columName
+	            
+	            // IF #columns[#tempColumnLoopCounter].columnName = 'ID' THEN
+	            //   REGION example INT
+	            //     //merge next two BYTE to WORD and then convert to INT
+	            //     #rows[#tempRowLoopCounter].ID := WORD_TO_INT("LGF_MergeBytesToWord"(byte0 := #tdsTelegramArray[#statByteAddressCounter], byte1 := #tdsTelegramArray[#statByteAddressCounter + 1]));
+	            // END_REGION example Int
+	            
+	            // ELSIF #columns[#tempColumnLoopCounter].columnName = 'NUM_POSTI' THEN
+	            //   REGION example INT
+	            //       //merge next two BYTE to WORD and then convert to INT
+	            //       #rows[#tempRowLoopCounter].NUM_POSTI := WORD_TO_INT("LGF_MergeBytesToWord"(byte0 := #tdsTelegramArray[#statByteAddressCounter], byte1 := #tdsTelegramArray[#statByteAddressCounter + 1]));
+	            //   END_REGION example Int
+	              
+	            // ELSIF #columns[#tempColumnLoopCounter].columnName = 'NUM_GREZZI' THEN
+	            //   REGION example INT
+	            //       //merge next two BYTE to WORD and then convert to INT
+	            //       #rows[#tempRowLoopCounter].num_greZZI:= WORD_TO_INT("LGF_MergeBytesToWord"(byte0 := #tdsTelegramArray[#statByteAddressCounter], byte1 := #tdsTelegramArray[#statByteAddressCounter + 1]));
+	            //   END_REGION example Int
+	            
+	            (*ELSIF #columns[#tempColumnLoopCounter].columnName = 'Fresh' THEN
+	              REGION example Bool
+	                //convert BYTE to BOOL
+	                #rows[#tempRowLoopCounter].Fresh := BYTE_TO_BOOL(#tdsTelegramArray[#statByteAddressCounter]);
+	              END_REGION example Bool
+	              
+	            ELSIF #columns[#tempColumnLoopCounter].columnName = 'Color' THEN
+	              REGION example String
+	                //move Bytes to temporary array
+	                MOVE_BLK(IN    := #tdsTelegramArray[#statByteAddressCounter],
+	                         COUNT := UDINT_TO_UINT(#tempValueLength),
+	                         OUT   => #tempByteCharArray[0]);
+	                
+	                //convert BYTE array to STRING
+	                #rows[#tempRowLoopCounter].NUM_POSTI := "LSql_BytesToString"(columnType := #columns[#tempColumnLoopCounter].columnType, byteArray := #tempByteCharArray, numberOfBytes := UDINT_TO_UINT(#tempValueLength));
+	              END_REGION example String
+	              
+	            ELSIF #columns[#tempColumnLoopCounter].columnName = 'Fruit' THEN
+	              REGION example String
+	                //move Bytes to temporary array
+	                MOVE_BLK(IN    := #tdsTelegramArray[#statByteAddressCounter],
+	                         COUNT := UDINT_TO_UINT(#tempValueLength),
+	                         OUT   => #tempByteCharArray[0]);
+	                
+	                //convert BYTE array to STRING
+	                #rows[#tempRowLoopCounter].num_greZZI := "LSql_BytesToString"(columnType := #columns[#tempColumnLoopCounter].columnType, byteArray := #tempByteCharArray, numberOfBytes := UDINT_TO_UINT(#tempValueLength));
+	              END_REGION example String
+	              
+	            ELSIF #columns[#tempColumnLoopCounter].columnName = 'Country' THEN
+	              REGION example String
+	                //move Bytes to temporary array
+	                MOVE_BLK(IN    := #tdsTelegramArray[#statByteAddressCounter],
+	                         COUNT := UDINT_TO_UINT(#tempValueLength),
+	                         OUT   => #tempByteCharArray[0]);
+	                
+	                //convert BYTE array to STRING
+	                #rows[#tempRowLoopCounter].Country := "LSql_BytesToString"(columnType := #columns[#tempColumnLoopCounter].columnType, byteArray := #tempByteCharArray, numberOfBytes := UDINT_TO_UINT(#tempValueLength));
+	              END_REGION example String
+	              
+	            ELSIF #columns[#tempColumnLoopCounter].columnName = 'CountryCode' THEN
+	              REGION example String
+	                //move Bytes to temporary array
+	                MOVE_BLK(IN    := #tdsTelegramArray[#statByteAddressCounter],
+	                         COUNT := UDINT_TO_UINT(#tempValueLength),
+	                         OUT   => #tempByteCharArray[0]);
+	                
+	                //convert BYTE array to STRING
+	                #rows[#tempRowLoopCounter].CountryCode := "LSql_BytesToString"(columnType := #columns[#tempColumnLoopCounter].columnType, byteArray := #tempByteCharArray, numberOfBytes := UDINT_TO_UINT(#tempValueLength));
+	              END_REGION example String
+	              
+	            ELSIF #columns[#tempColumnLoopCounter].columnName = 'City' THEN
+	              REGION example String
+	                //move Bytes to temporary array
+	                MOVE_BLK(IN    := #tdsTelegramArray[#statByteAddressCounter],
+	                         COUNT := UDINT_TO_UINT(#tempValueLength),
+	                         OUT   => #tempByteCharArray[0]);
+	                
+	                //convert BYTE array to STRING
+	                #rows[#tempRowLoopCounter].City := "LSql_BytesToString"(columnType := #columns[#tempColumnLoopCounter].columnType, byteArray := #tempByteCharArray, numberOfBytes := UDINT_TO_UINT(#tempValueLength));
+	              END_REGION example String
+	              
+	            ELSIF #columns[#tempColumnLoopCounter].columnName = 'Taste' THEN
+	              REGION example String
+	                //move Bytes to temporary array
+	                MOVE_BLK(IN    := #tdsTelegramArray[#statByteAddressCounter],
+	                         COUNT := UDINT_TO_UINT(#tempValueLength),
+	                         OUT   => #tempByteCharArray[0]);
+	                
+	                //convert BYTE array to STRING
+	                #rows[#tempRowLoopCounter].Taste := "LSql_BytesToString"(columnType := #columns[#tempColumnLoopCounter].columnType, byteArray := #tempByteCharArray, numberOfBytes := UDINT_TO_UINT(#tempValueLength));
+	              END_REGION example String
+	              *)
+	            // ELSE
+	            //   //column name is not handled by user program case
+	            //   #statWarning := TRUE;
+	              
+	            //   //check if there has not been any other major error yet
+	            //   IF (#statStatus = #ERR_NOERROR) THEN
+	            //     #statStatus := #ERR_COULMNS_COLUMNNOTEXISTING;
+	            //   END_IF;
+	              
+	            // END_IF;
+	           END_REGION --> use case deserializaition
+	          
+	          //iterate counter by the column size
+	          #statByteAddressCounter += UDINT_TO_DINT(#tempValueLength);
+	        END_FOR;
+	        
+	        //increment counter of deserialized rows
+	        #statRowsDeserialized += 1;
+	        
+	      ELSE
+	        //the upper slots of the row array will not be filled with received rows anymore
+	        //loop execiution can be ended
+	        //the number of valid rows is explicitly given as output parameter
+	        //set #statRowsDeserialized to the overall final value so the execution does not go on
+	        #statRowsDeserialized := DINT_TO_UDINT(#tempTokenRowsUpperBound - #tempTokenRowsLowerBound + 1);
+	        EXIT;
+	        
+	      END_IF;
+	      
+	    END_FOR;
+	    
+	END_REGION deserialize data
+	
+	
+	  //operation completed
+	  IF (#statRowsDeserialized >= #tempTokenRowsUpperBound - #tempTokenRowsLowerBound + 1) THEN
+	    #statDone := TRUE;
+	    #statBusy := FALSE;
+	  END_IF;
+	  
+	ELSIF NOT #execute THEN
+	  //no execution, reset static output values
+	  #statError := FALSE;
+	  #statStatus := #ERR_NOERROR;
+	  #statDone := FALSE;
+	  #statBusy := FALSE;
+	  #statWarning := FALSE;
+	  #statRowsDeserialized := 0;
+	END_IF;
+	
+	REGION WRITE OUTPUTS
+	END:
+	  //finally write static values to outputs
+	  #rowOverflow := #statRowOverflow;
+	  #status := #statStatus;
+	  #error := #statError;
+	  #warning := #statWarning;
+	  #busy := #statBusy;
+	  #done := #statDone;
+	END_REGION WRITE OUTPUTS
+END_FUNCTION_BLOCK
+

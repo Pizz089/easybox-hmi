@@ -1,0 +1,10 @@
+﻿DATA_BLOCK "DB_plant"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+NON_RETAIN
+"FB_plant"
+
+BEGIN
+
+END_DATA_BLOCK
+

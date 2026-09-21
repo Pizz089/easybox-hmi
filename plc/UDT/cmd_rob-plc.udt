@@ -1,0 +1,17 @@
+﻿TYPE "cmd_rob-plc"
+VERSION : 0.1
+   STRUCT
+      Lock_Pallet : Bool;
+      Unlock_Pallet : Bool;
+      Lock_Vice : Bool;
+      Unlock_Vice : Bool;
+      Open_door : Bool;
+      Close_door : Bool;
+      Lock_partOnTable : Bool;
+      Unlock_partOnTable : Bool;
+      Blow : Bool;
+      Wash : Bool;
+   END_STRUCT;
+
+END_TYPE
+

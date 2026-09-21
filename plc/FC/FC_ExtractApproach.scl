@@ -1,0 +1,21 @@
+﻿FUNCTION "FC_ExtractApproach" : Int
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      approachVal : DInt;
+      pick : Bool;
+   END_VAR
+
+
+BEGIN
+	IF DINT_TO_INT(#approachVal) < 1000 THEN
+	    #FC_ExtractApproach := DINT_TO_INT(#approachVal);
+	ELSE
+	    IF #pick THEN
+	        #FC_ExtractApproach := TRUNC_INT(#approachVal / 1000);
+	    ELSE
+	        #FC_ExtractApproach := DINT_TO_INT(#approachVal) - (TRUNC_INT(#approachVal / 1000) * 1000);
+	    END_IF;
+	END_IF;
+END_FUNCTION
+

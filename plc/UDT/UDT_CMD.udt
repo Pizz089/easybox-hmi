@@ -1,0 +1,13 @@
+﻿TYPE "UDT_CMD"
+VERSION : 0.1
+   STRUCT
+      code : Int;
+      acquired : Bool;
+      executing : Bool;
+      executed : Bool;
+      aborted : Bool;
+      rejected : Bool;
+   END_STRUCT;
+
+END_TYPE
+

@@ -1,0 +1,84 @@
+﻿FUNCTION "FC_Map_Generic" : Void
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      inBytes : Array[0..1] of Byte;   // finestra ingressi fisici della posizione
+      cfg : "UDT_MachineIOConfig";   // config del brand selezionato
+   END_VAR
+
+   VAR_OUTPUT 
+      outBytes : Array[0..1] of Byte;   // finestra uscite fisiche della posizione
+   END_VAR
+
+   VAR_IN_OUT 
+      io_in : "UDT_MachineIn";
+      io_out : "UDT_MachineOut";
+   END_VAR
+
+   VAR_TEMP 
+      b : USInt;
+   END_VAR
+
+
+BEGIN
+	// ============ INGRESSI: byte fisico -> struct logico ============
+	#io_in.doorOpened       := #cfg.in[0].present AND (#cfg.in[0].inverted XOR "GET_BIT"(inByte := #inBytes[#cfg.in[0].byteOff], bit := #cfg.in[0].bitOff));
+	#io_in.doorClosed       := #cfg.in[1].present AND (#cfg.in[1].inverted XOR "GET_BIT"(inByte := #inBytes[#cfg.in[1].byteOff], bit := #cfg.in[1].bitOff));
+	#io_in.viceOpened       := #cfg.in[2].present AND (#cfg.in[2].inverted XOR "GET_BIT"(inByte := #inBytes[#cfg.in[2].byteOff], bit := #cfg.in[2].bitOff));
+	#io_in.viceClosed       := #cfg.in[3].present AND (#cfg.in[3].inverted XOR "GET_BIT"(inByte := #inBytes[#cfg.in[3].byteOff], bit := #cfg.in[3].bitOff));
+	#io_in.palletUnlocked   := #cfg.in[4].present AND (#cfg.in[4].inverted XOR "GET_BIT"(inByte := #inBytes[#cfg.in[4].byteOff], bit := #cfg.in[4].bitOff));
+	#io_in.palletLocked     := #cfg.in[5].present AND (#cfg.in[5].inverted XOR "GET_BIT"(inByte := #inBytes[#cfg.in[5].byteOff], bit := #cfg.in[5].bitOff));
+	#io_in.autoMode         := #cfg.in[6].present AND (#cfg.in[6].inverted XOR "GET_BIT"(inByte := #inBytes[#cfg.in[6].byteOff], bit := #cfg.in[6].bitOff));
+	#io_in.endWork          := #cfg.in[7].present AND (#cfg.in[7].inverted XOR "GET_BIT"(inByte := #inBytes[#cfg.in[7].byteOff], bit := #cfg.in[7].bitOff));
+	#io_in.endClean         := #cfg.in[8].present AND (#cfg.in[8].inverted XOR "GET_BIT"(inByte := #inBytes[#cfg.in[8].byteOff], bit := #cfg.in[8].bitOff));
+	#io_in.serviceCall      := #cfg.in[9].present AND (#cfg.in[9].inverted XOR "GET_BIT"(inByte := #inBytes[#cfg.in[9].byteOff], bit := #cfg.in[9].bitOff));
+	
+	// ============ USCITE: struct logico -> byte fisico ============
+	#outBytes[0] := 0;
+	#outBytes[1] := 0;
+	IF #cfg.out[0].present THEN
+	    #b := #cfg.out[0].byteOff;
+	    #outBytes[#b] := "SET_BIT"(inByte := #outBytes[#b], bit := #cfg.out[0].bitOff, val := #cfg.out[0].inverted XOR #io_out.openDoor);
+	END_IF;
+	IF #cfg.out[1].present THEN
+	    #b := #cfg.out[1].byteOff;
+	    #outBytes[#b] := "SET_BIT"(inByte := #outBytes[#b], bit := #cfg.out[1].bitOff, val := #cfg.out[1].inverted XOR #io_out.closeDoor);
+	END_IF;
+	IF #cfg.out[2].present THEN
+	    #b := #cfg.out[2].byteOff;
+	    #outBytes[#b] := "SET_BIT"(inByte := #outBytes[#b], bit := #cfg.out[2].bitOff, val := #cfg.out[2].inverted XOR #io_out.openVice);
+	END_IF;
+	IF #cfg.out[3].present THEN
+	    #b := #cfg.out[3].byteOff;
+	    #outBytes[#b] := "SET_BIT"(inByte := #outBytes[#b], bit := #cfg.out[3].bitOff, val := #cfg.out[3].inverted XOR #io_out.closeVice);
+	END_IF;
+	IF #cfg.out[4].present THEN
+	    #b := #cfg.out[4].byteOff;
+	    #outBytes[#b] := "SET_BIT"(inByte := #outBytes[#b], bit := #cfg.out[4].bitOff, val := #cfg.out[4].inverted XOR #io_out.unlockPallet);
+	END_IF;
+	IF #cfg.out[5].present THEN
+	    #b := #cfg.out[5].byteOff;
+	    #outBytes[#b] := "SET_BIT"(inByte := #outBytes[#b], bit := #cfg.out[5].bitOff, val := #cfg.out[5].inverted XOR #io_out.lockPallet);
+	END_IF;
+	IF #cfg.out[6].present THEN
+	    #b := #cfg.out[6].byteOff;
+	    #outBytes[#b] := "SET_BIT"(inByte := #outBytes[#b], bit := #cfg.out[6].bitOff, val := #cfg.out[6].inverted XOR #io_out.unlockPartOnTable);
+	END_IF;
+	IF #cfg.out[7].present THEN
+	    #b := #cfg.out[7].byteOff;
+	    #outBytes[#b] := "SET_BIT"(inByte := #outBytes[#b], bit := #cfg.out[7].bitOff, val := #cfg.out[7].inverted XOR #io_out.lockPartOnTable);
+	END_IF;
+	IF #cfg.out[8].present THEN
+	    #b := #cfg.out[8].byteOff;
+	    #outBytes[#b] := "SET_BIT"(inByte := #outBytes[#b], bit := #cfg.out[8].bitOff, val := #cfg.out[8].inverted XOR #io_out.startWork);
+	END_IF;
+	IF #cfg.out[9].present THEN
+	    #b := #cfg.out[9].byteOff;
+	    #outBytes[#b] := "SET_BIT"(inByte := #outBytes[#b], bit := #cfg.out[9].bitOff, val := #cfg.out[9].inverted XOR #io_out.startWash);
+	END_IF;
+	IF #cfg.out[10].present THEN
+	    #b := #cfg.out[10].byteOff;
+	    #outBytes[#b] := "SET_BIT"(inByte := #outBytes[#b], bit := #cfg.out[10].bitOff, val := #cfg.out[10].inverted XOR #io_out.fuoriIngombro);
+	END_IF;
+END_FUNCTION
+

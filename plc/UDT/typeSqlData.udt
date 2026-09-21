@@ -1,0 +1,17 @@
+﻿TYPE "typeSqlData"
+VERSION : 0.1
+   STRUCT
+      tdsHeader { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_SetPoint := 'False'} : "LSql_typePacketHeader";
+      columnCount { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : UInt;
+      columns { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_SetPoint := 'False'} : Array[0.."LSQL_NUMBER_OF_COLUMNS_MAX"] of "LSql_typeColumn";
+      rowDataStart { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : UInt;
+      rowDataLength { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : UDInt;
+      rowCount { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : UDInt;
+      rowOverflow { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Bool;
+      rows { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_SetPoint := 'False'} : Array[0.."LSQL_NUMBER_OF_ROWS_MAX"] of "typeTokenRow";
+      errorToken { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_SetPoint := 'False'} : "LSql_typeErrorToken";
+      rowReceived : UInt;
+   END_STRUCT;
+
+END_TYPE
+

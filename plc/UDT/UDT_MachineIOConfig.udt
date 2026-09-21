@@ -1,0 +1,11 @@
+﻿TYPE "UDT_MachineIOConfig"
+VERSION : 0.1
+   STRUCT
+      "name" : String[24];   // nome brand (per HMI/diagnostica)
+      cycleArchetype : Int;   // 1=porta pilotata, 2=porta autonoma, ...
+      in { S7_SetPoint := 'False'} : Array[0..9] of "UDT_SignalMap";
+      out : Array[0..10] of "UDT_SignalMap";
+   END_STRUCT;
+
+END_TYPE
+

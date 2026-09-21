@@ -1,0 +1,23 @@
+﻿TYPE "SystemSignalsIN"
+VERSION : 0.1
+   STRUCT
+      IMSTP : Bool;
+      HOLD : Bool;
+      SFSPD : Bool;
+      stopCycle : Bool;
+      FaultReset : Bool;
+      START : Bool;
+      home : Bool;
+      enable : Bool;
+      RSR1 : Bool;
+      RSR2 : Bool;
+      free : Bool;
+      free_1 : Bool;
+      free_2 : Bool;
+      free_3 : Bool;
+      free_4 : Bool;
+      LIFEBIT_IN : Bool;
+   END_STRUCT;
+
+END_TYPE
+

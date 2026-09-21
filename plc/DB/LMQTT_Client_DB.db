@@ -1,0 +1,12 @@
+﻿DATA_BLOCK "LMQTT_Client_DB"
+{ S7_Optimized_Access := 'TRUE' }
+AUTHOR : 'Siemens Industry Online Support'
+FAMILY : LMQTT
+VERSION : 4.0
+NON_RETAIN
+"LMQTT_Client"
+
+BEGIN
+
+END_DATA_BLOCK
+

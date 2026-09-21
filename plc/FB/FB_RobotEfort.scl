@@ -1,0 +1,384 @@
+﻿FUNCTION_BLOCK "FB_RobotEfort"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR 
+      dispatcher : Array[0..5] of Int;
+      timeout {InstructionName := 'TON_TIME'; LibVersion := '1.0'; S7_SetPoint := 'False'} : Array[0..5] of TON_TIME;
+      FP {InstructionName := 'R_TRIG'; LibVersion := '1.0'} : Array[0..5] of R_TRIG;
+      lastNewQuota { S7_SetPoint := 'True'} : String;
+      lastSpeed : Int;
+      sensorOld : Bool;
+      codeOld : Int := -1;
+   END_VAR
+
+   VAR_TEMP 
+      newQuota : String;
+   END_VAR
+
+
+BEGIN
+	(* Robot EFORT:
+	    comunication with Profinet (MAX 176Words)
+	    I/O configuration: 
+	        Boolean 95
+	        Integer 77
+	        Float    2 (not used)
+	*)
+	
+	REGION Signal_TO_ROBOT
+	    
+	    "sys_pauseProgram" := "DB_plant".Hold OR "DB_Robot".HOLD OR #dispatcher[1] >= 10;
+	    
+	    //"System_SetRobotspeed" := 100; /// DA TESTARE!!!
+	    
+	    //IF NOT "DB_Robot".HOLD AND "DB_RobotMissionStatus".StatusCode<>"cmd_aborted" THEN
+	    "Mission_Command" := "DB_RobotMission".Command;
+	    
+	    "ApproachType" := "DB_RobotMission".ApproachType;
+	    
+	    "Unit_code" := "DB_RobotMission".Unit_code;
+	    
+	    "Object_Type" := "DB_RobotMission".Object_Type;
+	    
+	    "Gripper_Side" := "DB_RobotMission".Gripper_Side;
+	    
+	    "Gripper_code" := DINT_TO_INT("DB_RobotMission".Gripper_code);
+	    
+	    "FC_Split_Dint"(IN := "DB_RobotMission"."X_Pick-Place",
+	                    HIGH_Word => "X_Pick-Place_HIGH",
+	                    LOW_Word => "X_Pick-Place_LOW");
+	    "FC_Split_Dint"(IN := "DB_RobotMission"."Y_Pick-Place",
+	                    HIGH_Word => "Y_Pick-Place_HIGH",
+	                    LOW_Word => "Y_Pick-Place_LOW");
+	    "FC_Split_Dint"(IN := "DB_RobotMission"."Z_Pick-Place",
+	                    HIGH_Word => "Z_Pick-Place_HIGH",
+	                    LOW_Word => "Z_Pick-Place_LOW");
+	    
+	    "FC_Split_Dint"(IN := "DB_RobotMission"."XRot_Pick-Place",
+	                    HIGH_Word => "XRot_Pick-Place_HIGH",
+	                    LOW_Word => "XRot_Pick-Place_LOW");
+	    "FC_Split_Dint"(IN := "DB_RobotMission"."YRot_Pick-Place",
+	                    HIGH_Word => "YRot_Pick-Place_HIGH",
+	                    LOW_Word => "YRot_Pick-Place_LOW");
+	    "FC_Split_Dint"(IN := "DB_RobotMission"."ZRot_Pick-Place",
+	                    HIGH_Word => "ZRot_Pick-Place_HIGH",
+	                    LOW_Word => "ZRot_Pick-Place_LOW");
+	    
+	    "FC_Split_Dint"(IN := "DB_RobotMission".Gripper1_XDim,
+	                    HIGH_Word => "Gripper1_XDim_HIGH",
+	                    LOW_Word => "Gripper1_XDim_LOW");
+	    "FC_Split_Dint"(IN := "DB_RobotMission".Gripper1_YDim,
+	                    HIGH_Word => "Gripper1_YDim_HIGH",
+	                    LOW_Word => "Gripper1_YDim_LOW");
+	    "FC_Split_Dint"(IN := "DB_RobotMission".Gripper1_ZDim,
+	                    HIGH_Word => "Gripper1_ZDim_HIGH",
+	                    LOW_Word => "Gripper1_ZDim_LOW");
+	    
+	    "FC_Split_Dint"(IN := "DB_RobotMission".Gripper1_XRotDim,
+	                    HIGH_Word => "Gripper1_XRotDim_HIGH",
+	                    LOW_Word => "Gripper1_XRotDim_LOW");
+	    "FC_Split_Dint"(IN := "DB_RobotMission".Gripper1_YRotDim,
+	                    HIGH_Word => "Gripper1_YRotDim_HIGH",
+	                    LOW_Word => "Gripper1_YRotDim_LOW");
+	    "FC_Split_Dint"(IN := "DB_RobotMission".Gripper1_ZRotDim,
+	                    HIGH_Word => "Gripper1_ZRotDim_HIGH",
+	                    LOW_Word => "Gripper1_ZRotDim_LOW");
+	    
+	    "FC_Split_Dint"(IN := "DB_RobotMission".Gripper2_XDim,
+	                    HIGH_Word => "Gripper2_XDim_HIGH",
+	                    LOW_Word => "Gripper2_XDim_LOW");
+	    "FC_Split_Dint"(IN := "DB_RobotMission".Gripper2_YDim,
+	                    HIGH_Word => "Gripper2_YDim_HIGH",
+	                    LOW_Word => "Gripper2_YDim_LOW");
+	    "FC_Split_Dint"(IN := "DB_RobotMission".Gripper2_ZDim,
+	                    HIGH_Word => "Gripper2_ZDim_HIGH",
+	                    LOW_Word => "Gripper2_ZDim_LOW");
+	    
+	    "FC_Split_Dint"(IN := "DB_RobotMission".Gripper2_XRotDim,
+	                    HIGH_Word => "Gripper2_XRotDim_HIGH",
+	                    LOW_Word => "Gripper2_XRotDim_LOW");
+	    "FC_Split_Dint"(IN := "DB_RobotMission".Gripper2_YRotDim,
+	                    HIGH_Word => "Gripper2_YRotDim_HIGH",
+	                    LOW_Word => "Gripper2_YRotDim_LOW");
+	    "FC_Split_Dint"(IN := "DB_RobotMission".Gripper2_ZRotDim,
+	                    HIGH_Word => "Gripper2_ZRotDim_HIGH",
+	                    LOW_Word => "Gripper2_ZRotDim_LOW");
+	    
+	    "FC_Split_Dint"(IN := "DB_RobotMission".X_approach,
+	                    HIGH_Word => "X_approach_HIGH",
+	                    LOW_Word => "X_approach_LOW");
+	    "FC_Split_Dint"(IN := "DB_RobotMission".Y_approach,
+	                    HIGH_Word => "Y_approach_HIGH",
+	                    LOW_Word => "Y_approach_LOW");
+	    "FC_Split_Dint"(IN := "DB_RobotMission".Z_approach,
+	                    HIGH_Word => "Z_approach_HIGH",
+	                    LOW_Word => "Z_approach_LOW");
+	    
+	    "FC_Split_Dint"(IN := "DB_RobotMission".XRot_approach,
+	                    HIGH_Word => "XRot_approach_HIGH",
+	                    LOW_Word => "XRot_approach_LOW");
+	    "FC_Split_Dint"(IN := "DB_RobotMission".YRot_approach,
+	                    HIGH_Word => "YRot_approach_HIGH",
+	                    LOW_Word => "YRot_approach_LOW");
+	    "FC_Split_Dint"(IN := "DB_RobotMission".ZRot_approach,
+	                    HIGH_Word => "ZRot_approach_HIGH",
+	                    LOW_Word => "ZRot_approach_LOW");
+	    
+	    //Special option — ACQ handshake HAAS (MC1)
+	    //Ancoraggio: richiesta robot a livello (Robot_cmd_*) AND riscontro fisico (io_in).
+	    //Sale solo a ferro raggiunto, cade al ritiro della richiesta. AND NOT incrociato anti-richieste contraddittorie.
+	    //NOTA NOMI: ACQ_Gripper* = MORSA (nome storico infelice); verso nome-fa-fede.
+	    
+	    // Pallet
+	    "ACQ_PalletLockedReq" := "Robot_cmd_LockPallet" AND NOT "Robot_cmd_UnlockPallet" AND "DB_MC1".io_in.palletLocked;
+	    "ACQ_PalletUnlockedReq" := "Robot_cmd_UnlockPallet" AND NOT "Robot_cmd_LockPallet" AND "DB_MC1".io_in.palletUnlocked;
+	    
+	    // Morsa
+	    "ACQ_GripperLockedReq" := "Robot_cmd_LockPart" AND NOT "Robot_cmd_UnlockPart" AND "DB_MC1".io_in.viceClosed;
+	    "ACQ_GripperUnlockedReq" := "Robot_cmd_UnlockPart" AND NOT "Robot_cmd_LockPart" AND "DB_MC1".io_in.viceOpened;
+	    
+	    // Porta — HAAS autodoor: il PLC non attua, ACQ dal solo feedback macchina
+	    "ACQ_DoorLockedReq" := "Robot_cmd_CloseDoor" AND NOT "Robot_cmd_OpenDoor" AND "DB_MC1".io_in.doorClosed;
+	    "ACQ_DoorUnlockedReq" := "Robot_cmd_OpenDoor" AND NOT "Robot_cmd_CloseDoor" AND "DB_MC1".io_in.doorOpened;
+	    
+	    "Ok_Phase2" := "DB_Robot".swapDataReady;
+	    "Option_free_4" := false;
+	    "Option_free_5" := false;
+	    "Option_free_6" := false;
+	    "Option_free_7" := false;
+	    "Option_free_8" := false;
+	    "Option_free_9" := false;
+	    "Option_free_10" := false;
+	    
+	    //status commands — MC1 unica macchina: stati CONTINUI, senza gate Unit_code
+	    //(il ramo Unit_code=12 leggeva la dummy DB_MC2: RIMOSSO)
+	    "cmd_Status_PalletLocked" := "DB_MC1".io_in.palletLocked;
+	    "cmd_Status_PalletUnlocked" := "DB_MC1".io_in.palletUnlocked;
+	    "cmd_status_Vice_locked" := "DB_MC1".io_in.viceClosed;
+	    "cmd_status_Vice_unlocked" := "DB_MC1".io_in.viceOpened;
+	    "cmd_status_DoorOpened" := "DB_MC1".io_in.doorOpened;
+	    "cmd_status_DoorClosed" := "DB_MC1".io_in.doorClosed;
+	    "cmd_MC_auto" := "I_MC1_AutoMode" AND "MAC1_door_open_CH1" AND "MAC1_door_open_CH2";
+	    "cmd_status_free_5" := FALSE;
+	    
+	    "cmd_status_Gripper_1_Ready" := "DB_Robot".Gripper_ID[1] > 0;
+	    "cmd_status_Gripper_2_Ready" := "DB_Robot".Gripper_ID[2] > 0;
+	END_REGION
+	
+	REGION ACQ richieste robot
+	    // ACQ = richiesta robot attiva AND riscontro fisico DIRETTO raggiunto
+	    // (riscontri affermativi: a organo in corsa nessun ACQ sale)
+	    "ACQ_PalletLockedReq" := "Robot_cmd_LockPallet" AND "DB_MC1".io_in.palletLocked;
+	    "ACQ_PalletUnlockedReq" := "Robot_cmd_UnlockPallet" AND "DB_MC1".io_in.palletUnlocked;
+	    "ACQ_GripperLockedReq" := "Robot_cmd_LockPart" AND "DB_MC1".io_in.viceClosed;
+	    "ACQ_GripperUnlockedReq" := "Robot_cmd_UnlockPart" AND "DB_MC1".io_in.viceOpened;
+	    "ACQ_DoorUnlockedReq" := "Robot_cmd_OpenDoor" AND "DB_MC1".io_in.doorOpened;
+	    "ACQ_DoorLockedReq" := "Robot_cmd_CloseDoor" AND "DB_MC1".io_in.doorClosed;
+	END_REGION
+	
+	
+	REGION Signal_FROM_ROBOT
+	    //INPUT
+	    "DB_RobotMissionStatus".StatusRegister.Ready := "sys_Robot_Auto_Mode" OR "sys_manual_T1" OR "sys_manual_Full"; //communication are started
+	    "DB_RobotMissionStatus".StatusRegister.Executing := "sys_Robot_Run_State";
+	    "DB_RobotMissionStatus".StatusRegister.Hold := NOT "sys_Robot_Run_State";
+	    "DB_RobotMissionStatus".StatusRegister.Alarm := "sys_Robot_AlarmState" OR "Alarmcode" > 0;
+	    "DB_RobotMissionStatus".StatusRegister.HOME_position := "sys_AxisSafePosition1";
+	    "DB_RobotMissionStatus".StatusRegister.GripperMounted := "Gripper_mounted";
+	    "DB_RobotMissionStatus".StatusRegister.Gripper1_occuped := "Gripper1_Closed";
+	    "DB_RobotMissionStatus".StatusRegister.Gripper2_occuped := "Gripper2_Closed";
+	    "DB_RobotMissionStatus".StatusRegister.Maintenance_position := "sys_AxisSafePosition2";
+	    "DB_RobotMissionStatus".StatusRegister.Robot_in_area := "Robot_IN_AREA";
+	    "DB_RobotMissionStatus".StatusRegister.Manual_mode := "sys_manual_T1" OR "sys_manual_Full";
+	    "DB_Robot".Auto := "sys_Robot_Auto_Mode";
+	    "DB_RobotMissionStatus".AllarmCode := "Alarmcode";
+	    IF "Gripper_mounted" THEN
+	        "DB_RobotMissionStatus".GripperCode := "GripperCodeMounted";
+	    ELSE
+	        "DB_RobotMissionStatus".GripperCode := 0;
+	    END_IF;
+	    
+	    IF DINT_TO_INT("DB_RobotMissionStatus".GripperCode) <> #codeOld THEN
+	        "FC_MQTT"(insert := true,
+	                  send := false,
+	                  topic := 'FROM_PLANT/GRIPPER/CODE',
+	                  payload := STRING_TO_WSTRING("INT_TO_STRING_WITHOUT_SIGN"(DINT_TO_INT("DB_RobotMissionStatus".GripperCode))));
+	        #codeOld := DINT_TO_INT("DB_RobotMissionStatus".GripperCode);
+	    END_IF;
+	    
+	    //COMANDI
+	    "DB_RobotMissionStatus".RequestCmd.Lock_Pallet := "Robot_cmd_LockPallet";
+	    "DB_RobotMissionStatus".RequestCmd.Unlock_Pallet := "Robot_cmd_UnlockPallet";
+	    "DB_RobotMissionStatus".RequestCmd.Lock_Vice := "Robot_cmd_LockPart";
+	    "DB_RobotMissionStatus".RequestCmd.Unlock_Vice := "Robot_cmd_UnlockPart";
+	    "DB_RobotMissionStatus".RequestCmd.Open_door := "Robot_cmd_OpenDoor";
+	    "DB_RobotMissionStatus".RequestCmd.Close_door := "Robot_cmd_CloseDoor";
+	    "DB_RobotMissionStatus".RequestCmd.Blow := "Robot_cmd_BLOW";
+	    "DB_RobotMissionStatus".RequestCmd.Wash := "Robot_cmd_WASHING";
+	    "DB_RobotMissionStatus".StatusCode := "Command_Answer";
+	    
+	    "Sys_SetRobotspeed" := "DB_Robot".speedRequest;
+	    
+	    IF "Gripper_mounted" <> #sensorOld THEN
+	        "FC_MQTT"(insert := true,
+	                  send := false,
+	                  topic := 'FROM_PLANT/GRIPPER/SENSOR',
+	                  payload := STRING_TO_WSTRING("INT_TO_STRING_WITHOUT_SIGN"(BOOL_TO_INT("Gripper_mounted"))));
+	        #sensorOld := "Gripper_mounted";
+	    END_IF;
+	END_REGION
+	
+	REGION LIFE BIT
+	    //"DB_RobotMission".SystemSignals_IN.LIFEBIT_IN := NOT "DB_RobotMissionStatus".systemsignals.LIFE_BIT;
+	    
+	    "DB_Robot".timeoutLifeBit(IN := NOT "sys_Heartbeat",
+	                              PT := T#2S);
+	    
+	    IF ("DB_Robot".#timeoutLifeBit.Q) THEN
+	        //salva su DB errore di comunicazione con robot
+	        "DB_Robot".#communication_OK := FALSE;
+	    ELSE
+	        "DB_Robot".#communication_OK := TRUE;
+	    END_IF;
+	END_REGION
+	
+	REGION reset alarm
+	    IF ("sys_Robot_AlarmState" AND "Start_AUX") OR ("sys_Robot_AlarmState" AND "ResetAreaRobot") OR "DB_plant".Hold THEN
+	        "DB_Robot".Error := 0;
+	    END_IF;
+	    
+	    //#FP[1](CLK := "DB_plant".Hold);
+	    "sys_resetAlarm" := "Start_AUX" OR "ResetAreaRobot" OR "DB_plant".Hold;
+	END_REGION
+	
+	
+	REGION start program from actual line
+	    #timeout[0](IN := #dispatcher[0] = 30,
+	                PT := T#2s);
+	    #timeout[2](IN := #dispatcher[0] = 40,
+	                PT := T#5s);
+	    #timeout[3](IN := #dispatcher[0] = 50,
+	                PT := T#10s);
+	    
+	    #FP[0](CLK := NOT "DB_Robot".HOLD);  //fronte di discesa del segnale di HOLD
+	    
+	    CASE #dispatcher[0] OF
+	        0: //nothing to do
+	            "sys_remoteServoConfirm" := FALSE;
+	            "sys_ServoEnable" := FALSE;
+	            "sys_startProg" := FALSE;
+	            
+	            // IF #FP[0].Q AND "Command" > 0 THEN
+	            //     "sys_remoteServoConfirm" := TRUE;
+	            //    
+	            //     #dispatcher[0] := 30;
+	            // END_IF;
+	            
+	            IF #FP[0].Q AND "sys_Robot_Auto_Mode" THEN
+	                #dispatcher[0] := 10;
+	            END_IF;
+	        10:
+	            "sys_remoteServoConfirm" := TRUE;
+	            #dispatcher[0] := 30;
+	            
+	        30:
+	            IF "sys_ServoConfirmState" THEN
+	                "sys_remoteServoConfirm" := FALSE;
+	                "sys_ServoEnable" := TRUE;
+	                #dispatcher[0] := 40;
+	            ELSIF #timeout[0].Q THEN
+	                "DB_Robot".Error := 940;
+	                #dispatcher[0] := 0;
+	            END_IF;
+	        40:
+	            IF "sys_servo_OK" THEN
+	                "sys_ServoEnable" := FALSE;
+	                "sys_startProg" := TRUE;
+	                #dispatcher[0] := 50;
+	            ELSIF #timeout[2].Q THEN
+	                "DB_Robot".Error := 941;
+	                #dispatcher[0] := 0;
+	            END_IF;
+	        50:
+	            IF "sys_Robot_Run_State" THEN
+	                "sys_startProg" := FALSE;
+	                #dispatcher[0] := 0;
+	            ELSIF #timeout[3].Q THEN
+	                "DB_Robot".Error := 942;
+	                #dispatcher[0] := 0;
+	            END_IF;
+	    END_CASE;
+	    
+	END_REGION
+	
+	REGION rewind program
+	    #timeout[1](IN := #dispatcher[1] > 0 AND ("sys_resetProgram"),  //OR "sys_HOLD"
+	                PT := t#800ms);
+	    
+	    CASE #dispatcher[1] OF
+	        0: //nothing to do
+	            "sys_resetProgram" := FALSE;
+	            
+	            IF "DB_RobotMission".Command = "CMD_RestartMainProg" THEN
+	                #dispatcher[1] := 10;
+	            END_IF;
+	        10:
+	            //hold activation (line 11 from this file)
+	            #dispatcher[1] := 20;
+	        20:
+	            IF #timeout[1].Q OR NOT "sys_Robot_Run_State" THEN
+	                "sys_resetProgram" := TRUE;
+	                #dispatcher[1] := 30;
+	            END_IF;
+	        30:
+	            IF #timeout[1].Q AND "sys_ResetProgramState" THEN
+	                "sys_resetProgram" := FALSE;
+	                
+	                IF "DB_RobotMission".Command = "CMD_RestartMainProg" THEN
+	                    "DB_RobotMission".Command := 0;
+	                END_IF;
+	                
+	                #dispatcher[1] := 0;
+	            END_IF;
+	    END_CASE;
+	END_REGION
+	
+	REGION updateSpeed
+	    IF "sys_RobotActSpeed" <> #lastSpeed THEN
+	        "FC_MQTT"(insert := true,
+	                  send := false,
+	                  topic := 'FROM_PLANT/ROBOT/CHANGESPEED',
+	                  payload := STRING_TO_WSTRING("INT_TO_STRING_WITHOUT_SIGN"("sys_RobotActSpeed")));
+	        #lastSpeed := "sys_RobotActSpeed";
+	    END_IF;
+	END_REGION
+	
+	REGION SendNewQuota
+	    
+	    IF "newQuotaReady" THEN
+	        #newQuota := CONCAT_STRING(IN1 := REAL_TO_STRING("RobotPosition_J1X"),
+	                                   IN2 := ',',
+	                                   IN3 := REAL_TO_STRING("RobotPosition_J2Y"),
+	                                   IN4 := ',',
+	                                   IN5 := REAL_TO_STRING("RobotPosition_J3Z"),
+	                                   IN6 := ',',
+	                                   IN7 := REAL_TO_STRING("RobotPosition_J4A"),
+	                                   IN8 := ',',
+	                                   IN9 := REAL_TO_STRING("RobotPosition_J5B"),
+	                                   IN10 := ',',
+	                                   IN11 := REAL_TO_STRING("RobotPosition_J6C"));
+	        
+	        IF #lastNewQuota <> #newQuota THEN
+	            "FC_MQTT"(insert := true,
+	                      send := false,
+	                      topic := 'FROM_PLANT/ROBOT/NEWQUOTA',
+	                      payload := STRING_TO_WSTRING(#newQuota));
+	            
+	            #lastNewQuota := #newQuota;
+	        END_IF;
+	        
+	    END_IF;
+	    
+	END_REGION
+END_FUNCTION_BLOCK
+

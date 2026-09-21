@@ -1,0 +1,23 @@
+﻿TYPE "cmd_Maintenance"
+VERSION : 0.1
+   STRUCT
+      free : Bool;
+      free_1 : Bool;
+      free_2 : Bool;
+      free_3 : Bool;
+      free_4 : Bool;
+      free_5 : Bool;
+      free_6 : Bool;
+      free_7 : Bool;
+      free_8 : Bool;
+      free_9 : Bool;
+      free_10 : Bool;
+      free_11 : Bool;
+      OpenGripper1 : Bool;
+      OpenGripper2 : Bool;
+      GoTo_MaintenancePos : Bool;
+      GoTo_HomePos : Bool;
+   END_STRUCT;
+
+END_TYPE
+

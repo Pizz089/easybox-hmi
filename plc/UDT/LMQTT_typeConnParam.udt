@@ -1,0 +1,18 @@
+﻿TYPE "LMQTT_typeConnParam"
+VERSION : 0.1
+   STRUCT
+      hwId : HW_ANY;
+      connId : CONN_OUC := 1;
+      broker : String;
+      port : UInt := 1883;
+      tls : Struct
+         enableTls : Bool;
+         validateServerIdentity : Bool;
+         brokerCert : UDInt;
+         clientCert : UDInt;
+      END_STRUCT;
+      keepAlive : UInt;
+   END_STRUCT;
+
+END_TYPE
+

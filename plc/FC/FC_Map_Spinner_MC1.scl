@@ -1,0 +1,44 @@
+﻿FUNCTION "FC_Map_Spinner_MC1" : Void
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_IN_OUT 
+      io_in : "UDT_MachineIn";
+      io_out : "UDT_MachineOut";
+   END_VAR
+
+
+BEGIN
+	    // ───── INGRESSI: tag fisico -> struct logico ─────
+	    // PORTA: usa il tag ESISTENTE condiviso col programma Safety
+	    //   (NON creare I_MC1_SPN_DoorOpen: l'indirizzo doppio rende ambiguo
+	    //    l'accesso nel Safety. Un solo tag per i segnali di sicurezza.)
+	    #io_in.doorOpened := "I_MC1_DoorClosed";          // %I43.0 (tag condiviso Safety)
+	    // resto: tag dedicati _SPN_ (non sono segnali di sicurezza)
+	    #io_in.viceOpened := "I_MC1_ViceOpened";      // %I43.1
+	    #io_in.viceClosed := "I_MC1_ViceClosed";     // %I43.2
+	    #io_in.palletUnlocked := "I_MC1_PalletUnlocked";  // %I43.3
+	    #io_in.autoMode := "I_MC1_AutoMode";      // %I43.4
+	    #io_in.endWork := "I_MC1_EndWork";       // %I43.5
+	    #io_in.endClean := "I_MC1_spare_3";      // %I43.6
+	    // segnali non presenti sulla Spinner -> forzati a default
+	    #io_in.doorClosed := FALSE;
+	    #io_in.palletLocked := FALSE;
+	    #io_in.serviceCall := FALSE;
+	    
+	    // ───── USCITE: struct logico -> tag fisico ─────
+	    // (la Spinner ha 1 sola uscita porta: openDoor mantenuta.
+	    //  closeDoor logica NON va a nessun morsetto)
+	    // NB: l'uscita porta usa il tag _SPN_ dedicato: NON e' letta dal
+	    //     Safety (che monitora solo gli INGRESSI porta), quindi nessuna
+	    //     ambiguita'. Se in futuro il Safety leggesse anche l'uscita,
+	    // //     condividere il tag come fatto per gli ingressi.
+	    // "Q_MC1_SPN_OpenDoor" := #io_out.openDoor;      // %Q45.0
+	    // "Q_MC1_SPN_OpenVice" := #io_out.openVice;      // %Q45.1
+	    // "Q_MC1_SPN_CloseVice" := #io_out.closeVice;     // %Q45.2
+	    // "Q_MC1_SPN_UnlockPallet" := #io_out.unlockPallet;  // %Q45.3
+	    // "Q_MC1_SPN_StartWork" := #io_out.startWork;     // %Q45.4
+	    // "Q_MC1_SPN_StartClean" := #io_out.startWash;     // %Q45.5
+	    // // io_out.closeDoor / lockPallet / fuoriIngombro / partOnTable:
+	    // //   non hanno morsetto sulla Spinner -> non mappati (ignorati)
+END_FUNCTION
+

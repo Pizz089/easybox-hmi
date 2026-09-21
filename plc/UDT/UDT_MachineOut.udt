@@ -1,0 +1,22 @@
+﻿TYPE "UDT_MachineOut"
+VERSION : 0.1
+   STRUCT
+      openDoor : Bool;   // comando apertura porta
+      closeDoor : Bool;   // comando chiusura porta (se la macchina la pilota)
+      openVice : Bool;   // comando apertura morsa
+      closeVice : Bool;   // comando chiusura morsa
+      unlockPallet : Bool;   // comando sblocco pallet
+      lockPallet : Bool;   // comando blocco pallet
+      unlockPartOnTable : Bool;
+      lockPartOnTable : Bool;
+      startWork : Bool;   // start ciclo lavorazione
+      startWash : Bool;   // start ciclo lavaggio
+      fuoriIngombro : Bool;   // robot fuori ingombro (se uscita fisica)
+      spare_out_1 : Bool;
+      spare_out_2 : Bool;
+      spare_out_3 : Bool;
+      spare_out_4 : Bool;
+   END_STRUCT;
+
+END_TYPE
+

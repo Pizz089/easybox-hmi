@@ -1,0 +1,12 @@
+﻿DATA_BLOCK "InstAnalyzeTokens"
+{ DB_Accessible_From_OPC_UA := 'FALSE' ;
+ S7_Optimized_Access := 'TRUE' }
+AUTHOR : 'SIEMENS AG'
+VERSION : 3.0
+NON_RETAIN
+"AnalyzeTokens"
+
+BEGIN
+
+END_DATA_BLOCK
+

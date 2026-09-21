@@ -1,0 +1,14 @@
+﻿FUNCTION "INT_TO_STRING_WITHOUT_SIGN" : String
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      IN : Int;
+   END_VAR
+
+
+BEGIN
+	#INT_TO_STRING_WITHOUT_SIGN:= DELETE(IN := INT_TO_STRING(#IN), L := 1, P := 1);
+	
+	
+END_FUNCTION
+

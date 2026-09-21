@@ -145,3 +145,6 @@ easybox/serverDati/log/
 # esportazione tabelle variabili in Excel (binario): in plc/tags/ vanno i .csv
 plc/**/*.xlsx
 plc/**/*.xls
+# Build del tool di esportazione PLC (C#, tools/tia-export)
+tools/tia-export/bin/
+tools/tia-export/obj/

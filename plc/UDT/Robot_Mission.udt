@@ -1,0 +1,46 @@
+﻿TYPE "Robot_Mission"
+VERSION : 0.1
+   STRUCT
+      Command : Int;
+      "X_Pick-Place" : DInt;
+      "Y_Pick-Place" : DInt;
+      "Z_Pick-Place" : DInt;
+      "XRot_Pick-Place" : DInt;
+      "YRot_Pick-Place" : DInt;
+      "ZRot_Pick-Place" : DInt;
+      Gripper_code : DInt;
+      Gripper1_XDim : DInt;
+      Gripper1_YDim : DInt;
+      Gripper1_ZDim : DInt;
+      Gripper1_XRotDim : DInt;
+      Gripper1_YRotDim : DInt;
+      Gripper1_ZRotDim : DInt;
+      Gripper1_Valve : Int;
+      Gripper2_XDim : DInt;
+      Gripper2_YDim : DInt;
+      Gripper2_ZDim : DInt;
+      Gripper2_XRotDim : DInt;
+      Gripper2_YRotDim : DInt;
+      Gripper2_ZRotDim : DInt;
+      Gripper2_Valve : DInt;
+      X_approach : DInt;
+      Y_approach : DInt;
+      Z_approach : DInt;
+      XRot_approach : DInt;
+      YRot_approach : DInt;
+      ZRot_approach : DInt;
+      ApproachType : Int;
+      Unit_code : Int;
+      Object_Type : Int;
+      Gripper_Side : Int;
+      cmd_maintenance { S7_SetPoint := 'False'} : "cmd_Maintenance";
+      cmd_Status { S7_SetPoint := 'False'} : "cmd_status_4Robot";
+      Option { S7_SetPoint := 'False'} : "SpecialOption";
+      X_offset4Door { S7_SetPoint := 'True'} : Int;
+      Y_offset4Door : Int;
+      Z_offset4Door : Int;
+      SystemSignals_IN { S7_SetPoint := 'False'} : "SystemSignalsIN";
+   END_STRUCT;
+
+END_TYPE
+

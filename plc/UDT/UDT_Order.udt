@@ -1,0 +1,23 @@
+﻿TYPE "UDT_Order"
+VERSION : 0.1
+   STRUCT
+      ID : DInt;
+      PIECE : DInt;
+      GRIPPER : DInt;   // Gripper ID for part
+      GRIPPER4PALLET : DInt;   // Gripper ID for pallet mouvement
+      VICE : DInt;
+      PALLET : DInt;
+      STATUS : DInt;
+      MACHINE : DInt;
+      QUANTITY : DInt;
+      OPTION : DInt;
+      PartProgID : DInt;
+      free : DInt;
+      free_1 : DInt;
+      free_2 : DInt;
+      free_3 : DInt;
+      free_4 : DInt;
+   END_STRUCT;
+
+END_TYPE
+

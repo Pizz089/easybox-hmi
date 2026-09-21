@@ -1,0 +1,18 @@
+﻿ORGANIZATION_BLOCK "Cyclic interrupt"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+
+BEGIN
+	// reset every status variables for make an update for the HMI
+	// 
+	
+	// "DB_MC1".Status := -1;
+	// "DB_MC2".Status := -1;
+	
+	// //"DB_Robot".oldStatus    := -1;
+	// //"DB_Robot".Status       := -1;
+	
+	// "DB_BOX_1".Status := -1;
+	
+END_ORGANIZATION_BLOCK
+

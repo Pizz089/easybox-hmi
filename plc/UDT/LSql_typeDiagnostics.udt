@@ -1,0 +1,9 @@
+﻿TYPE "LSql_typeDiagnostics"
+VERSION : 0.1
+   STRUCT
+      status { ExternalVisible := 'False'; ExternalWritable := 'False'} : Word;
+      subfunctionStatus { ExternalVisible := 'False'; ExternalWritable := 'False'} : Word;
+   END_STRUCT;
+
+END_TYPE
+

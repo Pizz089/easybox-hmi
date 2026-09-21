@@ -1,0 +1,9 @@
+﻿TYPE "LSql_typeConnectionSettings"
+VERSION : 0.1
+   STRUCT
+      interfaceSettings {InstructionName := 'TCON_IP_v4'; LibVersion := '1.0'; ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_SetPoint := 'False'} : TCON_IP_v4;
+      loginInformation { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_SetPoint := 'False'} : "LSql_typeLoginInformation";
+   END_STRUCT;
+
+END_TYPE
+

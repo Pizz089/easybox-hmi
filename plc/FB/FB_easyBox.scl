@@ -1,0 +1,475 @@
+﻿FUNCTION_BLOCK "FB_easyBox"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      Presence_tray1 : Bool;
+      Presence_tray2 : Bool;
+      Presence_tray3 : Bool;
+      Presence_tray4 : Bool;
+      Presence_tray5 : Bool;
+      Presence_tray6 : Bool;
+      Presence_tray7 : Bool;
+      Presence_tray8 : Bool;
+      Presence_tray9 : Bool;
+      Presence_tray10 : Bool;
+      Presence_tray11 : Bool;
+      Presence_tray12 : Bool;
+      AllTrayInside : Bool;
+   END_VAR
+
+   VAR_OUTPUT 
+      HL_Start_Aux : Bool;
+      HL_Hold : Bool;
+      HL_Green : Bool;
+      HL_Orange : Bool;
+      HL_Red : Bool;
+   END_VAR
+
+   VAR RETAIN
+      ExtractedTray : Int;
+   END_VAR
+   VAR 
+      RequestedTray : Int;
+      Robot_enabled_to_work : Bool;   // Robot enabled to go inside the EASYBOX area
+      Status : Int;   // status of warehouse
+      Error : Int;   // Error status
+      resyncDone : Bool;
+      resyncTray : Int;
+      traySeen { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Int;
+      trayCount { ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'} : Int;
+      declTray : Int;
+   END_VAR
+
+   VAR_TEMP 
+      oldValue : Int;
+   END_VAR
+
+
+BEGIN
+	REGION Status
+	    
+	    #oldValue := #Status;
+	    
+	    #Status := DINT_TO_INT("AUTO");
+	    IF #Error <> 0 THEN
+	        #Status := DINT_TO_INT("ALARM");
+	    END_IF;
+	    
+	    IF (#Status <> #oldValue AND #Status > 0) THEN
+	        "FC_MQTT"(insert := true,
+	                  send := false,
+	                  topic := 'FROM_PLANT/STATUS/BOX',
+	                  payload := STRING_TO_WSTRING("INT_TO_STRING_WITHOUT_SIGN"(#Status)));
+	        "FC_MQTT"(insert := true,
+	                  send := false,
+	                  topic := 'FROM_PLANT/DESCR/BOX',
+	                  payload := STRING_TO_WSTRING("INT_TO_STRING_WITHOUT_SIGN"(#Status)));
+	        #oldValue := #Status;
+	    END_IF;
+	    
+	END_REGION ;
+	
+	REGION Manager CMD from HMI
+	    
+	    IF "DB_MQTT".lastTopicReceived = 'BOX'
+	        AND "DB_RobotMissionStatus".StatusCode <> "cmd_acquired"
+	        AND "DB_RobotMissionStatus".StatusCode <> "cmd_executing"
+	    THEN
+	        IF #Status = DINT_TO_INT("AUTO") THEN
+	            
+	            IF "DB_MQTT".lastCmdReceived = "CMD_RobotExtractTray" THEN
+	                "DB_Robot".MissionCode := "MISSION_ExtractTray";
+	                "DB_Robot".Tray_ID := "DB_MQTT".lastParams[0];
+	                "DB_MQTT".lastCmdReceived := 0;
+	                
+	            ELSIF "DB_MQTT".lastCmdReceived = "CMD_RobotReleaseTray" THEN
+	                "DB_Robot".MissionCode := "MISSION_ReleaseTray";
+	                "DB_Robot".Tray_ID := "DB_MQTT".lastParams[0];
+	                "DB_MQTT".lastCmdReceived := 0;
+	            END_IF;
+	        END_IF;
+	        
+	        IF "DB_MQTT".lastCmdReceived = "CMD_RobotReset" THEN
+	            //force update DB with data on PLC
+	            //IF #ExtractedTray > 0 THEN
+	            "FC_MQTT"(insert := true,
+	           send := false,
+	           topic := 'FROM_PLANT/TRAY/BOX/EXTRACT',
+	           payload := STRING_TO_WSTRING("INT_TO_STRING_WITHOUT_SIGN"(#ExtractedTray)));
+	        END_IF;
+	    END_IF;
+	    
+	    IF "DB_MQTT".lastTopicReceived = 'BOX' AND "DB_MQTT".lastCmdReceived = "CMD_RobotReset" THEN
+	        #Error := 0;
+	        
+	        // RIARMO DEL TENTATIVO DI RICHIUSURA (19/9): resyncDone si riarmava
+	        // SOLO quando registro e sensori tornavano coerenti — cioe' l'unica
+	        // cosa che l'operatore non puo' fare a mano, visto che e' proprio
+	        // quello che il resync dovrebbe sistemare.
+	        // Bruciato il primo tentativo in una finestra in cui non poteva
+	        // riuscire (robot non a waitingNewCmd, o MissionCode ancora pendente),
+	        // ogni passaggio successivo dava 998 e la cella restava ferma senza
+	        // via d'uscita dal pannello. Visto in campo col cassetto 2.
+	        // Il reset e' il gesto con cui l'operatore dice "riparti da capo":
+	        // e' il posto giusto per restituire al resync il suo tentativo.
+	        #resyncDone := FALSE;
+	    END_IF;
+	    
+	END_REGION
+	
+	REGION check_position_of_TRAY_extracted
+	    IF "DB_RobotMissionStatus".StatusCode = "cmd_executed" OR
+	        "DB_RobotMissionStatus".StatusCode = "cmd_waitingNewCmd" THEN
+	        
+	        #Error := 0;
+	        CASE #ExtractedTray OF
+	            0:
+	                IF #Presence_tray1 OR #Presence_tray2 OR #Presence_tray3 OR #Presence_tray4 OR #Presence_tray5 OR #Presence_tray6 OR
+	                    #Presence_tray7 OR #Presence_tray8 OR #Presence_tray9 OR #Presence_tray10 OR #Presence_tray11 OR #Presence_tray12 THEN
+	                    #Error := 999;
+	                END_IF;
+	                // IF NOT #AllTrayInside THEN
+	                //     #Error := 999;
+	                // END_IF;
+	            1:
+	                IF NOT #Presence_tray1 THEN
+	                    #Error := 1;
+	                END_IF;
+	            2:
+	                IF NOT #Presence_tray2 THEN
+	                    #Error := 2;
+	                END_IF;
+	            3:
+	                IF NOT #Presence_tray3 THEN
+	                    #Error := 3;
+	                END_IF;
+	            4:
+	                IF NOT #Presence_tray4 THEN
+	                    #Error := 4;
+	                END_IF;
+	            5:
+	                IF NOT #Presence_tray5 THEN
+	                    #Error := 5;
+	                END_IF;
+	            6:
+	                IF NOT #Presence_tray6 THEN
+	                    #Error := 6;
+	                END_IF;
+	            7:
+	                IF NOT #Presence_tray7 THEN
+	                    #Error := 7;
+	                END_IF;
+	            8:
+	                IF NOT #Presence_tray8 THEN
+	                    #Error := 8;
+	                END_IF;
+	            9:
+	                IF NOT #Presence_tray9 THEN
+	                    #Error := 9;
+	                END_IF;
+	            10:
+	                IF NOT #Presence_tray10 THEN
+	                    #Error := 10;
+	                END_IF;
+	            11:
+	                IF NOT #Presence_tray11 THEN
+	                    #Error := 11;
+	                END_IF;
+	            12:
+	                IF NOT #Presence_tray12 THEN
+	                    #Error := 12;
+	                END_IF;
+	        END_CASE;
+	    END_IF;
+	    
+	    //out of range
+	    IF #ExtractedTray < 0 OR #ExtractedTray > 12 THEN
+	        #Error := 99;
+	    END_IF;
+	    
+	END_REGION ;
+	
+	REGION Sincronizzazione registro-sensori
+	    // Il registro ExtractedTray e' Retain e sopravvive ai riavvii: da solo non e'
+	    // mai una prova. La verita' sono i dodici sensori.
+	    // Conto quanti cassetti vede il ferro e quale.
+	    #trayCount := 0;
+	    #traySeen := 0;
+	    IF #Presence_tray1 THEN
+	        #trayCount := #trayCount + 1;
+	        #traySeen := 1;
+	    END_IF;
+	    IF #Presence_tray2 THEN
+	        #trayCount := #trayCount + 1;
+	        #traySeen := 2;
+	    END_IF;
+	    IF #Presence_tray3 THEN
+	        #trayCount := #trayCount + 1;
+	        #traySeen := 3;
+	    END_IF;
+	    IF #Presence_tray4 THEN
+	        #trayCount := #trayCount + 1;
+	        #traySeen := 4;
+	    END_IF;
+	    IF #Presence_tray5 THEN
+	        #trayCount := #trayCount + 1;
+	        #traySeen := 5;
+	    END_IF;
+	    IF #Presence_tray6 THEN
+	        #trayCount := #trayCount + 1;
+	        #traySeen := 6;
+	    END_IF;
+	    IF #Presence_tray7 THEN
+	        #trayCount := #trayCount + 1;
+	        #traySeen := 7;
+	    END_IF;
+	    IF #Presence_tray8 THEN
+	        #trayCount := #trayCount + 1;
+	        #traySeen := 8;
+	    END_IF;
+	    IF #Presence_tray9 THEN
+	        #trayCount := #trayCount + 1;
+	        #traySeen := 9;
+	    END_IF;
+	    IF #Presence_tray10 THEN
+	        #trayCount := #trayCount + 1;
+	        #traySeen := 10;
+	    END_IF;
+	    IF #Presence_tray11 THEN
+	        #trayCount := #trayCount + 1;
+	        #traySeen := 11;
+	    END_IF;
+	    IF #Presence_tray12 THEN
+	        #trayCount := #trayCount + 1;
+	        #traySeen := 12;
+	    END_IF;
+	    
+	    // Agisco solo a robot fermo: durante una missione i sensori transitano.
+	    IF "DB_RobotMissionStatus".StatusCode = "cmd_waitingNewCmd"
+	        AND "DB_Robot".MissionCode = 0
+	    THEN
+	        IF #trayCount > 1 THEN
+	            #Error := 999;                       // piu' cassetti fuori: anomalia
+	            #resyncDone := FALSE;
+	            
+	        ELSIF #trayCount = 1 AND #ExtractedTray <> #traySeen THEN
+	            // il ferro vede un cassetto diverso da quello registrato (o registro a
+	            // zero, tipico dell'apertura manuale): il sensore ha ragione
+	            #ExtractedTray := #traySeen;
+	            #resyncDone := FALSE;
+	            "FC_MQTT"(insert := true,
+	           send := false,
+	           topic := 'FROM_PLANT/TRAY/BOX/EXTRACT',
+	           payload := STRING_TO_WSTRING("INT_TO_STRING_WITHOUT_SIGN"(#ExtractedTray)));
+	            
+	        ELSIF #trayCount = 0 AND #ExtractedTray > 0 THEN
+	            // NESSUN SENSORE VEDE, MA IL REGISTRO DICE ESTRATTO.
+	            // Due situazioni diverse, e AllTrayInside le distingue:
+	            //
+	            //   tutti dentro  -> il cassetto e' RIENTRATO e il registro e'
+	            //                    rimasto indietro. Non c'e' niente da
+	            //                    movimentare: si corregge il numero e basta,
+	            //                    esattamente come fa il ramo trayCount = 1 col
+	            //                    cassetto visto diverso da quello registrato.
+	            //
+	            //   non tutti dentro -> qualcosa SPORGE senza farsi vedere dal
+	            //                    proprio sensore: cassetto a meta' corsa. Qui
+	            //                    azzerare il registro direbbe alla cella che il
+	            //                    magazzino e' libero mentre c'e' un ostacolo, e
+	            //                    il robot ci andrebbe contro. Si chiama
+	            //                    l'operatore.
+	            //
+	            // PRIMA (19/9) il ramo trattava entrambi i casi come meta' corsa e
+	            // provava la richiusura, con tre guardie che nel caso reale non
+	            // scattavano quasi mai: MissionCode a zero, robot a waitingNewCmd,
+	            // e un tentativo unico che si riarmava solo tornando coerenti —
+	            // cioe' proprio quello che doveva sistemare. In piu' il tray
+	            // manager pretende RemoteMode, falso in HOLD: la missione di
+	            // rilascio non partiva comunque. Risultato: errore 2 rigenerato a
+	            // ogni scan, 949 su FB7, e nessuna via d'uscita dal pannello.
+	            IF #AllTrayInside THEN
+	                #ExtractedTray := 0;
+	                #resyncDone := FALSE;
+	                "FC_MQTT"(insert := true,
+	               send := false,
+	               topic := 'FROM_PLANT/TRAY/BOX/EXTRACT',
+	               payload := STRING_TO_WSTRING("INT_TO_STRING_WITHOUT_SIGN"(#ExtractedTray)));
+	                
+	            ELSIF "DB_Robot".Dispatcher["Release_TRAY"] = 0
+	                AND "DB_Robot".Dispatcher["Extract_TRAY"] = 0
+	            THEN
+	                #Error := 998;               // cassetto a meta' corsa: intervento manuale
+	            END_IF;
+	            
+	        ELSIF #trayCount = 1 AND #ExtractedTray = #traySeen THEN
+	            #resyncDone := FALSE;                // coerente: riarmo il tentativo
+	        END_IF;
+	    END_IF;
+	END_REGION
+	
+	
+	REGION Declare TRAY from HMI
+	    // 38;trayID — dichiarazione esplicita del cassetto estratto.
+	    // E' una CONFERMA, non una forzatura: la REGION di sincronizzazione
+	    // riscrive ExtractedTray dai sensori a ogni scansione a robot fermo,
+	    // quindi una dichiarazione discorde verrebbe sovrascritta entro un ciclo.
+	    // Qui la si rifiuta subito e si dice perche'.
+	    IF "DB_MQTT".lastTopicReceived = 'BOX'
+	        AND "DB_MQTT".lastCmdReceived = "CMD_DeclareTray_BOX"
+	    THEN
+	        #declTray := DINT_TO_INT("DB_MQTT".lastParams[0]);
+	        
+	        IF #declTray < 0 OR #declTray > 12 THEN
+	            #Error := 99;                       // fuori range
+	            "FC_MQTT"(insert := true,
+	                      send := false,
+	                      topic := 'FROM_PLANT/ALARM/BOX',
+	                      payload := STRING_TO_WSTRING('99'));
+	            
+	        ELSIF "DB_RobotMissionStatus".StatusCode = "cmd_acquired"
+	            OR "DB_RobotMissionStatus".StatusCode = "cmd_executing" THEN
+	            #Error := 997;                      // robot in missione: i sensori transitano
+	            "FC_MQTT"(insert := true,
+	                      send := false,
+	                      topic := 'FROM_PLANT/ALARM/BOX',
+	                      payload := STRING_TO_WSTRING('997'));
+	            
+	        ELSIF #trayCount > 1 THEN
+	            #Error := 999;                      // piu' cassetti fuori: anomalia fisica
+	            "FC_MQTT"(insert := true,
+	                      send := false,
+	                      topic := 'FROM_PLANT/ALARM/BOX',
+	                      payload := STRING_TO_WSTRING('999'));
+	            
+	        ELSIF #declTray = 0 AND #trayCount = 0 THEN
+	            #ExtractedTray := 0;
+	            #Error := 0;
+	            "FC_MQTT"(insert := true,
+	                      send := false,
+	                      topic := 'FROM_PLANT/TRAY/BOX/EXTRACT',
+	                      payload := STRING_TO_WSTRING("INT_TO_STRING_WITHOUT_SIGN"(#ExtractedTray)));
+	            
+	        ELSIF #declTray > 0 AND #trayCount = 1 AND #traySeen = #declTray THEN
+	            #ExtractedTray := #declTray;
+	            #Error := 0;
+	            "FC_MQTT"(insert := true,
+	                      send := false,
+	                      topic := 'FROM_PLANT/TRAY/BOX/EXTRACT',
+	                      payload := STRING_TO_WSTRING("INT_TO_STRING_WITHOUT_SIGN"(#ExtractedTray)));
+	            
+	        ELSE
+	            // la dichiarazione non coincide col ferro: il sensore ha ragione.
+	            // PUBBLICAZIONE IMMEDIATA: la REGION Status azzera #Error a ogni
+	            // scansione a robot fermo, quindi l'errore vivrebbe pochi millisecondi
+	            // e il pannello non lo vedrebbe mai — il comando fallirebbe in silenzio.
+	            #Error := 996;
+	            "FC_MQTT"(insert := true,
+	                      send := false,
+	                      topic := 'FROM_PLANT/ALARM/BOX',
+	                      payload := STRING_TO_WSTRING('996'));
+	        END_IF;
+	        
+	        "DB_MQTT".lastCmdReceived := 0;
+	    END_IF;
+	END_REGION
+	
+	REGION Robot_enabled_for_work_inside_warehouse
+	    // LA PORTA OPERATORE NON E' PIU' QUI (19/9): questo bit veniva usato in FB7
+	    // come veto su TUTTO il magazzino — prelievo pezzo, deposito pezzo, carico e
+	    // scarico pinza. Con la porta aperta si fermava anche cio' che non ha niente
+	    // a che fare con la porta: l'operatore lavora FUORI dalla baia, in
+	    // sicurezza, e il robot puo' continuare a prendere pezzi e pinze.
+	    // Quello che NON deve fare a porta aperta e' movimentare i cassetti, e la
+	    // guardia sta adesso nei 10 di Extract_TRAY e Release_TRAY in FB7, che
+	    // leggono "Door_OP_locked" direttamente. Erano proprio le uniche due catene
+	    // che questo bit non controllava: l'estrazione partiva lo stesso e il 949
+	    // arrivava a cassetto gia' fuori (visto 19/9).
+	    #Robot_enabled_to_work := #Error = 0;
+	    
+	END_REGION ;
+	
+	
+	
+	REGION LAMPS
+	    #HL_Start_Aux:=("Main_Safety_RTG1_DB".Aux_OK AND NOT "sys_Robot_AlarmState")
+	                    OR (NOT "Main_Safety_RTG1_DB".Aux_OK AND "Clock_1Hz")
+	                    OR ("Main_Safety_RTG1_DB".Aux_OK  AND "sys_Robot_AlarmState" AND "Clock_5Hz")                  //system error from robot -> a general reset is request 
+	                    OR ("Main_Safety_RTG1_DB".Aux_OK AND NOT "Main_Safety_RTG1_DB".RobotArea_OK AND "Clock_5Hz")
+	                    OR "DB_plant".testLamps;
+	    
+	    #HL_Hold    := "DB_plant".Hold 
+	                    OR "DB_plant".testLamps
+	                    OR ("Clock_2Hz" AND"DB_Robot".HOLD AND NOT "sys_Robot_AlarmState" );
+	    
+	    #HL_Green   := "DB_RobotMissionStatus".StatusCode <="cmd_executed"
+	                    OR "DB_plant".testLamps;
+	    
+	    #HL_Orange  := NOT "Door_OP_locked" 
+	                   OR NOT "DB_Robot".Auto
+	                   OR (#Robot_enabled_to_work AND "Clock_5Hz" AND ( "DB_Robot".MissionCode="MISSION_LoadPartOnRobot" OR "DB_Robot".MissionCode="MISSION_UnloadPartFromRobot" ))
+	                   OR "DB_plant".testLamps;
+	    
+	    #HL_Red     := "Clock_1Hz" AND ("DB_RobotMissionStatus".AllarmCode > 0
+	                                    OR "DB_Robot".Error <> 0 
+	                                    OR "DB_RobotMissionStatus".StatusCode = "cmd_aborted" 
+	                                    OR #Error > 0
+	                                   )
+	                    OR NOT "Main_Safety_RTG1_DB".RobotArea_OK
+	                    OR "DB_plant".testLamps;
+	                    
+	END_REGION
+	                
+	REGION tray manager
+	    // GUARDIA CORRETTA 5/9: la condizione era "MissionCode = 0 OR RemoteMode".
+	    // In automatico RemoteMode e' sempre vero, quindi il manager sovrascriveva
+	    // MissionCode a OGNI scansione, travolgendo la missione in corso: il robot
+	    // riceveva MISSION_ReleaseTray mentre stava prelevando un grezzo e il ciclo
+	    // si bloccava (visto 4 e 5/9). Serve la AND, piu' il gate sulle chele:
+	    // il rilascio a pinza occupata dava errore 21.
+	    IF "DB_Robot".MissionCode = 0
+	        AND "DB_Robot".RemoteMode
+	        AND "DB_RobotMissionStatus".StatusCode = "cmd_waitingNewCmd"
+	        AND NOT "DB_Robot".GripperOccuped[1]
+	        AND NOT "DB_Robot".GripperOccuped[2]
+	    THEN
+	        IF #RequestedTray > 0 AND #RequestedTray <= 12 THEN
+	            IF #RequestedTray <> #ExtractedTray AND #ExtractedTray > 0 THEN
+	                // cassetto sbagliato fuori: prima lo rimetto dentro.
+	                // RequestedTray NON si azzera qui: serve ancora al giro dopo
+	                // per far partire l'estrazione di quello giusto.
+	                "DB_Robot".Tray_ID := #ExtractedTray;
+	                "DB_Robot".MissionCode := "MISSION_ReleaseTray";
+	            ELSE
+	                // nessun cassetto fuori (o e' gia' quello giusto): estraggo
+	                "DB_Robot".Tray_ID := #RequestedTray;
+	                "DB_Robot".MissionCode := "MISSION_ExtractTray";
+	                #RequestedTray := -1;
+	            END_IF;
+	            
+	        ELSIF #RequestedTray = 0 THEN
+	            // richiesta esplicita di chiusura (96 di FB204, o resync)
+	            "DB_Robot".Tray_ID := #ExtractedTray;
+	            "DB_Robot".MissionCode := "MISSION_ReleaseTray";
+	            #RequestedTray := -1;
+	        END_IF;
+	    END_IF;
+	END_REGION
+	
+	
+	
+	REGION Supervisione sensore cassetto
+	    IF #Presence_tray1 OR #Presence_tray2
+	        OR #Presence_tray3 OR #Presence_tray4
+	        OR #Presence_tray5 OR #Presence_tray6
+	        OR #Presence_tray7 OR #Presence_tray8
+	        OR #Presence_tray9 OR #Presence_tray10
+	        OR #Presence_tray11 OR #Presence_tray12 THEN
+	        "px_tray_in_position" := true;
+	    ELSE
+	        "px_tray_in_position" := false;
+	    END_IF;
+	END_REGION
+	
+	
+END_FUNCTION_BLOCK
+
