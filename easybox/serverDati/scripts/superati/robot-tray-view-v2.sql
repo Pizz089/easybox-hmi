@@ -12,6 +12,10 @@
 --   - in SSMS senza modalita' SQLCMD la riga ":on error exit" e' solo un
 --     errore di sintassi nel suo batch, quindi la guardia mette anche
 --     SET NOEXEC ON: l'ALTER viene compilato ma non eseguito.
+-- ORDINE (audit 5/10): PRIMA il RAISERROR, POI SET NOEXEC ON. Con NOEXEC
+-- attivo le istruzioni successive dello stesso batch vengono compilate ma
+-- non eseguite: il RAISERROR messo dopo non partiva, ":on error exit" non
+-- scattava e lo script finiva in silenzio, come se il rollback fosse fatto.
 -- ===========================================================================
 :on error exit
 GO
@@ -19,8 +23,8 @@ SET NOCOUNT ON;
 DECLARE @def nvarchar(max) = OBJECT_DEFINITION(OBJECT_ID('COORDINATES_PIECES_TRAYS_4Robot'));
 IF @def IS NOT NULL AND @def LIKE '%t.Z_CORR+pt.Z_PICK)%' AND @def NOT LIKE '%-pt.Z_PICK%'
 BEGIN
-	SET NOEXEC ON;
 	RAISERROR('robot-tray-view-v2.sql e'' SUPERATO: la vista e'' gia'' v3. Tornare alla v2 sbaglierebbe la Z di prelievo. Fermo, nessuna modifica.', 16, 1);
+	SET NOEXEC ON;
 END
 GO
 
