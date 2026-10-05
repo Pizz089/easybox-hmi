@@ -217,13 +217,10 @@ watch(
   left: 0;
   height: calc(100vh - 64px);                    /* altezza viewport meno TopBar */
   width: 220px;
-  background: #141D2A;
-  /* DEBITO TECNICO: mid-tone calcolato tra --bg-base (#050A12) e
-     --bg-surface (#243043) per differenziare la sidebar dalla
-     TopBar (entrambe userebbero bg-surface) e creare gerarchia
-     visiva (sidebar incassata sotto TopBar alzata). Da promuovere
-     a token --bg-sidebar o --bg-surface-0-5 in un futuro sub-step
-     di tokens consolidation. */
+  /* mid-tone fra --bg-base e --bg-surface: sidebar incassata sotto la
+     TopBar alzata. Era scritto a mano qui e in menu.vue: ora token
+     (UI-DESIGN-SYSTEM v2 §10). */
+  background: var(--bg-sidebar);
   border-radius: 0 var(--radius-lg) var(--radius-lg) 0;  /* solo angoli destri, coerenti con TopBar */
   color: var(--text-primary);
   box-shadow: var(--elevation-2);
@@ -259,8 +256,8 @@ watch(
      overflow (menu operatore) non si vede nulla. Ombra chiara: lo sfondo e'
      scuro. */
   background:
-    linear-gradient(#141D2A 30%, rgba(20, 29, 42, 0)) center top / 100% 40px,
-    linear-gradient(rgba(20, 29, 42, 0), #141D2A 70%) center bottom / 100% 40px,
+    linear-gradient(var(--bg-sidebar) 30%, transparent) center top / 100% 40px,
+    linear-gradient(transparent, var(--bg-sidebar) 70%) center bottom / 100% 40px,
     radial-gradient(farthest-side at 50% 0, rgba(232, 238, 247, 0.35), rgba(232, 238, 247, 0)) center top / 100% 16px,
     radial-gradient(farthest-side at 50% 100%, rgba(232, 238, 247, 0.35), rgba(232, 238, 247, 0)) center bottom / 100% 16px;
   background-repeat: no-repeat;

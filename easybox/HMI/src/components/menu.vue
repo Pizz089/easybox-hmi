@@ -114,9 +114,8 @@ watch(
   transform: translateY(-50%);
   width: 24px;
   height: 44px;
-  /* = mid-tone della sidebar (SideBar.vue): DEBITO TECNICO condiviso —
-     quando nascera' il token --bg-sidebar va aggiornato in entrambi. */
-  background: #141D2A;
+  /* stesso fondo della sidebar (SideBar.vue): token unico */
+  background: var(--bg-sidebar);
   border: 0;
   border-radius: 0 var(--radius-md) var(--radius-md) 0;
   color: var(--text-secondary);
