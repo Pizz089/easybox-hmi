@@ -15,12 +15,13 @@
 .pure-button-primary {
     background: var(--accent);
     /* testo scuro su accent (audit WCAG): 2.36 -> 7.20; --accent NON si
-       scurisce, le combo bordo/selected che lo usano passano gia'. */
-    color: var(--bg-base);
+       scurisce, le combo bordo/selected che lo usano passano gia'.
+       v2: token dedicato --accent-on (stesso valore di --bg-base). */
+    color: var(--accent-on);
     border: 0;
     border-radius: var(--radius-btn);
     padding: var(--space-4) var(--space-5);
-    min-height: 52px;
+    min-height: var(--touch-target);
     font-weight: var(--font-weight-medium);
     letter-spacing: 0.025em;
     cursor: pointer;
@@ -34,7 +35,7 @@
     border: 0;
     border-radius: var(--radius-btn);
     padding: var(--space-4) var(--space-5);
-    min-height: 52px;
+    min-height: var(--touch-target);
     font-weight: var(--font-weight-medium);
     letter-spacing: 0.025em;
     cursor: pointer;
@@ -53,13 +54,14 @@
 }
 
 /* --- 3. CRITICAL (.specialCMD) ------------------------------------------ */
-/* Pill rounded per RESET/HOLD/START/RESTART (macro action critica/anomalia/
-   manutenzione, non flusso normale).
+/* RESET/HOLD/START/RESTART (macro action critica/anomalia/manutenzione, non
+   flusso normale). v2: stessa forma delle altre azioni (--radius-btn,
+   rettangolo arrotondato pieno), resta piena di rosso.
    UI-7.5: --color-critical (rosso urgente saturato, distinto da --color-danger
    usato per status alarm). font-weight + letter-spacing rinforzano urgency.
    Dopo primary nella cascade: vince su .pure-button-micromission. */
 .specialCMD {
-    border-radius: var(--radius-pill);
+    border-radius: var(--radius-btn);
     background: var(--color-critical);
     color: var(--text-primary);
     font-weight: var(--font-weight-bold);
@@ -79,7 +81,7 @@
     border: 1px solid var(--border-default);
     color: var(--text-secondary);
     border-radius: var(--radius-btn);
-    min-height: 52px;
+    min-height: var(--touch-target);
     padding: var(--space-4) var(--space-5);
     font-weight: var(--font-weight-medium);
     letter-spacing: 0.025em;
@@ -94,13 +96,13 @@
 }
 
 /* --- 6. ICON-ONLY ---------------------------------------------------------- */
-/* Toolbar dense. Deroga a min-height 52 -> quadrato 44x44 (touch). */
+/* Toolbar dense. Deroga a min-height 52 -> quadrato 44x44 (touch minimo). */
 .btn-icon {
     background: transparent;
     border: 0;
     color: var(--text-secondary);
-    min-height: 44px;
-    min-width: 44px;
+    min-height: var(--touch-target-min);
+    min-width: var(--touch-target-min);
     border-radius: var(--radius-btn);
     display: inline-flex;
     align-items: center;
@@ -138,15 +140,15 @@
     border: 0;
     border-radius: var(--radius-btn);
     padding: var(--space-4) var(--space-5);
-    min-height: 52px;
+    min-height: var(--touch-target);
     font-weight: var(--font-weight-medium);
     letter-spacing: 0.025em;
     cursor: not-allowed;
     pointer-events: none;
 }
 
-/* Ex eccezione specialCMD-disabled rimossa (K-FIX): con --radius-btn pill
-   su tutte le varianti azione, il disabled ha gia' la stessa forma. */
+/* Ex eccezione specialCMD-disabled rimossa (K-FIX): con --radius-btn su
+   tutte le varianti azione (v2: 14px), il disabled ha gia' la stessa forma. */
 
 /* --- STATO: MISSIONE IN CORSO (.btn-mission-running) ----------------------- */
 /* Classe di STATO trasversale (doc §3.2, feat mission-feedback), non settima

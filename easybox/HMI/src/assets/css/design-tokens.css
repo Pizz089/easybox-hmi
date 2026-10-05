@@ -105,11 +105,12 @@
   /* ---------- Radius ---------- */
   --radius-sm:   4px;
   --radius-md:   8px;
-  --radius-lg:   12px;
+  --radius-lg:   16px;   /* v2: contenitori grandi (card Bambu ~16; era 12) */
   --radius-pill: 999px;
-  /* Raggio dei bottoni AZIONE (K-FIX, doc §3): pill = azione,
-     squadrato = informazione (card, badge, input, voci elenco). */
-  --radius-btn:  999px;
+  /* Raggio dei bottoni AZIONE (doc v2 §3.1, decisione 2 di Dario):
+     AZIONE = rettangolo arrotondato pieno (era pill 999px, K-FIX).
+     Informazione resta squadrata (card, badge, input, voci elenco). */
+  --radius-btn:  14px;
 
   /* ---------- Transitions ---------- */
   --transition-fast: 150ms ease;

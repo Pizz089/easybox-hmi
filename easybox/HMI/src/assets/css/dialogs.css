@@ -21,7 +21,7 @@
 .mission-dialog {
     background: var(--bg-surface);
     border: var(--border-card);
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-lg);
     box-shadow: var(--elevation-3);
     padding: var(--space-4);
     width: min(520px, 92vw);

@@ -216,7 +216,8 @@
 /* Deroga touch annotata (doc §3.4): 48px, sotto il 52 preferito ma sopra il
    minimo 44 — a 52 le righe della tabella ordini perdono densita'. */
 .pure-button-group .pure-button {
-    /* larghezza = altezza + --radius-btn pill = cerchi (K-FIX doc §3) */
+    /* larghezza = altezza + --radius-btn 14px = quadrati arrotondati (v2 §3,
+       come Skip/Pause/Stop dei pannelli Bambu; prima cerchi) */
     width: 48px;
     height: 48px;
     padding: 0;

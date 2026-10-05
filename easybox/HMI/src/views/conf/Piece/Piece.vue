@@ -754,7 +754,7 @@ export default {
 
 .shape-pill.active {
   background: var(--accent);
-  color: var(--bg-base);
+  color: var(--accent-on);
   font-weight: var(--font-weight-semibold);
 }
 
@@ -839,7 +839,7 @@ export default {
   gap: var(--space-4);
 }
 
-/* Bottoni azione GEMELLI (regola pill: azione = --radius-btn 999px).
+/* Bottoni azione GEMELLI (regola v2: azione = --radius-btn, rettangolo arrotondato).
    Metrica identica imposta su button E RouterLink: height FISSA 52 (non
    min-height: il reset pure.css da' al button line-height 1.15 e box model
    diverso dall'<a>, min-height+padding verticale producevano taglie

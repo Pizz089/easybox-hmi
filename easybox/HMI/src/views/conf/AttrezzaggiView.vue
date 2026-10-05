@@ -696,7 +696,7 @@ export default {
     .pos-cell.selected {
         background: var(--accent);
         border-color: var(--accent-hover);
-        color: var(--bg-base);
+        color: var(--accent-on);
         font-weight: var(--font-weight-semibold);
     }
 
