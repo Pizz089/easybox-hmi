@@ -88,18 +88,24 @@
                                 <button class="btn-ghost assoc-btn" :disabled="!assocAllowed(dt)" :title="assocTitle(dt)"
                                         @click="openAssoc('associate', dt)">{{ $t('tray.assoc.associate') }}</button>
                             </template>
-                            <template v-else>
+                            <div v-else class="assoc-actions">
                                 <button class="btn-ghost assoc-btn" :disabled="!assocAllowed(dt)" :title="assocTitle(dt)"
                                         @click="openAssoc('replace', dt)">{{ $t('tray.assoc.replace') }}</button>
                                 <!-- (usabilita' 15/9) Rigenera e Dissocia rifanno o
                                      buttano via le tasche del cassetto: stavano a
-                                     4 px da Sostituisci. Adesso vanno a capo e si
-                                     staccano dalle azioni ordinarie. -->
-                                <button class="btn-ghost assoc-btn assoc-destructive" :disabled="!assocAllowed(dt)" :title="assocTitle(dt)"
-                                        @click="openAssoc('regenerate', dt)">{{ $t('tray.assoc.regenerate') }}</button>
-                                <button class="btn-ghost assoc-btn assoc-danger assoc-destructive" :disabled="!assocAllowed(dt)" :title="assocTitle(dt)"
-                                        @click="openAssoc('dissociate', dt)">{{ $t('tray.assoc.dissociate') }}</button>
-                            </template>
+                                     4 px da Sostituisci. (UI 5/10) Stanno sulla
+                                     stessa riga ma in un gruppo a parte, dietro un
+                                     divisorio e con uno stacco piu' largo di quello
+                                     verticale di prima: la riga torna alta un
+                                     bottone, e un dito che scivola da Sostituisci
+                                     non arriva a Rigenera. -->
+                                <div class="assoc-destructive-group">
+                                    <button class="btn-ghost assoc-btn" :disabled="!assocAllowed(dt)" :title="assocTitle(dt)"
+                                            @click="openAssoc('regenerate', dt)">{{ $t('tray.assoc.regenerate') }}</button>
+                                    <button class="btn-ghost assoc-btn assoc-danger" :disabled="!assocAllowed(dt)" :title="assocTitle(dt)"
+                                            @click="openAssoc('dissociate', dt)">{{ $t('tray.assoc.dissociate') }}</button>
+                                </div>
+                            </div>
                         </td>
                         <td v-else></td>
                         <!--td>{{dt.N_PLACE}}</td-->
@@ -837,10 +843,31 @@ export default {
 
 <style scoped>
 /* (usabilita' 15/9) le azioni che rifanno o buttano via le tasche non
-   stanno in fila a 4 px da Sostituisci: vanno a capo, con uno stacco. */
-.assoc-destructive {
-  display: block;
-  margin-top: var(--space-4);
+   stanno a 4 px da Sostituisci. (UI 5/10) Una riga sola: gruppo distruttivo
+   staccato da un divisorio e da 24+16 px (prima: 16 px in verticale). Sotto
+   i 1200 px la riga puo' andare a capo; a 1920 nowrap fa allargare la
+   colonna Grigliato alla tabella invece di impilare i bottoni. */
+.assoc-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: var(--space-2);
+}
+.assoc-destructive-group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: var(--space-5);
+  padding-left: var(--space-4);
+  border-left: 1px solid var(--border-subtle);
+}
+.assoc-actions .assoc-btn {
+  margin: 0;   /* la spaziatura la da' il gap */
+}
+@media (max-width: 1200px) {
+  .assoc-actions {
+    flex-wrap: wrap;
+  }
 }
 
     .pure-table-horizontal  #td {
@@ -931,13 +958,8 @@ export default {
 </style>
 
 <style scoped>
-    #locked4OP{
-        background-image:url('/src/assets/chiaveIng.svg');
-        background-repeat: no-repeat;
-        background-size: 1.5em;
-        background-position-x: 100%;
-        background-position-y: 100%;
-    } 
+    /* (UI 5/10) tolta la copia locale di #locked4OP (sfondo in basso a
+       destra): il badge di livello e' unico, in App.vue. */
     /* Badge status (grafia lowercase): semantica allineata a productionTable.
        Nota: il td che li usava (getClassFromStatusDesc) e' oggi commentato
        nel template — classi tokenizzate ma di fatto inattive. */

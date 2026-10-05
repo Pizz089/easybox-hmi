@@ -126,6 +126,423 @@
         </div>
       </div>
 
+
+      <!-- ===== CARD 5: Comandi pinza (chele lato 1/2: 240..243) =====
+           Missioni PLC senza parametri, stesso gate dei comandi manuali
+           (dataStored.cmdActive, CMD_enabled invariata) e stesso feedback
+           sendMission. APERTURA = dialog di conferma (con un pezzo in presa
+           cade); CHIUSURA diretta. Lato 2: gate su dataGripper[1] (seconda
+           riga GRIPPERS con POS_PLANT=1000, stessa fonte del riquadro
+           "Stato GRIPPER 2"): senza lato 2 il PLC rifiuterebbe con 944. -->
+      <section class="command-section">
+        <h3 class="section-label">{{ $t('robot.section.claw') }}</h3>
+        <div class="pure-g claw-grid">
+          <div class="pure-u-1-2 claw-side" v-for="side in [1, 2]" :key="side">
+            <h4 class="section-label">{{ $t('robot.claw.side', { side: side }) }}</h4>
+            <button class="pure-u-1 button_pressed"
+              :class="[clawEnabled(side) ? 'pure-button-micromission' : 'pure-button-disable', {'btn-mission-running': missionRunning=='claw-open-'+side}]"
+              @click="clawEnabled(side) ? openClawDialog(side) : ''">
+              {{ $t('robot.claw.open') }}
+            </button>
+            <button class="pure-u-1 button_pressed"
+              :class="[clawEnabled(side) ? 'pure-button-micromission' : 'pure-button-disable', {'btn-mission-running': missionRunning=='claw-close-'+side}]"
+              @click="clawEnabled(side) ? sendClaw(side, false) : ''">
+              {{ $t('robot.claw.close') }}
+            </button>
+            <small class="cmd-hint" v-if="side==2 && dataStored.cmdActive==1 && !clawSide2Available">{{ $t('robot.claw.noSide2') }}</small>
+          </div>
+        </div>
+
+        <!-- dialog conferma APERTURA chela (240/242): la chiusura non passa
+             di qui. Entra nell'invariante "un solo overlay". -->
+        <div v-if="clawDialog.side" class="mission-dialog-overlay">
+          <div class="mission-dialog">
+            <h3 class="command-section-title">{{ $t('robot.claw.confirmOpen', { side: clawDialog.side }) }}</h3>
+            <small class="cmd-hint">{{ $t('robot.claw.confirmOpenWarn') }}</small>
+            <div class="pure-g">
+              <div class="pure-u-1-2">
+                <button style="width:100%" class="button_pressed pure-button-mission" @click="confirmClawOpen()">
+                  {{ $t('robot.dialog.confirm') }}
+                </button>
+              </div>
+              <div class="pure-u-1-2">
+                <button style="width:100%" class="btn-ghost" @click="closeClawDialog()">
+                  {{ $t('robot.dialog.cancel') }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== CARD 4: Collaudo missioni singole (comandi manuali PLC) =====
+           Stesso pattern della CARD 3: bottone a label FISSA che NON invia mai
+           direttamente (apre un dialog di conferma), gate = computed unica
+           fonte per classe e click, hint del motivo quando disabilitato.
+           Contratto comandi: stringhe "CMD;p1;p2" su TO_PLANT/CMD/ROBOT. -->
+      <section class="command-section">
+        <h3 class="section-label">{{ $t('robot.section.test') }}</h3>
+
+        <!-- (UI 5/10) a coppie preleva | deposita sulla stessa riga: meta'
+             altezza, e il motivo del blocco compare UNA volta per gruppo
+             (prima era ripetuto identico sotto ogni bottone). Gate, click e
+             comandi invariati. -->
+        <div class="test-pairs">
+          <!-- 31;subpos;gripperID — richiede cassetto estratto (PLC: 20001) -->
+          <button class="pure-u-1 button_pressed"
+            :class="[testTrayEnabled? 'pure-button-mission' : 'pure-button-disable', {'btn-mission-running': missionRunning=='test-pickTray'}]"
+            @click="testTrayEnabled?openTestDialog('pickTray'):''">
+            {{ $t('robot.test.pickTray') }}
+          </button>
+          <!-- 32;subpos (0 = prima posizione vuota) — richiede cassetto estratto -->
+          <button class="pure-u-1 button_pressed"
+            :class="[testTrayEnabled? 'pure-button-mission' : 'pure-button-disable', {'btn-mission-running': missionRunning=='test-placeTray'}]"
+            @click="testTrayEnabled?openTestDialog('placeTray'):''">
+            {{ $t('robot.test.placeTray') }}
+          </button>
+        </div>
+        <small class="cmd-hint" v-if="!testTrayEnabled && testTrayDisabledReason">{{ $t(testTrayDisabledReason) }}</small>
+
+        <div class="test-pairs">
+          <!-- 33;gripperID -->
+          <button class="pure-u-1 button_pressed"
+            :class="[testBaseEnabled? 'pure-button-mission' : 'pure-button-disable', {'btn-mission-running': missionRunning=='test-pickMC'}]"
+            @click="testBaseEnabled?openTestDialog('pickMC'):''">
+            {{ $t('robot.test.pickMC') }}
+          </button>
+          <!-- 34 — conferma semplice -->
+          <button class="pure-u-1 button_pressed"
+            :class="[testBaseEnabled? 'pure-button-mission' : 'pure-button-disable', {'btn-mission-running': missionRunning=='test-placeMC'}]"
+            @click="testBaseEnabled?openTestDialog('placeMC'):''">
+            {{ $t('robot.test.placeMC') }}
+          </button>
+          <!-- 13;3;palletID;0 / 14;3;palletID;0 — riusano il dialog generico
+               (scelta pallet dalla lista esistente), posizione fissa 0 = MC1 -->
+          <button class="pure-u-1 button_pressed"
+            :class="[testBaseEnabled? 'pure-button-mission' : 'pure-button-disable', {'btn-mission-running': missionRunning=='test-palletPickMC'}]"
+            @click="testBaseEnabled?openDialog('palletPickMC'):''">
+            {{ $t('robot.test.palletPickMC') }}
+          </button>
+          <button class="pure-u-1 button_pressed"
+            :class="[testBaseEnabled? 'pure-button-mission' : 'pure-button-disable', {'btn-mission-running': missionRunning=='test-palletPlaceMC'}]"
+            @click="testBaseEnabled?openDialog('palletPlaceMC'):''">
+            {{ $t('robot.test.palletPlaceMC') }}
+          </button>
+        </div>
+        <small class="cmd-hint" v-if="!testBaseEnabled && testBaseDisabledReason">{{ $t(testBaseDisabledReason) }}</small>
+
+        <!-- Dialog di collaudo (pezzo cassetto/MC1): subpos e/o scelta pinza.
+             TERZO overlay: entra nell'invariante "un solo overlay" (fix
+             mutual-exclusion) via openTestDialog/openDialog/openGripperMission. -->
+        <div v-if="testDialog.type!=''" class="mission-dialog-overlay">
+          <div class="mission-dialog">
+            <h3 class="command-section-title">{{ $t(testDialogTitle) }}</h3>
+
+            <!-- posizione nel cassetto (31: min 1; 32: min 0 = prima vuota) -->
+            <div class="test-field" v-if="testDialog.type=='pickTray' || testDialog.type=='placeTray'">
+              <div class="test-field-label">{{ $t('robot.test.subpos') }}</div>
+              <numericField
+                name="subpos"
+                step=1
+                :min="testDialog.type=='pickTray' ? '1' : '0'"
+                max=999
+                :model-value="testDialog.subpos"
+                integerVal=true
+                @update="v => testDialog.subpos = v">
+              </numericField>
+              <small class="cmd-hint" v-if="testDialog.type=='placeTray'">{{ $t('robot.test.subposZeroHint') }}</small>
+            </div>
+
+            <!-- scelta pinza (31/33): default "a bordo" (0); disabilitata se
+                 nessuna pinza risulta a bordo (il PLC risponderebbe 22) -->
+            <div class="test-field" v-if="testDialog.type=='pickTray' || testDialog.type=='pickMC'">
+              <div class="test-field-label">{{ $t('robot.test.gripperChoice') }}</div>
+              <div class="mission-dialog-list">
+                <button class="mission-dialog-item"
+                  :class="{ selected: testDialog.gripperSel===0 }"
+                  :disabled="!gripperOnBoardNow()"
+                  @click="gripperOnBoardNow() ? testDialog.gripperSel=0 : ''">
+                  <span>{{ $t('robot.test.gripperOnBoard') }}</span>
+                  <span v-if="gripperOnBoardNow()">(ID {{ dataGripper[0].ID }})</span>
+                  <span v-else class="coh-na">{{ $t('robot.hint.noGripperSystem') }}</span>
+                </button>
+                <button v-for="g in grippersList" :key="g.ID"
+                  class="mission-dialog-item"
+                  :class="{ selected: testDialog.gripperSel===g.ID }"
+                  @click="testDialog.gripperSel=g.ID">
+                  <span>{{ (g.FAMILY || '').trim() }}</span>
+                  <span>{{ $t('robot.dialog.slot') }} {{ g.SUB_POS }} (ID {{ g.ID }})</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- 34: conferma semplice -->
+            <div class="unload-info" v-if="testDialog.type=='placeMC'">
+              {{ $t('robot.test.confirmPlaceMC') }}
+            </div>
+
+            <div class="pure-g">
+              <div class="pure-u-1-2">
+                <button style="width:100%" class="button_pressed"
+                  :class="[!testConfirmEnabled? 'pure-button-disable' : 'pure-button-mission']"
+                  @click="testConfirmEnabled?confirmTestDialog():''">
+                  {{ $t('robot.dialog.confirm') }}
+                </button>
+              </div>
+              <div class="pure-u-1-2">
+                <button style="width:100%" class="btn-ghost" @click="closeTestDialog()">
+                  {{ $t('robot.dialog.cancel') }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- (fase B) dialog "Reimposta stato cella": dichiarazione 35.
+             Stato mostrato SOLO dai sensori/echi PLC (mai optimistic).
+             Entra nell'invariante un-solo-overlay. -->
+        <div v-if="declDialog.open" class="mission-dialog-overlay">
+          <div class="mission-dialog decl-dialog">
+            <h3 class="command-section-title">{{ $t('robot.decl.title') }}</h3>
+            <div class="unload-info">{{ $t('robot.decl.hint') }}</div>
+
+            <!-- sensori LIVE (FROM_PLANT/GRIPPER/MOUNTED e /CLOSED1) -->
+            <div class="coherence-row">
+              <span class="coh-label">{{ $t('robot.decl.mounted') }}</span>
+              <span v-if="gripperMounted===null" class="coh-na">{{ $t('robot.coherence.na') }}</span>
+              <span v-else>{{ gripperMounted==1 ? $t('robot.coherence.mounted') : $t('robot.coherence.absent') }}</span>
+            </div>
+            <div class="coherence-row">
+              <span class="coh-label">{{ $t('robot.decl.closed1') }}</span>
+              <span v-if="gripperClosed1===null" class="coh-na">{{ $t('robot.coherence.na') }}</span>
+              <span v-else>{{ gripperClosed1==1 ? $t('robot.decl.closed') : $t('robot.decl.open') }}</span>
+            </div>
+
+            <!-- STEP 1: sensori -> flangia nuda o avanti -->
+            <template v-if="declDialog.step==1">
+              <div class="unload-info" v-if="gripperMounted===0">{{ $t('robot.decl.bareHint') }}</div>
+              <div class="pure-g">
+                <div class="pure-u-1-3" v-if="gripperMounted===0">
+                  <button style="width:100%" class="button_pressed pure-button-mission"
+                    :disabled="declDialog.waiting" @click="declareBare()">
+                    {{ $t('robot.decl.declareBare') }}
+                  </button>
+                </div>
+                <div class="pure-u-1-3" v-if="gripperMounted===1">
+                  <button style="width:100%" class="button_pressed pure-button-mission" @click="declDialog.step=2">
+                    {{ $t('tray.teach.next') }}
+                  </button>
+                </div>
+                <div class="pure-u-1-3">
+                  <button style="width:100%" class="btn-ghost" @click="closeDeclDialog()">
+                    {{ $t('robot.dialog.cancel') }}
+                  </button>
+                </div>
+              </div>
+            </template>
+
+            <!-- STEP 2: lo stato dell'INTERA cella, in sezioni.
+                 Ogni sezione parte da quello che il PLC crede adesso (echi
+                 DECLARE/MC1, TRAY/EXTRACT): l'operatore CORREGGE quello che
+                 non torna, non reinventa da zero. -->
+            <template v-if="declDialog.step==2">
+
+              <!-- ===== ROBOT: pinza e contenuto delle chele (35) ===== -->
+              <div class="decl-section">
+                <h4 class="section-label">{{ $t('robot.decl.sectionRobot') }}</h4>
+                <p v-if="declErr.robot" class="decl-err">{{ $t('robot.declErr.' + declErr.robot) }}</p>
+                <div class="decl-field">
+                  <label>{{ $t('robot.decl.gripper') }}</label>
+                  <select v-model.number="declDialog.gripperSel" class="decl-select">
+                    <option :value="0">-</option>
+                    <option v-for="g in declGrippers" :key="g.ID" :value="g.ID">
+                      #{{ g.ID }} {{ (g.FAMILY || '').trim() }}
+                    </option>
+                  </select>
+                </div>
+                <div class="decl-field">
+                  <label>{{ $t('robot.decl.side1') }}</label>
+                  <!-- regola RATIFICATA: chele aperte (CLOSED1=0) = contenuto
+                       FORZATO a vuoto, sola lettura -->
+                  <span v-if="gripperClosed1===0" class="coh-na">{{ $t('robot.decl.forcedEmpty') }}</span>
+                  <template v-else>
+                    <select v-model.number="declDialog.cont1" class="decl-select">
+                      <option :value="0">{{ $t('status.empty') }}</option>
+                      <option :value="1">{{ $t('status.raw') }}</option>
+                      <option :value="2">{{ $t('status.finished') }}</option>
+                      <option :value="3">{{ $t('robot.decl.contPallet') }}</option>
+                    </select>
+                    <select v-if="declDialog.cont1==3" v-model.number="declDialog.id1" class="decl-select">
+                      <option :value="0">-</option>
+                      <option v-for="p in palletsList" :key="'d1'+p.ID" :value="p.ID">#{{ p.ID }} {{ (p.FAMILY || '').trim() }}</option>
+                    </select>
+                  </template>
+                </div>
+                <div class="decl-field">
+                  <label>{{ $t('robot.decl.side2') }}</label>
+                  <!-- nessun sensore lato 2: scelta libera, la validazione
+                       lato-inesistente la fa il PLC (errore 944) -->
+                  <select v-model.number="declDialog.cont2" class="decl-select">
+                    <option :value="0">{{ $t('status.empty') }}</option>
+                    <option :value="1">{{ $t('status.raw') }}</option>
+                    <option :value="2">{{ $t('status.finished') }}</option>
+                    <option :value="3">{{ $t('robot.decl.contPallet') }}</option>
+                  </select>
+                  <select v-if="declDialog.cont2==3" v-model.number="declDialog.id2" class="decl-select">
+                    <option :value="0">-</option>
+                    <option v-for="p in palletsList" :key="'d2'+p.ID" :value="p.ID">#{{ p.ID }} {{ (p.FAMILY || '').trim() }}</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- ===== MACCHINA: pezzo in morsa (36) o morsa vuota (37) ===== -->
+              <div class="decl-section">
+                <h4 class="section-label">{{ $t('robot.decl.sectionMc') }}</h4>
+                <p v-if="declErr.mc" class="decl-err">{{ $t('robot.declErr.' + declErr.mc) }}</p>
+                <div class="decl-field">
+                  <label>{{ $t('robot.decl.mcContent') }}</label>
+                  <select v-model.number="declDialog.pieceSel" class="decl-select">
+                    <option :value="0">{{ $t('robot.decl.mcEmpty') }}</option>
+                    <option v-for="pc in declPieces" :key="'pc'+pc.ID" :value="pc.ID">
+                      #{{ pc.ID }} {{ (pc.DESCR || pc.FAMILY || '').trim() }}
+                    </option>
+                  </select>
+                </div>
+                <small class="cmd-hint decl-note">{{ $t('robot.decl.mcHint') }}</small>
+              </div>
+
+              <!-- ===== CASSETTO: quale e' fuori (38), 0 = nessuno =====
+                   Il 38 e' una CONFERMA: il PLC lo accetta solo se i dodici
+                   sensori sono d'accordo (rifiuto 996). L'avviso lo dice,
+                   perche' l'operatore non creda di poter forzare. -->
+              <div class="decl-section">
+                <h4 class="section-label">{{ $t('robot.decl.sectionBox') }}</h4>
+                <p v-if="declErr.box" class="decl-err">{{ $t('robot.declErr.' + declErr.box) }}</p>
+                <div class="decl-field">
+                  <label>{{ $t('robot.decl.boxTray') }}</label>
+                  <select v-model.number="declDialog.boxSel" class="decl-select">
+                    <option :value="0">{{ $t('robot.decl.boxNone') }}</option>
+                    <option v-for="t in traysList" :key="'bt'+t.FLOOR_MAG" :value="t.FLOOR_MAG">
+                      {{ $t('robot.dialog.tray') }} {{ t.FLOOR_MAG }}<span v-if="(t.DESCR || '').trim()"> - {{ t.DESCR.trim() }}</span>
+                    </option>
+                  </select>
+                </div>
+                <small class="cmd-hint decl-note">{{ $t('robot.decl.boxHint') }}</small>
+              </div>
+
+              <!-- ===== QUARTA VOCE: correggi le tasche (39) ===== -->
+              <div class="decl-section">
+                <h4 class="section-label">{{ $t('robot.decl.sectionPockets') }}</h4>
+                <button style="width:100%" class="button_pressed"
+                  :class="[pocketsEnabled ? 'pure-button-micromission' : 'pure-button-disable']"
+                  @click="pocketsEnabled ? openPockets() : ''">
+                  {{ $t('robot.decl.pocketsOpen') }}
+                </button>
+                <small class="cmd-hint" v-if="!pocketsEnabled">{{ $t(pocketsDisabledReason) }}</small>
+              </div>
+
+              <!-- avanzamento della sequenza: 36/37 -> 38 -> 35, in quest'ordine
+                   obbligato (il 35 azzera le catene del dispatcher) -->
+              <div v-if="declDialog.phase" class="decl-seq">
+                <p v-if="declDialog.phase!='stopped'">{{ $t('robot.decl.seq.' + declDialog.phase) }}</p>
+                <p v-else class="decl-err">{{ $t('robot.decl.seq.stopped', { section: $t('robot.decl.seq.name.' + declDialog.stoppedAt) }) }}</p>
+              </div>
+
+              <div class="pure-g">
+                <div class="pure-u-1-3">
+                  <button style="width:100%" class="btn-ghost" :disabled="declDialog.waiting" @click="declDialog.step=1">
+                    {{ $t('tray.teach.back') }}
+                  </button>
+                </div>
+                <div class="pure-u-1-3">
+                  <button style="width:100%" class="button_pressed"
+                    :class="[!(declDialog.gripperSel>0) || declDialog.waiting ? 'pure-button-disable' : 'pure-button-mission']"
+                    @click="(declDialog.gripperSel>0 && !declDialog.waiting) ? sendDeclare() : ''">
+                    {{ $t('robot.decl.send') }}
+                  </button>
+                </div>
+                <div class="pure-u-1-3">
+                  <button style="width:100%" class="btn-ghost" @click="closeDeclDialog()">
+                    {{ $t('robot.dialog.cancel') }}
+                  </button>
+                </div>
+              </div>
+            </template>
+
+            <!-- STEP 3: correggi tasche (39). La griglia e' la STESSA della
+                 pagina layout (TrayPockets): si clicca la casella che si
+                 vede, non si digita un numero. Una tasca alla volta. -->
+            <template v-if="declDialog.step==3">
+              <p v-if="declErr.pocket" class="decl-err">{{ $t('robot.declErr.' + declErr.pocket) }}</p>
+              <div class="unload-info" v-if="extractedTray">
+                {{ $t('robot.dialog.tray') }} {{ extractedTray.FLOOR_MAG }}
+                <span v-if="(extractedTray.DESCR || '').trim()"> - {{ extractedTray.DESCR.trim() }}</span>
+              </div>
+
+              <!-- ===== CONTENUTO DEL CASSETTO (44) =====
+                   Dichiara COSA c'e' dentro: scrive Part_Type su tutte le
+                   tasche, ed e' il codice che il ciclo cerca. Sta qui, col
+                   cassetto aperto davanti, perche' e' il momento in cui si
+                   vede davvero cosa contiene. A cassetto chiuso la stessa
+                   dichiarazione si fa dalla pagina del cassetto (Cassetti >
+                   layout): il 44 legge DB_BOX_1.ExtractedTray e vale solo
+                   sul cassetto fuori. Le tasche (39) dicono QUANTO c'e';
+                   questo dice DI CHE COSA. -->
+              <div class="decl-section">
+                <h4 class="section-label">{{ $t('robot.decl.trayType') }}</h4>
+                <p v-if="declErr.trayType" class="decl-err">{{ $t(declErr.trayType === 'tooBig' ? 'robot.decl.trayTypeTooBig' : 'robot.declErr.' + declErr.trayType, declErrParams) }}</p>
+                <div class="decl-field">
+                  <label>{{ $t('robot.decl.trayTypeLabel') }}</label>
+                  <select v-model.number="pockets.typeSel" class="decl-select">
+                    <option :value="0">-</option>
+                    <option v-for="pc in declPieces" :key="'tt'+pc.ID" :value="pc.ID">
+                      #{{ pc.ID }} {{ (pc.DESCR || pc.FAMILY || '').trim() }}
+                    </option>
+                  </select>
+                  <button class="button_pressed"
+                    :class="[pockets.typeBusy || !(pockets.typeSel > 0) ? 'pure-button-disable' : 'pure-button-micromission']"
+                    @click="(pockets.typeBusy || !(pockets.typeSel > 0)) ? '' : declareTrayType()">
+                    {{ $t('robot.decl.trayTypeSend') }}
+                  </button>
+                </div>
+                <small class="cmd-hint decl-note">{{ $t('robot.decl.trayTypeHint') }}</small>
+              </div>
+
+              <div class="pockets-wrap">
+                <TrayPockets
+                  :pockets="pockets.rows"
+                  :dimX="pockets.dimX" :dimY="pockets.dimY" :radius="pockets.radius"
+                  :selected="pockets.sel"
+                  width="420" height="315"
+                  @pick="pickPocket($event)" />
+              </div>
+              <p class="cmd-hint">{{ $t(pockets.sel === null ? 'robot.decl.pocketsPick' : 'robot.decl.pocketsChoose', { sub: pockets.sel }) }}</p>
+              <div class="pure-g" v-if="pockets.sel !== null">
+                <div class="pure-u-1-3" v-for="st in pocketStates" :key="'ps'+st.code">
+                  <button style="width:100%" class="button_pressed"
+                    :class="[pockets.busy ? 'pure-button-disable' : 'pure-button-micromission']"
+                    @click="pockets.busy ? '' : declarePocket(st.code)">
+                    {{ $t(st.label) }}
+                  </button>
+                </div>
+              </div>
+              <div class="pure-g">
+                <div class="pure-u-1-2">
+                  <button style="width:100%" class="btn-ghost" :disabled="pockets.busy" @click="declDialog.step=2">
+                    {{ $t('tray.teach.back') }}
+                  </button>
+                </div>
+                <div class="pure-u-1-2">
+                  <button style="width:100%" class="btn-ghost" :disabled="pockets.busy" @click="closeDeclDialog()">
+                    {{ $t('robot.dialog.cancel') }}
+                  </button>
+                </div>
+              </div>
+            </template>
+            <small class="cmd-hint" v-if="declDialog.waiting">{{ $t('robot.decl.waiting') }}</small>
+          </div>
+        </div>
+      </section>
     </div>
     <div class="pure-u-10-24">
       <h1 class="view-title">{{ $t('Comandi') }}</h1>
@@ -478,422 +895,6 @@
         </div>
       </section>
 
-      <!-- ===== CARD 4: Collaudo missioni singole (comandi manuali PLC) =====
-           Stesso pattern della CARD 3: bottone a label FISSA che NON invia mai
-           direttamente (apre un dialog di conferma), gate = computed unica
-           fonte per classe e click, hint del motivo quando disabilitato.
-           Contratto comandi: stringhe "CMD;p1;p2" su TO_PLANT/CMD/ROBOT. -->
-      <section class="command-section">
-        <h3 class="section-label">{{ $t('robot.section.test') }}</h3>
-
-        <!-- 31;subpos;gripperID — richiede cassetto estratto (PLC: 20001) -->
-        <button class="pure-u-1 button_pressed"
-          :class="[testTrayEnabled? 'pure-button-mission' : 'pure-button-disable', {'btn-mission-running': missionRunning=='test-pickTray'}]"
-          @click="testTrayEnabled?openTestDialog('pickTray'):''">
-          {{ $t('robot.test.pickTray') }}
-        </button>
-        <small class="cmd-hint" v-if="!testTrayEnabled && testTrayDisabledReason">{{ $t(testTrayDisabledReason) }}</small>
-
-        <!-- 32;subpos (0 = prima posizione vuota) — richiede cassetto estratto -->
-        <button class="pure-u-1 button_pressed"
-          :class="[testTrayEnabled? 'pure-button-mission' : 'pure-button-disable', {'btn-mission-running': missionRunning=='test-placeTray'}]"
-          @click="testTrayEnabled?openTestDialog('placeTray'):''">
-          {{ $t('robot.test.placeTray') }}
-        </button>
-        <small class="cmd-hint" v-if="!testTrayEnabled && testTrayDisabledReason">{{ $t(testTrayDisabledReason) }}</small>
-
-        <!-- 33;gripperID -->
-        <button class="pure-u-1 button_pressed"
-          :class="[testBaseEnabled? 'pure-button-mission' : 'pure-button-disable', {'btn-mission-running': missionRunning=='test-pickMC'}]"
-          @click="testBaseEnabled?openTestDialog('pickMC'):''">
-          {{ $t('robot.test.pickMC') }}
-        </button>
-        <small class="cmd-hint" v-if="!testBaseEnabled && testBaseDisabledReason">{{ $t(testBaseDisabledReason) }}</small>
-
-        <!-- 34 — conferma semplice -->
-        <button class="pure-u-1 button_pressed"
-          :class="[testBaseEnabled? 'pure-button-mission' : 'pure-button-disable', {'btn-mission-running': missionRunning=='test-placeMC'}]"
-          @click="testBaseEnabled?openTestDialog('placeMC'):''">
-          {{ $t('robot.test.placeMC') }}
-        </button>
-        <small class="cmd-hint" v-if="!testBaseEnabled && testBaseDisabledReason">{{ $t(testBaseDisabledReason) }}</small>
-
-        <!-- 13;3;palletID;0 / 14;3;palletID;0 — riusano il dialog generico
-             (scelta pallet dalla lista esistente), posizione fissa 0 = MC1 -->
-        <button class="pure-u-1 button_pressed"
-          :class="[testBaseEnabled? 'pure-button-mission' : 'pure-button-disable', {'btn-mission-running': missionRunning=='test-palletPickMC'}]"
-          @click="testBaseEnabled?openDialog('palletPickMC'):''">
-          {{ $t('robot.test.palletPickMC') }}
-        </button>
-        <small class="cmd-hint" v-if="!testBaseEnabled && testBaseDisabledReason">{{ $t(testBaseDisabledReason) }}</small>
-
-        <button class="pure-u-1 button_pressed"
-          :class="[testBaseEnabled? 'pure-button-mission' : 'pure-button-disable', {'btn-mission-running': missionRunning=='test-palletPlaceMC'}]"
-          @click="testBaseEnabled?openDialog('palletPlaceMC'):''">
-          {{ $t('robot.test.palletPlaceMC') }}
-        </button>
-        <small class="cmd-hint" v-if="!testBaseEnabled && testBaseDisabledReason">{{ $t(testBaseDisabledReason) }}</small>
-
-        <!-- Dialog di collaudo (pezzo cassetto/MC1): subpos e/o scelta pinza.
-             TERZO overlay: entra nell'invariante "un solo overlay" (fix
-             mutual-exclusion) via openTestDialog/openDialog/openGripperMission. -->
-        <div v-if="testDialog.type!=''" class="mission-dialog-overlay">
-          <div class="mission-dialog">
-            <h3 class="command-section-title">{{ $t(testDialogTitle) }}</h3>
-
-            <!-- posizione nel cassetto (31: min 1; 32: min 0 = prima vuota) -->
-            <div class="test-field" v-if="testDialog.type=='pickTray' || testDialog.type=='placeTray'">
-              <div class="test-field-label">{{ $t('robot.test.subpos') }}</div>
-              <numericField
-                name="subpos"
-                step=1
-                :min="testDialog.type=='pickTray' ? '1' : '0'"
-                max=999
-                :model-value="testDialog.subpos"
-                integerVal=true
-                @update="v => testDialog.subpos = v">
-              </numericField>
-              <small class="cmd-hint" v-if="testDialog.type=='placeTray'">{{ $t('robot.test.subposZeroHint') }}</small>
-            </div>
-
-            <!-- scelta pinza (31/33): default "a bordo" (0); disabilitata se
-                 nessuna pinza risulta a bordo (il PLC risponderebbe 22) -->
-            <div class="test-field" v-if="testDialog.type=='pickTray' || testDialog.type=='pickMC'">
-              <div class="test-field-label">{{ $t('robot.test.gripperChoice') }}</div>
-              <div class="mission-dialog-list">
-                <button class="mission-dialog-item"
-                  :class="{ selected: testDialog.gripperSel===0 }"
-                  :disabled="!gripperOnBoardNow()"
-                  @click="gripperOnBoardNow() ? testDialog.gripperSel=0 : ''">
-                  <span>{{ $t('robot.test.gripperOnBoard') }}</span>
-                  <span v-if="gripperOnBoardNow()">(ID {{ dataGripper[0].ID }})</span>
-                  <span v-else class="coh-na">{{ $t('robot.hint.noGripperSystem') }}</span>
-                </button>
-                <button v-for="g in grippersList" :key="g.ID"
-                  class="mission-dialog-item"
-                  :class="{ selected: testDialog.gripperSel===g.ID }"
-                  @click="testDialog.gripperSel=g.ID">
-                  <span>{{ (g.FAMILY || '').trim() }}</span>
-                  <span>{{ $t('robot.dialog.slot') }} {{ g.SUB_POS }} (ID {{ g.ID }})</span>
-                </button>
-              </div>
-            </div>
-
-            <!-- 34: conferma semplice -->
-            <div class="unload-info" v-if="testDialog.type=='placeMC'">
-              {{ $t('robot.test.confirmPlaceMC') }}
-            </div>
-
-            <div class="pure-g">
-              <div class="pure-u-1-2">
-                <button style="width:100%" class="button_pressed"
-                  :class="[!testConfirmEnabled? 'pure-button-disable' : 'pure-button-mission']"
-                  @click="testConfirmEnabled?confirmTestDialog():''">
-                  {{ $t('robot.dialog.confirm') }}
-                </button>
-              </div>
-              <div class="pure-u-1-2">
-                <button style="width:100%" class="btn-ghost" @click="closeTestDialog()">
-                  {{ $t('robot.dialog.cancel') }}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- (fase B) dialog "Reimposta stato cella": dichiarazione 35.
-             Stato mostrato SOLO dai sensori/echi PLC (mai optimistic).
-             Entra nell'invariante un-solo-overlay. -->
-        <div v-if="declDialog.open" class="mission-dialog-overlay">
-          <div class="mission-dialog decl-dialog">
-            <h3 class="command-section-title">{{ $t('robot.decl.title') }}</h3>
-            <div class="unload-info">{{ $t('robot.decl.hint') }}</div>
-
-            <!-- sensori LIVE (FROM_PLANT/GRIPPER/MOUNTED e /CLOSED1) -->
-            <div class="coherence-row">
-              <span class="coh-label">{{ $t('robot.decl.mounted') }}</span>
-              <span v-if="gripperMounted===null" class="coh-na">{{ $t('robot.coherence.na') }}</span>
-              <span v-else>{{ gripperMounted==1 ? $t('robot.coherence.mounted') : $t('robot.coherence.absent') }}</span>
-            </div>
-            <div class="coherence-row">
-              <span class="coh-label">{{ $t('robot.decl.closed1') }}</span>
-              <span v-if="gripperClosed1===null" class="coh-na">{{ $t('robot.coherence.na') }}</span>
-              <span v-else>{{ gripperClosed1==1 ? $t('robot.decl.closed') : $t('robot.decl.open') }}</span>
-            </div>
-
-            <!-- STEP 1: sensori -> flangia nuda o avanti -->
-            <template v-if="declDialog.step==1">
-              <div class="unload-info" v-if="gripperMounted===0">{{ $t('robot.decl.bareHint') }}</div>
-              <div class="pure-g">
-                <div class="pure-u-1-3" v-if="gripperMounted===0">
-                  <button style="width:100%" class="button_pressed pure-button-mission"
-                    :disabled="declDialog.waiting" @click="declareBare()">
-                    {{ $t('robot.decl.declareBare') }}
-                  </button>
-                </div>
-                <div class="pure-u-1-3" v-if="gripperMounted===1">
-                  <button style="width:100%" class="button_pressed pure-button-mission" @click="declDialog.step=2">
-                    {{ $t('tray.teach.next') }}
-                  </button>
-                </div>
-                <div class="pure-u-1-3">
-                  <button style="width:100%" class="btn-ghost" @click="closeDeclDialog()">
-                    {{ $t('robot.dialog.cancel') }}
-                  </button>
-                </div>
-              </div>
-            </template>
-
-            <!-- STEP 2: lo stato dell'INTERA cella, in sezioni.
-                 Ogni sezione parte da quello che il PLC crede adesso (echi
-                 DECLARE/MC1, TRAY/EXTRACT): l'operatore CORREGGE quello che
-                 non torna, non reinventa da zero. -->
-            <template v-if="declDialog.step==2">
-
-              <!-- ===== ROBOT: pinza e contenuto delle chele (35) ===== -->
-              <div class="decl-section">
-                <h4 class="section-label">{{ $t('robot.decl.sectionRobot') }}</h4>
-                <p v-if="declErr.robot" class="decl-err">{{ $t('robot.declErr.' + declErr.robot) }}</p>
-                <div class="decl-field">
-                  <label>{{ $t('robot.decl.gripper') }}</label>
-                  <select v-model.number="declDialog.gripperSel" class="decl-select">
-                    <option :value="0">-</option>
-                    <option v-for="g in declGrippers" :key="g.ID" :value="g.ID">
-                      #{{ g.ID }} {{ (g.FAMILY || '').trim() }}
-                    </option>
-                  </select>
-                </div>
-                <div class="decl-field">
-                  <label>{{ $t('robot.decl.side1') }}</label>
-                  <!-- regola RATIFICATA: chele aperte (CLOSED1=0) = contenuto
-                       FORZATO a vuoto, sola lettura -->
-                  <span v-if="gripperClosed1===0" class="coh-na">{{ $t('robot.decl.forcedEmpty') }}</span>
-                  <template v-else>
-                    <select v-model.number="declDialog.cont1" class="decl-select">
-                      <option :value="0">{{ $t('status.empty') }}</option>
-                      <option :value="1">{{ $t('status.raw') }}</option>
-                      <option :value="2">{{ $t('status.finished') }}</option>
-                      <option :value="3">{{ $t('robot.decl.contPallet') }}</option>
-                    </select>
-                    <select v-if="declDialog.cont1==3" v-model.number="declDialog.id1" class="decl-select">
-                      <option :value="0">-</option>
-                      <option v-for="p in palletsList" :key="'d1'+p.ID" :value="p.ID">#{{ p.ID }} {{ (p.FAMILY || '').trim() }}</option>
-                    </select>
-                  </template>
-                </div>
-                <div class="decl-field">
-                  <label>{{ $t('robot.decl.side2') }}</label>
-                  <!-- nessun sensore lato 2: scelta libera, la validazione
-                       lato-inesistente la fa il PLC (errore 944) -->
-                  <select v-model.number="declDialog.cont2" class="decl-select">
-                    <option :value="0">{{ $t('status.empty') }}</option>
-                    <option :value="1">{{ $t('status.raw') }}</option>
-                    <option :value="2">{{ $t('status.finished') }}</option>
-                    <option :value="3">{{ $t('robot.decl.contPallet') }}</option>
-                  </select>
-                  <select v-if="declDialog.cont2==3" v-model.number="declDialog.id2" class="decl-select">
-                    <option :value="0">-</option>
-                    <option v-for="p in palletsList" :key="'d2'+p.ID" :value="p.ID">#{{ p.ID }} {{ (p.FAMILY || '').trim() }}</option>
-                  </select>
-                </div>
-              </div>
-
-              <!-- ===== MACCHINA: pezzo in morsa (36) o morsa vuota (37) ===== -->
-              <div class="decl-section">
-                <h4 class="section-label">{{ $t('robot.decl.sectionMc') }}</h4>
-                <p v-if="declErr.mc" class="decl-err">{{ $t('robot.declErr.' + declErr.mc) }}</p>
-                <div class="decl-field">
-                  <label>{{ $t('robot.decl.mcContent') }}</label>
-                  <select v-model.number="declDialog.pieceSel" class="decl-select">
-                    <option :value="0">{{ $t('robot.decl.mcEmpty') }}</option>
-                    <option v-for="pc in declPieces" :key="'pc'+pc.ID" :value="pc.ID">
-                      #{{ pc.ID }} {{ (pc.DESCR || pc.FAMILY || '').trim() }}
-                    </option>
-                  </select>
-                </div>
-                <small class="cmd-hint decl-note">{{ $t('robot.decl.mcHint') }}</small>
-              </div>
-
-              <!-- ===== CASSETTO: quale e' fuori (38), 0 = nessuno =====
-                   Il 38 e' una CONFERMA: il PLC lo accetta solo se i dodici
-                   sensori sono d'accordo (rifiuto 996). L'avviso lo dice,
-                   perche' l'operatore non creda di poter forzare. -->
-              <div class="decl-section">
-                <h4 class="section-label">{{ $t('robot.decl.sectionBox') }}</h4>
-                <p v-if="declErr.box" class="decl-err">{{ $t('robot.declErr.' + declErr.box) }}</p>
-                <div class="decl-field">
-                  <label>{{ $t('robot.decl.boxTray') }}</label>
-                  <select v-model.number="declDialog.boxSel" class="decl-select">
-                    <option :value="0">{{ $t('robot.decl.boxNone') }}</option>
-                    <option v-for="t in traysList" :key="'bt'+t.FLOOR_MAG" :value="t.FLOOR_MAG">
-                      {{ $t('robot.dialog.tray') }} {{ t.FLOOR_MAG }}<span v-if="(t.DESCR || '').trim()"> - {{ t.DESCR.trim() }}</span>
-                    </option>
-                  </select>
-                </div>
-                <small class="cmd-hint decl-note">{{ $t('robot.decl.boxHint') }}</small>
-              </div>
-
-              <!-- ===== QUARTA VOCE: correggi le tasche (39) ===== -->
-              <div class="decl-section">
-                <h4 class="section-label">{{ $t('robot.decl.sectionPockets') }}</h4>
-                <button style="width:100%" class="button_pressed"
-                  :class="[pocketsEnabled ? 'pure-button-micromission' : 'pure-button-disable']"
-                  @click="pocketsEnabled ? openPockets() : ''">
-                  {{ $t('robot.decl.pocketsOpen') }}
-                </button>
-                <small class="cmd-hint" v-if="!pocketsEnabled">{{ $t(pocketsDisabledReason) }}</small>
-              </div>
-
-              <!-- avanzamento della sequenza: 36/37 -> 38 -> 35, in quest'ordine
-                   obbligato (il 35 azzera le catene del dispatcher) -->
-              <div v-if="declDialog.phase" class="decl-seq">
-                <p v-if="declDialog.phase!='stopped'">{{ $t('robot.decl.seq.' + declDialog.phase) }}</p>
-                <p v-else class="decl-err">{{ $t('robot.decl.seq.stopped', { section: $t('robot.decl.seq.name.' + declDialog.stoppedAt) }) }}</p>
-              </div>
-
-              <div class="pure-g">
-                <div class="pure-u-1-3">
-                  <button style="width:100%" class="btn-ghost" :disabled="declDialog.waiting" @click="declDialog.step=1">
-                    {{ $t('tray.teach.back') }}
-                  </button>
-                </div>
-                <div class="pure-u-1-3">
-                  <button style="width:100%" class="button_pressed"
-                    :class="[!(declDialog.gripperSel>0) || declDialog.waiting ? 'pure-button-disable' : 'pure-button-mission']"
-                    @click="(declDialog.gripperSel>0 && !declDialog.waiting) ? sendDeclare() : ''">
-                    {{ $t('robot.decl.send') }}
-                  </button>
-                </div>
-                <div class="pure-u-1-3">
-                  <button style="width:100%" class="btn-ghost" @click="closeDeclDialog()">
-                    {{ $t('robot.dialog.cancel') }}
-                  </button>
-                </div>
-              </div>
-            </template>
-
-            <!-- STEP 3: correggi tasche (39). La griglia e' la STESSA della
-                 pagina layout (TrayPockets): si clicca la casella che si
-                 vede, non si digita un numero. Una tasca alla volta. -->
-            <template v-if="declDialog.step==3">
-              <p v-if="declErr.pocket" class="decl-err">{{ $t('robot.declErr.' + declErr.pocket) }}</p>
-              <div class="unload-info" v-if="extractedTray">
-                {{ $t('robot.dialog.tray') }} {{ extractedTray.FLOOR_MAG }}
-                <span v-if="(extractedTray.DESCR || '').trim()"> - {{ extractedTray.DESCR.trim() }}</span>
-              </div>
-
-              <!-- ===== CONTENUTO DEL CASSETTO (44) =====
-                   Dichiara COSA c'e' dentro: scrive Part_Type su tutte le
-                   tasche, ed e' il codice che il ciclo cerca. Sta qui, col
-                   cassetto aperto davanti, perche' e' il momento in cui si
-                   vede davvero cosa contiene. A cassetto chiuso la stessa
-                   dichiarazione si fa dalla pagina del cassetto (Cassetti >
-                   layout): il 44 legge DB_BOX_1.ExtractedTray e vale solo
-                   sul cassetto fuori. Le tasche (39) dicono QUANTO c'e';
-                   questo dice DI CHE COSA. -->
-              <div class="decl-section">
-                <h4 class="section-label">{{ $t('robot.decl.trayType') }}</h4>
-                <p v-if="declErr.trayType" class="decl-err">{{ $t(declErr.trayType === 'tooBig' ? 'robot.decl.trayTypeTooBig' : 'robot.declErr.' + declErr.trayType, declErrParams) }}</p>
-                <div class="decl-field">
-                  <label>{{ $t('robot.decl.trayTypeLabel') }}</label>
-                  <select v-model.number="pockets.typeSel" class="decl-select">
-                    <option :value="0">-</option>
-                    <option v-for="pc in declPieces" :key="'tt'+pc.ID" :value="pc.ID">
-                      #{{ pc.ID }} {{ (pc.DESCR || pc.FAMILY || '').trim() }}
-                    </option>
-                  </select>
-                  <button class="button_pressed"
-                    :class="[pockets.typeBusy || !(pockets.typeSel > 0) ? 'pure-button-disable' : 'pure-button-micromission']"
-                    @click="(pockets.typeBusy || !(pockets.typeSel > 0)) ? '' : declareTrayType()">
-                    {{ $t('robot.decl.trayTypeSend') }}
-                  </button>
-                </div>
-                <small class="cmd-hint decl-note">{{ $t('robot.decl.trayTypeHint') }}</small>
-              </div>
-
-              <div class="pockets-wrap">
-                <TrayPockets
-                  :pockets="pockets.rows"
-                  :dimX="pockets.dimX" :dimY="pockets.dimY" :radius="pockets.radius"
-                  :selected="pockets.sel"
-                  width="420" height="315"
-                  @pick="pickPocket($event)" />
-              </div>
-              <p class="cmd-hint">{{ $t(pockets.sel === null ? 'robot.decl.pocketsPick' : 'robot.decl.pocketsChoose', { sub: pockets.sel }) }}</p>
-              <div class="pure-g" v-if="pockets.sel !== null">
-                <div class="pure-u-1-3" v-for="st in pocketStates" :key="'ps'+st.code">
-                  <button style="width:100%" class="button_pressed"
-                    :class="[pockets.busy ? 'pure-button-disable' : 'pure-button-micromission']"
-                    @click="pockets.busy ? '' : declarePocket(st.code)">
-                    {{ $t(st.label) }}
-                  </button>
-                </div>
-              </div>
-              <div class="pure-g">
-                <div class="pure-u-1-2">
-                  <button style="width:100%" class="btn-ghost" :disabled="pockets.busy" @click="declDialog.step=2">
-                    {{ $t('tray.teach.back') }}
-                  </button>
-                </div>
-                <div class="pure-u-1-2">
-                  <button style="width:100%" class="btn-ghost" :disabled="pockets.busy" @click="closeDeclDialog()">
-                    {{ $t('robot.dialog.cancel') }}
-                  </button>
-                </div>
-              </div>
-            </template>
-            <small class="cmd-hint" v-if="declDialog.waiting">{{ $t('robot.decl.waiting') }}</small>
-          </div>
-        </div>
-      </section>
-
-      <!-- ===== CARD 5: Comandi pinza (chele lato 1/2: 240..243) =====
-           Missioni PLC senza parametri, stesso gate dei comandi manuali
-           (dataStored.cmdActive, CMD_enabled invariata) e stesso feedback
-           sendMission. APERTURA = dialog di conferma (con un pezzo in presa
-           cade); CHIUSURA diretta. Lato 2: gate su dataGripper[1] (seconda
-           riga GRIPPERS con POS_PLANT=1000, stessa fonte del riquadro
-           "Stato GRIPPER 2"): senza lato 2 il PLC rifiuterebbe con 944. -->
-      <section class="command-section">
-        <h3 class="section-label">{{ $t('robot.section.claw') }}</h3>
-        <div class="pure-g claw-grid">
-          <div class="pure-u-1-2 claw-side" v-for="side in [1, 2]" :key="side">
-            <h4 class="section-label">{{ $t('robot.claw.side', { side: side }) }}</h4>
-            <button class="pure-u-1 button_pressed"
-              :class="[clawEnabled(side) ? 'pure-button-micromission' : 'pure-button-disable', {'btn-mission-running': missionRunning=='claw-open-'+side}]"
-              @click="clawEnabled(side) ? openClawDialog(side) : ''">
-              {{ $t('robot.claw.open') }}
-            </button>
-            <button class="pure-u-1 button_pressed"
-              :class="[clawEnabled(side) ? 'pure-button-micromission' : 'pure-button-disable', {'btn-mission-running': missionRunning=='claw-close-'+side}]"
-              @click="clawEnabled(side) ? sendClaw(side, false) : ''">
-              {{ $t('robot.claw.close') }}
-            </button>
-            <small class="cmd-hint" v-if="side==2 && dataStored.cmdActive==1 && !clawSide2Available">{{ $t('robot.claw.noSide2') }}</small>
-          </div>
-        </div>
-
-        <!-- dialog conferma APERTURA chela (240/242): la chiusura non passa
-             di qui. Entra nell'invariante "un solo overlay". -->
-        <div v-if="clawDialog.side" class="mission-dialog-overlay">
-          <div class="mission-dialog">
-            <h3 class="command-section-title">{{ $t('robot.claw.confirmOpen', { side: clawDialog.side }) }}</h3>
-            <small class="cmd-hint">{{ $t('robot.claw.confirmOpenWarn') }}</small>
-            <div class="pure-g">
-              <div class="pure-u-1-2">
-                <button style="width:100%" class="button_pressed pure-button-mission" @click="confirmClawOpen()">
-                  {{ $t('robot.dialog.confirm') }}
-                </button>
-              </div>
-              <div class="pure-u-1-2">
-                <button style="width:100%" class="btn-ghost" @click="closeClawDialog()">
-                  {{ $t('robot.dialog.cancel') }}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
     </div>
 
   </div>
@@ -2674,6 +2675,18 @@ h6 {
    larghezze uguali tra loro come prima, gap allineato al gap 8 della card. */
 .dest-grid {
   gap: var(--space-2);
+}
+
+/* (UI 5/10) Collaudo: preleva | deposita affiancati. Griglia a 2 colonne
+   uguali; stretch: se un testo va a capo la coppia cresce insieme. */
+.test-pairs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+.test-pairs button {
+  width: 100%;
+  min-height: 52px;
 }
 
 /* (chele) due colonne lato 1 / lato 2, bottoni impilati per colonna */
