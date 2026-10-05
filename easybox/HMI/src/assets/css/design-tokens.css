@@ -114,4 +114,34 @@
   /* ---------- Transitions ---------- */
   --transition-fast: 150ms ease;
   --transition-base: 250ms ease;
+
+  /* ---------- v2 (docs/UI-DESIGN-SYSTEM.md §10-§11, 5/10/2026) ---------- */
+  /* Testo e icone sopra --accent (Primary). Stesso valore scuro che il
+     codice prendeva da --bg-base per il contrasto WCAG (7.20:1). */
+  --accent-on:   var(--bg-base);
+  /* Fondo sidebar e linguetta: era scritto a mano (#141D2A) in SideBar.vue e
+     menu.vue, mid-tone fra --bg-base e --bg-surface. */
+  --bg-sidebar:  #141D2A;
+  /* Cerchio dietro le icone dei tile di stato (fase 3). */
+  --bg-icon:     var(--bg-surface-2);
+  /* Valori di stato grandi, letti a ~1 m dal kiosk (fase 3). */
+  --font-size-display: 48px;
+  /* Target touch: preferito e minimo assoluto (deroghe documentate). */
+  --touch-target:     52px;
+  --touch-target-min: 44px;
+  /* Icone: nel testo, nei bottoni, nei tile. */
+  --icon-size-sm: 16px;
+  --icon-size-md: 24px;
+  --icon-size-lg: 32px;
+
+  /* Stati delle tasche (§11): UN significato per disegno, legenda e
+     tabelle. Il codice di stato e' quello di [POSITION].STATUS. */
+  --pocket-empty:        #6B7889;               /* 2 vuota: grigio */
+  --pocket-raw:          var(--color-info);     /* 4 grezzo: azzurro */
+  --pocket-working:      var(--color-warning);  /* 3 in lavoro: ambra */
+  --pocket-finished:     var(--color-success);  /* 5 finito: verde */
+  --pocket-abort:        var(--color-danger);   /* 7 scarto/abort: rosso */
+  --pocket-locked:       #F97316;               /* 9 bloccata: arancio, distinto dall'ambra */
+  --pocket-undef:        #0B0F14;               /* 0 non definita: nero... */
+  --pocket-undef-border: var(--border-strong);  /* ...col bordo */
 }
