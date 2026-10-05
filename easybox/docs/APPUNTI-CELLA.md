@@ -1,5 +1,12 @@
 # Appunti cella — interventi manuali da eseguire in impianto
 
+### 5/10 sera — dati pezzo al robot e larghezza corretta
+- Su richiesta del robotista il PLC passa le tre misure del pezzo dell'ordine in mm interi, troncati: %QW636 `Part_Width_mm` = PIECE.Y, %QW640 `Part_Length_mm` = PIECE.X, %QW642 `Part_Height_mm` = PIECE.Z, accanto a %QW634 `Vice_ClawLength_mm` e %QW638 `X_Support_mm`. Libere da %QW644 a %QW666.
+- Semantica (Dario e robotista, 5/10): X lunghezza, Y larghezza, Z altezza, come L/W/H nella pagina Pezzo.
+- Dal 18/9 al 5/10 %QW636 portava PIECE.X, cioè la lunghezza. Corretto in cella il 5/10 alle 19:17 con un ALTER VIEW guardato; il backup della definizione è su `D:\Backup` del PC di cella. Lezione: un nome di colonna o di tag non prova il significato, si confronta col pezzo.
+- Limiti: si aggiornano solo nelle missioni in macchina con un ordine attivo e non si azzerano mai. Al primo prelievo dal cassetto di un ordine nuovo il robot vede ancora le misure dell'ordine precedente.
+- Riscontro: ordine 2117, pezzo 1035 → 40 / 109 / 15 mm.
+
 ## [ ] 2026-10-05 — sonda HAAS live: `serverDati/tools/haas-probe-live.js`
 
 **Non è un test.** Pubblica `FROM_PLANT/HAAS_CMD/MC1`

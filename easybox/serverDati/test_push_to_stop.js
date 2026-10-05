@@ -330,17 +330,34 @@ const blow = fs.readFileSync(path.join(__dirname, 'scripts', 'coordinates-blow-m
 const blowSql = blow.split(/\r?\n/).filter(l => !/^\s*--/.test(l)).join('\n');
 check(!/WITH\s+ENCRYPTION/i.test(blowSql), 'soffiaggio: nessun WITH ENCRYPTION');
 check(/ALTER VIEW dbo\.COORDINATES_BLOW_MC AS/.test(blowSql), 'soffiaggio: definizione versionata nel repo');
-// (P8 5/10) testo della definizione di cella: PART_WIDTH e' pz.X (larghezza),
-// e ISNULL senza spazio dopo la virgola, come la legge OBJECT_DEFINITION
-for (const col of ['ISNULL(v.CLAW_LENGTH,0)', 'ISNULL(pz.X,0)', 'ISNULL(pv.STOP_BEYOND_CLAW,0)'])
-	check(blowSql.includes(col), 'soffiaggio: ' + col + ' — il ponte SQL non converte NULL in zero');
-check(/left  join PIECE_ON_VICE pv on pv\.VICE_ID = v\.ID and pv\.PIECE_ID = w\.PIECE_ID/.test(blowSql),
+// (5/10 sera) i controlli guardano il CORPO dell'ALTER VIEW: la guardia
+// nomina anche la definizione vecchia, e un "contiene" su tutto il file
+// passerebbe pure con la vista sbagliata.
+const blowBody = (blowSql.match(/ALTER VIEW dbo\.COORDINATES_BLOW_MC AS([\s\S]*?)\nGO/) || [])[1] || '';
+// Semantica (Dario e robotista, 5/10): PIECE.X lunghezza, Y larghezza, Z
+// altezza. Dal 18/9 al 5/10 PART_WIDTH era pz.X, cioe' la lunghezza.
+// ISNULL senza spazio dopo la virgola, come la legge OBJECT_DEFINITION.
+for (const col of ['ISNULL(v.CLAW_LENGTH,0) as CLAW_LENGTH', 'ISNULL(pz.Y,0) as PART_WIDTH',
+	'ISNULL(pv.STOP_BEYOND_CLAW,0) as STOP_BEYOND_CLAW', 'ISNULL(pz.X,0) as PART_LENGTH', 'ISNULL(pz.Z,0) as PART_HEIGHT'])
+	check(blowBody.replace(/\s+/g, ' ').includes(col), 'soffiaggio: ' + col + ' — il ponte SQL non converte NULL in zero');
+check(!/pz\.X,0\)\s+as\s+PART_WIDTH/.test(blowBody), 'soffiaggio: PART_WIDTH non e\' piu\' pz.X (era la lunghezza)');
+check(/left  join PIECE_ON_VICE pv on pv\.VICE_ID = v\.ID and pv\.PIECE_ID = w\.PIECE_ID/.test(blowBody),
 	'soffiaggio: la dichiarazione segue la MORSA, come nella vista della spinta');
-check(/inner join PIECE pz/.test(blowSql) && /left  join VICE v/.test(blowSql),
+check(/inner join PIECE pz/.test(blowBody) && /left  join VICE v/.test(blowBody),
 	'soffiaggio: PIECE in INNER (c\'e\' sempre), VICE in LEFT (puo\' mancare)');
-const blowQuery = 'select CLAW_LENGTH,PART_WIDTH,STOP_BEYOND_CLAW from COORDINATES_BLOW_MC where ORDER_ID=1105';
-check(blowQuery.length < 254, 'soffiaggio: la query del PLC sta in ' + blowQuery.length
+// guardia a tre vie: nuova -> conforme, vecchia a tre colonne -> ALTER, altro -> FERMO
+const blowGuard = blowSql.slice(0, blowSql.indexOf('ALTER VIEW dbo.COORDINATES_BLOW_MC AS'));
+check(/LIKE N'%ISNULL\(pz\.Y,0\) as PART_WIDTH%'[\s\S]*?conforme, nessuna modifica/.test(blowGuard)
+	&& /LIKE N'%ISNULL\(pz\.X,0\) as PART_WIDTH%'[\s\S]*?NOT LIKE N'%PART_LENGTH%'[\s\S]*?PRINT 'coordinates-blow-mc: trovata la definizione a tre colonne[^\n]*\nELSE/.test(blowGuard)
+	&& /NON e'' quella attesa\. FERMO/.test(blowGuard),
+	'soffiaggio: guardia — nuova conforme, vecchia a tre colonne portata alla nuova, altro FERMO');
+const blowQuery = 'select CLAW_LENGTH,PART_WIDTH,STOP_BEYOND_CLAW,PART_LENGTH,PART_HEIGHT from COORDINATES_BLOW_MC where ORDER_ID=32767';
+check(blowQuery.length < 254, 'soffiaggio: la query del PLC (5 colonne, ORDER_ID a 5 cifre) sta in ' + blowQuery.length
 	+ ' caratteri, sotto i 254 di queryTemp (con i join a mano erano 298: sarebbe arrivata troncata)');
+// e' proprio quella del PLC, nei tre punti del soffiaggio di FB_Robot
+const fb7 = fs.readFileSync(path.join(__dirname, '..', '..', 'plc', 'FB', 'FB_Robot.scl'), 'utf8');
+check((fb7.split("'" + blowQuery.replace(/32767$/, '') + "'").length - 1) === 3,
+	'soffiaggio: FB_Robot usa questa stessa query nei tre punti (Part_Robot_to_MC, Part_MC_to_Robot, scambio)');
 
 const view = fs.readFileSync(path.join(__dirname, 'scripts', 'coordinates-push-mc.sql'), 'utf8');
 // i commenti PARLANO di WITH ENCRYPTION (per dire che non si usa): il controllo
