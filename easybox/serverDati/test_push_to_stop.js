@@ -330,7 +330,9 @@ const blow = fs.readFileSync(path.join(__dirname, 'scripts', 'coordinates-blow-m
 const blowSql = blow.split(/\r?\n/).filter(l => !/^\s*--/.test(l)).join('\n');
 check(!/WITH\s+ENCRYPTION/i.test(blowSql), 'soffiaggio: nessun WITH ENCRYPTION');
 check(/ALTER VIEW dbo\.COORDINATES_BLOW_MC AS/.test(blowSql), 'soffiaggio: definizione versionata nel repo');
-for (const col of ['ISNULL(v.CLAW_LENGTH, 0)', 'ISNULL(pz.Y, 0)', 'ISNULL(pv.STOP_BEYOND_CLAW, 0)'])
+// (P8 5/10) testo della definizione di cella: PART_WIDTH e' pz.X (larghezza),
+// e ISNULL senza spazio dopo la virgola, come la legge OBJECT_DEFINITION
+for (const col of ['ISNULL(v.CLAW_LENGTH,0)', 'ISNULL(pz.X,0)', 'ISNULL(pv.STOP_BEYOND_CLAW,0)'])
 	check(blowSql.includes(col), 'soffiaggio: ' + col + ' — il ponte SQL non converte NULL in zero');
 check(/left  join PIECE_ON_VICE pv on pv\.VICE_ID = v\.ID and pv\.PIECE_ID = w\.PIECE_ID/.test(blowSql),
 	'soffiaggio: la dichiarazione segue la MORSA, come nella vista della spinta');

@@ -72,7 +72,7 @@ END
 --   FROM COORDINATES_PIECES_TRAYS_4Robot WHERE TRAY='1' ORDER BY SUB_POS;
 
 -- ===========================================================================
--- ROLLBACK (v2, robot-tray-view-v2.sql — eseguire solo per tornare indietro,
+-- ROLLBACK (v2, superati/robot-tray-view-v2.sql — eseguire solo per tornare indietro,
 -- e SOLO insieme all'anagrafica PIECE col vecchio significato):
 -- ALTER VIEW COORDINATES_PIECES_TRAYS_4Robot AS
 -- select  pt.id as partType,

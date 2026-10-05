@@ -69,10 +69,15 @@ WHILE CHARINDEX(N'  ', @norm) > 0
 
 IF @def IS NULL
 	PRINT 'coordinates-blow-mc: la vista non esiste, la creo.';
--- gia' quella attesa: le tre colonne con ISNULL e il join sulla morsa
-ELSE IF @norm LIKE N'%ISNULL(v.CLAW_LENGTH, 0) as CLAW_LENGTH%'
-	 AND @norm LIKE N'%ISNULL(pz.Y, 0) as PART_WIDTH%'
-	 AND @norm LIKE N'%ISNULL(pv.STOP_BEYOND_CLAW, 0) as STOP_BEYOND_CLAW%'
+-- gia' quella attesa: le tre colonne con ISNULL e il join sulla morsa.
+-- (P8 5/10) testo allineato alla definizione letta dal DB di cella il 5/10
+-- con OBJECT_DEFINITION: PART_WIDTH e' pz.X (la LARGHEZZA del pezzo, 101 mm
+-- sul pezzo 1032), non pz.Y; e in cella ISNULL non ha lo spazio dopo la
+-- virgola, che la normalizzazione qui sopra non aggiunge: con ", 0" la
+-- guardia avrebbe detto FERMO sulla vista giusta.
+ELSE IF @norm LIKE N'%ISNULL(v.CLAW_LENGTH,0) as CLAW_LENGTH%'
+	 AND @norm LIKE N'%ISNULL(pz.X,0) as PART_WIDTH%'
+	 AND @norm LIKE N'%ISNULL(pv.STOP_BEYOND_CLAW,0) as STOP_BEYOND_CLAW%'
 	 AND @norm LIKE N'%pv.VICE_ID = v.ID and pv.PIECE_ID = w.PIECE_ID%'
 BEGIN
 	PRINT 'coordinates-blow-mc: vista gia'' presente e conforme, nessuna modifica.';
@@ -94,9 +99,9 @@ GO
 ALTER VIEW dbo.COORDINATES_BLOW_MC AS
 select  w.ID                            as ORDER_ID,
         w.MACHINE_ID                    as MC,
-        ISNULL(v.CLAW_LENGTH, 0)        as CLAW_LENGTH,
-        ISNULL(pz.Y, 0)                 as PART_WIDTH,
-        ISNULL(pv.STOP_BEYOND_CLAW, 0)  as STOP_BEYOND_CLAW
+        ISNULL(v.CLAW_LENGTH,0)         as CLAW_LENGTH,
+        ISNULL(pz.X,0)                  as PART_WIDTH,
+        ISNULL(pv.STOP_BEYOND_CLAW,0)   as STOP_BEYOND_CLAW
 from WORKORDER w
 inner join PIECE pz     on pz.ID = w.PIECE_ID
 left  join VICE v       on v.PALLET_ID = w.PALLET_ID

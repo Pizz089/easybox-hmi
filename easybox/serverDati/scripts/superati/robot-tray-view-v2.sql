@@ -1,4 +1,30 @@
 -- ===========================================================================
+-- *** SUPERATO DALLA v3 (../robot-tray-view-v3.sql) — NON ESEGUIRE ***
+-- (P8 5/10) Questo ALTER VIEW non aveva guardia: lanciato per errore
+-- riportava la vista COORDINATES_PIECES_TRAYS_4Robot alla v2, cioe' alla
+-- vecchia Z di prelievo (PIECE.Z - PIECE.Z_PICK invece della quota dal fondo
+-- del cassetto). Resta qui solo come storia e per un rollback voluto.
+--
+-- GUARDIA: se la vista attuale e' gia' la v3 (stesso marcatore della guardia
+-- di robot-tray-view-v3.sql: "t.Z_CORR+pt.Z_PICK)" presente e "-pt.Z_PICK"
+-- assente) lo script si ferma senza toccare niente:
+--   - con sqlcmd: ":on error exit" + RAISERROR -> esce prima dell'ALTER;
+--   - in SSMS senza modalita' SQLCMD la riga ":on error exit" e' solo un
+--     errore di sintassi nel suo batch, quindi la guardia mette anche
+--     SET NOEXEC ON: l'ALTER viene compilato ma non eseguito.
+-- ===========================================================================
+:on error exit
+GO
+SET NOCOUNT ON;
+DECLARE @def nvarchar(max) = OBJECT_DEFINITION(OBJECT_ID('COORDINATES_PIECES_TRAYS_4Robot'));
+IF @def IS NOT NULL AND @def LIKE '%t.Z_CORR+pt.Z_PICK)%' AND @def NOT LIKE '%-pt.Z_PICK%'
+BEGIN
+	SET NOEXEC ON;
+	RAISERROR('robot-tray-view-v2.sql e'' SUPERATO: la vista e'' gia'' v3. Tornare alla v2 sbaglierebbe la Z di prelievo. Fermo, nessuna modifica.', 16, 1);
+END
+GO
+
+-- ===========================================================================
 -- robot-tray-view-v2.sql — vista COORDINATES_PIECES_TRAYS_4Robot v2
 -- (cantiere ordine->grigliato, PARTE B — cintura strutturale ratificata)
 --
@@ -79,3 +105,8 @@ GO
 -- 		and w.ID=pos.Order_ID
 -- 		and pos.pos>0 and concat('TRAY_',t.FLOOR_MAG) = trim(pos.PARENT);
 -- ===========================================================================
+
+-- (P8 5/10) chiusura della guardia: NOEXEC si spegne in ogni caso
+GO
+SET NOEXEC OFF;
+GO
