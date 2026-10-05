@@ -249,12 +249,14 @@ main.content:has(table.pure-table.pure-table-horizontal) td.WORKING:not(.table-d
   opacity: 0.9;
 }
 
+/* (UI v2 fase 1.5) stessi colori delle tasche (doc §11): RAW azzurro,
+   WORKING ambra (era verde) */
 main.content:has(table.pure-table.pure-table-horizontal) td.RAW:not(.table-divisor)::before {
-  background: var(--color-info);
+  background: var(--pocket-raw);
 }
 
 main.content:has(table.pure-table.pure-table-horizontal) td.WORKING:not(.table-divisor)::before {
-  background: var(--color-success);
+  background: var(--pocket-working);
 }
 
 

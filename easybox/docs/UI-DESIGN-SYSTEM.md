@@ -422,6 +422,9 @@ Vincoli:
 - **Export SVG del grigliato** (`Grating.vue`, XMLSerializer): un `var(--...)` non sopravvive fuori dal documento. All'export i colori si risolvono in esadecimale con `getComputedStyle` (`util/pocketColors.js`).
 - **`util/cavityClearance.js`** riconosce la stringa letterale `lightcyan` (alone del cambio ordine) per escluderla dall'allargamento delle tasche: quel colore NON si tocca senza toccare la logica.
 - Le **tabelle** usano lo stesso token per lo stesso stato: un badge RAW e' azzurro come la tasca RAW.
+- **Sede**: la tabella stato → token sta in `util/pocketColors.js` (`POCKET_STATES`, `pocketShapeStyle`, `pocketLabelFill`, `resolveCssVars`); `prisma.vue`, `cylinder.vue` e la legenda la leggono, le tabelle usano gli stessi token in CSS. `test_pocket_colors.mjs` controlla che per ogni stato il token sia lo stesso dappertutto. Stati fuori tabella (es. 6, pausa d'ordine) nel disegno = non definita.
+- **Badge di tabella**: stati colorati = testo nel token + fondo tinta della stessa famiglia (`--color-info-bg` / `-warning-bg` / `-success-bg` / `-danger-bg`; bloccata su `-warning-bg`); vuota e non definita = colore dello stato sul **bordo**, testo leggibile (grigio e nero come testo non reggono il contrasto).
+- **Disegno**: vassoio `--bg-surface-2` (come nel Grigliato; sul grigio chiaro la tasca vuota spariva), numero tasca `--bg-base` sui colori chiari e `--text-primary` sul nero, cornice di selezione `--text-primary` (non arancio: si confondeva con bloccata).
 
 ---
 

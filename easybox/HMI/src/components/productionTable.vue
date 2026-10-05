@@ -246,17 +246,21 @@ td.table-divisor.finished + td {
     letter-spacing: 0.05em;
 }
 
-/* WORKING = lavorazione attiva = success/verde */
+/* (UI v2 fase 1.5) colori = quelli delle tasche (doc §11, util/pocketColors.js):
+   lo stesso stato ha lo stesso colore nel disegno, nella legenda e qui.
+   Prima WORKING era verde e RAW azzurro qui, il contrario nel disegno. */
+
+/* WORKING = in lavoro = ambra */
 main.content table.pure-table tbody tr td.table-divisor.WORKING + td,
 main.content table.pure-table tbody tr td.table-divisor.working + td {
-    color: var(--color-success) !important;
-    background: var(--color-success-bg) !important;
+    color: var(--pocket-working) !important;
+    background: var(--color-warning-bg) !important;
 }
 
-/* RAW = materia grezza in attesa = info/blu */
+/* RAW = grezzo in attesa = azzurro */
 main.content table.pure-table tbody tr td.table-divisor.RAW + td,
 main.content table.pure-table tbody tr td.table-divisor.raw + td {
-    color: var(--color-info) !important;
+    color: var(--pocket-raw) !important;
     background: var(--color-info-bg) !important;
 }
 
@@ -266,20 +270,20 @@ main.content table.pure-table tbody tr td.table-divisor.paused + td {
     color: var(--text-muted) !important;
 }
 
-/* STOP / ABORT = errore o interrotto = danger/rosso */
+/* STOP / ABORT = errore o interrotto = rosso (ABORT = scarto, come la tasca) */
 main.content table.pure-table tbody tr td.table-divisor.STOP + td,
 main.content table.pure-table tbody tr td.table-divisor.stop + td,
 main.content table.pure-table tbody tr td.table-divisor.ABORT + td,
 main.content table.pure-table tbody tr td.table-divisor.abort + td {
-    color: var(--color-danger) !important;
+    color: var(--pocket-abort) !important;
     background: var(--color-danger-bg) !important;
 }
 
-/* FINISHED = concluso = neutro */
+/* FINISHED = finito = verde (v1: neutro) */
 main.content table.pure-table tbody tr td.table-divisor.FINISHED + td,
 main.content table.pure-table tbody tr td.table-divisor.finished + td {
-    color: var(--text-secondary) !important;
-    background: var(--bg-surface-2) !important;
+    color: var(--pocket-finished) !important;
+    background: var(--color-success-bg) !important;
 }
 
 

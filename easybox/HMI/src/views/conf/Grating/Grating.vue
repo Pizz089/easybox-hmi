@@ -13,6 +13,9 @@
     import { ref, onMounted } from 'vue'
     //import layout from '../layoutView.vue'
 
+    // (UI v2 fase 1.5) le tasche ora hanno colori var(--pocket-*): nei file
+    // esportati vanno risolti in esadecimale
+    import { resolveCssVars } from '../../../util/pocketColors.js'
     import prisma from '../../../components/layout/prisma.vue'
     import cylinder from '../../../components/layout/cylinder.vue'
 
@@ -870,7 +873,7 @@ export default {
             const serializer = new XMLSerializer();
             // stesso modello SVG di createModelFile: file di RIFERIMENTO,
             // cavita' NOMINALI come nell'anteprima (niente franco)
-            let svgString = serializer.serializeToString(svgElement);
+            let svgString = resolveCssVars(serializer.serializeToString(svgElement));
 
             //Creazione di un Blob e un URL per il file.
             const blob = new Blob([svgString], { type: 'image/svg+xml' });
@@ -933,7 +936,7 @@ export default {
             const serializer = new XMLSerializer();
             // stampa/PDF = file di fabbricazione: franco cavita' sulla stringa,
             // il DOM dell'anteprima non viene toccato (util/cavityClearance.js)
-            let svgString = applyCavityClearanceToSvg(serializer.serializeToString(contenutoStampa), clearanceUm);
+            let svgString = applyCavityClearanceToSvg(resolveCssVars(serializer.serializeToString(contenutoStampa)), clearanceUm);
 
             //console.log(svgString)
 
@@ -955,7 +958,7 @@ export default {
             // modello SVG in Grating_model_dir = file di RIFERIMENTO, non di
             // fabbricazione: cavita' NOMINALI, identiche all'anteprima (il
             // franco vale solo per DXF e stampa PDF — confermato dal cliente 1/9)
-            let svgString = serializer.serializeToString(contenutoStampa);
+            let svgString = resolveCssVars(serializer.serializeToString(contenutoStampa));
 
             document.body.innerHTML = svgString ;
 

@@ -277,15 +277,18 @@ export default {
         padding: var(--space-6);
     }
 
-    /* Badge status: semantica allineata a productionTable (dashboard). */
+    /* Badge status: semantica allineata a productionTable (dashboard).
+       (UI v2 fase 1.5) colori = quelli delle tasche (doc §11): WORKING ambra
+       (era verde), FINISHED verde (era neutro), EMPTY grigio (era azzurro,
+       il colore del GREZZO); aggiunti RAW, LOCK/LOCKED e NOT_DEFINED. */
     .PAUSED {
         color: var(--text-muted);
         border-radius: var(--radius-lg);
     }
 
     .FINISHED {
-        background-color: var(--bg-surface-2);
-        color: var(--text-secondary);
+        background-color: var(--color-success-bg);
+        color: var(--pocket-finished);
         border-radius: var(--radius-lg);
     }
 
@@ -297,19 +300,40 @@ export default {
 
     .ABORT {
         background-color: var(--color-danger-bg);
-        color: var(--color-danger);
+        color: var(--pocket-abort);
         border-radius: var(--radius-lg);
     }
 
     .WORKING {
-        background-color: var(--color-success-bg);
-        color: var(--color-success);
+        background-color: var(--color-warning-bg);
+        color: var(--pocket-working);
         border-radius: var(--radius-lg);
     }
 
-    .EMPTY {
+    .RAW {
         background-color: var(--color-info-bg);
-        color: var(--color-info);
+        color: var(--pocket-raw);
+        border-radius: var(--radius-lg);
+    }
+
+    /* grigio e nero: testo leggibile, il colore dello stato sul bordo */
+    .EMPTY {
+        border: 2px solid var(--pocket-empty);
+        color: var(--text-secondary);
+        border-radius: var(--radius-lg);
+    }
+
+    .LOCK,
+    .LOCKED {
+        background-color: var(--color-warning-bg);
+        color: var(--pocket-locked);
+        border-radius: var(--radius-lg);
+    }
+
+    .NOT_DEFINED {
+        background-color: var(--pocket-undef);
+        border: 2px solid var(--pocket-undef-border);
+        color: var(--text-primary);
         border-radius: var(--radius-lg);
     }
 </style>

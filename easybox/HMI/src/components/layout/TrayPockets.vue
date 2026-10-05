@@ -15,8 +15,10 @@
     <svg :width="width" :height="height"
         version="1.1" xmlns="http://www.w3.org/2000/svg"
         viewBox="0 -20 820 650">
-        <!-- vassoio -->
-        <rect x="0" y="0" width="820" height="615" style="fill:lightgray" />
+        <!-- vassoio: (UI v2 fase 1.5) da lightgray al fondo del vassoio del
+             Grigliato (--bg-surface-2): la tasca VUOTA ora e' grigia
+             (--pocket-empty) e sul grigio chiaro non si distingueva -->
+        <rect x="0" y="0" width="820" height="615" style="fill:var(--bg-surface-2)" />
         <image v-if="!robotSide" :href="originIcon" x="-20" y="-20" width="40px"/>
         <image v-if="robotSide" :href="originIcon" x="800" y="595" width="40px"/>
 
@@ -24,11 +26,12 @@
              l'indice: con buchi o anomalie a DB i numeri restano quelli veri -->
         <g v-for="(p, index) in drawPz" :key="p.SUB_POS != null ? p.SUB_POS : index">
             <!-- tasca scelta nel dialog di correzione: cornice, non un colore
-                 nuovo (i colori sono gia' presi dagli stati) -->
+                 nuovo (i colori sono gia' presi dagli stati). (v2 1.5) era
+                 arancio #ff9800, ora confondibile con BLOCCATA: chiara. -->
             <rect v-if="isSelected(p, index)"
                 :x="p.w-dimX/2-10" :y="p.h-dimY/2-10"
                 :width="dimX+20" :height="dimY+20"
-                style="fill:none;stroke:#ff9800;stroke-width:8" />
+                style="fill:none;stroke:var(--text-primary);stroke-width:8" />
             <prisma v-if="p.prisma"
                     :x="p.w-dimX/2" :y="p.h-dimY/2"
                     :width="dimX" :height="dimY"

@@ -7,6 +7,7 @@
     import { loadTrayPockets } from '../util/trayPockets.js'
     import { neighborTrays, pocketsSignature, layoutModeFor } from '../util/trayNeighbors.js'
     import { KO_ACTIVE_ORDER, KO_TRAY_EXTRACTED, KO_NO_PIECE_DECLARED, KO_PIECE_TOO_BIG, KO_Z_BELOW_GRATING } from '../util/errorCodes.js'
+    import { POCKET_STATES } from '../util/pocketColors.js'
 </script>
 
 
@@ -71,30 +72,19 @@
     </div>
 
     <div class="pure-u-1">
-        <svg width="480" height="100" 
-            version="1.1" xmlns="http://www.w3.org/2000/svg" 
-            viewBox="0 0 480 100" style="margin-left:60px">
-            
-            <rect x="51" y="0" width="50" height="50" style="fill:lightgray" />
-            <text x="58" y="28" style="fill:white;font-family:times;font-size:10">{{ $t('status.empty').trim() }}</text>
-
-            <rect x="103" y="0" width="50" height="50" style="fill:green" />
-            <text x="116" y="28" style="fill:white;font-family:times;font-size:10">{{ $t('status.raw').trim() }}</text>
-
-            <rect x="155" y="0" width="50" height="50" style="fill:black" />
-            <text x="159" y="28" style="fill:white;font-family:times;font-size:10">{{ $t('status.notDef').trim() }}</text>
-
-            <rect x="207" y="0" width="50" height="50" style="fill:coral" />
-            <text x="217" y="28" style="fill:white;font-family:times;font-size:10">{{ $t('status.locked').trim() }}</text>
-
-            <rect x="259" y="0" width="50" height="50" style="fill:#080866" />
-            <text x="261" y="28" style="fill:white;font-family:times;font-size:10">{{ $t('status.finished').trim() }}</text>
-
-            <rect x="311" y="0" width="50" height="50" style="fill:red" />
-            <text x="318" y="28" style="fill:white;font-family:times;font-size:10">{{ $t('status.aborted').trim() }}</text>
-
-            <text x="0" y="28" style="fill:white;font-family:times;font-size:10">{{ $t('layout.legend') }}</text>
-        </svg>
+        <!-- (UI v2 fase 1.5) legenda dalla STESSA tabella del disegno
+             (util/pocketColors.js): tutti gli stati, compreso IN LAVORO che
+             prima mancava e BLOCCATA che prima era corallo nella legenda e
+             nera nel disegno. Era un SVG a posizioni fisse con testi
+             bianchi su grigio chiaro. -->
+        <div class="pocket-legend">
+            <span class="pocket-legend-title">{{ $t('layout.legend') }}</span>
+            <span v-for="s in POCKET_STATES" :key="s.status" class="pocket-legend-item">
+                <span class="pocket-swatch" :class="'pocket-swatch--' + s.key"
+                    :style="{ background: 'var(' + s.token + ')' }"></span>
+                {{ $t(s.label).trim() }}
+            </span>
+        </div>
     </div>
 
     <div class="pure-u-3-4" v-if="$route.params.modifyEnable==1">
@@ -540,6 +530,39 @@
 
 
 <style scoped>
+    /* (UI v2 fase 1.5) legenda stati tasca */
+    .pocket-legend {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--space-2) var(--space-4);
+        margin-top: var(--space-2);
+    }
+    .pocket-legend-title {
+        font-size: var(--font-size-sm);
+        font-weight: var(--font-weight-semibold);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-muted);
+    }
+    .pocket-legend-item {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--space-2);
+        font-size: var(--font-size-sm);
+        color: var(--text-primary);
+    }
+    .pocket-swatch {
+        width: var(--icon-size-md);
+        height: var(--icon-size-md);
+        border-radius: var(--radius-sm);
+        border: 1px solid transparent;
+    }
+    /* come nel disegno: la "non definita" e' nera col suo bordo */
+    .pocket-swatch--undef {
+        border-color: var(--pocket-undef-border);
+    }
+
     /* (P3 5/10) titolo fra le due frecce; touch 52 */
     .layout-nav {
         display: flex;

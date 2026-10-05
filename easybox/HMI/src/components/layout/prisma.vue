@@ -6,7 +6,7 @@
         <!--rect :x='x-6+width/2' :y='y-6+height/2' :width='12' :height='12' style='fill:none;stroke-width:2;stroke:blue'/--> 
 
         <circle v-if="!hideCenter" :cx='parseInt(x)+width/2'  :cy="parseInt(y)+height/2" r="4" style="stroke:red;fill:red" />
-        <text :x='parseInt(x)+10' :y='parseInt(y)+25' style="fill:white;font-family:times;font-size:34">
+        <text :x='parseInt(x)+10' :y='parseInt(y)+25' :style="'fill:' + labelFill + ';font-family:times;font-size:34'">
             <slot></slot>
         </text>        
         <!--text :x='parseInt(x)+5' :y='parseInt(y)+15' style="fill:black;font-family:times;font-size:18">
@@ -16,6 +16,10 @@
 </template>
 
 <script>
+    // (UI v2 fase 1.5) colori degli stati da util/pocketColors.js, la stessa
+    // tabella della legenda e delle tabelle (doc §11)
+    import { pocketShapeStyle, pocketLabelFill } from '../../util/pocketColors.js'
+
     export default {
         emits:[ 'click_obj'],
         props: {
@@ -70,44 +74,14 @@
             }
         },
         computed: {
-            getStyle_old() {
-                if (this.status==4)  //RAW
-                    return "fill:green";
-                if (this.status==5)  //finished
-                    return "fill:#080866";
-                if (this.status==7)  //abort
-                    return "fill:#ff0000ab";
-                if (this.status==3)  //working
-                    return "fill:lightblue;stroke:black;stroke-width:1";
-                if (this.status==2)  //empty
-                    return "fill:lightgray;stroke:black;stroke-width:1";
-                //not defined
-                return "fill:black";
-            },
             getStyle() {
-                let ris = ''
-                //not defined
-                ris = "fill:black";
-                if (this.status==4)  //RAW
-                    ris = "fill:green";
-                if (this.status==5)  //finished
-                    ris = "fill:#080866";
-                if (this.status==7)  //abort
-                    ris = "fill:#ff0000ab";
-                if (this.status==3)  //working
-                    ris = "fill:lightblue;stroke:black;stroke-width:1";
-                if (this.status==2)  //empty
-                    ris = "fill:lightgray;stroke:black;stroke-width:1";
-                
-                if (this.hideCenter) {
-                    //hideCenter lo uso per quando voglio esportare lo svg
-                    ris = ris.replace("stroke:black","stroke:red")
-                }
-                
-                //if ( this.diffOrder)
-                //    return ris+'; stroke-width:20; stroke:gray; '; //stroke-dasharray:9
-                //else
-                    return ris;
+                // hideCenter lo uso per quando voglio esportare lo svg: bordo
+                // rosso al posto del nero (in pocketShapeStyle). I var(--...)
+                // li risolve in esadecimale l'export (Grating.vue).
+                return pocketShapeStyle(this.status, !!this.hideCenter);
+            },
+            labelFill() {
+                return pocketLabelFill(this.status);
             }
         }
     }

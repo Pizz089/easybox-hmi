@@ -145,7 +145,9 @@ const code = src.replace(/<!--[\s\S]*?-->/g, '').replace(/\/\/[^\n]*/g, '');
 const fnBody = name => { const i = code.search(new RegExp('\\n {8}' + name + '\\(')); if (i < 0) throw new Error('metodo ' + name + ' non trovato'); return code.slice(i, code.indexOf('\n        }', i + 1)); };
 check(!/applyCavityClearanceToSvg/.test(fnBody('createModelFile')), 'createModelFile: nessun franco (serializzazione nominale)');
 check(!/applyCavityClearanceToSvg/.test(fnBody('DownloadModel')), 'DownloadModel: nessun franco (stesso modello)');
-check(/applyCavityClearanceToSvg\(serializer\.serializeToString\(contenutoStampa\), clearanceUm\)/.test(fnBody('stampaDiv')), 'stampaDiv: franco applicato con il valore scelto');
+// (UI v2 fase 1.5) la stringa serializzata passa prima da resolveCssVars
+// (colori tasca var(--pocket-*) -> esadecimale): il franco resta sulla stampa
+check(/applyCavityClearanceToSvg\(resolveCssVars\(serializer\.serializeToString\(contenutoStampa\)\), clearanceUm\)/.test(fnBody('stampaDiv')), 'stampaDiv: franco applicato con il valore scelto');
 check(/clearanceUm,/.test(fnBody('esportaDXF')), 'esportaDXF: franco passato a buildGratingDxf');
 const tpl = src.slice(0, src.lastIndexOf('</template>')).replace(/<!--[\s\S]*?-->/g, '');
 check(/@click="createModelFile\(\)"/.test(tpl) && /saveData\(\)\.then\(\(\) => createModelFile\(\)\)/.test(tpl), 'Crea modello / Salva e crea modello: flusso diretto (then, non &&)');
