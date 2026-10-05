@@ -191,6 +191,23 @@ check(cmdsTo('BOX').length === 0 && cmdsTo('ROBOT').length === 0,
 	'dopo l\'annullo la cella non riceve altre dichiarazioni a sua insaputa');
 check(vm.declDialog.waiting === false, 'e il dialog non resta in attesa di niente');
 
+console.log('\n6-ter) ROBOT SOTTO PENDANT (FB7 mod 26, 5/10): 968 e 969 come gli altri rifiuti del 35');
+for (const code of [968, 969]) {
+	vm = vmOf();
+	vm.onAlarmRobot(String(code));
+	check(vm.declErr.robot === code && vm.declErr.pocket === 0, code + ': registrato sulla sezione robot');
+	check(typeof it.robot.declErr[code] === 'string' && typeof en.robot.declErr[code] === 'string'
+		&& typeof it.robot['alarm_' + code] === 'string' && typeof en.robot['alarm_' + code] === 'string',
+		code + ': testo nel dialog (declErr) e nel toast (alarm_) in italiano e in inglese');
+}
+vm = vmOf();
+sent.length = 0;
+vm.declareBare();                                // solo il 35
+await tick();
+fire('ALARM/ROBOT', '969');
+await tick(30);
+check(vm.declDialog.stoppedAt === 'robot' && vm.declErr.robot === 969, '969 chiude subito l\'attesa del 35, col motivo a video');
+
 console.log('\n7) TASCHE: si apre solo col cassetto fuori E a cella ferma');
 vm = vmOf();
 vm.extractedTray = null;

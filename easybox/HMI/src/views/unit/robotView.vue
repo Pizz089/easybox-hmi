@@ -1721,7 +1721,9 @@ export default {
       // 44, cioe' le correzioni sul cassetto estratto: sezioni diverse,
       // avvisi diversi. Il 20001 (nessun cassetto estratto) vale per
       // entrambi, e si accende dove l'operatore stava guardando.
-      this.setDeclErr('robot', payload, [944, 945, 946]);
+      // (FB7 mod 26, 5/10) robot sotto pendant: 968 = comando rifiutato,
+      // 969 = cambio pinza da dichiarare a robot in automatico (il 35).
+      this.setDeclErr('robot', payload, [944, 945, 946, 968, 969]);
       this.setDeclErr('pocket', payload, [20002, 20005, 20006]);
       // 20001 (nessun cassetto estratto) vale sia per il 39 sia per il 44: si
       // accende dove l'operatore stava guardando
@@ -1793,7 +1795,7 @@ export default {
       const ECHI = {
         mc: { event: 'DECLARE/MC1', alarm: 'ALARM/MC1', codes: [947, 948] },
         box: { event: 'TRAY/EXTRACT', alarm: 'ALARM/BOX', codes: [99, 996, 997, 999] },
-        robot: { event: 'DECLARE/ROBOT', alarm: 'ALARM/ROBOT', codes: [944, 945, 946] }
+        robot: { event: 'DECLARE/ROBOT', alarm: 'ALARM/ROBOT', codes: [944, 945, 946, 968, 969] }
       };
       this.declDialog.waiting = true;
       this.declDialog.stoppedAt = '';
