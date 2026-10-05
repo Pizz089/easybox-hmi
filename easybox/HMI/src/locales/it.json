@@ -61,10 +61,10 @@
   },
   "layout": {
     "nav": {
-      "toFloor": "Vai al cassetto del piano {floor}",
+      "toFloor": "Vai al cassetto {floor}",
       "none": "Nessun altro cassetto in questa direzione",
       "discardTitle": "Modifiche non salvate",
-      "discardText": "Le tasche del piano {floor} sono state modificate ma non salvate. Andando al piano {to} le modifiche vanno perse (non vengono scritte su nessun cassetto).",
+      "discardText": "Le tasche del cassetto {floor} sono state modificate ma non salvate. Andando al cassetto {to} le modifiche vanno perse (non vengono scritte su nessun cassetto).",
       "discardConfirm": "Scarta e cambia cassetto"
     },
     "type": {
@@ -179,6 +179,8 @@
     "claw_lengthHint": "Misura fisica col calibro, in mm. Serve alla spinta in battuta: vuoto = non misurata, il ciclo resta disabilitato."
   },
   "tray": {
+    "dbId": "ID database {id}",
+    "createDisabled": "La creazione dei cassetti è disabilitata",
     "nessuno": "Nessun cassetto configurato. Creane uno con Agg. Tipo Cassetto.",
     "welcome": "Elenco cassetti",
     "add_Tray": "Agg. Tipo Cassetto",

@@ -11,8 +11,16 @@
 
 <template>   
       <div class="view-shell conf-card">
-        <h2 v-if="!createNew" class="view-title">{{ $t('tray.data')}} : {{ tray.ID }}</h2>
+        <!-- (5/10) il cassetto si chiama col suo NUMERO (FLOOR_MAG, come
+             ExtractedTray nel PLC; OUT se e' fuori, come nella tabella di
+             TraysView), non con l'ID della tabella TRAY, che dopo il
+             reinserimento dei piani 9-11 non corrisponde piu'. L'ID del
+             database resta solo come tooltip. -->
+        <h2 v-if="!createNew" class="view-title" :title="$t('tray.dbId', { id: tray.ID })">{{ $t('tray.data')}} {{ trayNumber }}</h2>
         <h2 v-if="createNew" class="view-title"> {{ $t('tray.createNew')}} </h2>
+        <!-- (5/10) dopo P1 il backend rifiuta la creazione (403 KO_TRAY_LOCKED):
+             la pagina lo dice subito invece di far compilare un form inutile -->
+        <div v-if="createNew" class="tray-create-disabled">{{ $t('tray.createDisabled') }}</div>
 
         <div class="pure-form pure-form-aligned" >
             <!--fieldset-->
@@ -233,7 +241,9 @@
                         @update="newValue => tray.APPROACH_Z = newValue" ></numericField>
                 </div>
 
-                <div class="pure-controls">
+                <!-- (5/10) niente salvataggio in modalita' "nuovo cassetto":
+                     finirebbe nel 403 di insertTray (cassetti bloccati, P1) -->
+                <div class="pure-controls" v-if="!createNew">
                     <button class="pure-button pure-button-primary" @click="saveData()" :disabled="dataStored.userLevel==0">
                         Save
                     </button>
@@ -431,6 +441,13 @@ export default {
         }
     },
     computed:{
+        // (5/10) numero del cassetto per il titolo: FLOOR_MAG, OUT se <= 0
+        // (come TraysView). Vuoto finche' il cassetto non e' stato letto:
+        // il FLOOR_MAG di partenza (-1) non deve comparire come "OUT".
+        trayNumber() {
+            if (this.tray.ID == null) return '';
+            return Number(this.tray.FLOOR_MAG) > 0 ? String(this.tray.FLOOR_MAG) : 'OUT';
+        },
         // (teach-pick-target) gate dei campi di TEACHING (CORR, rotazioni,
         // avvicinamento): STESSA soglia del bottone "0 CASSETTIERA" e
         // dell'Add in TraysView (userLevel<=1 = riservato al livello
@@ -465,6 +482,16 @@ export default {
 
     #aligned-foo{
         width:300px;
+    }
+
+    /* (5/10) avviso "creazione disabilitata", stesso blocco degli avvisi di rifiuto */
+    .tray-create-disabled {
+        background: var(--color-danger-bg);
+        color: var(--color-danger);
+        border: 1px solid var(--color-danger);
+        border-radius: var(--radius-md);
+        padding: var(--space-2) var(--space-4);
+        font-weight: var(--font-weight-semibold);
     }
 
     /* (teach-pick-target) hint dei campi teaching gated */

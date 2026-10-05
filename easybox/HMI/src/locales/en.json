@@ -61,10 +61,10 @@
   },
   "layout": {
     "nav": {
-      "toFloor": "Go to the tray on floor {floor}",
+      "toFloor": "Go to tray {floor}",
       "none": "No other tray in this direction",
       "discardTitle": "Unsaved changes",
-      "discardText": "The pockets of floor {floor} were changed but not saved. Going to floor {to} discards the changes (they are not written to any tray).",
+      "discardText": "The pockets of tray {floor} were changed but not saved. Going to tray {to} discards the changes (they are not written to any tray).",
       "discardConfirm": "Discard and change tray"
     },
     "type": {
@@ -179,6 +179,8 @@
     "claw_lengthHint": "Physical measurement with a caliper, in mm. Needed by the push-to-stop cycle: empty = not measured, the cycle stays disabled."
   },
   "tray": {
+    "dbId": "Database ID {id}",
+    "createDisabled": "Tray creation is disabled",
     "nessuno": "No drawer configured. Create one with Add Drawer Type.",
     "welcome": "Tray list",
     "add_Tray": "Add. Tray Type",

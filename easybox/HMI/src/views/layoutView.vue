@@ -21,14 +21,18 @@
             :title="neighbors.prev ? $t('layout.nav.toFloor', { floor: neighbors.prev.floor }) : $t('layout.nav.none')"
             @click="goNeighbor('prev')">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 6 9 12 15 18" /></svg>
-            <span v-if="neighbors.prev">{{ $t('piano') }} {{ neighbors.prev.floor }}</span>
+            <span v-if="neighbors.prev">{{ $t('TRAY') }} {{ neighbors.prev.floor }}</span>
         </button>
-        <h2 class="layout-title view-title">LAYOUT {{ $t('TRAY')}} ID{{$route.params.trayID }} - {{$t('piano')}}{{$route.params.floorMag }}</h2>
+        <!-- (5/10) il cassetto si chiama col suo NUMERO (FLOOR_MAG, lo stesso di
+             ExtractedTray nel PLC), non con l'ID della tabella TRAY: dopo il
+             reinserimento dei piani 9-11 gli ID non corrispondono piu'. L'ID
+             del database resta solo come tooltip. -->
+        <h2 class="layout-title view-title" :title="$t('tray.dbId', { id: $route.params.trayID })">LAYOUT {{ $t('TRAY') }} {{ $route.params.floorMag }}</h2>
         <button type="button" class="btn-ghost layout-nav-btn"
             :disabled="!neighbors.next || navBlocked"
             :title="neighbors.next ? $t('layout.nav.toFloor', { floor: neighbors.next.floor }) : $t('layout.nav.none')"
             @click="goNeighbor('next')">
-            <span v-if="neighbors.next">{{ $t('piano') }} {{ neighbors.next.floor }}</span>
+            <span v-if="neighbors.next">{{ $t('TRAY') }} {{ neighbors.next.floor }}</span>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18" /></svg>
         </button>
     </div>
