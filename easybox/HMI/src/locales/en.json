@@ -614,7 +614,7 @@
     "alarm_14": "Part still present in gripper?",
     "alarm_16": "Pinza assente!",
     "alarm_17": "Pinza gia presente!",
-    "alarm_18": "Pinza non vuota",
+    "alarm_18": "Gripper not empty",
     "alarm_19": "Pinza vuota",
     "alarm_20": "posizione non definita",
     "alarm_22": "Gripper presence mismatch between data and sensors",

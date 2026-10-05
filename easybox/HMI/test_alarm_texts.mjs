@@ -87,6 +87,8 @@ if (head) {
 	check(typeof loc.it.robot.alarm_18 === 'string', '18 ha un testo (HEAD non leggibile: confronto saltato)');
 }
 check(loc.it.robot.alarm_20006 === undefined, 'nessuna robot.alarm_20006 aggiunta');
+// (audit 5/10) in en.json il 18 era rimasto in italiano
+check(loc.en.robot.alarm_18 === 'Gripper not empty' && loc.en.robot.alarm_18 !== loc.it.robot.alarm_18, '18 in en.json tradotto ("' + loc.en.robot.alarm_18 + '")');
 
 console.log('\n4) la famiglia e\' quella che il pannello usa davvero');
 const menu = readFileSync('src/layout/StandardMenu.vue', 'utf8');
