@@ -60,6 +60,13 @@
     "retry": "Riprova"
   },
   "layout": {
+    "nav": {
+      "toFloor": "Vai al cassetto del piano {floor}",
+      "none": "Nessun altro cassetto in questa direzione",
+      "discardTitle": "Modifiche non salvate",
+      "discardText": "Le tasche del piano {floor} sono state modificate ma non salvate. Andando al piano {to} le modifiche vanno perse (non vengono scritte su nessun cassetto).",
+      "discardConfirm": "Scarta e cambia cassetto"
+    },
     "type": {
       "button": "Dichiara contenuto",
       "title": "Contenuto del cassetto {floor}",

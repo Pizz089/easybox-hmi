@@ -5,13 +5,54 @@
     import TrayPockets from '../components/layout/TrayPockets.vue'
     import { ROBOT_AXIS_ALONG } from '../util/gratingAxes.js'
     import { loadTrayPockets } from '../util/trayPockets.js'
+    import { neighborTrays, pocketsSignature } from '../util/trayNeighbors.js'
     import { KO_ACTIVE_ORDER, KO_TRAY_EXTRACTED, KO_NO_PIECE_DECLARED, KO_PIECE_TOO_BIG, KO_Z_BELOW_GRATING } from '../util/errorCodes.js'
 </script>
 
 
 <template>
   <div class="view-shell">
-    <h2 class="layout-title view-title">LAYOUT {{ $t('TRAY')}} ID{{$route.params.trayID }} - {{$t('piano')}}{{$route.params.floorMag }}</h2>
+    <!-- (P3 5/10) frecce al cassetto del piano precedente/successivo: i piani
+         senza cassetto si saltano, agli estremi la freccia e' disabilitata,
+         la modalita' (modifyEnable) resta quella corrente. -->
+    <div class="layout-nav">
+        <button type="button" class="btn-ghost layout-nav-btn"
+            :disabled="!neighbors.prev || navBlocked"
+            :title="neighbors.prev ? $t('layout.nav.toFloor', { floor: neighbors.prev.floor }) : $t('layout.nav.none')"
+            @click="goNeighbor('prev')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 6 9 12 15 18" /></svg>
+            <span v-if="neighbors.prev">{{ $t('piano') }} {{ neighbors.prev.floor }}</span>
+        </button>
+        <h2 class="layout-title view-title">LAYOUT {{ $t('TRAY')}} ID{{$route.params.trayID }} - {{$t('piano')}}{{$route.params.floorMag }}</h2>
+        <button type="button" class="btn-ghost layout-nav-btn"
+            :disabled="!neighbors.next || navBlocked"
+            :title="neighbors.next ? $t('layout.nav.toFloor', { floor: neighbors.next.floor }) : $t('layout.nav.none')"
+            @click="goNeighbor('next')">
+            <span v-if="neighbors.next">{{ $t('piano') }} {{ neighbors.next.floor }}</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18" /></svg>
+        </button>
+    </div>
+
+    <!-- (P3 5/10) modifiche locali non salvate: la freccia chiede prima di
+         scartarle. Mai portare le tasche di questo cassetto su quello di arrivo. -->
+    <div v-if="navConfirm" class="mission-dialog-overlay">
+        <div class="mission-dialog">
+            <h3 class="command-section-title">{{ $t('layout.nav.discardTitle') }}</h3>
+            <div class="reset-warn">{{ $t('layout.nav.discardText', { floor: $route.params.floorMag, to: navConfirm.floor }) }}</div>
+            <div class="pure-g">
+                <div class="pure-u-1-2">
+                    <button style="width:100%" class="button_pressed pure-button-mission" @click="confirmDiscard()">
+                        {{ $t('layout.nav.discardConfirm') }}
+                    </button>
+                </div>
+                <div class="pure-u-1-2">
+                    <button style="width:100%" class="btn-ghost" @click="navConfirm = null">
+                        {{ $t('robot.dialog.cancel') }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 	
     <div class="pure-u-1">
         <!-- (stato cella 16/9) il disegno delle tasche vive adesso in
@@ -162,7 +203,28 @@
                 trayReset: { open: false, busy: false },  // dialog AZZERA STATO CASSETTO
                 // dialog DICHIARA CONTENUTO: scrive Part_Type su tutte le tasche
                 trayType: { open: false, busy: false, pieceId: 0, error: '', errorParams: {} },
-                pieces: []
+                pieces: [],
+                // (P3 5/10) frecce fra cassetti
+                trays: [],          // elenco cassetti (api/conf/tray/show/all, come TraysView)
+                loadedSig: null,    // stato tasche come letto dal DB: diverso dall'attuale = modifiche non salvate
+                navConfirm: null,   // vicino verso cui si vuole andare, in attesa di conferma
+                saving: false       // Save! in corso: niente frecce finche' non ha finito di scrivere
+            }
+        },
+        watch: {
+            // (P3 5/10) Vue RIUSA il componente quando cambiano solo i parametri
+            // della rotta (/layout/:trayID/:modifyEnable/:floorMag): senza questo
+            // la pagina mostrerebbe le tasche del cassetto vecchio col titolo nuovo.
+            '$route.params': {
+                handler(to, from) {
+                    if (!from || (to.trayID === from.trayID && to.floorMag === from.floorMag && to.modifyEnable === from.modifyEnable)) return;
+                    this.listPz = [];
+                    this.loadedSig = null;
+                    this.navConfirm = null;
+                    this.trayReset.open = false;
+                    this.trayType.open = false;
+                    this.getDataTable();
+                }
             }
         },
         methods: {
@@ -171,8 +233,13 @@
             // dichiarazione della pagina robot, e una seconda copia sarebbe
             // divergita al primo ritocco.
             getDataTable() {
-                loadTrayPockets(dataStored.server, this.$route.params.floorMag)
+                const floor = String(this.$route.params.floorMag);
+                loadTrayPockets(dataStored.server, floor)
                     .then(d => {
+                        // (P3 5/10) risposta di un cassetto da cui si e' gia'
+                        // usciti con le frecce: si scarta, non deve finire
+                        // sotto il titolo del cassetto nuovo
+                        if (String(this.$route.params.floorMag) !== floor) return;
                         // righe duplicate a DB: si disegnano le prime, ma
                         // l'anomalia si dice (mai in silenzio)
                         if (d.dups > 0) {
@@ -185,7 +252,29 @@
                         this.dim_y = d.dimY;
                         this.radius = d.radius;
                         this.avanzamento = 0;
+                        this.loadedSig = pocketsSignature(this.listPz);
                     });
+            },
+            // (P3 5/10) elenco cassetti per le frecce
+            loadTrays() {
+                fetch(dataStored.server + 'api/conf/tray/show/all', { method: 'GET' })
+                    .then(r => { if (!r.ok) throw new Error('Network response was not ok'); return r.json(); })
+                    .then(d => { this.trays = Array.isArray(d) ? d : []; })
+                    .catch(e => { console.info(e); this.trays = []; });
+            },
+            goNeighbor(dir) {
+                const n = this.neighbors[dir];
+                if (!n || this.navBlocked) return;
+                if (this.isDirty) { this.navConfirm = n; return; }
+                this.navigateTo(n);
+            },
+            confirmDiscard() {
+                const n = this.navConfirm;
+                this.navConfirm = null;
+                if (n) this.navigateTo(n);
+            },
+            navigateTo(n) {
+                this.$router.push('/layout/' + n.trayID + '/' + this.$route.params.modifyEnable + '/' + n.floor);
             },
             getPieces() {
                 fetch(dataStored.server + 'api/conf/piece/show/all', { method: 'GET' })
@@ -378,24 +467,35 @@
                 }
             },
             saveAllData(){
-                for (let i=0; i<this.listPz.length; i++){
+                // (P3 5/10) il piano si fissa QUI, una volta: con le frecce la
+                // rotta puo' cambiare mentre le scritture sono in volo, e il
+                // cassetto di partenza non deve mai finire scritto su quello di
+                // arrivo. Le frecce restano ferme finche' il Save non ha finito.
+                const floor = this.$route.params.floorMag;
+                const rows = this.listPz.slice();
+                this.saving = true;
+                const writes = rows.map((p, i) => {
                     // (dup-guard 4/9) si scrive il SUB_POS REALE della riga,
                     // non (i+1): con buchi/anomalie l'indice colpiva la tasca
                     // sbagliata (e SUB_POS oltre il massimo, no-op silenziosi)
-                    const subPos = this.listPz[i].SUB_POS != null ? this.listPz[i].SUB_POS : (i+1);
-                    fetch(dataStored.server+'api/conf/position/updatePositionStatus/'+this.$route.params.floorMag+"/"+subPos+"/"+this.listPz[i].status ,{ method: 'GET'})
+                    const subPos = p.SUB_POS != null ? p.SUB_POS : (i+1);
+                    return fetch(dataStored.server+'api/conf/position/updatePositionStatus/'+floor+"/"+subPos+"/"+p.status ,{ method: 'GET'})
                         .then( response => {
                             if (!response.ok) {
                                 throw new Error('Network response was not ok');
                             }
-                            this.avanzamento = Math.round(this.avanzamento + 100/this.listPz.length)
+                            this.avanzamento = Math.round(this.avanzamento + 100/rows.length)
                         })
                         .catch(error => {
                             console.info("-------------")
                             console.info(error);
                         });
-                }
-                this.getDataTable();
+                });
+                // riletto DOPO le scritture: lo stato "salvato" e' quello del DB
+                Promise.all(writes).finally(() => {
+                    this.saving = false;
+                    if (String(this.$route.params.floorMag) === String(floor)) this.getDataTable();
+                });
             }
         },
         computed: {
@@ -404,6 +504,15 @@
             // conversione la fa TrayPockets con robotToDrawing: qui non c'e'
             // nessuna formula, e non deve tornarci.
             robotAxisAlong() { return ROBOT_AXIS_ALONG; },
+            // (P3 5/10) vicini del piano attuale nell'elenco cassetti
+            neighbors() { return neighborTrays(this.trays, this.$route.params.floorMag); },
+            // modifiche locali non salvate: solo in modifica, e solo dopo che
+            // le tasche del cassetto sono state lette
+            isDirty() {
+                return this.$route.params.modifyEnable == 1 && this.loadedSig !== null
+                    && pocketsSignature(this.listPz) !== this.loadedSig;
+            },
+            navBlocked() { return this.saving; },
             // codice dichiarato ADESSO: viene dalle tasche, non dal grigliato.
             // 0 o assente = nessun codice, cassetto invisibile al ciclo: si
             // dice, non si mostra un numero che sembra un dato.
@@ -417,12 +526,35 @@
         mounted(){
             this.getDataTable()
             this.getPieces()
+            this.loadTrays()
         }
     }
 </script>    
 
 
 <style scoped>
+    /* (P3 5/10) titolo fra le due frecce; touch 52 */
+    .layout-nav {
+        display: flex;
+        align-items: center;
+        gap: var(--space-4);
+    }
+    .layout-nav .layout-title {
+        flex: 1;
+        text-align: center;
+    }
+    .layout-nav-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--space-2);
+        min-height: 52px;
+        min-width: 52px;
+        justify-content: center;
+    }
+    .layout-nav-btn svg {
+        width: 22px;
+        height: 22px;
+    }
     .layout-title {
         color: var(--text-secondary);
     }

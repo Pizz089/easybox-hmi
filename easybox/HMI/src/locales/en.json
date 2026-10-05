@@ -60,6 +60,13 @@
     "retry": "Retry"
   },
   "layout": {
+    "nav": {
+      "toFloor": "Go to the tray on floor {floor}",
+      "none": "No other tray in this direction",
+      "discardTitle": "Unsaved changes",
+      "discardText": "The pockets of floor {floor} were changed but not saved. Going to floor {to} discards the changes (they are not written to any tray).",
+      "discardConfirm": "Discard and change tray"
+    },
     "type": {
       "button": "Declare content",
       "title": "Content of tray {floor}",
