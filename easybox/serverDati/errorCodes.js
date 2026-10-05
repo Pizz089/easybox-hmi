@@ -44,3 +44,6 @@ exports.KO_PUSH_NO_ROOM      = "KO_PUSH_NO_ROOM";      // appoggio dichiarato pi
 // aggiornare non esiste. Senza questo codice una UPDATE a zero righe
 // risponderebbe OK, ed e' il difetto silenzioso che ha causato l'errore 799.
 exports.KO_NOT_FOUND         = "KO_NOT_FOUND";
+// Cassetti bloccati (P1 5/10, decisione 29/9): insertTray e DELETE /tray/:ID non
+// toccano piu' il DB e rispondono 403 con questo codice.
+exports.KO_TRAY_LOCKED       = "KO_TRAY_LOCKED";       // aggiunta/eliminazione cassetti disabilitata

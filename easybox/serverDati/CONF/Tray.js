@@ -221,69 +221,21 @@ router.get('/test2', (req, res) => {
 	res.send(firstPartQuery+query+")")
 });
 
-//TODO:da testare
-router.get('/insertTray', (req, res) => {
-	sql.connect(DBf.configDB, function (err) {
-        if (err) {
-            log.error("err insertTray: " + err);
-            return;
-        }
-		
-		var request = new sql.Request();
+// (P1 5/10, decisione 29/9) I cassetti NON si aggiungono e NON si eliminano
+// dal pannello: il cliente ha cancellato cassetti che non doveva eliminare.
+// I cassetti sono la struttura fisica della cassettiera (12 piani): nascono e
+// muoiono con l'impianto, non con l'uso. Le due rotte restano registrate
+// per rispondere in chiaro a chi le chiama ancora (pagina vecchia in cache,
+// script): 403 + KO_TRAY_LOCKED, una riga di log con rotta e parametri, e
+// NESSUN accesso al DB. Le altre rotte dei cassetti non cambiano.
+function trayLocked(route, req, res) {
+	log.standard('cassetti bloccati (P1): ' + route + ' rifiutata, params=' + JSON.stringify(req.params || {}) + ' query=' + JSON.stringify(req.query || {}));
+	res.status(403).send(errorCodes.KO_TRAY_LOCKED);
+}
 
-        let query = `INSERT INTO TRAY
-					(MAG, FAMILY, DESCR, X, Y, STATUS, APPROACH_TYPE, Z_PICK, Z_PLACE, FLOOR_MAG, X_CORR, Y_CORR, Z_CORR)
-					VALUES( 
-					${req.query.MAG}, 
-					'${req.query.FAMILY}', 
-					'${req.query.DESCR}', 
-					${req.query.X}, 
-					${req.query.Y}, 
-					${req.query.STATUS}, 
-					${req.query.APPROACH_TYPE}, 
-					${req.query.Z_PICK}, 
-					${req.query.Z_PLACE}, 
-					${req.query.FLOOR_MAG}, 
-					${req.query.X_CORR}, 
-					${req.query.Y_CORR}, 
-					${req.query.Z_CORR});`
-					
-        log.info('query ' + query);
-        // query to the database and get the records
-        request.query(query, function (err, recordset) {
-            if (err) {
-                log.error("Err query: " + err)
-                res.status(500).send("KO")
-            }else
-				res.send("OK")
-        });
-	});
-})
+router.get('/insertTray', (req, res) => trayLocked('GET /insertTray', req, res));
 
-//TODO:da testare
-router.delete('/:ID', (req, res) => {
-    console.log('delete Tray '+req.params.ID);
-	sql.connect(DBf.configDB, function (err) {
-        if (err) {
-            log.error("err delete TRAY: " + err);
-            return;
-        }
-		
-		var request = new sql.Request();
-        let query = `DELETE FROM TRAY WHERE ID=${req.params.ID};`
-					
-        log.info('query ' + query);
-        // query to the database and get the records
-        request.query(query, function (err, recordset) {
-            if (err) {
-                log.error("Err query: " + err)
-                //res.send("KO")
-            }
-			//else
-			//	res.send("OK")
-        });
-	});
-});
+router.delete('/:ID', (req, res) => trayLocked('DELETE /:ID', req, res));
 
 //////////////////////////////////////////////////////////
 ///////////////////////// LAYOUT /////////////////////////

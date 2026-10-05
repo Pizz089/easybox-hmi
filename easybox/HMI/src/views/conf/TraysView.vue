@@ -20,9 +20,9 @@
       <div class="view-shell view-shell--fill conf-card">
         <div class="view-header">
             <h3 class="view-title">{{$t('tray.welcome')}}</h3>
-            <button class="pure-button pure-button-primary" :class="{'pure-button-disabled':dataStored.userLevel<=1}" :id="locked" @click="createTray()">
-                {{$t('tray.add_Tray')}}
-            </button>
+            <!-- (P1 5/10, decisione 29/9) niente "Aggiungi" ne' "Elimina": i
+                 cassetti sono la cassettiera fisica, il cliente ne ha cancellati
+                 di non eliminabili. Anche il backend rifiuta (403 KO_TRAY_LOCKED). -->
             <!-- (tray-teaching) comando "0 CASSETTIERA": un solo teaching sul
                  cassetto campione, derivazione automatica degli altri 11.
                  (teach-pick-target) gate REALE sul click, non solo classe: il
@@ -115,26 +115,9 @@
                         <td>
                             <orderCMD  
                                 modify="true"               @cmdModify="updateTray(dt.ID)"
-                                del="true"                  @cmdDel="sicurezza(dt.ID)"
                                 :move="dt.FLOOR_MAG>0 && (dt.EXTRACT==1 || allInside)"  @cmdMove="sendToBox(dt.EXTRACT, dt.FLOOR_MAG)"
                                 :moveDisable="!dataStored.cmdActiveMission" 
                             />
-                        </td>
-                    </tr>
-                    <tr v-if="_showPopUp(dt.ID)">
-                        <td class="popUpOnLine" colspan="20" >
-                            <div class="center">
-                                <h3>{{ $t('tray.sure') }}</h3>
-                                <h4>{{ $t('tray.delete') }}</h4>
-                                <span class="pure-g">
-                                    <button class="pure-button-micromission specialCMD pure-u-1" @click="deleteTray(dt.ID)">
-                                        DELETE
-                                    </button>
-                                    <button class="btn-ghost pure-u-1" @click="showPopUp=0">
-                                        EXIT
-                                    </button>
-                                </span>
-                            </div>
                         </td>
                     </tr>
                 </template>
@@ -385,7 +368,6 @@ export default {
             // stato della lettura: 'attesa' finche' non si sa, cosi' non si
             // scrive "nessun cassetto" prima di avere una risposta
             statoElenco: STATO.ATTESA,
-            showPopUp:0,
             //polling:true,
 			allInside:false,
             // (tray-teaching) dialog "0 CASSETTIERA": step 1 campione,
@@ -448,10 +430,6 @@ export default {
             this.$router.push('/conf/tray?trayID='+i);
             //this.$router.push({ name: 'conf/tray', params:{trayID: i}} );
         },
-        sicurezza(i){
-            this.showPopUp=i
-            //alert("ricevo "+i)
-        },
         /*moveTray(ID){
             let query = 'api/conf/tray/extract/'
             for(let j=0;j<this.datiTab.length;j++){
@@ -482,24 +460,6 @@ export default {
                 });
         },
         */
-        deleteTray(i){
-            this.showPopUp=0
-            fetch(dataStored.server+'api/conf/tray/'+i ,{ method: 'delete'})
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok');
-                    }
-                    return response.json()
-                })
-                .catch(error => {
-                    console.info("-------------")
-                    console.info(error);
-                });
-            this.getDataTable();
-        },
-        createTray(){
-            this.$router.push('/conf/tray');
-        },
         // ===== (grating-model) associazione grigliato <-> cassetto =====
         // Guardia client (visiva): livello tecnico + cassetto DENTRO
         // (EXTRACT==0). Il backend ripete entrambe le guardie + ordine attivo.
@@ -767,11 +727,6 @@ export default {
                 })
                 .catch(e => { console.info(e); });
         },
-        _showPopUp(i){
-            if (this.showPopUp==i)
-                return true
-            return false
-        },
         getClassFromStatusDesc(status){
             //alert(JSON.stringify(status,null,4))
             return status.toString().trim().toLowerCase();
@@ -924,25 +879,6 @@ export default {
         }
     }
     
-    .popUpOnLine{
-        background-image: url(/src/assets/up_red.png);
-        background-repeat: no-repeat;
-        background-position-x: 14.6em;
-    }
-
-    .popUpOnLine .btn-ghost {
-        margin-top: var(--space-2);
-    }
-
-    /* 2px (non 1px --border-card): il popup di conferma delete deve
-       staccare piu' di un bordo card. */
-    .center {
-        margin: auto;
-        width: 20%;
-        border: 2px solid var(--color-critical);
-        padding: var(--space-6);
-    }
-
     /* (grating-model) colonna Grigliato: azioni per cassetto + spunta avviso */
     .assoc-cell .assoc-btn {
         margin: 0 var(--space-1) var(--space-1) 0;

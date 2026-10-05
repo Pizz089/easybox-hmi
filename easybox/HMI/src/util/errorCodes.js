@@ -29,3 +29,6 @@ export const KO_PUSH_NO_ROOM      = "KO_PUSH_NO_ROOM";
 // (push-sim-save 15/9) la riga da aggiornare non esiste: una UPDATE a zero
 // righe non deve mai rispondere OK
 export const KO_NOT_FOUND         = "KO_NOT_FOUND";
+// (P1 5/10) aggiunta/eliminazione cassetti disabilitata: insertTray e
+// DELETE /tray/:ID rispondono 403 con questo codice
+export const KO_TRAY_LOCKED       = "KO_TRAY_LOCKED";
