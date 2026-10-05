@@ -350,6 +350,7 @@ client.on('message', function (topic, message, packet) {
 	if (param[2] == "ROBOT"){
 		switch (param[1]){  
 			case "STATUS":		//es: FROM_PLANT/STATUS/ROBOT
+				if (parseUnitStatus(message.toString()) === null) { statusEventOnly('ROBOT', message.toString(), false); break; }  // (P7)
 				setStatusOnDB('ROBOT',message.toString())
 				unitStatusCache['ROBOT'] = message.toString();
 				DBf.io.emit('ROBOT/STATUS', message.toString())
@@ -386,6 +387,8 @@ client.on('message', function (topic, message, packet) {
 	if (param[2] == "MC1"){
 		switch (param[1]){  
 			case "STATUS":		//FROM_PLANT/STATUS/MC1
+				// (P7) 'CYCLE_COMPLETED' da FB204 stato 100: evento, non stato
+				if (parseUnitStatus(message.toString()) === null) { statusEventOnly('MC1', message.toString(), true); break; }
 				setStatusOnDB('MC1',message.toString())
 				unitStatusCache['MC1'] = message.toString();
 				DBf.io.emit('MC1/STATUS', message.toString())
@@ -434,6 +437,7 @@ client.on('message', function (topic, message, packet) {
 	if (param[2] == "MC2"){
 		switch (param[1]){  
 			case "STATUS":		//FROM_PLANT/STATUS/MC2
+				if (parseUnitStatus(message.toString()) === null) { statusEventOnly('MC2', message.toString(), false); break; }  // (P7)
 				setStatusOnDB('MC2',message.toString())
 				unitStatusCache['MC2'] = message.toString();
 				DBf.io.emit('MC2/STATUS', message.toString())
@@ -458,6 +462,7 @@ client.on('message', function (topic, message, packet) {
 	if (param[2] == "BOX"){			
 		switch (param[1]){  
 			case "STATUS":		//FROM_PLANT/STATUS/BOX
+				if (parseUnitStatus(message.toString()) === null) { statusEventOnly('BOX', message.toString(), false); break; }  // (P7)
 				setStatusOnDB('SMALLBOX',message.toString())
 				// chiave 'BOX' (namespace socket), non 'SMALLBOX' (nome DB):
 				// il replay emette unit+'/STATUS' e le view ascoltano BOX/STATUS
@@ -1171,22 +1176,50 @@ client.on('packetreceive', function () {
 
 ///////////////////////////////// FUNZIONI DI REGISTRAZIONE SU DB ///////////////////////////////// 
 
+// ============================================================================
+// (P7 5/10) STATUS con payload NON numerico.
+// FB204, allo stato 100, pubblica FROM_PLANT/STATUS/MC1 con payload
+// 'CYCLE_COMPLETED': e' un EVENTO (fine ciclo), non uno stato dell'unita'.
+// Prima finiva tale e quale in "UPDATE UNIT_STATUS SET STATUS=CYCLE_COMPLETED"
+// (errore SQL a ogni ciclo), in unitStatusCache e nell'emit MC1/STATUS, cioe'
+// al pannello come se fosse uno stato. Adesso un payload che non e' un intero
+// non scrive niente, non tocca la cache e non emette lo stato: resta una riga
+// di log (file, nessuna query) e, per MC1, l'aggiornamento della tabella
+// produzione che quel ramo faceva gia'. Vale per tutte le unita'.
+// ============================================================================
+function parseUnitStatus(payload) {
+	const s = String(payload == null ? '' : payload).trim();
+	// segno ammesso: le conversioni INT->STRING del PLC possono metterlo
+	// (CYCLE_DONE arriva come "+1100"), e prima "STATUS=+3" passava in SQL
+	return /^[+-]?\d+$/.test(s) ? parseInt(s, 10) : null;
+}
+
+function statusEventOnly(unit, payload, emitProduction) {
+	log.standard("STATUS " + unit + " non numerico [" + String(payload).trim() + "]: evento, nessuna scrittura su UNIT_STATUS");
+	if (emitProduction) DBf.io.emit('PRODUCTION/CHANGED');  //aggiorno la tabella di produzione
+}
+
 function setStatusOnDB(_unit, _status){
+	// (P7 5/10) solo interi, e query parametrizzata al posto della
+	// sostituzione di stringhe: il payload arriva dal PLC ed e' untrusted
+	const status = parseUnitStatus(_status);
+	if (status === null) {
+		log.standard("setStatusOnDB " + _unit + ": stato non intero [" + String(_status) + "] ignorato");
+		return;
+	}
 	sql.connect(DBf.configDB, function (err) {
         if (err) {
             log.standard("err getUnitData: " + err);
             return;
         }
 
-		let query=`UPDATE UNIT_STATUS SET STATUS=@status@ where UNIT=@unit@;` 
-		
-		query = query.replace("@status@",_status);
-		query = query.replace("@unit@","'"+_unit+"'");
-		
-		log.info("query: "+query)
+		const query = `UPDATE UNIT_STATUS SET STATUS=@status WHERE UNIT=@unit;`;
+		log.info("query: " + query + " [status=" + status + ", unit=" + _unit + "]")
         // create Request object
         var request = new sql.Request();
-					
+		request.input('status', sql.Int, status);
+		request.input('unit', sql.NVarChar, String(_unit));
+
         // query to the database and get the records
         request.query(query, function (err, recordset) {
             if (err) {
