@@ -15,9 +15,24 @@ namespace TiaExport
         private const string OpennessGroup = "Siemens TIA Openness";
         private const string PublicApiRegistryKey = @"SOFTWARE\Siemens\Automation\Openness\20.0\PublicAPI\20.0.0.0";
 
-        private static int Main()
+        private const string CompareOnlineOption = "--compare-online";
+        private const string CompareFile = "COMPARE.txt";
+
+        private static int Main(string[] args)
         {
             Console.OutputEncoding = Encoding.UTF8;
+
+            var compareOnline = false;
+            foreach (var arg in args)
+            {
+                if (string.Equals(arg, CompareOnlineOption, StringComparison.OrdinalIgnoreCase))
+                    compareOnline = true;
+                else
+                {
+                    Console.Error.WriteLine("ERRORE: argomento sconosciuto '" + arg + "'. Uso: tia-export [" + CompareOnlineOption + "]");
+                    return 2;
+                }
+            }
 
             // Siemens.Engineering.dll non sta nella bin: va caricata dall'installazione di TIA
             // prima che venga compilato qualunque metodo che usa i suoi tipi (vedi Run).
@@ -25,7 +40,7 @@ namespace TiaExport
 
             try
             {
-                return Run();
+                return Run(compareOnline);
             }
             catch (FatalException ex)
             {
@@ -40,7 +55,7 @@ namespace TiaExport
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        private static int Run()
+        private static int Run(bool compareOnline)
         {
             var settings = Settings.Load(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "appsettings.json"));
             var projectFile = FindProjectFile(settings.ProjectDir);
@@ -50,24 +65,38 @@ namespace TiaExport
 
             Console.WriteLine("Progetto: " + projectFile.FullName);
             Console.WriteLine("Output:   " + outputRoot);
+            if (compareOnline)
+                Console.WriteLine("Confronto online: sì (sola lettura)");
 
-            return ExportAndSync(projectFile, outputRoot, settings.PlcName);
+            return ExportAndSync(projectFile, outputRoot, settings.PlcName, compareOnline);
         }
 
         // Metodo separato: i tipi Siemens si caricano solo quando viene compilato questo,
         // cioè dopo LocatePublicApi.
         [MethodImpl(MethodImplOptions.NoInlining)]
-        private static int ExportAndSync(FileInfo projectFile, string outputRoot, string plcName)
+        private static int ExportAndSync(FileInfo projectFile, string outputRoot, string plcName, bool compareOnline)
         {
             var tempRoot = Path.Combine(Path.GetTempPath(), "tia-export-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(tempRoot);
             try
             {
-                var results = new Exporter(tempRoot).Run(projectFile, plcName);
+                var exporter = new Exporter(tempRoot);
+                var results = exporter.Run(projectFile, plcName, compareOnline);
                 var errors = results.Count(r => r.Outcome == Outcome.Error);
                 var changes = OutputSync.Apply(outputRoot, results, allowRemovals: errors == 0);
+
+                var compare = exporter.Compare;
+                if (compare?.Report != null)
+                {
+                    var change = OutputSync.WriteIfChanged(outputRoot, CompareFile, new UTF8Encoding(false).GetBytes(compare.Report));
+                    if (change != null)
+                        changes.Add(change);
+                }
+
                 PrintSummary(results, changes, RelativeToRepo(outputRoot), removalsSuspended: errors > 0);
-                return errors == 0 ? 0 : 1;
+                PrintCompare(compare, RelativeToRepo(outputRoot));
+                var compareFailed = compare != null && compare.Report == null;
+                return errors == 0 && !compareFailed ? 0 : 1;
             }
             finally
             {
@@ -210,9 +239,25 @@ namespace TiaExport
                 Console.WriteLine("Rimozione dei sorgenti obsoleti sospesa: la corsa ha avuto errori, i file dei blocchi falliti restano quelli precedenti.");
         }
 
+        private static void PrintCompare(CompareOutcome compare, string outputPrefix)
+        {
+            if (compare == null)
+                return;
+
+            Console.WriteLine();
+            if (compare.Report == null)
+            {
+                Console.WriteLine("Confronto online NON riuscito: " + compare.Error);
+                Console.WriteLine(outputPrefix + "/" + CompareFile + " non aggiornato.");
+                return;
+            }
+            Console.WriteLine("Confronto online (" + outputPrefix + "/" + CompareFile + "): " +
+                string.Join(", ", Exporter.CompareLabels.Select(l => l + " " + compare.Counts[l])));
+        }
+
         private static string Label(BlockResult r)
         {
-            var kind = r.Folder ?? "?";
+            var kind = r.Kind ?? "?";
             var where = string.IsNullOrEmpty(r.GroupPath) ? "" : "  [" + r.GroupPath + "]";
             return kind + " " + r.Name + where;
         }
@@ -223,7 +268,7 @@ namespace TiaExport
             {
                 case SkipReason.Safety: return "safety (F-)";
                 case SkipReason.KnowHowProtected: return "know-how protected";
-                case SkipReason.Graphical: return "LAD/FBD/GRAPH, leggere in TIA";
+                case SkipReason.Graphical: return "GRAPH e altri linguaggi senza export, leggere in TIA";
                 case SkipReason.System: return "blocchi di sistema";
                 default: return "non supportati";
             }

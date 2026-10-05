@@ -19,7 +19,12 @@ namespace TiaExport
     /// </summary>
     internal static class OutputSync
     {
-        private static readonly string[] ManagedExtensions = { ".scl", ".awl", ".db", ".udt" };
+        private static readonly string[] SourceExtensions = { ".scl", ".awl", ".db", ".udt" };
+        private static readonly string[] XmlExtensions = { ".xml" };
+
+        // In LAD/ e tags/ il tool gestisce solo gli .xml: altri file (es. .gitkeep) restano.
+        private static string[] ManagedExtensions(string folder) =>
+            folder == "LAD" || folder == "tags" ? XmlExtensions : SourceExtensions;
 
         /// <param name="allowRemovals">
         /// false quando la corsa ha avuto errori: un blocco fallito non deve far sparire
@@ -53,7 +58,7 @@ namespace TiaExport
             if (!allowRemovals)
                 return changes;
 
-            // Sorgenti di blocchi non più esportati (cancellati, rinominati, convertiti in LAD...).
+            // File di oggetti non più esportati (cancellati, rinominati, convertiti fra SCL e LAD...).
             foreach (var folder in Exporter.ManagedFolders)
             {
                 var dir = Path.Combine(outputRoot, folder);
@@ -62,7 +67,7 @@ namespace TiaExport
 
                 foreach (var file in Directory.GetFiles(dir).OrderBy(f => f, StringComparer.OrdinalIgnoreCase))
                 {
-                    if (!ManagedExtensions.Contains(Path.GetExtension(file), StringComparer.OrdinalIgnoreCase))
+                    if (!ManagedExtensions(folder).Contains(Path.GetExtension(file), StringComparer.OrdinalIgnoreCase))
                         continue;
                     var rel = folder + "/" + Path.GetFileName(file);
                     if (produced.Contains(rel))
@@ -72,6 +77,23 @@ namespace TiaExport
                 }
             }
             return changes;
+        }
+
+        /// <summary>Scrive un singolo file generato (es. COMPARE.txt) solo se il contenuto cambia.</summary>
+        public static FileChange WriteIfChanged(string outputRoot, string relativePath, byte[] content)
+        {
+            var target = Path.Combine(outputRoot, relativePath.Replace('/', Path.DirectorySeparatorChar));
+            ChangeKind kind;
+            if (!File.Exists(target))
+                kind = ChangeKind.Added;
+            else if (!content.SequenceEqual(File.ReadAllBytes(target)))
+                kind = ChangeKind.Modified;
+            else
+                return null;
+
+            Directory.CreateDirectory(Path.GetDirectoryName(target));
+            File.WriteAllBytes(target, content);
+            return new FileChange { Kind = kind, RelativePath = relativePath };
         }
     }
 }

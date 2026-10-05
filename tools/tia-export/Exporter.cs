@@ -2,12 +2,16 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using Siemens.Engineering;
+using Siemens.Engineering.Compare;
 using Siemens.Engineering.HW;
 using Siemens.Engineering.HW.Features;
+using Siemens.Engineering.Online;
 using Siemens.Engineering.SW;
 using Siemens.Engineering.SW.Blocks;
 using Siemens.Engineering.SW.ExternalSources;
+using Siemens.Engineering.SW.Tags;
 using Siemens.Engineering.SW.Types;
 
 namespace TiaExport
@@ -20,23 +24,34 @@ namespace TiaExport
     internal sealed class BlockResult
     {
         public string Name;
-        public string Folder;          // OB, FB, FC, DB, UDT
+        public string Kind;            // OB, FB, FC, DB, UDT, TAG: tipo dell'oggetto, per il log
+        public string Folder;          // cartella di output: OB, FB, FC, DB, UDT, LAD, tags
         public string Language;
         public string GroupPath;       // gruppo nell'albero TIA, per il log
         public Outcome Outcome;
         public SkipReason Skip;
         public string Detail;          // motivo del salto o messaggio d'errore
         public string RelativePath;    // es. FB/FB_ExecuteQuery.scl (esportati ed errori)
-        public string TempFile;        // sorgente generato (solo esportati)
+        public string TempFile;        // file generato (solo esportati)
+    }
+
+    /// <summary>Esito del confronto progetto / PLC online. Report null = confronto non riuscito.</summary>
+    internal sealed class CompareOutcome
+    {
+        public string Report;
+        public string Error;
+        public readonly Dictionary<string, int> Counts = new Dictionary<string, int>();
     }
 
     /// <summary>
-    /// Apre il progetto TIA senza interfaccia e genera un sorgente esterno per ogni
-    /// blocco e tipo di dato della CPU, un file per blocco, in una cartella temporanea.
+    /// Apre il progetto TIA senza interfaccia e genera, in una cartella temporanea, un
+    /// sorgente esterno per ogni blocco SCL/STL e tipo di dato della CPU e l'XML SimaticML
+    /// dei blocchi LAD/FBD e delle tabelle variabili, un file per oggetto.
+    /// A richiesta confronta il progetto con il PLC online.
     /// </summary>
     internal sealed class Exporter
     {
-        private static readonly string[] FolderOrder = { "OB", "FB", "FC", "DB", "UDT" };
+        private static readonly string[] FolderOrder = { "OB", "FB", "FC", "DB", "UDT", "LAD", "tags" };
         public static IReadOnlyList<string> ManagedFolders => FolderOrder;
 
         private readonly string _tempRoot;
@@ -49,10 +64,25 @@ namespace TiaExport
             _tempRoot = tempRoot;
         }
 
-        public IList<BlockResult> Run(FileInfo projectFile, string plcName)
+        /// <summary>Valorizzato solo se Run è chiamato con compareOnline.</summary>
+        public CompareOutcome Compare { get; private set; }
+
+        public IList<BlockResult> Run(FileInfo projectFile, string plcName, bool compareOnline)
         {
             Console.WriteLine("Avvio TIA Portal V20 senza interfaccia (può richiedere qualche minuto)...");
-            using (var tia = new TiaPortal(TiaPortalMode.WithoutUserInterface))
+            TiaPortal portal;
+            try
+            {
+                portal = new TiaPortal(TiaPortalMode.WithoutUserInterface);
+            }
+            catch (EngineeringSecurityException ex)
+            {
+                throw new FatalException(
+                    "accesso Openness negato o non confermato. Dopo ogni ricompilazione TIA chiede il consenso nella " +
+                    "finestra 'TIA Portal Openness': rilanciare e confermarla entro il timeout.\n  " + ex.Message, ex);
+            }
+
+            using (var tia = portal)
             {
                 Console.WriteLine("Apertura progetto " + projectFile.FullName);
                 Project project;
@@ -68,7 +98,8 @@ namespace TiaExport
 
                 try
                 {
-                    var plc = FindPlc(project, plcName);
+                    var cpu = FindPlc(project, plcName);
+                    var plc = cpu.Item2;
                     Console.WriteLine("CPU: " + plc.Name);
                     _sources = plc.ExternalSourceGroup;
 
@@ -77,6 +108,10 @@ namespace TiaExport
                         WalkSystemBlocks(systemGroup, systemGroup.Name);
 
                     WalkTypes(plc.TypeGroup, "");
+                    WalkTagTables(plc.TagTableGroup.TagTables, plc.TagTableGroup.Groups, "");
+
+                    if (compareOnline)
+                        Compare = CompareToOnline(cpu.Item1, plc);
                 }
                 finally
                 {
@@ -89,15 +124,16 @@ namespace TiaExport
 
         // ---- ricerca della CPU -------------------------------------------------------
 
-        private static PlcSoftware FindPlc(Project project, string plcName)
+        /// <summary>La CPU (il DeviceItem che porta il software, serve per andare online) e il suo software.</summary>
+        private static Tuple<DeviceItem, PlcSoftware> FindPlc(Project project, string plcName)
         {
-            var found = new List<Tuple<string, PlcSoftware>>();
+            var found = new List<Tuple<string, PlcSoftware, DeviceItem>>();
             foreach (var device in AllDevices(project))
                 foreach (var item in AllItems(device.DeviceItems))
                 {
                     var container = item.GetService<SoftwareContainer>();
                     if (container?.Software is PlcSoftware plc)
-                        found.Add(Tuple.Create(device.Name, plc));
+                        found.Add(Tuple.Create(device.Name, plc, item));
                 }
 
             if (found.Count == 0)
@@ -110,15 +146,15 @@ namespace TiaExport
                     string.Equals(f.Item1, plcName, StringComparison.OrdinalIgnoreCase));
                 if (match == null)
                     throw new FatalException("CPU '" + plcName + "' non trovata. Disponibili: " + DescribePlcs(found));
-                return match.Item2;
+                return Tuple.Create(match.Item3, match.Item2);
             }
 
             if (found.Count > 1)
                 throw new FatalException("Il progetto contiene più CPU: impostare PlcName in appsettings.json. Disponibili: " + DescribePlcs(found));
-            return found[0].Item2;
+            return Tuple.Create(found[0].Item3, found[0].Item2);
         }
 
-        private static string DescribePlcs(IEnumerable<Tuple<string, PlcSoftware>> plcs) =>
+        private static string DescribePlcs(IEnumerable<Tuple<string, PlcSoftware, DeviceItem>> plcs) =>
             string.Join(", ", plcs.Select(p => p.Item2.Name + " (dispositivo " + p.Item1 + ")"));
 
         private static IEnumerable<Device> AllDevices(Project project)
@@ -170,7 +206,8 @@ namespace TiaExport
 
         private void HandleBlock(PlcBlock block, string groupPath, bool isSystem)
         {
-            var r = new BlockResult { Name = block.Name, GroupPath = groupPath, Folder = FolderOf(block) };
+            var kind = FolderOf(block);
+            var r = new BlockResult { Name = block.Name, GroupPath = groupPath, Kind = kind, Folder = kind };
             _results.Add(r);
 
             try
@@ -214,6 +251,13 @@ namespace TiaExport
                     extension = ".scl";
                 else if (language == ProgrammingLanguage.STL)
                     extension = ".awl";
+                else if (IsLadOrFbd(language))
+                {
+                    // Nessun sorgente testuale: XML SimaticML, tutti nella stessa cartella.
+                    r.Folder = "LAD";
+                    ExportXml(r, file => block.Export(file, ExportOptions.None, DocumentInfoOptions.None));
+                    return;
+                }
                 else
                 {
                     SetSkipped(r, SkipReason.Graphical, "linguaggio " + r.Language + ": nessun sorgente testuale, leggere in TIA");
@@ -227,6 +271,10 @@ namespace TiaExport
                 SetError(r, ex);
             }
         }
+
+        private static bool IsLadOrFbd(ProgrammingLanguage language) =>
+            language == ProgrammingLanguage.LAD || language == ProgrammingLanguage.FBD ||
+            language == ProgrammingLanguage.LAD_IEC || language == ProgrammingLanguage.FBD_IEC;
 
         private static string FolderOf(PlcBlock block)
         {
@@ -256,7 +304,7 @@ namespace TiaExport
 
         private void HandleType(PlcType type, string groupPath)
         {
-            var r = new BlockResult { Name = type.Name, GroupPath = groupPath, Folder = "UDT", Language = "UDT" };
+            var r = new BlockResult { Name = type.Name, GroupPath = groupPath, Kind = "UDT", Folder = "UDT", Language = "UDT" };
             _results.Add(r);
             try
             {
@@ -273,9 +321,157 @@ namespace TiaExport
             }
         }
 
+        // ---- tabelle variabili PLC ---------------------------------------------------
+
+        // Il gruppo radice (PlcTagTableSystemGroup) e i gruppi utente non hanno una base comune.
+        private void WalkTagTables(PlcTagTableComposition tables, PlcTagTableUserGroupComposition groups, string path)
+        {
+            foreach (PlcTagTable table in tables)
+                HandleTagTable(table, path);
+            foreach (PlcTagTableUserGroup sub in groups)
+                WalkTagTables(sub.TagTables, sub.Groups, Combine(path, sub.Name));
+        }
+
+        private void HandleTagTable(PlcTagTable table, string groupPath)
+        {
+            var r = new BlockResult { Name = table.Name, GroupPath = groupPath, Kind = "TAG", Folder = "tags", Language = "tabella variabili" };
+            _results.Add(r);
+            try
+            {
+                // L'XML contiene variabili e costanti utente della tabella.
+                ExportXml(r, file => table.Export(file, ExportOptions.None, DocumentInfoOptions.None));
+            }
+            catch (Exception ex)
+            {
+                SetError(r, ex);
+            }
+        }
+
+        // ---- confronto online --------------------------------------------------------
+
+        /// <summary>
+        /// Sola lettura: va online con la connessione salvata nel progetto, confronta e torna
+        /// offline. Nessun download né upload. Un errore qui non ferma l'export.
+        /// </summary>
+        private static CompareOutcome CompareToOnline(DeviceItem cpu, PlcSoftware plc)
+        {
+            var outcome = new CompareOutcome();
+            var online = cpu.GetService<OnlineProvider>();
+            if (online == null)
+            {
+                outcome.Error = "la CPU non offre il servizio OnlineProvider";
+                return outcome;
+            }
+
+            var wentOnline = false;
+            try
+            {
+                if (online.State != OnlineState.Online)
+                {
+                    Console.WriteLine("Collegamento online alla CPU (sola lettura)...");
+                    wentOnline = true;
+                    var state = online.GoOnline();
+                    if (state != OnlineState.Online)
+                    {
+                        outcome.Error = "collegamento online non riuscito, stato " + state;
+                        return outcome;
+                    }
+                }
+
+                Console.WriteLine("Confronto progetto / PLC online...");
+                var result = plc.CompareToOnline();
+                var lines = new List<Tuple<string, string>>();
+                CollectCompare(result.RootElement, "", lines);
+                outcome.Report = FormatCompare(plc.Name, lines, outcome.Counts);
+            }
+            catch (Exception ex)
+            {
+                outcome.Error = ex.Message.Replace(Environment.NewLine, " ").Trim();
+            }
+            finally
+            {
+                if (wentOnline)
+                {
+                    try { online.GoOffline(); }
+                    catch (Exception ex) { Console.Error.WriteLine("Attenzione: GoOffline non riuscito: " + ex.Message); }
+                }
+            }
+            return outcome;
+        }
+
+        // Una riga per ogni oggetto foglia (blocco, tipo, tabella...) e per le cartelle con
+        // uno stato proprio diverso; le altre cartelle si attraversano soltanto.
+        private static void CollectCompare(CompareResultElement element, string parentPath, List<Tuple<string, string>> lines)
+        {
+            var name = !string.IsNullOrEmpty(element.LeftName) ? element.LeftName : element.RightName;
+            var path = Combine(parentPath, name ?? "?");
+            var children = element.Elements.ToList();
+            var state = element.ComparisonResult;
+
+            var ownStateDifferent = state == CompareResultState.FolderContainsDifferencesOwnStateDifferent ||
+                                    state == CompareResultState.FolderContentEqualOwnStateDifferent;
+            if (children.Count == 0 || ownStateDifferent)
+            {
+                var label = CompareLabel(state);
+                if (label != null)
+                    lines.Add(Tuple.Create(label, children.Count == 0 ? path : path + "/ (cartella)"));
+            }
+            foreach (var child in children)
+                CollectCompare(child, path, lines);
+        }
+
+        private static string CompareLabel(CompareResultState state)
+        {
+            switch (state)
+            {
+                case CompareResultState.ObjectsIdentical:
+                case CompareResultState.FolderContentsIdentical:
+                    return "uguale";
+                case CompareResultState.RightMissing:
+                    return "solo offline";
+                case CompareResultState.LeftMissing:
+                    return "solo online";
+                case CompareResultState.ObjectsDifferent:
+                case CompareResultState.FolderContentsDifferent:
+                case CompareResultState.FolderContainsDifferencesOwnStateDifferent:
+                case CompareResultState.FolderContentEqualOwnStateDifferent:
+                    return "diverso";
+                default:
+                    return null;   // CompareIrrelevant
+            }
+        }
+
+        private static readonly string[] CompareOrder = { "diverso", "solo offline", "solo online", "uguale" };
+        public static IReadOnlyList<string> CompareLabels => CompareOrder;
+
+        // Nessuna data nel file: a progetto e PLC invariati il report non cambia.
+        private static string FormatCompare(string plcName, List<Tuple<string, string>> lines, Dictionary<string, int> counts)
+        {
+            foreach (var label in CompareOrder)
+                counts[label] = lines.Count(l => l.Item1 == label);
+
+            var sb = new StringBuilder();
+            sb.AppendLine("Confronto progetto (offline) / PLC online - CPU " + plcName);
+            sb.AppendLine("Generato da tools/tia-export --compare-online. Non modificare a mano.");
+            sb.AppendLine(string.Join(", ", CompareOrder.Select(l => l + " " + counts[l])));
+            sb.AppendLine();
+            sb.AppendLine("STATO         OGGETTO");
+            foreach (var l in lines.OrderBy(l => Array.IndexOf(CompareOrder, l.Item1)).ThenBy(l => l.Item2, StringComparer.Ordinal))
+                sb.AppendLine(l.Item1.PadRight(13) + " " + l.Item2);
+            return sb.ToString();
+        }
+
         // ---- generazione -------------------------------------------------------------
 
-        private void Generate(BlockResult r, IGenerateSource item, string extension)
+        private void Generate(BlockResult r, IGenerateSource item, string extension) =>
+            Produce(r, extension, file => _sources.GenerateSource(new[] { item }, file, GenerateOptions.None));
+
+        // ExportOptions.None e DocumentInfoOptions.None lasciano fuori date e info di export:
+        // l'XML è già stabile fra due corse e non serve normalizzarlo (vedi README).
+        private void ExportXml(BlockResult r, Action<FileInfo> export) =>
+            Produce(r, ".xml", export);
+
+        private void Produce(BlockResult r, string extension, Action<FileInfo> write)
         {
             var fileName = SafeFileName(r.Name) + extension;
             r.RelativePath = r.Folder + "/" + fileName;
@@ -284,16 +480,16 @@ namespace TiaExport
             {
                 // Nome file già usato (nomi che differiscono solo per caratteri non validi o maiuscole).
                 r.Outcome = Outcome.Error;
-                r.Detail = "nome file già usato da un altro blocco: " + r.RelativePath;
+                r.Detail = "nome file già usato da un altro oggetto: " + r.RelativePath;
                 r.RelativePath = null;
                 return;
             }
 
             var dir = Directory.CreateDirectory(Path.Combine(_tempRoot, r.Folder));
             var file = new FileInfo(Path.Combine(dir.FullName, fileName));
-            if (file.Exists) file.Delete();
+            if (file.Exists) file.Delete();   // Export rifiuta un file già esistente
 
-            _sources.GenerateSource(new[] { item }, file, GenerateOptions.None);
+            write(file);
 
             file.Refresh();
             if (!file.Exists)
