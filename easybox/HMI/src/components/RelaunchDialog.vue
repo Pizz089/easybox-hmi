@@ -3,15 +3,19 @@ import { dataStored } from '../data.js'
 </script>
 
 <!--
-  (P2 5/10) RILANCIA ORDINE FINITO. Dialog aperto dal pulsante "Rilancia" di
-  una riga a STATUS 5 della tabella produzione.
+  (P2 5/10, rivisto dopo l'audit) RILANCIA ORDINE FINITO. Dialog aperto dal
+  pulsante "Rilancia" di una riga a STATUS 5 della tabella produzione.
   L'anteprima mostra NUMERI VERI letti dal backend (tasche finite dell'ordine,
-  grezzi disponibili per il pezzo nei cassetti, QUANTITY), poi chiede se i
-  grezzi sono stati rimessi al posto dei finiti:
-    SI' -> mode 'replaced' : i finiti tornano grezzi e restano dell'ordine;
+  grezzi disponibili per il pezzo nei cassetti, QUANTITY, altri ordini in
+  lavorazione con lo stesso pezzo), poi chiede se i grezzi sono stati rimessi
+  al posto dei finiti:
+    SI' -> mode 'replaced' : i finiti tornano grezzi e restano dell'ordine.
+           Solo a cella ferma: il backend lo rifiuta con la cella in lavoro.
     NO  -> mode 'available': i finiti restano finiti ma escono dall'ordine e si
            lavorano i grezzi che ci sono (se sono 0 il NO non si puo' scegliere).
-  In entrambi i casi l'ordine resta in PAUSA: riparte solo col Play.
+  In tutti e due i casi l'ordine torna in lavorazione (STATUS 3) e il backend
+  gli prenota i grezzi che mancano. Nessuna promessa sulla posizione in coda:
+  con piu' ordini sulla stessa macchina la sceglie il PLC.
   Le guardie vere stanno nel backend (WORKORDER/Order.js); qui si spiega il
   motivo del blocco prima che l'operatore confermi.
 -->
@@ -29,8 +33,11 @@ import { dataStored } from '../data.js'
                     <li>{{ $t('production.relaunch.quantityLabel', { n: preview.quantity }) }}</li>
                 </ul>
 
-                <div class="relaunch-blocked" v-if="preview.blocked">{{ $t(blockedKey(preview.blocked), { mc: preview.machineId }) }}</div>
+                <div class="relaunch-blocked" v-if="preview.blocked">{{ $t(blockedKey(preview.blocked)) }}</div>
                 <template v-else>
+                    <div class="relaunch-warn" v-if="Number(preview.otherActive) > 0">
+                        {{ $t('production.relaunch.otherActive', { n: preview.otherActive }) }}
+                    </div>
                     <div class="relaunch-question">{{ $t('production.relaunch.question') }}</div>
                     <div class="relaunch-choice">
                         <button class="button_pressed"
@@ -39,6 +46,7 @@ import { dataStored } from '../data.js'
                             {{ $t('production.relaunch.yes') }}
                         </button>
                         <small class="relaunch-hint">{{ $t('production.relaunch.yesHint', { n: preview.finished }) }}</small>
+                        <div class="relaunch-blocked" v-if="preview.replacedBlocked">{{ $t(blockedKey(preview.replacedBlocked)) }}</div>
                     </div>
                     <div class="relaunch-choice">
                         <button class="button_pressed"
@@ -47,12 +55,11 @@ import { dataStored } from '../data.js'
                             {{ $t('production.relaunch.no') }}
                         </button>
                         <small class="relaunch-hint">{{ $t('production.relaunch.noHint') }}</small>
-                        <div class="relaunch-blocked" v-if="preview.raw == 0">{{ $t('production.relaunch.noRaw') }}</div>
-                        <div class="relaunch-warn" v-else-if="preview.raw < preview.quantity">
+                        <div class="relaunch-blocked" v-if="preview.availableBlocked">{{ $t(blockedKey(preview.availableBlocked)) }}</div>
+                        <div class="relaunch-warn" v-else-if="Number(preview.raw) < Number(preview.quantity)">
                             {{ $t('production.relaunch.partial', { raw: preview.raw, qty: preview.quantity }) }}
                         </div>
                     </div>
-                    <div class="relaunch-hint">{{ $t('production.relaunch.paused') }}</div>
                 </template>
             </template>
             <div v-else class="relaunch-blocked">{{ $t('production.relaunch.previewFailed') }}</div>
@@ -65,12 +72,11 @@ import { dataStored } from '../data.js'
 </template>
 
 <script>
-import { KO_CELL_RUNNING, KO_ACTIVE_ORDER, KO_NOT_FOUND, KO_ORDER_NOT_FINISHED, KO_NO_RAW } from '../util/errorCodes';
+import { KO_CELL_RUNNING, KO_NOT_FOUND, KO_ORDER_NOT_FINISHED, KO_NO_RAW } from '../util/errorCodes';
 
 // codice del backend -> chiave del messaggio (anteprima e risposta del rilancio)
 const BLOCKED_KEYS = {
     [KO_CELL_RUNNING]: 'production.relaunch.cellRunning',
-    [KO_ACTIVE_ORDER]: 'production.relaunch.activeOrder',
     [KO_NOT_FOUND]: 'production.relaunch.notFound',
     [KO_ORDER_NOT_FINISHED]: 'production.relaunch.notFinished',
     [KO_NO_RAW]: 'production.relaunch.noRaw',
@@ -84,19 +90,24 @@ export default {
     data() {
         return {
             loading: false,
-            preview: null,   // { blocked, status, machineId, pieceId, finished, raw, quantity, piece }
+            // { blocked, replacedBlocked, availableBlocked, status, machineId,
+            //   pieceId, finished, raw, quantity, otherActive, piece }
+            preview: null,
             busy: false,
         };
     },
     computed: {
+        // blocco comune (ordine inesistente o non finito): nessuno dei due modi
         ready() {
             return !!(this.preview && !this.loading && !this.busy && !this.preview.blocked);
         },
+        // SI': solo a cella ferma
         canReplace() {
-            return this.ready;
+            return this.ready && !this.preview.replacedBlocked;
         },
+        // NO: solo con grezzi disponibili
         canUseAvailable() {
-            return this.ready && Number(this.preview.raw) > 0;
+            return this.ready && !this.preview.availableBlocked && Number(this.preview.raw) > 0;
         },
     },
     methods: {
@@ -121,7 +132,7 @@ export default {
                     this.$emit('close');
                     if (row && row.ris === 'OK') {
                         dataStored.alert.title = 'INFO';
-                        dataStored.alert.desc = this.$t('production.relaunch.done', { id: this.order.ID });
+                        dataStored.alert.desc = this.$t('production.relaunch.done', { id: this.order.ID, reserved: row.reserved });
                         dataStored.alert.type = 'message';
                     } else {
                         dataStored.alert.title = this.$t('WARNING');

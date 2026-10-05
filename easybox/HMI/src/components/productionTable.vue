@@ -53,11 +53,11 @@
                                 :delDisable="o.STATUS_DESC=='WORKING'"
                             />
                             <!-- (P2 5/10) RILANCIA: solo sugli ordini FINITI (5). Apre il
-                                 dialog con l'anteprima vera; stesso gate di livello di
-                                 "Azzera produzione" (operatore 0 escluso). -->
+                                 dialog con l'anteprima vera. Abilitato anche per
+                                 l'operatore (livello 0, deciso con Dario): le guardie
+                                 sono nel backend (WORKORDER/Order.js). -->
                             <button v-if="isFinished(o)" type="button"
                                 class="btn-ghost btn-relaunch"
-                                :disabled="dataStored.userLevel == 0"
                                 @click="relaunchOrder = o">
                                 {{ $t('production.relaunch.button') }}
                             </button>

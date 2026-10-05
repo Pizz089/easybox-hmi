@@ -100,81 +100,112 @@ router.post('/resetProduction/:machineId', (req, res) => {
 });
 
 // ============================================================================
-// RILANCIA ORDINE FINITO (P2 5/10, decisione di Dario) — rifare lo stesso
-// lotto quando l'ordine e' finito (STATUS 5), senza ricrearlo dal wizard.
+// RILANCIA ORDINE FINITO (P2 5/10, versione rivista dopo l'audit, decisa con
+// Dario) — rifare lo stesso lotto quando l'ordine e' finito (STATUS 5), senza
+// ricrearlo dal wizard. L'ordine torna in produzione (STATUS 3) in tutti e due
+// i modi: niente pausa, niente Play.
 // PRODUCTED non e' una colonna: la vista WORKORDERS conta le tasche a 5
 // legate all'ordine. Per riportarlo a 0 basta quindi che quelle tasche
 // smettano di contare, in uno dei due modi scelti dall'operatore:
 //  - mode 'replaced' ("ho rimesso i grezzi al posto dei finiti"): le tasche
 //    finite dell'ordine tornano GREZZO (4) e RESTANO legate all'ordine.
+//    Cambia lo stato di tasche fisiche: solo a CELLA FERMA (cellRunningGuard).
 //  - mode 'available' ("no, uso i grezzi che ci sono"): le tasche finite
 //    restano FINITE (5) ma vengono SCOLLEGATE (Order_ID=0), cosi' nessuno le
-//    rilavora. Senza grezzi disponibili il rilancio non ha senso: KO_NO_RAW.
-// In entrambi i casi l'ordine va in PAUSA (6): riparte solo col Play
-// dell'operatore. Grezzi disponibili = tasche di CASSETTO (stesso criterio
-// del PLC: PARENT LIKE 'TRAY%') a 4, del pezzo dell'ordine, libere o gia'
-// dell'ordine (Order_ID IN (0, ordine)).
-// GUARDIE (le stesse di resetProduction, piu' le sue): ordine esistente e a
-// 5, cella ferma, nessun ALTRO ordine a 3 sulla stessa macchina. Guardie,
-// conteggi e scritture nello STESSO batch, dentro la transazione con
-// XACT_ABORT, e l'ordine letto con UPDLOCK: fra il controllo e la scrittura
-// nessuno lo cambia. Conteggi PRIMA delle UPDATE (il trigger su [POSITION]
-// sporca rowsAffected).
+//    rilavora. Non tocca tasche che il robot puo' stare usando: ammesso anche
+//    a cella in lavoro. Senza grezzi disponibili non ha senso: KO_NO_RAW.
+// Grezzi disponibili = tasche di CASSETTO (stesso criterio del PLC: PARENT
+// LIKE 'TRAY%') a 4, del pezzo dell'ordine, libere o gia' dell'ordine
+// (Order_ID IN (0, ordine)). L'anteprima conta anche gli ALTRI ordini a 3 con
+// lo stesso pezzo: quei grezzi li usano anche loro.
+//
+// PRENOTAZIONE DELLE TASCHE. Al Play la fa il socket TO_PLANT/CMD/ORDER
+// (MQTT_Client.js): Order_ID=<ordine> su TOP(QUANTITY) grezzi del pezzo. Serve
+// davvero: la vista COORDINATES_PIECES_TRAYS_4Robot prende i decentrati di
+// prelievo e deposito dall'ordine via pos.Order_ID, e senza prenotazione il
+// robot preleverebbe con decentrati a 0 (LEFT JOIN + ISNULL, vedi
+// scripts/superati/robot-tray-view-v2.sql). Il rilancio non passa dal Play,
+// quindi prenota da solo, nello stesso batch e DOPO l'UPDATE delle tasche
+// finite: conta le tasche a 4 gia' legate all'ordine e prenota solo la
+// differenza con QUANTITY. In 'replaced' le tasche dell'ordine sono gia'
+// legate: si aggiunge solo quello che manca, non si raddoppia.
+// A differenza del Play, il filtro PARENT LIKE 'TRAY%' e' VOLUTO: una tasca
+// macchina a 4 (il grezzo in morsa) non va prenotata.
+// Quante tasche si prenotano si calcola PRIMA dell'UPDATE, dai conteggi: il
+// trigger su [POSITION] sporca rowsAffected/@@ROWCOUNT.
+//
+// GUARDIE: sempre ordine esistente e a 5; solo 'replaced' cella ferma; solo
+// 'available' grezzi > 0. Guardie, conteggi e scritture nello STESSO batch,
+// dentro la transazione con XACT_ABORT, e l'ordine letto con UPDLOCK: fra il
+// controllo e la scrittura nessuno lo cambia.
+//
+// LIMITE NOTO: con piu' ordini a 3 sulla stessa macchina, FB204 sceglie con
+// "select top 1" senza ORDER BY. In che posizione della coda finisce un
+// ordine rilanciato lo garantira' solo il lavoro sulla coda ordini, che si fa
+// a parte: qui non si promette niente.
 // ============================================================================
 const RELAUNCH_MODES = ['replaced', 'available'];
 const RAW_IN_TRAYS = `PARENT LIKE 'TRAY%' AND STATUS=4 AND Part_Type=@piece AND Order_ID IN (0, @id)`;
 
-// Parte comune ad anteprima e rilancio: dati dell'ordine, conteggi e il primo
-// motivo di rifiuto (NULL = rilanciabile). Il KO_NO_RAW dipende dal mode e lo
-// aggiunge solo il rilancio 'available'.
+// Parte comune ad anteprima e rilancio: dati dell'ordine, conteggi e i motivi
+// di rifiuto. @ko = blocco comune (ordine inesistente o non finito),
+// @koReplaced / @koAvailable = blocco del singolo modo (NULL = ammesso).
 function relaunchHead(orderId, lock) {
 	return `DECLARE @id INT = ${orderId};
 				DECLARE @st INT, @mc INT, @piece INT, @qty INT;
 				SELECT @st=STATUS, @mc=MACHINE_ID, @piece=PIECE_ID, @qty=QUANTITY FROM WORKORDER${lock ? ' WITH (UPDLOCK, HOLDLOCK)' : ''} WHERE ID=@id;
 				DECLARE @fin INT = (SELECT COUNT(*) FROM [POSITION] WHERE STATUS=5 AND Order_ID=@id);
 				DECLARE @raw INT = (SELECT COUNT(*) FROM [POSITION] WHERE ${RAW_IN_TRAYS});
+				DECLARE @others INT = (SELECT COUNT(*) FROM WORKORDER WHERE STATUS=3 AND PIECE_ID=@piece AND ID<>@id);
 				DECLARE @ko VARCHAR(40) = CASE
 					WHEN @st IS NULL THEN '${errorCodes.KO_NOT_FOUND}'
 					WHEN @st<>5 THEN '${errorCodes.KO_ORDER_NOT_FINISHED}'
-					WHEN ${cellRunningGuard()} THEN '${errorCodes.KO_CELL_RUNNING}'
-					WHEN EXISTS (SELECT 1 FROM WORKORDER WHERE STATUS=3 AND MACHINE_ID=@mc AND ID<>@id) THEN '${errorCodes.KO_ACTIVE_ORDER}'
-					ELSE NULL END;`;
+					ELSE NULL END;
+				DECLARE @koReplaced VARCHAR(40) = CASE WHEN ${cellRunningGuard()} THEN '${errorCodes.KO_CELL_RUNNING}' ELSE NULL END;
+				DECLARE @koAvailable VARCHAR(40) = CASE WHEN @raw=0 THEN '${errorCodes.KO_NO_RAW}' ELSE NULL END;`;
 }
 
 function relaunchQuery(orderId, mode) {
 	const positions = mode === 'replaced'
 		? `UPDATE [POSITION] SET STATUS=4 WHERE STATUS=5 AND Order_ID=@id;`
 		: `UPDATE [POSITION] SET Order_ID=0 WHERE STATUS=5 AND Order_ID=@id;`;
-	const noRaw = mode === 'available'
-		? `IF @ko IS NULL AND @raw=0 SET @ko='${errorCodes.KO_NO_RAW}';`
-		: '';
+	const modeKo = mode === 'replaced' ? '@koReplaced' : '@koAvailable';
 	return `SET NOCOUNT ON;
 			SET XACT_ABORT ON;
 			BEGIN TRAN;
 				${relaunchHead(orderId, true)}
-				${noRaw}
+				IF @ko IS NULL SET @ko = ${modeKo};
 				IF @ko IS NOT NULL BEGIN
 					ROLLBACK TRAN;
-					SELECT @ko AS ris, @fin AS finished, @raw AS raw, @qty AS quantity;
+					SELECT @ko AS ris, @fin AS finished, @raw AS raw, @qty AS quantity, 0 AS reserved;
 				END ELSE BEGIN
 					${positions}
-					UPDATE WORKORDER SET STATUS=6 WHERE ID=@id AND STATUS=5;
+					-- prenotazione: dopo l'UPDATE delle finite, solo quello che manca
+					DECLARE @gia INT = (SELECT COUNT(*) FROM [POSITION] WHERE STATUS=4 AND Order_ID=@id);
+					DECLARE @free INT = (SELECT COUNT(*) FROM [POSITION] WHERE PARENT LIKE 'TRAY%' AND STATUS=4 AND Part_Type=@piece AND Order_ID=0);
+					DECLARE @res INT = CASE WHEN @qty - @gia <= 0 THEN 0 WHEN @free < @qty - @gia THEN @free ELSE @qty - @gia END;
+					IF @res > 0
+						UPDATE [POSITION] SET Order_ID=@id WHERE ID IN (
+							SELECT TOP (@res) ID FROM [POSITION] WHERE PARENT LIKE 'TRAY%' AND STATUS=4 AND Part_Type=@piece AND Order_ID=0);
+					UPDATE WORKORDER SET STATUS=3 WHERE ID=@id AND STATUS=5;
 					COMMIT TRAN;
-					SELECT 'OK' AS ris, @fin AS finished, @raw AS raw, @qty AS quantity;
+					SELECT 'OK' AS ris, @fin AS finished, @raw AS raw, @qty AS quantity, @res AS reserved;
 				END`;
 }
 
 function relaunchPreviewQuery(orderId) {
 	return `SET NOCOUNT ON;
 			${relaunchHead(orderId, false)}
-			SELECT @ko AS blocked, @st AS status, @mc AS machineId, @piece AS pieceId, @fin AS finished, @raw AS raw, @qty AS quantity,
-				(SELECT TOP 1 PIECE FROM WORKORDERS WHERE ID=@id) AS piece;`;
+			SELECT @ko AS blocked, @koReplaced AS replacedBlocked, @koAvailable AS availableBlocked,
+				@st AS status, @mc AS machineId, @piece AS pieceId, @fin AS finished, @raw AS raw, @qty AS quantity,
+				@others AS otherActive, (SELECT TOP 1 PIECE FROM WORKORDERS WHERE ID=@id) AS piece;`;
 }
 
 const parseOrderId = v => { const n = Number(v); return Number.isInteger(n) && n > 0 ? n : null; };
 
 // Anteprima con NUMERI VERI per il dialog: tasche finite dell'ordine, grezzi
-// disponibili, QUANTITY e il motivo per cui il rilancio sarebbe rifiutato.
+// disponibili, QUANTITY, altri ordini a 3 con lo stesso pezzo e i motivi per
+// cui ciascun modo sarebbe rifiutato.
 router.get('/relaunch/preview/:orderId', (req, res) => {
 	const orderId = parseOrderId(req.params.orderId);
 	if (orderId === null) { res.status(400).send("KO_BAD_INPUT"); return; }
@@ -206,7 +237,8 @@ router.post('/relaunch/:orderId', (req, res) => {
 			if (row.ris === 'OK') {
 				log.standard("RILANCIA ORDINE " + orderId + " (" + mode + "): " + row.finished + " tasche finite " +
 					(mode === 'replaced' ? "-> grezzo, legate all'ordine" : "scollegate (Order_ID=0)") +
-					", grezzi disponibili " + row.raw + " su " + row.quantity + ", ordine -> 6 (pausa)");
+					", prenotate " + row.reserved + " tasche grezze, grezzi disponibili " + row.raw + " su " + row.quantity +
+					", ordine -> 3");
 				DBf.io.emit('PRODUCTION/CHANGED');
 			} else {
 				log.standard("RILANCIA ORDINE " + orderId + " (" + mode + ") rifiutato: " + row.ris);
