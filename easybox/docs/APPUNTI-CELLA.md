@@ -1,5 +1,34 @@
 # Appunti cella — interventi manuali da eseguire in impianto
 
+## [ ] 2026-10-05 — sonda HAAS live: `serverDati/tools/haas-probe-live.js`
+
+**Non è un test.** Pubblica `FROM_PLANT/HAAS_CMD/MC1`
+`{"cmd":"setMacro","var":10200,"value":<ricetta>}` come farebbe il PLC: il
+backend collegato a quel broker **scrive la macro sulla HAAS vera** e risponde
+con `TO_PLANT/CMD/HAAS_ACK/MC1` (o `HAAS_NACK`).
+
+Fino al 5/10 si chiamava `serverDati/test_haas.js`, con il broker della cella
+scritto dentro come default. Col nome `test_` finiva nei cicli "lancia tutti i
+test" e quel giorno ha scritto **#10200 = 1 sulla HAAS MC1 della cella**
+più volte durante le prove PLC (ack ok alle 16:28, 16:53, 17:11 e 18:45; due
+giri alle 16:49 e 16:52 senza log). **Da verificare a bordo macchina il
+valore della #10200**: quello di prima non è noto.
+
+Guardie adesso:
+- sta in `tools/`, fuori da `test_*`: nessun ciclo sui test la prende;
+- nessun broker di default: senza `MQTT_BROKER_URL` esce con errore;
+- senza `--live` esce con errore **prima** di collegarsi: niente pubblicato.
+
+Uso, solo a ragion veduta (dalla cartella `easybox/serverDati`):
+
+```
+# bash
+MQTT_BROKER_URL=mqtt://utente:password@host:porta node tools/haas-probe-live.js --live
+# PowerShell
+$env:MQTT_BROKER_URL='mqtt://utente:password@host:porta'; node tools/haas-probe-live.js --live
+# ricetta 3 invece di 1: aggiungere 3 dopo --live
+```
+
 ## [ ] 2026-09-18 — limite heap del servizio node (nssm): NON sta nel repo
 
 Dopo il crash `Fatal process out of memory: Zone` il backend gira con un tetto
