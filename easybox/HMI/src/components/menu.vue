@@ -1,12 +1,40 @@
 <script setup>
-import { ref } from "vue";
+import { ref, watch, onMounted, onUnmounted } from "vue";
+import { useRoute } from "vue-router";
 import SideBar from "./SidebarPlugin/SideBar.vue";
 
-const isOpen = ref(true);
+// (UI 5/10) Schermi stretti (tablet, finestra ridotta): sotto i 1200 px la
+// sidebar da 220 px fissa mangiava il contenuto e le tabelle uscivano a
+// destra (Attrezzature, Posizioni, Grigliati, Attrezzaggi a 1024). Li' la
+// sidebar parte CHIUSA, si apre SOPRA il contenuto (non lo spinge) con un
+// velo che la chiude al tocco, e si richiude da sola scegliendo una pagina.
+// Dal 1200 in su (kiosk 1920) comportamento identico a prima.
+const NARROW_QUERY = "(max-width: 1199px)";
+const mq = typeof window !== "undefined" && window.matchMedia ? window.matchMedia(NARROW_QUERY) : null;
+
+const isNarrow = ref(mq ? mq.matches : false);
+const isOpen = ref(!isNarrow.value);
 
 const toggleSidebar = () => {
   isOpen.value = !isOpen.value;
 };
+
+// Passando il punto di rottura (rotazione tablet, finestra ridimensionata)
+// si torna al default di quella larghezza.
+const onBreakpoint = (e) => {
+  isNarrow.value = e.matches;
+  isOpen.value = !e.matches;
+};
+onMounted(() => mq && mq.addEventListener("change", onBreakpoint));
+onUnmounted(() => mq && mq.removeEventListener("change", onBreakpoint));
+
+const route = useRoute();
+watch(
+  () => route.path,
+  () => {
+    if (isNarrow.value) isOpen.value = false;
+  }
+);
 </script>
 
 <template>
@@ -30,7 +58,11 @@ const toggleSidebar = () => {
       </svg>
     </button>
 
-    <main class="content" :class="{ 'content--collapsed': !isOpen }">
+    <!-- (UI 5/10) velo solo su schermo stretto a sidebar aperta: il contenuto
+         resta sotto, un tocco fuori dal menu lo richiude. -->
+    <div v-if="isNarrow && isOpen" class="sb-backdrop" @click="isOpen = false"></div>
+
+    <main class="content" :class="{ 'content--collapsed': !isOpen || isNarrow }">
       <slot />
     </main>
   </div>
@@ -57,6 +89,14 @@ const toggleSidebar = () => {
 
 .content--collapsed {
   margin-left: 5px;
+}
+
+/* (UI 5/10) sotto la sidebar (900) e la linguetta (950), sopra il contenuto. */
+.sb-backdrop {
+  position: fixed;
+  inset: 64px 0 0 0;                             /* la TopBar resta libera */
+  background: var(--bg-backdrop);
+  z-index: 890;
 }
 
 /* Toggle: LINGUETTA della sidebar (Y2), a filo del suo bordo destro.
