@@ -1,0 +1,68 @@
+/* ============ CAMPI FORM SUL TEMA SCURO (UI-DESIGN-SYSTEM v2, fase 1.2) ============ */
+/* Il bianco dei campi in Cassetto, Pallet, Attrezzatura e Importa grigliato
+   (e, meno, Pezzo, Grigliato, Attrezzaggio) non era voluto da nessuna pagina:
+   arrivava da due regole globali di prima del tema scuro.
+   - styles/theme.css: input, select, textarea -> --card (#F7F7F7), bordo
+     #E5E7EB, testo #616161 (tema chiaro legacy);
+   - pure.css: .pure-form select bianco, [readonly] #EEE, [disabled] #EAEDED,
+     bordo #CCC con ombra interna chiara, e queste vincono anche sugli stili
+     scoped dei componenti (.num-input di numericField ha 0-2-0, pure 0-2-1).
+   Qui si rimettono sui token con la STESSA specificita' delle regole che
+   correggono (il file viene dopo nella cascade): gli stili scoped piu'
+   specifici delle pagine continuano a vincere, come prima.
+   Esclusi slider, checkbox, radio, colore, file e bottoni-input: hanno un
+   aspetto nativo che non dipende dal fondo (es. lo slider velocita' del
+   Robot, pagina di comando, resta com'e').
+   Bordi: --border-strong sui campi modificabili (regola WCAG §6, 4.31:1 su
+   --bg-input); i campi in sola lettura/disabilitati restano su --bg-input
+   ma con testo --text-secondary e bordo --border-default, cosi' si vede
+   quali si possono toccare ("subdued ma leggibile", come il Disabled §3.2).
+   Import in main.js dopo dialogs.css. */
+
+/* 1. base (al posto di theme.css): specificita' 0-0-1 come la regola che
+      sostituisce; :where() non aggiunge peso all'esclusione dei tipi. */
+input:where(:not([type=checkbox], [type=radio], [type=range], [type=color], [type=file], [type=button], [type=submit], [type=reset], [type=image])),
+select,
+textarea {
+    background: var(--bg-input);
+    color: var(--text-primary);
+    border: 1px solid var(--border-strong);
+}
+
+/* 2. campi testo/numero dei form Pure: bordo e ombra (0-2-1 come pure.css) */
+.pure-form input:is([type=date], [type=datetime-local], [type=datetime], [type=email], [type=month], [type=number], [type=password], [type=search], [type=tel], [type=text], [type=time], [type=url], [type=week]),
+.pure-form input:not([type]),
+.pure-form textarea {
+    border-color: var(--border-strong);
+    box-shadow: none;
+}
+
+.pure-form select {
+    background-color: var(--bg-input);
+    border-color: var(--border-strong);
+}
+
+.pure-form input:is([type=date], [type=datetime-local], [type=datetime], [type=email], [type=month], [type=number], [type=password], [type=search], [type=tel], [type=text], [type=time], [type=url], [type=week]):focus,
+.pure-form input:not([type]):focus,
+.pure-form select:focus,
+.pure-form textarea:focus {
+    border-color: var(--accent);
+}
+
+/* 3. sola lettura e disabilitati: scuri anche loro, ma attenuati */
+.pure-form input[readonly],
+.pure-form select[readonly],
+.pure-form textarea[readonly] {
+    background-color: var(--bg-input);
+    color: var(--text-secondary);
+    border-color: var(--border-default);
+}
+
+.pure-form input:is([type=date], [type=datetime-local], [type=datetime], [type=email], [type=month], [type=number], [type=password], [type=search], [type=tel], [type=text], [type=time], [type=url], [type=week])[disabled],
+.pure-form input:not([type])[disabled],
+.pure-form select[disabled],
+.pure-form textarea[disabled] {
+    background-color: var(--bg-input);
+    color: var(--text-secondary);
+    border-color: var(--border-default);
+}
