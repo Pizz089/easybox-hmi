@@ -251,6 +251,20 @@ watch(
   gap: var(--space-3);
   padding: var(--space-4) var(--space-2) 0;
   overflow-y: auto;
+  /* (UI 5/10) Ai livelli tecnici il menu scorre (regola sotto), ma niente
+     diceva che sotto c'erano altre voci: Impostazioni/Diagnostica finivano
+     fuori schermo senza segnale. Ombre di scorrimento solo CSS: le due
+     coperture "local" viaggiano col contenuto e nascondono l'ombra quando si
+     e' in cima/in fondo, le due ombre "scroll" restano sui bordi. Senza
+     overflow (menu operatore) non si vede nulla. Ombra chiara: lo sfondo e'
+     scuro. */
+  background:
+    linear-gradient(#141D2A 30%, rgba(20, 29, 42, 0)) center top / 100% 40px,
+    linear-gradient(rgba(20, 29, 42, 0), #141D2A 70%) center bottom / 100% 40px,
+    radial-gradient(farthest-side at 50% 0, rgba(232, 238, 247, 0.35), rgba(232, 238, 247, 0)) center top / 100% 16px,
+    radial-gradient(farthest-side at 50% 100%, rgba(232, 238, 247, 0.35), rgba(232, 238, 247, 0)) center bottom / 100% 16px;
+  background-repeat: no-repeat;
+  background-attachment: local, local, scroll, scroll;
 }
 
 .section {
@@ -379,8 +393,9 @@ a:focus {
   outline: none;
 }
 
+/* (UI 5/10) 5 -> 8 px: visibile anche da un passo di distanza dal pannello. */
 .sb-nav::-webkit-scrollbar {
-  width: 5px;
+  width: 8px;
 }
 .sb-nav::-webkit-scrollbar-track {
   background: transparent;

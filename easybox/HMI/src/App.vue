@@ -45,44 +45,52 @@ import { dataStored } from './data';
     .pure-form-aligned .pure-control-group label {
         width:13em;
     }
-    #locked4OP{
-        background-image:url('/src/assets/chiaveIng.svg');
-        background-repeat: no-repeat;
-        background-size: 1.5em;
-        background-position-x: 100%;
-        background-position-y: 100%;
-        /*background-color:rgb(146, 115, 115);*/
-        /*border: 1px dotted;*/
-    } 
-    #cmdLocked4OP{
-        background-image:url('/src/assets/laurea.png');
-        background-repeat: no-repeat;
-        background-size: 1.1em;
-        background-position-x: 95%;
-        background-position-y: 110%;
-        background-color:rgb(232, 200, 200);
-        /*border: 1px dotted;*/
-        
-    }
-    
-    #locked4maintenance{
-        background-image:url('/src/assets/laurea.png');
-        background-repeat: no-repeat;
-        background-size: 1.5em;
-        background-position-x: 100%;
-        background-position-y: 150%;
-        /*background-color:rgb(146, 115, 115);*/
-        /*border: 1px dotted;*/
-        
-    } 
+    /* (UI 5/10) Comando bloccato: il livello richiesto (o la modalita' locale)
+       e' un badge tondo sull'angolo in alto a destra del bottone, non piu' uno
+       sfondo in basso a destra: sui bottoni tondi 48x48 il bordo lo tagliava e
+       finiva sopra l'icona. Il ::after sta fuori dal bottone, quindi resta
+       intero anche sui cerchi e sui bottoni disabilitati (il background
+       !important dei disabled cancellava l'icona). Badge chiaro: le icone sono
+       scure. Il rosa dei comandi di riga bloccati resta: e' lo stato. */
+    #locked4OP,
+    #cmdLocked4OP,
+    #locked4maintenance,
     #lockedNotLocal{
-        background-image:url('/src/assets/manuale_noBordo.png');
+        position: relative;
+        overflow: visible;
+    }
+    #locked4OP::after,
+    #cmdLocked4OP::after,
+    #locked4maintenance::after,
+    #lockedNotLocal::after{
+        content: "";
+        position: absolute;
+        top: -6px;
+        right: -6px;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        border: 2px solid var(--bg-base);
+        background-color: var(--text-primary);
         background-repeat: no-repeat;
-        background-size: 1em;
-        background-position-x: 86%;
-        background-position-y: 94%;
+        background-position: center;
+        background-size: 14px;
+        pointer-events: none;
+    }
+    #locked4OP::after{
+        background-image:url('/src/assets/chiaveIng.svg');
+    }
+    #cmdLocked4OP::after,
+    #locked4maintenance::after{
+        background-image:url('/src/assets/laurea.png');
+    }
+    #lockedNotLocal::after{
+        background-image:url('/src/assets/manuale_noBordo.png');
+    }
+    #cmdLocked4OP,
+    #lockedNotLocal{
         background-color:rgb(232, 200, 200);
-    } 
+    }
 
     
     #hide{
@@ -107,13 +115,15 @@ import { dataStored } from './data';
     background-color: transparent;
   }
 
+  /* (UI 5/10) Card cliccabile: icona in alto a destra, dove la card non ha
+     testo. In basso a destra finiva sopra l'ultima riga (es. "(ID 26)" nella
+     coerenza pinza della pagina Robot). */
   .link{
     background-image:url('/src/assets/link.png');
     background-repeat: no-repeat;
-    background-size: 2em;
-    background-position-x: 98%;
-    background-position-y: 95%;
-  }   
+    background-size: 1.25em;
+    background-position: right 10px top 10px;
+  }
 
   /* CARDS */
 .errore{
