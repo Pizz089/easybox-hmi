@@ -164,7 +164,12 @@ console.log('\n5) distanze fra azioni distruttive e innocue');
 const attr = leggi('src/views/conf/AttrezzaggiView.vue');
 check(/action-destructive/.test(attr) && /\.action-destructive[\s\S]{0,120}margin-top: var\(--space-4\)/.test(attr), 'Attrezzaggi: gli smonta vanno a capo e si staccano (erano a 4 px da Modifica)');
 const trays = leggi('src/views/conf/TraysView.vue');
-check(/assoc-destructive/.test(trays) && /\.assoc-destructive[\s\S]{0,120}margin-top: var\(--space-4\)/.test(trays), 'Cassetti: Rigenera e Dissocia staccati (erano a 4 px da Sostituisci)');
+// (UI 5/10) stessa riga ma gruppo a parte: divisorio + 24 px di margine +
+// 16 px di padding, piu' dei 16 px verticali di prima.
+check(/class="assoc-destructive-group"/.test(trays)
+  && /\.assoc-destructive-group \{[\s\S]{0,200}margin-left: var\(--space-5\)/.test(trays)
+  && /\.assoc-destructive-group \{[\s\S]{0,200}border-left: 1px solid/.test(trays),
+  'Cassetti: Rigenera e Dissocia staccati (erano a 4 px da Sostituisci)');
 const side = leggi('src/components/SidebarPlugin/SideBar.vue');
 check(/margin: 4px var\(--space-2\)/.test(side), 'menu: 4 px verticali invece di 2, cioe\' il doppio di stacco fra le voci');
 check(/gap: var\(--space-3\)/.test(side), 'lo spazio si e\' preso dai gruppi, dove abbondava');

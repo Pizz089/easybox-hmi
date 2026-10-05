@@ -120,8 +120,16 @@ check(/const PICKPLACE_CMD = '244';/.test(src), 'codice 244 in un punto solo (PI
 
 console.log('\n6) posizione: il bottone 244 sta nella card MISSIONI, non fra le chele');
 const tpl = src.slice(0, src.lastIndexOf('</template>'));
-const missionCard = tpl.slice(tpl.indexOf('CARD 3'), tpl.indexOf('CARD 4'));
-const clawCard = tpl.slice(tpl.indexOf('CARD 5'));
+// (UI 5/10) le card non stanno piu' in ordine numerico nel file (Comandi
+// pinza e Collaudo sono passati nella colonna di stato): una card va dal suo
+// marcatore al marcatore della card successiva NEL FILE, qualunque sia.
+const card = n => {
+  const from = tpl.indexOf('<!-- ===== CARD ' + n);
+  const next = tpl.indexOf('<!-- ===== CARD', from + 1);
+  return tpl.slice(from, next < 0 ? undefined : next);
+};
+const missionCard = card(3);
+const clawCard = card(5);
 check(missionCard.includes("robot.pickPlace.button") && missionCard.includes('pickPlaceDialog.open'), 'bottone e dialog 244 dentro la CARD 3 Missioni');
 check(!clawCard.includes('pickPlace'), 'nessuna traccia del 244 nella CARD 5 Comandi pinza');
 check((clawCard.match(/clawEnabled\(side\) \?/g) || []).length === 4, 'i 4 bottoni chela restano al loro posto, invariati');
