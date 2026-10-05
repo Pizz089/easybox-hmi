@@ -372,97 +372,87 @@
       <Token Text="," UId="159" />
       <NewLine UId="160" />
       <Blank Num="11" UId="161" />
-      <Parameter Name="AllTrayInside" UId="162">
-        <Blank Num="3" UId="163" />
-        <Token Text=":=" UId="164" />
-        <Blank UId="165" />
-        <Access Scope="GlobalVariable" UId="166">
-          <Symbol UId="167">
-            <Component Name="All_trays_Inside" UId="168">
-              <BooleanAttribute Name="HasQuotes" UId="169">true</BooleanAttribute>
+      <LineComment UId="162">
+        <Text UId="163"> AllTrayInside   := "All_trays_Inside",</Text>
+      </LineComment>
+      <NewLine UId="164" />
+      <Blank Num="11" UId="165" />
+      <Parameter Name="HL_Start_Aux" UId="166">
+        <Blank Num="4" UId="167" />
+        <Token Text="=&gt;" UId="168" />
+        <Blank UId="169" />
+        <Access Scope="GlobalVariable" UId="170">
+          <Symbol UId="171">
+            <Component Name="HLStartAux" UId="172">
+              <BooleanAttribute Name="HasQuotes" UId="173">true</BooleanAttribute>
             </Component>
           </Symbol>
         </Access>
       </Parameter>
-      <Token Text="," UId="170" />
-      <NewLine UId="171" />
-      <Blank Num="11" UId="172" />
-      <Parameter Name="HL_Start_Aux" UId="173">
-        <Blank Num="4" UId="174" />
-        <Token Text="=&gt;" UId="175" />
-        <Blank UId="176" />
-        <Access Scope="GlobalVariable" UId="177">
-          <Symbol UId="178">
-            <Component Name="HLStartAux" UId="179">
-              <BooleanAttribute Name="HasQuotes" UId="180">true</BooleanAttribute>
+      <Token Text="," UId="174" />
+      <NewLine UId="175" />
+      <Blank Num="11" UId="176" />
+      <Parameter Name="HL_Hold" UId="177">
+        <Blank Num="9" UId="178" />
+        <Token Text="=&gt;" UId="179" />
+        <Blank UId="180" />
+        <Access Scope="GlobalVariable" UId="181">
+          <Symbol UId="182">
+            <Component Name="HL_Hold" UId="183">
+              <BooleanAttribute Name="HasQuotes" UId="184">true</BooleanAttribute>
             </Component>
           </Symbol>
         </Access>
       </Parameter>
-      <Token Text="," UId="181" />
-      <NewLine UId="182" />
-      <Blank Num="11" UId="183" />
-      <Parameter Name="HL_Hold" UId="184">
-        <Blank Num="9" UId="185" />
-        <Token Text="=&gt;" UId="186" />
-        <Blank UId="187" />
-        <Access Scope="GlobalVariable" UId="188">
-          <Symbol UId="189">
-            <Component Name="HL_Hold" UId="190">
-              <BooleanAttribute Name="HasQuotes" UId="191">true</BooleanAttribute>
+      <Token Text="," UId="185" />
+      <NewLine UId="186" />
+      <Blank Num="11" UId="187" />
+      <Parameter Name="HL_Green" UId="188">
+        <Blank Num="8" UId="189" />
+        <Token Text="=&gt;" UId="190" />
+        <Blank UId="191" />
+        <Access Scope="GlobalVariable" UId="192">
+          <Symbol UId="193">
+            <Component Name="HL_GREEN" UId="194">
+              <BooleanAttribute Name="HasQuotes" UId="195">true</BooleanAttribute>
             </Component>
           </Symbol>
         </Access>
       </Parameter>
-      <Token Text="," UId="192" />
-      <NewLine UId="193" />
-      <Blank Num="11" UId="194" />
-      <Parameter Name="HL_Green" UId="195">
-        <Blank Num="8" UId="196" />
-        <Token Text="=&gt;" UId="197" />
-        <Blank UId="198" />
-        <Access Scope="GlobalVariable" UId="199">
-          <Symbol UId="200">
-            <Component Name="HL_GREEN" UId="201">
-              <BooleanAttribute Name="HasQuotes" UId="202">true</BooleanAttribute>
+      <Token Text="," UId="196" />
+      <NewLine UId="197" />
+      <Blank Num="11" UId="198" />
+      <Parameter Name="HL_Orange" UId="199">
+        <Blank Num="7" UId="200" />
+        <Token Text="=&gt;" UId="201" />
+        <Blank UId="202" />
+        <Access Scope="GlobalVariable" UId="203">
+          <Symbol UId="204">
+            <Component Name="HL_ORANGE" UId="205">
+              <BooleanAttribute Name="HasQuotes" UId="206">true</BooleanAttribute>
             </Component>
           </Symbol>
         </Access>
       </Parameter>
-      <Token Text="," UId="203" />
-      <NewLine UId="204" />
-      <Blank Num="11" UId="205" />
-      <Parameter Name="HL_Orange" UId="206">
-        <Blank Num="7" UId="207" />
-        <Token Text="=&gt;" UId="208" />
-        <Blank UId="209" />
-        <Access Scope="GlobalVariable" UId="210">
-          <Symbol UId="211">
-            <Component Name="HL_ORANGE" UId="212">
-              <BooleanAttribute Name="HasQuotes" UId="213">true</BooleanAttribute>
+      <Token Text="," UId="207" />
+      <NewLine UId="208" />
+      <Blank Num="11" UId="209" />
+      <Parameter Name="HL_Red" UId="210">
+        <Blank Num="10" UId="211" />
+        <Token Text="=&gt;" UId="212" />
+        <Blank UId="213" />
+        <Access Scope="GlobalVariable" UId="214">
+          <Symbol UId="215">
+            <Component Name="HL_RED" UId="216">
+              <BooleanAttribute Name="HasQuotes" UId="217">true</BooleanAttribute>
             </Component>
           </Symbol>
         </Access>
       </Parameter>
-      <Token Text="," UId="214" />
-      <NewLine UId="215" />
-      <Blank Num="11" UId="216" />
-      <Parameter Name="HL_Red" UId="217">
-        <Blank Num="10" UId="218" />
-        <Token Text="=&gt;" UId="219" />
-        <Blank UId="220" />
-        <Access Scope="GlobalVariable" UId="221">
-          <Symbol UId="222">
-            <Component Name="HL_RED" UId="223">
-              <BooleanAttribute Name="HasQuotes" UId="224">true</BooleanAttribute>
-            </Component>
-          </Symbol>
-        </Access>
-      </Parameter>
-      <Token Text=")" UId="225" />
+      <Token Text=")" UId="219" />
     </CallInfo>
   </Access>
-  <Token Text=";" UId="226" />
+  <Token Text=";" UId="220" />
 </StructuredText></NetworkSource>
           <ProgrammingLanguage>SCL</ProgrammingLanguage>
         </AttributeList>
