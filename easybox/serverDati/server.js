@@ -130,9 +130,15 @@ app.get('/*', (req, res) => {
 	res.sendStatus(400); 
 }); 
 
-const server = app.listen(process.env.serverPort, () => {
-  log.init(`Server listening on port  ${process.env.serverPort}`)
-  console.log(`Server listening on port ${process.env.serverPort}`)
+// (P6 5/10) ascolto solo sull'interfaccia indicata, di default 127.0.0.1: il
+// pannello passa dal proxy Vite (vite.config.js -> http://127.0.0.1:8080),
+// nessun client ha bisogno di raggiungere il backend dalla rete di cella.
+// In cella era gia' cosi', con la riga modificata a mano in D:\Prog: qui la
+// stessa scelta, con l'host dal .env (serverHost) per chi ne ha bisogno.
+const serverHost = (process.env.serverHost || '').trim() || '127.0.0.1';
+const server = app.listen(process.env.serverPort, serverHost, () => {
+  log.init(`Server listening on ${serverHost} port  ${process.env.serverPort}`)
+  console.log(`Server listening on ${serverHost} port ${process.env.serverPort}`)
 
   //migrazione schema idempotente (cantiere Attrezzaggi)
   ensureSchema();
