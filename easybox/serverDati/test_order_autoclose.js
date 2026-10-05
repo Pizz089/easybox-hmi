@@ -40,9 +40,12 @@ function harness() {
 
 console.log('1) la query');
 const q = CLOSE_QUERY.replace(/\s+/g, ' ');
-check(q === 'UPDATE WORKORDER SET STATUS=5 OUTPUT inserted.ID WHERE STATUS=3 AND ID IN (SELECT ID FROM WORKORDERS WHERE STATUS=3 AND PRODUCTED>=QUANTITY);', 'testo esatto della decisione D4-A');
-check(/^UPDATE WORKORDER /.test(q) && /FROM WORKORDERS WHERE/.test(q), 'scrive sulla base table, legge PRODUCTED dalla vista');
-check(/OUTPUT inserted\.ID/.test(q), 'ordini chiusi da OUTPUT, non da rowsAffected');
+check(q === 'SET NOCOUNT ON; DECLARE @chiusi TABLE (ID INT); UPDATE WORKORDER SET STATUS=5 OUTPUT inserted.ID INTO @chiusi WHERE STATUS=3 AND ID IN (SELECT ID FROM WORKORDERS WHERE STATUS=3 AND PRODUCTED>=QUANTITY); SELECT ID FROM @chiusi;', 'testo esatto (decisione D4-A, con OUTPUT INTO dopo l\'audit)');
+check(/UPDATE WORKORDER SET STATUS=5 /.test(q) && /FROM WORKORDERS WHERE/.test(q), 'scrive sulla base table, legge PRODUCTED dalla vista');
+check(/OUTPUT inserted\.ID INTO @chiusi /.test(q) && /SELECT ID FROM @chiusi;$/.test(q), 'ordini chiusi da OUTPUT INTO + SELECT finale, non da rowsAffected');
+// (audit 5/10) OUTPUT senza INTO fallisce se la tabella ha trigger attivi (errore 334)
+check(!/OUTPUT inserted\.ID WHERE/.test(q), 'nessun OUTPUT senza INTO: la query regge anche con un trigger su WORKORDER');
+check(/^SET NOCOUNT ON; DECLARE @chiusi TABLE \(ID INT\);/.test(q), 'NOCOUNT e variabile tabella prima dell\'UPDATE: l\'unico resultset e\' la SELECT finale');
 check(INTERVAL_MS === 30000, 'un giro ogni 30 s');
 
 console.log('\n2) avvio: un giro subito, il successivo solo a giro finito');

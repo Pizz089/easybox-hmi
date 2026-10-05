@@ -11,8 +11,9 @@
 // con PRODUCTED >= QUANTITY. PRODUCTED e' il conteggio della vista WORKORDERS
 // (tasche finite dell'ordine), quindi la condizione si legge dalla vista e si
 // scrive sulla base table WORKORDER. Gli ordini chiusi si sanno da OUTPUT
-// inserted.ID, non da rowsAffected: il trigger su [POSITION] insegna a non
-// fidarsi dei conteggi delle righe toccate.
+// inserted.ID (INTO una variabile tabella, vedi sotto), non da rowsAffected:
+// il trigger su [POSITION] insegna a non fidarsi dei conteggi delle righe
+// toccate.
 //
 // Il PLC non cambia: legge solo ordini con Status=3 AND PRODUCTED<QUANTITY,
 // quindi chiudere quelli gia' a quantita' per lui non cambia niente.
@@ -25,7 +26,12 @@
 
 const INTERVAL_MS = 30 * 1000;
 
-const CLOSE_QUERY = `UPDATE WORKORDER SET STATUS=5 OUTPUT inserted.ID WHERE STATUS=3 AND ID IN (SELECT ID FROM WORKORDERS WHERE STATUS=3 AND PRODUCTED>=QUANTITY);`;
+// (audit 5/10) OUTPUT ... INTO una variabile tabella, non OUTPUT "nudo":
+// SQL Server rifiuta "UPDATE ... OUTPUT" senza INTO su una tabella con trigger
+// attivi (errore 334). Non sappiamo se WORKORDER ne ha (su [POSITION] c'e'
+// POSITION_trig): cosi' la query funziona in tutti e due i casi, e gli ID
+// chiusi escono dalla SELECT finale.
+const CLOSE_QUERY = `SET NOCOUNT ON; DECLARE @chiusi TABLE (ID INT); UPDATE WORKORDER SET STATUS=5 OUTPUT inserted.ID INTO @chiusi WHERE STATUS=3 AND ID IN (SELECT ID FROM WORKORDERS WHERE STATUS=3 AND PRODUCTED>=QUANTITY); SELECT ID FROM @chiusi;`;
 
 // deps: { sql, configDB, io, log, setTimeout?, intervalMs? } — iniettate per
 // poterle sostituire nel test (test_order_autoclose.js)
