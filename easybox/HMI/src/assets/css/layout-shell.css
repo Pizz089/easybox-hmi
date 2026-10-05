@@ -27,6 +27,13 @@
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-semibold);
   margin: 0;
+  /* (UI 5/10) titolo uguale su tutte le pagine. assets/card.css (template
+     PureCSS) da' a OGNI h2/h3 maiuscolo + letter-spacing 0.25em: le liste
+     (h3.view-title) uscivano "E L E N C O  P A L L E T" e le unita'
+     (h1.view-title) in tondo. La classe vince sul tag: qui si neutralizza
+     per i soli titoli di pagina, gli altri h2/h3 restano come sono. */
+  text-transform: none;
+  letter-spacing: 0.01em;
 }
 
 /* Riga titolo + azioni (sostituisce il pattern "bottone dentro l'h3").
@@ -40,6 +47,14 @@
   justify-content: space-between;
   gap: var(--space-4);
   flex-wrap: wrap;
+}
+
+/* (UI 5/10) Azioni tutte a destra, raggruppate. Con space-between e due
+   bottoni (Produzione, Cassetti) il primo finiva a meta' riga. Il margine
+   automatico del titolo si prende tutto lo spazio libero: le azioni restano
+   in fila a destra col gap standard, con una sola azione non cambia nulla. */
+.view-header > .view-title {
+  margin-right: auto;
 }
 
 /* Etichetta di sezione dentro le card (stesso impianto del titolo card
