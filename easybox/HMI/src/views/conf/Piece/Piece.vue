@@ -1159,7 +1159,7 @@ const el = ref();
 
         <div class="pure-controls piece-actions">
           <button type="button" class="piece-save" @click="saveData()">
-            Save
+            {{ $t('Save') }}
           </button>
           <RouterLink class="piece-cancel" to="/conf/Parts">
             {{

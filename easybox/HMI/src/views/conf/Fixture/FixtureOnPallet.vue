@@ -79,7 +79,7 @@
                 </span>
 
                 <div class="pure-controls">
-                    <button class="pure-button pure-button-primary" @click="saveData()">Save</button>
+                    <button class="pure-button pure-button-primary" @click="saveData()">{{ $t('Save') }}</button>
                 </div>
 
             </fieldset>

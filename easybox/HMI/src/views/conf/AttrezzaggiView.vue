@@ -125,7 +125,7 @@
                                         {{$t('attrezzaggi.unmount')}}
                                     </button>
                                     <button class="btn-ghost pure-u-1" @click="pending=null">
-                                        EXIT
+                                        {{ $t('common.cancel') }}
                                     </button>
                                 </span>
                             </div>
@@ -144,7 +144,7 @@
                                         {{$t('attrezzaggi.edit')}}
                                     </button>
                                     <button class="btn-ghost pure-u-1" @click="pendingEdit=null">
-                                        EXIT
+                                        {{ $t('common.cancel') }}
                                     </button>
                                 </span>
                             </div>

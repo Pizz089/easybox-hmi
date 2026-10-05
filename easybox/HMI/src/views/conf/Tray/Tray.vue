@@ -245,7 +245,7 @@
                      finirebbe nel 403 di insertTray (cassetti bloccati, P1) -->
                 <div class="pure-controls" v-if="!createNew">
                     <button class="pure-button pure-button-primary" @click="saveData()" :disabled="dataStored.userLevel==0">
-                        Save
+                        {{ $t('Save') }}
                     </button>
                 </div>
                 

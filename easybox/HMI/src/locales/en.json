@@ -57,9 +57,13 @@
   "Modello creato e disponibile nella cartella predefinita del pannello": "Model created and available in the panel default folder",
   "common": {
     "cancel": "Cancel",
-    "retry": "Retry"
+    "retry": "Retry",
+    "reset": "Reset",
+    "out": "OUT"
   },
   "layout": {
+    "viewOnly": "VIEW ONLY!!",
+    "legend": "LEGEND:",
     "nav": {
       "toFloor": "Go to tray {floor}",
       "none": "No other tray in this direction",
@@ -552,9 +556,15 @@
   },
   "normal": "Normal",
   "cmd": {
+    "hold": "HOLD",
+    "start": "START",
+    "reset": "RESET",
+    "restartMain": "RESTART MAIN PROGRAM",
     "holdUnknown": "Robot state unknown"
   },
   "robot": {
+    "noGripper": "NO GRIPPER MOUNTED!",
+    "speedLabel": "ROBOT SPEED:",
     "dialog": {
       "chooseGripper": "Which gripper to load?",
       "choosePalletLoad": "Which pallet to load?",
@@ -884,7 +894,11 @@
     "unknown": "Unknown",
     "viceLock": "LOCK VICE",
     "viceLockConfirm": "Lock the vice?",
-    "viceLockWarn": "The vice WILL CLOSE. Nobody must have their hands inside the machine."
+    "viceLockWarn": "The vice WILL CLOSE. Nobody must have their hands inside the machine.",
+    "noFixture": "NO FIXTURE MOUNTED!",
+    "palletUnlock": "SBLOCCO PALLET",
+    "palletLock": "BLOCCO PALLET",
+    "viceUnlock": "SBLOCCO MORSA"
   },
   "vice": {
     "welcome": "List vices",

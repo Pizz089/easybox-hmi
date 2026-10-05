@@ -85,10 +85,10 @@
                                 <h4 v-else>{{ $t('grating.delete') }}</h4>
                                 <span class="pure-g">
                                     <button class="pure-button-micromission specialCMD pure-u-1" :disabled="dt.trays.length>0" @click="deleteGrating(dt.ID)">
-                                        DELETE
+                                        {{ $t('rowCmd.delete') }}
                                     </button>
                                     <button class="btn-ghost pure-u-1" @click="showPopUp=0">
-                                        EXIT
+                                        {{ $t('common.cancel') }}
                                     </button>
                                 </span>
                             </div>

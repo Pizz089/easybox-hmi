@@ -61,7 +61,7 @@
                         <td v-if="dt.FLOOR_MAG>0" :class="{'extract':(dt.EXTRACT>0 && dt.EXTRACT<1000),'extractBlink':dt.EXTRACT==1000,'releaseBlink':dt.EXTRACT==2000}" >
                             {{dt.MAG}}.<strong>{{dt.FLOOR_MAG}} </strong>
                         </td>
-                        <td v-else><strong>OUT</strong></td>
+                        <td v-else><strong>{{ $t('common.out') }}</strong></td>
                         
                         <!--td v-if="dt.FLOOR_MAG>0">{{dt.FLOOR_MAG}} </td>
                         <td v-else></td-->

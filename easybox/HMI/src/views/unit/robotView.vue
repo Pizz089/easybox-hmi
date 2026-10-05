@@ -56,7 +56,7 @@
             </div>
           </div>
         </span>
-        <h5 v-else> NO GRIPPER MOUNTED! </h5>
+        <h5 v-else> {{ $t('robot.noGripper') }} </h5>
 
         <!-- (AN) coerenza pinza: tre fonti a confronto — sensore (FB8),
              sistema (registro PLC), magazzino (DB). Verde quando le fonti
@@ -92,7 +92,7 @@
 
       
       <div class="pure-control-group speed-group">
-        <label class="section-label" for="aligned-foo">ROBOT SPEED: </label>
+        <label class="section-label" for="aligned-foo">{{ $t('robot.speedLabel') }} </label>
         <!--numericField 
             name="speed" 
             unitMeasure="%" 
@@ -590,10 +590,10 @@
           <span v-if="holdIgnoto">—</span>
           <template v-else>
           <span v-if="dataRobot.STATUS!=dataStored.status_hold && dataRobot.STATUS!=dataStored.status_off">
-            <span style="font-size: 16px;">HOLD</span>
+            <span style="font-size: 16px;">{{ $t('cmd.hold') }}</span>
           </span>
           <span v-if="dataRobot.STATUS==dataStored.status_hold">
-            <small>HOLD</small> => <span style="font-size: 16px;">{{$t("CONTINUE")}}</span>
+            <small>{{ $t('cmd.hold') }}</small> => <span style="font-size: 16px;">{{$t("CONTINUE")}}</span>
           </span>
           </template>
         </button>
@@ -603,7 +603,7 @@
           @click="sendToRobot(17)"
           v-if="dataRobot.STATUS==dataStored.status_off">
           <span>
-            <span style="font-size: 16px;">START</span>
+            <span style="font-size: 16px;">{{ $t('cmd.start') }}</span>
           </span>
         </button>
 
@@ -615,14 +615,14 @@
 
         <button class="pure-button-micromission pure-u-1 specialCMD button_pressed restore-btn"
           @click="criticalEnabled('reset') ? askCritical('reset') : ''">
-          RESET
+          {{ $t('cmd.reset') }}
         </button>
 
         <button class="pure-button-micromission pure-u-1 specialCMD button_pressed restore-btn" :disabled="!criticalEnabled('restart')"
           :class="[!criticalEnabled('restart') ? 'pure-button-disable' : 'pure-button-micromission']"
           :style="[!criticalEnabled('restart') ? 'background-color:lightgray;color:gray': '']"
           @click="criticalEnabled('restart') ? askCritical('restart') : ''">
-          RESTART MAIN PROGRAM
+          {{ $t('cmd.restartMain') }}
         </button>
 
         <!-- Conferma dei due comandi di ripristino: dice cosa fa e, soprattutto,

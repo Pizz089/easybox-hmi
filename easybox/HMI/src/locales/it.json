@@ -57,9 +57,13 @@
   "Modello creato e disponibile nella cartella predefinita del pannello": "Modello creato e disponibile nella cartella predefinita del pannello",
   "common": {
     "cancel": "Annulla",
-    "retry": "Riprova"
+    "retry": "Riprova",
+    "reset": "Reset",
+    "out": "OUT"
   },
   "layout": {
+    "viewOnly": "SOLO VISUALIZZAZIONE!!",
+    "legend": "LEGENDA:",
     "nav": {
       "toFloor": "Vai al cassetto {floor}",
       "none": "Nessun altro cassetto in questa direzione",
@@ -552,9 +556,15 @@
   },
   "normal": "Normale",
   "cmd": {
+    "hold": "HOLD",
+    "start": "START",
+    "reset": "RESET",
+    "restartMain": "RESTART MAIN PROGRAM",
     "holdUnknown": "Stato del robot non noto"
   },
   "robot": {
+    "noGripper": "NO GRIPPER MOUNTED!",
+    "speedLabel": "ROBOT SPEED:",
     "dialog": {
       "chooseGripper": "Quale pinza caricare?",
       "choosePalletLoad": "Quale pallet caricare?",
@@ -884,7 +894,11 @@
     "unknown": "Sconosciuta",
     "viceLock": "BLOCCO MORSA",
     "viceLockConfirm": "Bloccare la morsa?",
-    "viceLockWarn": "La morsa SI CHIUDE. Nessuno deve avere le mani in macchina."
+    "viceLockWarn": "La morsa SI CHIUDE. Nessuno deve avere le mani in macchina.",
+    "noFixture": "NO FIXTURE MOUNTED!",
+    "palletUnlock": "SBLOCCO PALLET",
+    "palletLock": "BLOCCO PALLET",
+    "viceUnlock": "SBLOCCO MORSA"
   },
   "vice": {
     "welcome": "Elenco morse",

@@ -43,7 +43,7 @@
       
       <button class="pure-button-micromission pure-u-1 specialCMD button_pressed" 
         @click="sendToBox(99)">
-        RESET
+        {{ $t('cmd.reset') }}
       </button>
 
       <!--div class="pure-u-1-2">

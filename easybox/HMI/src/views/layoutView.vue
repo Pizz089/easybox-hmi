@@ -76,24 +76,24 @@
             viewBox="0 0 480 100" style="margin-left:60px">
             
             <rect x="51" y="0" width="50" height="50" style="fill:lightgray" />
-            <text x="58" y="28" style="fill:white;font-family:times;font-size:10">EMPTY</text>
+            <text x="58" y="28" style="fill:white;font-family:times;font-size:10">{{ $t('status.empty').trim() }}</text>
 
             <rect x="103" y="0" width="50" height="50" style="fill:green" />
-            <text x="116" y="28" style="fill:white;font-family:times;font-size:10">RAW</text>
+            <text x="116" y="28" style="fill:white;font-family:times;font-size:10">{{ $t('status.raw').trim() }}</text>
 
             <rect x="155" y="0" width="50" height="50" style="fill:black" />
-            <text x="159" y="28" style="fill:white;font-family:times;font-size:10">NOT DEF</text>
+            <text x="159" y="28" style="fill:white;font-family:times;font-size:10">{{ $t('status.notDef').trim() }}</text>
 
             <rect x="207" y="0" width="50" height="50" style="fill:coral" />
-            <text x="217" y="28" style="fill:white;font-family:times;font-size:10">LOCK</text>
+            <text x="217" y="28" style="fill:white;font-family:times;font-size:10">{{ $t('status.locked').trim() }}</text>
 
             <rect x="259" y="0" width="50" height="50" style="fill:#080866" />
-            <text x="261" y="28" style="fill:white;font-family:times;font-size:10">FINISHED</text>
+            <text x="261" y="28" style="fill:white;font-family:times;font-size:10">{{ $t('status.finished').trim() }}</text>
 
             <rect x="311" y="0" width="50" height="50" style="fill:red" />
-            <text x="318" y="28" style="fill:white;font-family:times;font-size:10">ABORT</text>
+            <text x="318" y="28" style="fill:white;font-family:times;font-size:10">{{ $t('status.aborted').trim() }}</text>
 
-            <text x="0" y="28" style="fill:white;font-family:times;font-size:10">LEGEND:</text>
+            <text x="0" y="28" style="fill:white;font-family:times;font-size:10">{{ $t('layout.legend') }}</text>
         </svg>
     </div>
 
@@ -181,13 +181,13 @@
         </div>
         <div class="btn-group save-row">
             <button class="pure-button-primary" @click="saveAllData()">
-                Save!
+                {{ $t('Save') }}
                 <progress v-if="avanzamento>0" max="100" :value="avanzamento"> {{avanzamento}} </progress>
             </button>
         </div>
     </div>
     <div class="pure-u-1" v-if="$route.params.modifyEnable==0">
-        <h2 class="blink"> VIEW ONLY!! </h2>
+        <h2 class="blink"> {{ $t('layout.viewOnly') }} </h2>
     </div>
   </div>
 </template>

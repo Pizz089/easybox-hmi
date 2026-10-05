@@ -65,7 +65,7 @@
 
                 <div class="pure-controls">
                     <button class="pure-button pure-button-primary" @click="saveData()" :disabled="dataStored.userLevel==0">
-                        Save
+                        {{ $t('Save') }}
                     </button>
                 </div>
             </fieldset>

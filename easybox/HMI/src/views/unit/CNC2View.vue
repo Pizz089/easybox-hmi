@@ -13,7 +13,7 @@
             {{ (dataFixture.DESCR.trim().length)? ' - '+dataFixture.DESCR:'' }}  
           </h5>
           <h5 v-if="dataFixture.ID>0">Status: {{ dataFixture.STATUS_DESC }}</h5>
-          <h5 v-if="!dataFixture.ID>0"> NO FIXTURE MOUNTED! </h5>
+          <h5 v-if="!dataFixture.ID>0"> {{ $t('machine.noFixture') }} </h5>
     </div>
 
     </div>

@@ -194,7 +194,7 @@
 
           <div class="pure-controls">
             <button class="pure-button pure-button-primary" @click="saveData">
-              Save
+              {{ $t('Save') }}
             </button>
           </div>
         </form>

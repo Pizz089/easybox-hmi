@@ -34,8 +34,11 @@ const btn = (label) => {
 	const m = tpl.match(new RegExp('<button([^>]*)>\\s*' + label + '\\s*</button>'));
 	return m ? m[1] : null;
 };
-const unlock = btn('SBLOCCO MORSA'), lock = btn("\\{\\{ \\$t\\('machine\\.viceLock'\\) \\}\\}");
+// (UI v2 fase 0) anche SBLOCCO MORSA passa da i18n (machine.viceUnlock, stesso testo)
+const unlock = btn("\\{\\{ \\$t\\('machine\\.viceUnlock'\\) \\}\\}"), lock = btn("\\{\\{ \\$t\\('machine\\.viceLock'\\) \\}\\}");
 check(unlock !== null && lock !== null, 'entrambi i bottoni presenti');
+const itMsg = JSON.parse(readFileSync('src/locales/it.json', 'utf8')), enMsg = JSON.parse(readFileSync('src/locales/en.json', 'utf8'));
+check(itMsg.machine.viceUnlock === 'SBLOCCO MORSA' && enMsg.machine.viceUnlock === 'SBLOCCO MORSA', 'testo dello sblocco invariato: SBLOCCO MORSA');
 const attrs = s => (s || '').replace(/@click="[^"]*"/, '').replace(/\s+/g, ' ').trim();
 check(attrs(unlock) === attrs(lock), 'stessi attributi (classe) a parte il click: [' + attrs(lock) + ']');
 check(!/:disabled/.test(unlock) && !/:disabled/.test(lock), 'nessun :disabled su entrambi (i comandi macchina della pagina non hanno gating)');

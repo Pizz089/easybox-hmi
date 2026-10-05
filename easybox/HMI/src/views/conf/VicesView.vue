@@ -34,7 +34,7 @@
                     <tr :class="{'pure-table-odd':(dt.ID % 2==1)}">
                         <!--td>{{dt.ID}} </td-->
                         <td v-if="dt.MAG>0">{{dt.MAG}}.{{dt.MAG_POS}} </td>
-                        <td v-else><strong>OUT</strong></td>
+                        <td v-else><strong>{{ $t('common.out') }}</strong></td>
                             
                         <td :class="dt.STATUS_DESC">{{ dt.STATUS_DESC.trim() }}</td>
                         <td>{{dt.FAMILY}} </td>
@@ -55,10 +55,10 @@
                                 <h4>{{ $t('vice.delete') }}</h4>
                                 <span class="pure-g">
                                     <button class="pure-button-micromission specialCMD pure-u-1" @click="deleteVice(dt.ID)">
-                                        DELETE
+                                        {{ $t('rowCmd.delete') }}
                                     </button>
                                     <button class="btn-ghost pure-u-1" @click="showPopUp=0">
-                                        EXIT
+                                        {{ $t('common.cancel') }}
                                     </button>
                                 </span>
                             </div>

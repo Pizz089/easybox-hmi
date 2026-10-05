@@ -75,10 +75,10 @@
                                 <span class="pure-g">
                                     <span class="pure-u-1-3">&nbsp;</span>
                                     <button class="pure-button-micromission specialCMD pure-u-1-3" @click="deleteOrder(o.ID)">
-                                        DELETE
+                                        {{ $t('rowCmd.delete') }}
                                     </button>
                                     <button class="btn-ghost pure-u-1" @click="showPopUp=0">
-                                        EXIT
+                                        {{ $t('common.cancel') }}
                                     </button>
                                 </span>
                             </div>

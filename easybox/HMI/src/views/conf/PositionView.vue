@@ -160,10 +160,10 @@
                                 <!--h4>{{ $t('position.delete') }}</h4-->
                                 <span class="pure-g">
                                     <button class="pure-button-micromission specialCMD pure-u-1" @click="deleteposition(dt.ID)">
-                                        DELETE
+                                        {{ $t('rowCmd.delete') }}
                                     </button>
                                     <button class="btn-ghost pure-u-1" @click="showPopUp=0">
-                                        EXIT
+                                        {{ $t('common.cancel') }}
                                     </button>
                                 </span>
                             </div>

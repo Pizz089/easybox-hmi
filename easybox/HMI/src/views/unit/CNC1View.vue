@@ -13,7 +13,7 @@
             {{ (dataFixture.DESCR.trim().length)? ' - '+dataFixture.DESCR:'' }}  
           </h5>
           <h5 v-if="dataFixture.ID>0"> Status: {{ dataFixture.STATUS_DESC }}</h5>
-          <h5 v-if="!dataFixture.ID>0"> NO FIXTURE MOUNTED! </h5>
+          <h5 v-if="!dataFixture.ID>0"> {{ $t('machine.noFixture') }} </h5>
       </div>
 
     </div>
@@ -36,20 +36,20 @@
       <div class="pure-u-1-2">
         <button class="pure-button-micromission pure-u-1 button_pressed"
                 @click="sendToPLC(20)">
-                SBLOCCO PALLET
+                {{ $t('machine.palletUnlock') }}
         </button>
       </div>
       <div class="pure-u-1-2">
         <button class="pure-button-micromission pure-u-1 button_pressed"
               @click="sendToPLC(21)">
-              BLOCCO PALLET
+              {{ $t('machine.palletLock') }}
         </button>
       </div> 
 
       <div class="pure-u-1-2">
         <button class="pure-button-micromission pure-u-1 button_pressed"
                 @click="sendToPLC(10)">
-                SBLOCCO MORSA
+                {{ $t('machine.viceUnlock') }}
         </button>
       </div>
       <!-- BLOCCO MORSA (11): gemello dello sblocco, stesso invio e stesso

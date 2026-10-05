@@ -134,7 +134,7 @@ const el = ref()
             {{ $t('grating.generate') }}
           </button>
           <button class="btn-ghost action-spaced reset-btn" type="button" @click="resetAll">
-            Reset
+            {{ $t('common.reset') }}
           </button>
         </fieldset>
       </form>
@@ -142,7 +142,7 @@ const el = ref()
       <!----------------------------------->
       <div class="pure-u-1 save-row">
         <button class="pure-button pure-button-primary" @click="saveData()">
-          Save
+          {{ $t('Save') }}
         </button>
       </div>
       <!----------------------------------->

@@ -65,10 +65,10 @@
                             <!--h4>{{ $t('pallet.delete') }}</h4-->
                             <span class="pure-g">
                                 <button class="pure-button-micromission specialCMD pure-u-1" @click="deletePiece(p.ID)">
-                                    DELETE
+                                    {{ $t('rowCmd.delete') }}
                                 </button>
                                 <button class="btn-ghost pure-u-1" @click="showPopUp=0">
-                                    EXIT
+                                    {{ $t('common.cancel') }}
                                 </button>
                             </span>
                         </div>
