@@ -13,20 +13,20 @@ BEGIN
 	
 	"testmqtt" := true;
 	
-	// RIPARTENZA SEMPRE FERMA (5/10, decisione D5-A, HOLD da pulsante).
+	// RIPARTENZA SEMPRE FERMA (5/10, decisione D5 rivista in cella).
 	// Dopo STOP->RUN la cella ripartiva con HOLD falso (modo automatico) e
 	// RequestedTray a 0, che per il tray manager vuol dire "rimetti dentro il
 	// cassetto in registro": con un cassetto fuori e il robot in Auto il
 	// rilascio partiva da solo.
-	// Adesso si riparte in HOLD "da pulsante": holdButton e il toggle di
-	// FB_plant (DB_plant.Hold) alti insieme. Per ripartire serve UNA pressione
-	// del pulsante fisico; il pannello non lo toglie (comando 17 rifiutato
-	// con holdButton alto) e nemmeno la richiusura della porta cella.
-	// Le tre righe vanno insieme: con DB_plant.Hold alto e holdButton basso il
-	// pannello toglierebbe DB_Robot.HOLD lasciando il robot in pausa.
+	// Si riparte in HOLD da PANNELLO: con DB_plant.Hold alto FB8 tiene acceso il
+	// reset allarmi del robot (sys_resetAlarm) e il robot non esegue comandi,
+	// quindi la dichiarazione 35 non si chiudeva mai (visto in cella il 5/10).
+	// L'hold si toglie dal pannello, oppure col pulsante fisico in due pressioni.
+	// ATTENZIONE: come ogni hold da pannello, lo toglie anche la richiusura
+	// della porta cella con robot in automatico (FB_plant).
 	"DB_Robot".HOLD := TRUE;
-	"DB_Robot".holdButton := TRUE;
-	"DB_plant".Hold := TRUE;
+	"DB_Robot".holdButton := FALSE;
+	"DB_plant".Hold := FALSE;
 	"DB_BOX_1".RequestedTray := -1;
 	
 	REGION Config brand 2 HAAS
