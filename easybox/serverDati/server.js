@@ -137,6 +137,12 @@ const server = app.listen(process.env.serverPort, () => {
   //migrazione schema idempotente (cantiere Attrezzaggi)
   ensureSchema();
 
+  // (P4 5/10) chiusura automatica degli ordini a quantita' raggiunta: un giro
+  // subito e poi ogni 30 s, un solo timer a catena (vedi orderAutoClose.js)
+  require('./orderAutoClose').createOrderAutoClose({
+    sql: require('mssql'), configDB: DBf.configDB, io: DBf.io, log: log,
+  }).start();
+
   //////////////////////////////////////getAndCheckLicense(10) //ripristinare
 
   //setInterval(() => {
