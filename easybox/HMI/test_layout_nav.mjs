@@ -94,6 +94,39 @@ vm.saving = true;
 vm.goNeighbor('next');
 check(pushed.length === 0, 'durante il Save le frecce sono ferme');
 
+console.log('\n2b) (audit 5/10) in modifica, un cassetto che TraysView apre in sola lettura si apre in sola lettura');
+const { trayOpensReadOnly, layoutModeFor } = await server.ssrLoadModule('/src/util/trayNeighbors.js');
+const { dataStored } = await server.ssrLoadModule('/src/data.js');
+check(trayOpensReadOnly({ EXTRACT: 1, STATUS: 4 }) && trayOpensReadOnly({ EXTRACT: 1000 }) && trayOpensReadOnly({ EXTRACT: 2000 }), 'estratto o in manovra (EXTRACT 1, 1000, 2000) -> sola lettura');
+check(trayOpensReadOnly({ EXTRACT: 0, STATUS: dataStored.status_working }) && trayOpensReadOnly({ EXTRACT: 0, STATUS: dataStored.status_locked }) && trayOpensReadOnly({ EXTRACT: 0, STATUS: dataStored.status_paused }), 'STATUS working, locked, paused -> sola lettura');
+check(!trayOpensReadOnly({ EXTRACT: 0, STATUS: dataStored.status_raw }) && !trayOpensReadOnly({ EXTRACT: 0, STATUS: 0 }) && !trayOpensReadOnly({}), 'cassetto dentro e fermo -> modificabile');
+check(layoutModeFor('1', { EXTRACT: 1 }) === '0' && layoutModeFor('1', { EXTRACT: 0, STATUS: 4 }) === '1', 'layoutModeFor: in modifica scende a 0 solo sul cassetto in sola lettura');
+check(layoutModeFor('0', { EXTRACT: 0, STATUS: 4 }) === '0' && layoutModeFor(0, {}) === '0', 'layoutModeFor: in sola lettura non si sale mai a modifica');
+
+const traysRO = [
+	{ ID: 106, FLOOR_MAG: 6, EXTRACT: 1, STATUS: 4 },                          // estratto
+	{ ID: 105, FLOOR_MAG: 5, EXTRACT: 0, STATUS: 4 },                          // partenza
+	{ ID: 104, FLOOR_MAG: 4, EXTRACT: 0, STATUS: dataStored.status_paused },   // in pausa
+	{ ID: 107, FLOOR_MAG: 7, EXTRACT: 0, STATUS: 4 },
+];
+const viaArrow = (params, dir, list) => {
+	const { vm, pushed } = makeVm(params, pz(), pocketsSignature(pz()));
+	vm.trays = list;
+	vm.goNeighbor(dir);
+	return pushed.join();
+};
+check(viaArrow({ trayID: '105', modifyEnable: '1', floorMag: '5' }, 'next', traysRO) === '/layout/106/0/6', 'in modifica verso il cassetto estratto (piano 6): si apre in sola lettura');
+check(viaArrow({ trayID: '105', modifyEnable: '1', floorMag: '5' }, 'prev', traysRO) === '/layout/104/0/4', 'in modifica verso il cassetto in pausa (piano 4): sola lettura');
+check(viaArrow({ trayID: '106', modifyEnable: '1', floorMag: '6' }, 'next', traysRO) === '/layout/107/1/7', 'in modifica verso un cassetto normale: resta in modifica');
+check(viaArrow({ trayID: '106', modifyEnable: '0', floorMag: '6' }, 'next', traysRO) === '/layout/107/0/7', 'in sola lettura verso un cassetto normale: resta in sola lettura');
+
+const trays_src = readFileSync('src/views/conf/TraysView.vue', 'utf8');
+const goToStart = trays_src.indexOf('goToLayout(trayID, extracted, status, floorMag){');
+const goTo = trays_src.slice(goToStart, trays_src.indexOf('sendToBox(', goToStart));
+check(/trayOpensReadOnly\(\{ EXTRACT: extracted, STATUS: status \}\)/.test(goTo), 'TraysView.goToLayout usa la stessa funzione');
+check(!/status_working|status_locked|status_paused/.test(goTo), 'e non tiene piu\' una copia della condizione');
+check(/layoutModeFor\(this\.\$route\.params\.modifyEnable, n\.tray\)/.test(src), 'le frecce passano dalla stessa regola (layoutModeFor)');
+
 console.log('\n3) ricaricamento al cambio dei parametri e risposte in ritardo');
 check(/'\$route\.params': \{[\s\S]{0,600}this\.getDataTable\(\)/.test(src), 'watch su $route.params che rilegge le tasche');
 check(/'\$route\.params': \{[\s\S]{0,600}this\.loadedSig = null/.test(src), 'e azzera lo stato "letto" del cassetto vecchio');

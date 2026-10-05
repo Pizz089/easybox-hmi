@@ -5,7 +5,7 @@
     import TrayPockets from '../components/layout/TrayPockets.vue'
     import { ROBOT_AXIS_ALONG } from '../util/gratingAxes.js'
     import { loadTrayPockets } from '../util/trayPockets.js'
-    import { neighborTrays, pocketsSignature } from '../util/trayNeighbors.js'
+    import { neighborTrays, pocketsSignature, layoutModeFor } from '../util/trayNeighbors.js'
     import { KO_ACTIVE_ORDER, KO_TRAY_EXTRACTED, KO_NO_PIECE_DECLARED, KO_PIECE_TOO_BIG, KO_Z_BELOW_GRATING } from '../util/errorCodes.js'
 </script>
 
@@ -274,7 +274,10 @@
                 if (n) this.navigateTo(n);
             },
             navigateTo(n) {
-                this.$router.push('/layout/' + n.trayID + '/' + this.$route.params.modifyEnable + '/' + n.floor);
+                // (P3 audit 5/10) modalita' corrente, salvo un cassetto che
+                // TraysView aprirebbe in sola lettura: stessa regola, una sola
+                const mode = layoutModeFor(this.$route.params.modifyEnable, n.tray);
+                this.$router.push('/layout/' + n.trayID + '/' + mode + '/' + n.floor);
             },
             getPieces() {
                 fetch(dataStored.server + 'api/conf/piece/show/all', { method: 'GET' })

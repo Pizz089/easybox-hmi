@@ -13,6 +13,8 @@
     import { KO_TRAY_EXTRACTED, KO_ACTIVE_ORDER, KO_ALREADY_ASSOCIATED, KO_SOURCE_EMPTY, KO_OUT_OF_TRAY, KO_Z_BELOW_GRATING, KO_NO_PIECE_DECLARED } from '../../util/errorCodes.js'
     import StatoElenco from '../../components/StatoElenco.vue'
     import { caricaElenco, STATO } from '../../util/caricaElenco.js'
+    // (P3 audit 5/10) regola unica "si apre in sola lettura", condivisa con le frecce del layout
+    import { trayOpensReadOnly } from '../../util/trayNeighbors.js'
     const el = ref()
 </script>
 
@@ -733,10 +735,9 @@ export default {
         },
         goToLayout(trayID, extracted, status, floorMag){
             //this.$router.push('/conf/Grating/'+trayID);
-            if (extracted || 
-                status==dataStored.status_working || 
-                status==dataStored.status_locked  ||
-                status==dataStored.status_paused  )
+            // (P3 audit 5/10) la regola "sola lettura" e' in util/trayNeighbors.js,
+            // la stessa che usano le frecce della pagina layout
+            if (trayOpensReadOnly({ EXTRACT: extracted, STATUS: status }))
                 //modifiche non permesse
                 this.$router.push('/layout/'+trayID+"/0/"+floorMag);
             else
