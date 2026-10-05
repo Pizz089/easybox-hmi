@@ -493,6 +493,28 @@
     "onlyFor": "Solo per"
   },
   "production": {
+    "relaunch": {
+      "button": "Rilancia",
+      "title": "Rilanciare l'ordine #{id}?",
+      "finishedLabel": "Tasche finite di questo ordine: {n}",
+      "rawLabel": "Grezzi disponibili per questo pezzo nei cassetti: {n}",
+      "quantityLabel": "Quantità dell'ordine: {n}",
+      "question": "Hai rimesso i grezzi al posto dei finiti di questo ordine?",
+      "yes": "Sì, li ho rimessi",
+      "yesHint": "Le {n} tasche finite tornano GREZZO e restano di questo ordine.",
+      "no": "No, usa i grezzi disponibili",
+      "noHint": "Le tasche finite restano FINITE ma escono dall'ordine: non vengono rilavorate.",
+      "noRaw": "Nessun grezzo disponibile: reinserisci i grezzi e scegli Sì",
+      "partial": "Disponibili {raw} su {qty}: con questi grezzi il lotto non si completa.",
+      "paused": "In entrambi i casi l'ordine resta in PAUSA: la produzione riparte solo con Play.",
+      "cellRunning": "Cella in lavorazione: il robot è in missione (o il suo stato non è noto). Fermare la produzione prima di rilanciare.",
+      "activeOrder": "C'è già un ordine in lavorazione su MC{mc}: fermarlo prima di rilanciare questo.",
+      "notFinished": "L'ordine non è più FINITO: niente da rilanciare.",
+      "notFound": "Ordine non trovato.",
+      "previewFailed": "Impossibile leggere i dati dal backend: rilancio non disponibile.",
+      "done": "Ordine #{id} rilanciato: è in PAUSA, premere Play per ripartire.",
+      "failed": "Rilancio NON eseguito: errore dal backend."
+    },
     "reset": {
       "button": "Azzera produzione",
       "title": "Azzerare la produzione su MC{mc}?",

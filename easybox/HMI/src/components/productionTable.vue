@@ -52,6 +52,15 @@
                                 :del=true          @cmdDel="sicurezza(o.ID, o.STATUS_DESC)"
                                 :delDisable="o.STATUS_DESC=='WORKING'"
                             />
+                            <!-- (P2 5/10) RILANCIA: solo sugli ordini FINITI (5). Apre il
+                                 dialog con l'anteprima vera; stesso gate di livello di
+                                 "Azzera produzione" (operatore 0 escluso). -->
+                            <button v-if="isFinished(o)" type="button"
+                                class="btn-ghost btn-relaunch"
+                                :disabled="dataStored.userLevel == 0"
+                                @click="relaunchOrder = o">
+                                {{ $t('production.relaunch.button') }}
+                            </button>
                             <!-- PaoloG 30/09
                                 :modify=true       @cmdModify="modifyOrder(o.ID)"
                                 :modifyDisable="o.STATUS_DESC=='WORKING'"
@@ -88,17 +97,21 @@
           :messaggio-vuoto="$t('production.noOrderYet')"
           @riprova="getDataTable()"
         />
+        <RelaunchDialog v-if="relaunchOrder" :order="relaunchOrder" @close="relaunchOrder = null" />
     </div>
 </template>
 
 <script>
 import StatoElenco from './StatoElenco.vue';
+import RelaunchDialog from './RelaunchDialog.vue';
 import { caricaElenco, STATO } from '../util/caricaElenco.js';
 
 export default {
-    components: { StatoElenco },
+    components: { StatoElenco, RelaunchDialog },
     data(){
         return {
+            // (P2 5/10) riga dell'ordine finito da rilanciare (null = dialog chiuso)
+            relaunchOrder: null,
             // 'attesa' finche' non si sa: non si scrive "nessun ordine" prima
             // di avere una risposta
             statoElenco: STATO.ATTESA,
@@ -115,6 +128,11 @@ export default {
                 if (esito.stato === STATO.OK) this.orders = esito.dati;
                 else console.info('elenco ordini non letto: ' + esito.dettaglio);
             });
+        },
+        // FINITO = STATUS 5 (dataStored.status_finished); STATUS_DESC come
+        // riserva, e' quello che la riga usa gia' per il colore dello stato.
+        isFinished(o){
+            return Number(o.STATUS) === dataStored.status_finished || String(o.STATUS_DESC || '').trim().toUpperCase() === 'FINISHED';
         },
         modifyOrder(i){
             this.$router.push('/selectRig');
@@ -197,6 +215,11 @@ export default {
 /* 80px: geometria barra avanzamento in cella (non spacing). */
 .prod-progress {
     width: 80px;
+}
+/* (P2 5/10) "Rilancia" accanto ai comandi riga, touch 44 */
+.btn-relaunch {
+    min-height: 44px;
+    margin-left: var(--space-2);
 }
 
 

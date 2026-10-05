@@ -99,6 +99,122 @@ router.post('/resetProduction/:machineId', (req, res) => {
 	});
 });
 
+// ============================================================================
+// RILANCIA ORDINE FINITO (P2 5/10, decisione di Dario) — rifare lo stesso
+// lotto quando l'ordine e' finito (STATUS 5), senza ricrearlo dal wizard.
+// PRODUCTED non e' una colonna: la vista WORKORDERS conta le tasche a 5
+// legate all'ordine. Per riportarlo a 0 basta quindi che quelle tasche
+// smettano di contare, in uno dei due modi scelti dall'operatore:
+//  - mode 'replaced' ("ho rimesso i grezzi al posto dei finiti"): le tasche
+//    finite dell'ordine tornano GREZZO (4) e RESTANO legate all'ordine.
+//  - mode 'available' ("no, uso i grezzi che ci sono"): le tasche finite
+//    restano FINITE (5) ma vengono SCOLLEGATE (Order_ID=0), cosi' nessuno le
+//    rilavora. Senza grezzi disponibili il rilancio non ha senso: KO_NO_RAW.
+// In entrambi i casi l'ordine va in PAUSA (6): riparte solo col Play
+// dell'operatore. Grezzi disponibili = tasche di CASSETTO (stesso criterio
+// del PLC: PARENT LIKE 'TRAY%') a 4, del pezzo dell'ordine, libere o gia'
+// dell'ordine (Order_ID IN (0, ordine)).
+// GUARDIE (le stesse di resetProduction, piu' le sue): ordine esistente e a
+// 5, cella ferma, nessun ALTRO ordine a 3 sulla stessa macchina. Guardie,
+// conteggi e scritture nello STESSO batch, dentro la transazione con
+// XACT_ABORT, e l'ordine letto con UPDLOCK: fra il controllo e la scrittura
+// nessuno lo cambia. Conteggi PRIMA delle UPDATE (il trigger su [POSITION]
+// sporca rowsAffected).
+// ============================================================================
+const RELAUNCH_MODES = ['replaced', 'available'];
+const RAW_IN_TRAYS = `PARENT LIKE 'TRAY%' AND STATUS=4 AND Part_Type=@piece AND Order_ID IN (0, @id)`;
+
+// Parte comune ad anteprima e rilancio: dati dell'ordine, conteggi e il primo
+// motivo di rifiuto (NULL = rilanciabile). Il KO_NO_RAW dipende dal mode e lo
+// aggiunge solo il rilancio 'available'.
+function relaunchHead(orderId, lock) {
+	return `DECLARE @id INT = ${orderId};
+				DECLARE @st INT, @mc INT, @piece INT, @qty INT;
+				SELECT @st=STATUS, @mc=MACHINE_ID, @piece=PIECE_ID, @qty=QUANTITY FROM WORKORDER${lock ? ' WITH (UPDLOCK, HOLDLOCK)' : ''} WHERE ID=@id;
+				DECLARE @fin INT = (SELECT COUNT(*) FROM [POSITION] WHERE STATUS=5 AND Order_ID=@id);
+				DECLARE @raw INT = (SELECT COUNT(*) FROM [POSITION] WHERE ${RAW_IN_TRAYS});
+				DECLARE @ko VARCHAR(40) = CASE
+					WHEN @st IS NULL THEN '${errorCodes.KO_NOT_FOUND}'
+					WHEN @st<>5 THEN '${errorCodes.KO_ORDER_NOT_FINISHED}'
+					WHEN ${cellRunningGuard()} THEN '${errorCodes.KO_CELL_RUNNING}'
+					WHEN EXISTS (SELECT 1 FROM WORKORDER WHERE STATUS=3 AND MACHINE_ID=@mc AND ID<>@id) THEN '${errorCodes.KO_ACTIVE_ORDER}'
+					ELSE NULL END;`;
+}
+
+function relaunchQuery(orderId, mode) {
+	const positions = mode === 'replaced'
+		? `UPDATE [POSITION] SET STATUS=4 WHERE STATUS=5 AND Order_ID=@id;`
+		: `UPDATE [POSITION] SET Order_ID=0 WHERE STATUS=5 AND Order_ID=@id;`;
+	const noRaw = mode === 'available'
+		? `IF @ko IS NULL AND @raw=0 SET @ko='${errorCodes.KO_NO_RAW}';`
+		: '';
+	return `SET NOCOUNT ON;
+			SET XACT_ABORT ON;
+			BEGIN TRAN;
+				${relaunchHead(orderId, true)}
+				${noRaw}
+				IF @ko IS NOT NULL BEGIN
+					ROLLBACK TRAN;
+					SELECT @ko AS ris, @fin AS finished, @raw AS raw, @qty AS quantity;
+				END ELSE BEGIN
+					${positions}
+					UPDATE WORKORDER SET STATUS=6 WHERE ID=@id AND STATUS=5;
+					COMMIT TRAN;
+					SELECT 'OK' AS ris, @fin AS finished, @raw AS raw, @qty AS quantity;
+				END`;
+}
+
+function relaunchPreviewQuery(orderId) {
+	return `SET NOCOUNT ON;
+			${relaunchHead(orderId, false)}
+			SELECT @ko AS blocked, @st AS status, @mc AS machineId, @piece AS pieceId, @fin AS finished, @raw AS raw, @qty AS quantity,
+				(SELECT TOP 1 PIECE FROM WORKORDERS WHERE ID=@id) AS piece;`;
+}
+
+const parseOrderId = v => { const n = Number(v); return Number.isInteger(n) && n > 0 ? n : null; };
+
+// Anteprima con NUMERI VERI per il dialog: tasche finite dell'ordine, grezzi
+// disponibili, QUANTITY e il motivo per cui il rilancio sarebbe rifiutato.
+router.get('/relaunch/preview/:orderId', (req, res) => {
+	const orderId = parseOrderId(req.params.orderId);
+	if (orderId === null) { res.status(400).send("KO_BAD_INPUT"); return; }
+	sql.connect(DBf.configDB, function (err) {
+		if (err) { log.error("err relaunch preview: " + err); res.status(500).send("KO"); return; }
+		const query = relaunchPreviewQuery(orderId);
+		log.info('query ' + query);
+		new sql.Request().query(query, function (err, result) {
+			if (err) { log.error("Err query: " + err); res.status(500).send("KO"); return; }
+			const row = result.recordset && result.recordset[0] ? result.recordset[0] : null;
+			if (!row) { res.status(500).send("KO"); return; }
+			res.json(row);
+		});
+	});
+});
+
+router.post('/relaunch/:orderId', (req, res) => {
+	const orderId = parseOrderId(req.params.orderId);
+	const mode = (req.query && req.query.mode) || (req.body && req.body.mode);
+	if (orderId === null || !RELAUNCH_MODES.includes(mode)) { res.status(400).send("KO_BAD_INPUT"); return; }
+	sql.connect(DBf.configDB, function (err) {
+		if (err) { log.error("err relaunch: " + err); res.status(500).send("KO"); return; }
+		const query = relaunchQuery(orderId, mode);
+		log.info('query ' + query);
+		new sql.Request().query(query, function (err, result) {
+			if (err) { log.error("Err query: " + err); res.status(500).send("KO"); return; }
+			const row = result.recordset && result.recordset[0] ? result.recordset[0] : { ris: "KO" };
+			res.json(row);
+			if (row.ris === 'OK') {
+				log.standard("RILANCIA ORDINE " + orderId + " (" + mode + "): " + row.finished + " tasche finite " +
+					(mode === 'replaced' ? "-> grezzo, legate all'ordine" : "scollegate (Order_ID=0)") +
+					", grezzi disponibili " + row.raw + " su " + row.quantity + ", ordine -> 6 (pausa)");
+				DBf.io.emit('PRODUCTION/CHANGED');
+			} else {
+				log.standard("RILANCIA ORDINE " + orderId + " (" + mode + ") rifiutato: " + row.ris);
+			}
+		});
+	});
+});
+
 //TODO:NON SERVE PIU
 router.get('/data/:ID', (req, res) => {
 	sql.connect(DBf.configDB, function (err) {

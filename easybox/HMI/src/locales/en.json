@@ -493,6 +493,28 @@
     "onlyFor": "Only for"
   },
   "production": {
+    "relaunch": {
+      "button": "Relaunch",
+      "title": "Relaunch order #{id}?",
+      "finishedLabel": "Finished pockets of this order: {n}",
+      "rawLabel": "Raw parts available for this piece in the trays: {n}",
+      "quantityLabel": "Order quantity: {n}",
+      "question": "Did you put raw parts back in place of this order's finished parts?",
+      "yes": "Yes, I put them back",
+      "yesHint": "The {n} finished pockets go back to RAW and stay with this order.",
+      "no": "No, use the available raw parts",
+      "noHint": "The finished pockets stay FINISHED but leave the order: they are not machined again.",
+      "noRaw": "No raw parts available: put the raw parts back and choose Yes",
+      "partial": "{raw} of {qty} available: with these raw parts the batch will not be completed.",
+      "paused": "Either way the order stays PAUSED: production restarts only with Play.",
+      "cellRunning": "Cell running: the robot is on a mission (or its state is unknown). Stop production before relaunching.",
+      "activeOrder": "Another order is already running on MC{mc}: stop it before relaunching this one.",
+      "notFinished": "The order is no longer FINISHED: nothing to relaunch.",
+      "notFound": "Order not found.",
+      "previewFailed": "Cannot read data from the backend: relaunch not available.",
+      "done": "Order #{id} relaunched: it is PAUSED, press Play to restart.",
+      "failed": "Relaunch NOT done: backend error."
+    },
     "reset": {
       "button": "Reset production",
       "title": "Reset production on MC{mc}?",
