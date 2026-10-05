@@ -585,26 +585,7 @@
     }
 
     /* dialog AZZERA STATO CASSETTO: stesso overlay delle view missione */
-    .mission-dialog-overlay {
-        position: fixed;
-        inset: 0;
-        background: var(--bg-backdrop);
-        z-index: 1000;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    .mission-dialog {
-        background: var(--bg-surface);
-        border: var(--border-card);
-        border-radius: var(--radius-md);
-        box-shadow: var(--elevation-3);
-        padding: var(--space-4);
-        width: min(520px, 92vw);
-        display: flex;
-        flex-direction: column;
-        gap: var(--space-4);
-    }
+    /* dialog: stile comune in assets/css/dialogs.css (UI-DESIGN-SYSTEM v2 §12) */
     .reset-text {
         color: var(--text-primary);
     }

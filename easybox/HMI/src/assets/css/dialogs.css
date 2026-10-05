@@ -1,0 +1,37 @@
+/* ============ DIALOG DI CONFERMA — sede unica (UI-DESIGN-SYSTEM v2 §12) ============ */
+/* Prima stava copiato, scoped, in 10 file (RelaunchDialog, robotView,
+   CNC1View, productionView, layoutView, TraysView, WarehousesView,
+   AttrezzaggiView, Grating, PushSim), con piccole differenze di larghezza e
+   altezza; in Fixture.vue mancava del tutto e il dialog si apriva senza
+   overlay. Valori: quelli comuni alle copie. Le larghezze restano quelle di
+   prima con due modificatori (--wide 560, --narrow 480).
+   Import in main.js dopo buttons.css. Il comando pericoloso dentro i dialog
+   resta Critical (.specialCMD, rosso pieno); "Annulla" resta Ghost. */
+
+.mission-dialog-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--bg-backdrop);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mission-dialog {
+    background: var(--bg-surface);
+    border: var(--border-card);
+    border-radius: var(--radius-md);
+    box-shadow: var(--elevation-3);
+    padding: var(--space-4);
+    width: min(520px, 92vw);
+    max-height: 85vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+/* larghezze che alcune pagine avevano gia' */
+.mission-dialog--wide   { width: min(560px, 92vw); }   /* Rilancia, Cassetti, Azzera produzione */
+.mission-dialog--narrow { width: min(480px, 92vw); }   /* Grigliato */

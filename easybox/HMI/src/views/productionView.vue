@@ -48,7 +48,7 @@ import { KO_CELL_RUNNING } from '../util/errorCodes';
 
         <!-- dialog conferma AZZERA PRODUZIONE: cosa cambia, con numeri veri -->
         <div v-if="reset.open" class="mission-dialog-overlay">
-            <div class="mission-dialog">
+            <div class="mission-dialog mission-dialog--wide">
                 <h3 class="command-section-title">{{ $t('production.reset.title', { mc: reset.machineId }) }}</h3>
 
                 <div class="reset-machine" v-if="MACHINE_POSITIONS.length > 1">
@@ -195,28 +195,7 @@ export default {
 }
 
 /* dialog conferma: stesso overlay delle view missione */
-.mission-dialog-overlay {
-    position: fixed;
-    inset: 0;
-    background: var(--bg-backdrop);
-    z-index: 1000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.mission-dialog {
-    background: var(--bg-surface);
-    border: var(--border-card);
-    border-radius: var(--radius-md);
-    box-shadow: var(--elevation-3);
-    padding: var(--space-4);
-    width: min(560px, 92vw);
-    max-height: 80vh;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-}
+/* dialog: stile comune in assets/css/dialogs.css (UI-DESIGN-SYSTEM v2 §12) */
 .reset-machine {
     display: flex;
     gap: var(--space-2);

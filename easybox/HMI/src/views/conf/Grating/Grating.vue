@@ -193,7 +193,7 @@
 
                 <!-- dialog franco cavita' (comune a modello/DXF/stampa) -->
                 <div v-if="cavityDialog.open" class="mission-dialog-overlay">
-                    <div class="mission-dialog">
+                    <div class="mission-dialog mission-dialog--narrow">
                         <h3 class="command-section-title">{{ $t('grating.cavity.title') }}</h3>
                         <div class="cavity-hint">{{ $t('grating.cavity.hint', { def: clearanceUmToMm(CAVITY_CLEARANCE_UM), max: clearanceUmToMm(CAVITY_CLEARANCE_MAX_UM) }) }}</div>
                         <label class="cavity-row">
@@ -1063,26 +1063,7 @@ export default {
 
 <style scoped>
 /* (cavity-clearance) dialog franco cavita': stesso overlay delle view missione */
-.mission-dialog-overlay {
-    position: fixed;
-    inset: 0;
-    background: var(--bg-backdrop);
-    z-index: 1000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.mission-dialog {
-    background: var(--bg-surface);
-    border: var(--border-card);
-    border-radius: var(--radius-md);
-    box-shadow: var(--elevation-3);
-    padding: var(--space-4);
-    width: min(480px, 92vw);
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-}
+/* dialog: stile comune in assets/css/dialogs.css (UI-DESIGN-SYSTEM v2 §12) */
 .cavity-hint {
     color: var(--text-muted);
     font-size: var(--font-size-sm);

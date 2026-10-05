@@ -8,6 +8,8 @@ import './styles/theme.css'
 import '@/assets/css/custom-fix.css'
 // buttons.css dopo design-tokens (token) e dopo pure.css (alias .pure-button-primary)
 import '@/assets/css/buttons.css'
+// (v2 §12) dialog di conferma: sede unica, al posto delle copie scoped
+import '@/assets/css/dialogs.css'
 import '@/assets/css/layout-shell.css'
 import '@/assets/css/unit-views.css'
 

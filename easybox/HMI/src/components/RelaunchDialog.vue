@@ -21,7 +21,7 @@ import { dataStored } from '../data.js'
 -->
 <template>
     <div class="mission-dialog-overlay">
-        <div class="mission-dialog">
+        <div class="mission-dialog mission-dialog--wide">
             <h3 class="command-section-title">{{ $t('production.relaunch.title', { id: order.ID }) }}</h3>
             <div class="relaunch-piece">{{ (order.PIECE || '').trim() }} — MC{{ order.MACHINE_ID }}</div>
 
@@ -158,28 +158,7 @@ export default {
 
 <style scoped>
 /* stesso overlay e stessi blocchi del dialog "Azzera produzione" (productionView) */
-.mission-dialog-overlay {
-    position: fixed;
-    inset: 0;
-    background: var(--bg-backdrop);
-    z-index: 1000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.mission-dialog {
-    background: var(--bg-surface);
-    border: var(--border-card);
-    border-radius: var(--radius-md);
-    box-shadow: var(--elevation-3);
-    padding: var(--space-4);
-    width: min(560px, 92vw);
-    max-height: 80vh;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-}
+/* dialog: stile comune in assets/css/dialogs.css (UI-DESIGN-SYSTEM v2 §12) */
 .relaunch-piece {
     color: var(--text-secondary);
 }

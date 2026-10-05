@@ -184,8 +184,8 @@
       <!-- CONFERMA: nomina l'oggetto FISICO che si sta ridefinendo e dice da
            quale valore a quale. Non e' un "sei sicuro?": chi legge deve poter
            riconoscere l'oggetto che ha davanti. -->
-      <div v-if="confirm" class="sim-dialog-overlay" @click.self="confirm = null">
-        <div class="sim-dialog" role="dialog" aria-modal="true">
+      <div v-if="confirm" class="mission-dialog-overlay" @click.self="confirm = null">
+        <div class="mission-dialog" role="dialog" aria-modal="true">
           <h3 class="section-label">{{ t("pushSim.confirmTitle") }}</h3>
           <p class="confirm-what">{{ confirm.text }}</p>
           <p v-if="confirm.warn" class="confirm-warn">{{ confirm.warn }}</p>
@@ -1387,33 +1387,7 @@ export default {
 }
 
 /* ------------------------------------------------------------- conferma */
-/* Stesse regole del dialogo di Attrezzaggi (overlay --bg-backdrop, superficie
-   --bg-surface, elevazione 3): anche questo e' duplicato perche' il dialogo
-   non ha una sede comune. */
-.sim-dialog-overlay {
-  position: fixed;
-  inset: 0;
-  background: var(--bg-backdrop);
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-4);
-}
-
-.sim-dialog {
-  background: var(--bg-surface);
-  border: var(--border-card);
-  border-radius: var(--radius-md);
-  box-shadow: var(--elevation-3);
-  padding: var(--space-4);
-  width: min(520px, 92vw);
-  max-height: 80vh;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
+/* dialog: stile comune in assets/css/dialogs.css (UI-DESIGN-SYSTEM v2 §12) */
 
 .confirm-what {
   margin: 0;

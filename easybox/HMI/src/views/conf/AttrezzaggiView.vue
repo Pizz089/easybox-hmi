@@ -638,29 +638,8 @@ export default {
 
     /* AC: overlay canonico (stesso pattern scoped di robotView: overlay a
        schermo pieno z 1000, card dialog, voci touch). */
-    .mission-dialog-overlay {
-        position: fixed;
-        inset: 0;
-        background: var(--bg-backdrop);
-        z-index: 1000;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
+    /* dialog: stile comune in assets/css/dialogs.css (UI-DESIGN-SYSTEM v2 §12) */
 
-    .mission-dialog {
-        background: var(--bg-surface);
-        border: var(--border-card);
-        border-radius: var(--radius-md);
-        box-shadow: var(--elevation-3);
-        padding: var(--space-4);
-        width: min(520px, 92vw);
-        max-height: 80vh;
-        overflow-y: auto;
-        display: flex;
-        flex-direction: column;
-        gap: var(--space-4);
-    }
 
     .mission-dialog-item {
         display: flex;
