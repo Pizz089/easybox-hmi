@@ -103,10 +103,9 @@ import { dataStored } from './data';
     justify-content: center;
   }
 
-  body{
-    /*background-color: rgb(241 245 249);*/
-    background-color: white;
-  }
+  /* (UI v2 fase 1.4) tolto body { background-color: white }: il fondo lo
+     da' custom-fix.css (--bg-base) e questo blocco, caricato dopo, lo
+     ribaltava sul body (bianco visibile oltre l'altezza di #app). */
 
   .pure-table td {
     background-color: transparent;
@@ -126,11 +125,13 @@ import { dataStored } from './data';
   }
 
   /* CARDS */
+/* contatori del cassetto incoerenti (Tray.vue: grezzi+vuoti+finiti >
+   tasche). (v2 1.4) era #ff000070 fisso: ora i token di errore.
+   Tolto .normal { white }: units.vue lo usa solo su .img-wrapper, che ha
+   un suo .img-wrapper.normal scoped piu' specifico. */
 .errore{
-    background-color:#ff000070;
-}
-.normal{
-    background-color: white;
+    background-color: var(--color-danger-bg);
+    color: var(--color-danger);
 }
 
 /* Card global (wizard /selectPiece, /selectGripper, ..., e altre view che
@@ -141,7 +142,7 @@ import { dataStored } from './data';
     position: relative;
     overflow: hidden;
     background: var(--bg-surface);
-    border-radius: 18px;
+    border-radius: var(--radius-lg);   /* v2: era 18px fisso */
     padding: var(--space-5);
     min-height: 240px;
     display: flex;
@@ -206,8 +207,8 @@ import { dataStored } from './data';
     color: var(--text-primary);
     padding: 4px 10px;
     border-radius: 6px;
-    font-weight: 700;
-    font-size: 14px;
+    font-weight: var(--font-weight-bold);
+    font-size: var(--font-size-sm);
     z-index: 2;
     max-width: calc(100% - 2 * var(--space-3));
     overflow: hidden;
@@ -230,18 +231,18 @@ import { dataStored } from './data';
 
 .card--detailed .card-descr {
     color: var(--text-secondary);
-    font-size: 14px;
+    font-size: var(--font-size-sm);
 }
 
 .card--detailed .card-dim {
     color: var(--text-primary);
-    font-size: 14px;
-    font-weight: 600;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
 }
 
 .card--detailed .card-pos {
     color: var(--text-secondary);
-    font-size: 12px;
+    font-size: var(--font-size-xs);
     font-style: italic;
     margin-top: 2px;
 }
@@ -260,51 +261,11 @@ import { dataStored } from './data';
     margin: var(--space-1) 0;
 }
 
-.center {
-  justify-content: center;
-}
 /*cards end*/
 
-/* checkbox */
-.checkbox input[type="checkbox"] {
-    background-image: -webkit-linear-gradient(hsla(0,0%,0%,.1), hsla(0,0%,100%,.1)),
-                      -webkit-linear-gradient(left, #f66 50%, rgb(106, 162, 108) 50%);
-
-    background-size: 100% 100%, 200% 100%;
-    background-position: 0 0, 15px 0;
-    border-radius: 25px;
-    box-shadow: inset 0 1px 4px hsla(0,0%,0%,.5),
-                inset 0 0 10px hsla(0,0%,0%,.5),
-                0 0 0 1px hsla(0,0%,0%,.1),
-                0 -1px 2px 2px hsla(0,0%,0%,.25),
-                0 2px 2px 2px hsla(0,0%,100%,.75);
-    cursor: pointer;
-    height: 25px;
-    padding-right: 25px;
-    width: 75px;
-    -webkit-appearance: none;
-    -webkit-transition: .25s;
-}
-
-.checkbox input[type="checkbox"]:after {
-    background-color: #eee;
-    background-image: -webkit-linear-gradient(hsla(0,0%,100%,.1), hsla(0,0%,0%,.1));
-    border-radius: 25px;
-    box-shadow: inset 0 1px 1px 1px hsla(0,0%,100%,1),
-                inset 0 -1px 1px 1px hsla(0,0%,0%,.25),
-                0 1px 3px 1px hsla(0,0%,0%,.5),
-                0 0 2px hsla(0,0%,0%,.25);
-    content: '';
-    display: block;
-    height: 25px;
-    width: 50px;
-}
-.checkbox input[type="checkbox"]:checked {
-    background-position: 0 0, 35px 0;
-    padding-left: 25px;
-    padding-right: 0;
-}
-/* checkbox end*/
+/* (v2 1.4) tolti: il secondo .center (doppione di quello sopra) e lo
+   stile .checkbox input[type=checkbox] (interruttore rosso/verde a
+   gradienti fissi): nessun template usa piu' la classe .checkbox. */
 
 /*ELIMINO le frecce nei campi di inserimento di tipo number*/
     input::-webkit-outer-spin-button,
@@ -317,6 +278,12 @@ import { dataStored } from './data';
         -moz-appearance: textfield;
     }
 
+/* (v2 1.4) restano, di proposito: lampo lightblue alla pressione (feedback
+   dei comandi, anche sulle pagine di comando: non si cambia ora) e il
+   grigio #8c8b8b dei bottoni di riga senza colore di tipo (pause/modify/
+   place/move/save di ComandsRows, Comand4Conf: icone PNG nere, su un fondo
+   scuro a token sparirebbero). Il rosa dei comandi bloccati in testa al
+   file e' uno stato. */
 .button_pressed:active {
     transform: scale(0.9);
     background-color: lightblue;
