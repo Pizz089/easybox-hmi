@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup EasyBox — Produzione (direzione Bambu)</title>
+<!--
+  MOCKUP STATICO (proposta estetica 5/10, parte B). Token = REPORT.md §4.
+  Prima riga impaginata come negli screenshot del pannello di cella del 5/10
+  (screens/production_1920x1080.png); le altre due sono esempi dello stesso
+  formato per mostrare gli stati WORKING e FINITO (con "Rilancia"). Codici
+  pezzo e descrizioni sono inventati (il repo e' pubblico).
+  Modello Bambu: barra di avanzamento della Home in stampa (percentuale e
+  conteggio grandi, barra sottile accent, comandi a tile Skip/Pause/Stop).
+-->
+<style>
+:root {
+  --bg-base:#141414; --bg-surface:#242424; --bg-surface-2:#333333; --bg-input:#2E2E2E;
+  --text-primary:#EDEDED; --text-secondary:#A3A3A3; --text-muted:#8F8F8F; --text-disabled:#5C5C5C;
+  --border-subtle:#333333; --border-default:#474747; --border-strong:#8A8A8A;
+  --accent:#A5F960; --accent-hover:#B9FB82; --accent-active:#8EE63F;
+  --color-success:#4ADE80; --color-warning:#FFA500; --color-danger:#E14747; --color-info:#4FA3F7;
+  --color-success-bg:#1C2E22; --color-warning-bg:#3A2C12; --color-danger-bg:#3A1C1C; --color-info-bg:#15283C;
+  --color-critical:#E14747;
+  --radius-sm:6px; --radius-md:10px; --radius-lg:16px; --radius-btn:14px;
+  --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-5:24px; --space-6:32px;
+  --font-family:'Segoe UI',system-ui,sans-serif;
+  --font-size-xs:12px; --font-size-sm:14px; --font-size-base:16px; --font-size-md:18px; --font-size-lg:22px; --font-size-xl:28px; --font-size-2xl:34px;
+  --font-weight-medium:500; --font-weight-semibold:600; --font-weight-bold:700;
+  --accent-on:#141414; --bg-sidebar:#242424; --bg-icon:#474747; --font-size-display:48px;
+  --rail-width:120px; --touch-target:52px; --touch-target-min:44px; --icon-size-rail:44px; --status-strip-height:56px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg-base); color: var(--text-primary); font-family: var(--font-family); font-size: var(--font-size-base); }
+.app { display: grid; grid-template-columns: var(--rail-width) 1fr; height: 100vh; }
+.rail { background: var(--bg-sidebar); display: flex; flex-direction: column; align-items: center; padding: var(--space-5) 0; gap: var(--space-2); }
+.rail a { width: 96px; min-height: 88px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-1); color: var(--text-secondary); text-decoration: none; font-size: var(--font-size-xs); position: relative; }
+.rail a svg { width: var(--icon-size-rail); height: var(--icon-size-rail); fill: currentColor; }
+.rail a.active { color: var(--accent); }
+.rail .badge { position: absolute; top: 6px; right: 18px; min-width: 22px; height: 22px; border-radius: 11px; background: var(--color-danger); color: #fff; font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); display: flex; align-items: center; justify-content: center; }
+.rail .spacer { flex: 1; }
+.main { display: flex; flex-direction: column; min-width: 0; }
+.strip { height: var(--status-strip-height); display: flex; align-items: center; gap: var(--space-5); padding: 0 var(--space-6); border-bottom: 1px solid var(--border-subtle); }
+.strip .logo { font-weight: var(--font-weight-bold); letter-spacing: .08em; color: var(--text-secondary); }
+.chip { display: inline-flex; align-items: center; gap: var(--space-2); padding: var(--space-1) var(--space-4); border-radius: var(--radius-btn); background: var(--bg-surface); font-weight: var(--font-weight-semibold); font-size: var(--font-size-sm); }
+.dot { width: 10px; height: 10px; border-radius: 50%; }
+.grow { flex: 1; }
+
+.content { flex: 1; padding: var(--space-6); display: flex; flex-direction: column; gap: var(--space-5); min-height: 0; }
+.head { display: flex; align-items: center; gap: var(--space-4); }
+.head h1 { margin: 0 auto 0 0; font-size: var(--font-size-xl); font-weight: var(--font-weight-semibold); }
+.btn { min-height: var(--touch-target); padding: 0 var(--space-5); border: 0; border-radius: var(--radius-btn); font: inherit; font-size: var(--font-size-md); font-weight: var(--font-weight-medium); }
+.btn.primary { background: var(--accent); color: var(--accent-on); }
+.btn.second { background: var(--bg-surface-2); color: var(--text-primary); }
+.btn.critical { background: var(--color-critical); color: #fff; font-weight: var(--font-weight-bold); }
+
+.order { background: var(--bg-surface); border-radius: var(--radius-lg); padding: var(--space-5); display: grid; grid-template-columns: 1.4fr 1fr 1.6fr auto; gap: var(--space-6); align-items: center; }
+.order .piece { font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); }
+.muted { color: var(--text-secondary); }
+.badge { display: inline-flex; align-items: center; gap: var(--space-2); padding: var(--space-1) var(--space-3); border-radius: var(--radius-sm); font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); }
+.st-raw { background: var(--color-info-bg); color: var(--color-info); }
+.st-work { background: var(--color-success-bg); color: var(--color-success); }
+.st-done { background: var(--bg-surface-2); color: var(--text-secondary); }
+.prog .nums { display: flex; align-items: baseline; gap: var(--space-3); margin-bottom: var(--space-2); }
+.prog .big { font-size: var(--font-size-display); font-weight: var(--font-weight-semibold); line-height: 1; }
+.bar { height: 10px; border-radius: 5px; background: var(--bg-base); overflow: hidden; }
+.bar > i { display: block; height: 100%; background: var(--accent); }
+.acts { display: flex; gap: var(--space-3); justify-content: flex-end; width: calc(3 * 96px + 2 * var(--space-3)); } /* colonne allineate anche con 2 azioni */
+.ibtn { width: 96px; height: 88px; border: 0; border-radius: var(--radius-lg); background: var(--bg-surface-2); color: var(--text-primary); font: inherit; font-size: var(--font-size-sm); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-1); }
+.ibtn svg { width: 32px; height: 32px; }
+.ibtn.go svg { fill: var(--accent); } .ibtn.stop svg { fill: var(--color-danger); } .ibtn.del svg { fill: var(--text-secondary); } .ibtn.re svg { fill: var(--accent); }
+.ibtn[disabled] { opacity: .4; }
+.note { position: fixed; right: 12px; bottom: 8px; color: var(--text-muted); font-size: var(--font-size-xs); }
+</style>
+</head>
+<body>
+<div class="app">
+  <nav class="rail" aria-label="Navigazione">
+    <a href="home.html"><svg viewBox="0 0 24 24"><path d="M12 3 2 11h3v9h5v-6h4v6h5v-9h3z"/></svg>Home</a>
+    <a href="robot.html"><svg viewBox="0 0 24 24"><path d="M5 3h3v8h2V3h3v18h-3v-6H8v6H5zM16 7h3v4h2v3h-2v7h-3v-7h-2v-3h2z"/></svg>Controlli</a>
+    <a class="active" href="produzione.html"><svg viewBox="0 0 24 24"><path d="M4 4h16v4H4zm0 6h16v4H4zm0 6h16v4H4z"/></svg>Produzione</a>
+    <a href="#"><svg viewBox="0 0 24 24"><path d="M3 4h18v5H3zm0 6h18v5H3zm0 6h18v4H3z"/></svg>Magazzino</a>
+    <a href="#"><svg viewBox="0 0 24 24"><path d="m7 3-5 9 5 9h10l5-9-5-9zm5 5a4 4 0 1 1 0 8 4 4 0 0 1 0-8z"/></svg>Impostazioni</a>
+    <span class="spacer"></span>
+    <a href="#"><span class="badge">2</span><svg viewBox="0 0 24 24"><path d="M4 4h16v12H8l-4 4zm4 5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm4 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm4 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"/></svg>Allarmi</a>
+  </nav>
+  <div class="main">
+    <header class="strip">
+      <span class="logo">ADMG · EASYBOX</span>
+      <span class="chip"><span class="dot" style="background: var(--color-info)"></span>Cella in HOLD</span>
+      <span class="chip"><span class="dot" style="background: var(--color-success)"></span>PLC collegato</span>
+      <span class="grow"></span><span class="chip">Operatore</span><span class="chip">IT</span>
+    </header>
+    <main class="content">
+      <div class="head">
+        <h1>Produzione</h1>
+        <button class="btn critical">Azzera produzione</button>
+        <button class="btn primary">+ Nuovo ordine</button>
+      </div>
+
+      <section class="order">
+        <div><div class="piece">PZ.000.0001234</div><div class="muted">ESEMPIO · MC1 · PP 28</div></div>
+        <div><span class="badge st-raw">GREZZO</span></div>
+        <div class="prog"><div class="nums"><span class="big">0</span><span class="muted">/ 1 pezzi</span></div><div class="bar"><i style="width:2%"></i></div></div>
+        <div class="acts">
+          <button class="ibtn go"><svg viewBox="0 0 24 24"><path d="M7 4v16l13-8z"/></svg>Avvia</button>
+          <button class="ibtn stop"><svg viewBox="0 0 24 24"><path d="M5 5h14v14H5z"/></svg>Ferma</button>
+          <button class="ibtn del"><svg viewBox="0 0 24 24"><path d="M9 3h6l1 2h4v2H4V5h4zm-3 6h12l-1 12H7z"/></svg>Elimina</button>
+        </div>
+      </section>
+
+      <section class="order">
+        <div><div class="piece">PZ.000.0002345</div><div class="muted">STAFFA · MC1 · PP 31</div></div>
+        <div><span class="badge st-work">IN LAVORAZIONE</span></div>
+        <div class="prog"><div class="nums"><span class="big">7</span><span class="muted">/ 24 pezzi</span></div><div class="bar"><i style="width:29%"></i></div></div>
+        <div class="acts">
+          <button class="ibtn go" disabled><svg viewBox="0 0 24 24"><path d="M7 4v16l13-8z"/></svg>Avvia</button>
+          <button class="ibtn stop"><svg viewBox="0 0 24 24"><path d="M5 5h14v14H5z"/></svg>Ferma</button>
+          <button class="ibtn del" disabled><svg viewBox="0 0 24 24"><path d="M9 3h6l1 2h4v2H4V5h4zm-3 6h12l-1 12H7z"/></svg>Elimina</button>
+        </div>
+      </section>
+
+      <section class="order">
+        <div><div class="piece">PZ.000.0003456</div><div class="muted">PIASTRA · MC1 · PP 12</div></div>
+        <div><span class="badge st-done">FINITO</span></div>
+        <div class="prog"><div class="nums"><span class="big">12</span><span class="muted">/ 12 pezzi</span></div><div class="bar"><i style="width:100%"></i></div></div>
+        <div class="acts">
+          <button class="ibtn re"><svg viewBox="0 0 24 24"><path d="M12 5V2L7 6l5 4V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z"/></svg>Rilancia</button>
+          <button class="ibtn del"><svg viewBox="0 0 24 24"><path d="M9 3h6l1 2h4v2H4V5h4zm-3 6h12l-1 12H7z"/></svg>Elimina</button>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+<div class="note">Mockup statico — righe 2 e 3 di esempio, stesso formato dei dati di cella</div>
+</body>
+</html>
