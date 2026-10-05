@@ -2735,7 +2735,7 @@
         <AttributeList>
           <DataTypeName>Int</DataTypeName>
           <LogicalAddress>%QW640</LogicalAddress>
-          <Name>spare_4</Name>
+          <Name>Part_Length_mm</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="1B6" CompositionName="Comment">
@@ -2760,7 +2760,7 @@
         <AttributeList>
           <DataTypeName>Int</DataTypeName>
           <LogicalAddress>%QW642</LogicalAddress>
-          <Name>spare_5</Name>
+          <Name>Part_Height_mm</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="1BA" CompositionName="Comment">
