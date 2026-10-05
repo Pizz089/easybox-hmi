@@ -329,6 +329,17 @@
     "numColumn": "numero colonne",
     "numLine": "numero righe",
     "generate":"Genera Grigliato",
+    "associate": "Associa al cassetto",
+    "startTotal": "Origine: X {x} mm, Y {y} mm — Totale: {w} × {h} mm",
+    "help": {
+      "referenceGrating": "Quote del grigliato (A–F)",
+      "minBordoX": "A — Bordo laterale X",
+      "minBordoY": "B — Bordo superiore/inferiore Y",
+      "SAFEX": "C — Spaziatura orizzontale tra i pezzi",
+      "SAFEY": "D — Spaziatura verticale tra i pezzi",
+      "widthPiece": "E — Larghezza del pezzo",
+      "heightPiece": "F — Altezza del pezzo"
+    },
     "delete": "Il modello verrà cancellato (nessun cassetto lo usa).",
     "dimensioniPz": "Dimensioni scasso [mm]",
     "tray": "Cassetto",

@@ -329,6 +329,17 @@
     "numColumn": "number of columns",
     "numLine": "number of lines",
     "generate": "Generates Grating",
+    "associate": "Associate with tray",
+    "startTotal": "Origin: X {x} mm, Y {y} mm — Total: {w} × {h} mm",
+    "help": {
+      "referenceGrating": "Grating dimensions (A–F)",
+      "minBordoX": "A — Side margin X",
+      "minBordoY": "B — Top/bottom margin Y",
+      "SAFEX": "C — Horizontal spacing between parts",
+      "SAFEY": "D — Vertical spacing between parts",
+      "widthPiece": "E — Part width",
+      "heightPiece": "F — Part height"
+    },
     "delete": "The model will be deleted (no tray uses it).",
     "dimensioniPz": "Dimensions hole [mm]",
     "tray": "Tray",

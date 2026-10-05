@@ -23,19 +23,22 @@ const el = ref()
 
 <template>
   <div class="view-shell">
+  <!-- (UI v2 fase 1.3) titolo di pagina: stesso testo del bottone che la
+       apre dall'elenco Grigliati -->
+  <h2 class="view-title">{{ $t('grating.importNew') }}</h2>
   <div class="pure-g layout-row">
 
     <div class="pure-u-1 pure-u-md-10-24" >
       <form class="pure-form pure-form-stacked" @submit.prevent>
         <fieldset>
-          <label style="text-align:center" >{{$t('Nome')}}</label>
+          <label class="field-label">{{$t('Nome')}}</label>
           <input type="text" class="pure-input-1" v-model="grating.NAME" :readonly="dataStored?.userLevel < 0" />
 
-          <label class="mt" style="text-align:center" >{{$t('grating.descr')}}</label>
+          <label class="mt field-label">{{$t('grating.descr')}}</label>
           <input type="text" class="pure-input-1" v-model="grating.DESCR" :readonly="dataStored?.userLevel < 0" />
 
           <div class="pure-u-1">
-            
+            <label class="mt field-label">{{ $t('grating.tray') }}</label>
             <select class="pure-u-1" name="trayList" v-model="grating.trayIndex" @change="onChangeTrayList($event)"
               :readonly="dataStored.userLevel < 0">
               <option value="0"> </option>
@@ -43,7 +46,7 @@ const el = ref()
                 <option :value="index + 1" :selected="grating.trayIndex == index + 1"
                         :disabled="(t.FAMILY.trim().length > 0 || t.FLOOR_MAG <= 0)"
                         :class="{ 'optionDeleted': t.FAMILY.trim().length > 0 }">
-                  {{ t.FLOOR_MAG > 0 ? t.FLOOR_MAG : 'OUT' }} - {{ t.DESCR }}
+                  {{ t.FLOOR_MAG > 0 ? t.FLOOR_MAG : $t('common.out') }} - {{ t.DESCR }}
                   <span v-if="t.FAMILY.trim().length > 0">&nbsp;{{ $t('alreadyAssociated') }}</span>
                 </option>
               </template>
@@ -64,7 +67,7 @@ const el = ref()
                grigliato viene associato, e si cambia quando serve dalla
                pagina del cassetto. Lo stesso grigliato ospita piu'
                particolari. -->
-          <label class="mt" style="text-align:center">{{ $t('grating.refPart') }}</label>
+          <label class="mt field-label">{{ $t('grating.refPart') }}</label>
           <select class="pure-u-1" name="partList" v-model="grating.pieceIndex"
             :disabled="dataStored.userLevel < 0">
             <option :value="0">{{ $t('grating.refPartNone') }}</option>
@@ -78,15 +81,15 @@ const el = ref()
 
       <form class="pure-form pure-form-stacked form-spaced" >
         <fieldset>
-          <legend> {{$t('grating.sizes')}}</legend>
+          <legend class="section-label">{{$t('grating.sizes')}}</legend>
 
           <div class="pure-u-1">
             <div class="pure-u-11-24">
-              <label style="text-align:center;"><br>A [mm]</label>
+              <label class="field-label"><br>A [mm]</label>
               <input v-model.number="minBordoX" type="number" min="0" class="pure-input-1" @focus="showHelp('minBordoX')" />
             </div>
             <div class="pure-u-11-24">
-              <label style="text-align:center;"><br>B [mm]</label>
+              <label class="field-label"><br>B [mm]</label>
               <input v-model.number="minBordoY" type="number" min="0" class="pure-input-1" @focus="showHelp('minBordoY')" />
             </div>
           </div>
@@ -94,11 +97,11 @@ const el = ref()
           <div class="pure-u-1">
             <div class="pure-g">
               <div class="pure-u-11-24">
-                <label style="text-align:center;"><br>C [mm]</label>
+                <label class="field-label"><br>C [mm]</label>
                 <input v-model.number="SAFEX" type="number" min="0" class="pure-input-1" @focus="showHelp('SAFEX')" />
               </div>
               <div class="pure-u-11-24">
-                <label style="text-align:center;"><br>D [mm]</label>
+                <label class="field-label"><br>D [mm]</label>
                 <input v-model.number="SAFEY" type="number" min="0" class="pure-input-1" @focus="showHelp('SAFEY')" />
               </div>
             </div>
@@ -107,11 +110,11 @@ const el = ref()
           <div class="pure-u-1">
             <div class="pure-g">
               <div class="pure-u-11-24">
-                <label style="text-align:center;"><br>E [mm]</label>
+                <label class="field-label"><br>E [mm]</label>
                 <input v-model.number="widthPiece" type="number" min="0" class="pure-input-1" @focus="showHelp('widthPiece')" />
               </div>
               <div class="pure-u-11-24">
-                <label style="text-align:center;"><br>F [mm]</label>
+                <label class="field-label"><br>F [mm]</label>
                 <input v-model.number="heightPiece" type="number" min="0" class="pure-input-1" @focus="showHelp('heightPiece')" />
               </div>
             </div>
@@ -120,40 +123,40 @@ const el = ref()
           <div class="pure-u-1">
             <div class="pure-g">
               <div class="pure-u-11-24">
-                <label style="text-align:center;">{{ $t('grating.numColumn') }}</label>
+                <label class="field-label">{{ $t('grating.numColumn') }}</label>
                 <input v-model.number="n_cln" type="number" min="0" class="pure-input-1" />
               </div>
               <div class="pure-u-11-24">
-                <label style="text-align:center;">{{ $t('grating.numLine') }}</label>
+                <label class="field-label">{{ $t('grating.numLine') }}</label>
                 <input v-model.number="n_row" type="number" min="0" class="pure-input-1" />
               </div>
             </div>
           </div>
 
-          <button class="pure-button pure-button-primary action-spaced" type="button" @click="calculateGrid" :disabled="!canCalc">
-            {{ $t('grating.generate') }}
-          </button>
-          <button class="btn-ghost action-spaced reset-btn" type="button" @click="resetAll">
-            {{ $t('common.reset') }}
-          </button>
+          <!-- (UI v2 fase 1.3) Genera (Primary) e Reset (Ghost) su una riga
+               allineata: prima Genera aveva anche la base legacy .pure-button
+               e stava piu' in basso del Reset -->
+          <div class="form-actions">
+            <button class="pure-button-primary" type="button" @click="calculateGrid" :disabled="!canCalc">
+              {{ $t('grating.generate') }}
+            </button>
+            <button class="btn-ghost" type="button" @click="resetAll">
+              {{ $t('common.reset') }}
+            </button>
+          </div>
         </fieldset>
       </form>
       
       <!----------------------------------->
       <div class="pure-u-1 save-row">
-        <button class="pure-button pure-button-primary" @click="saveData()">
+        <button class="pure-button-primary" @click="saveData()">
           {{ $t('Save') }}
         </button>
       </div>
       <!----------------------------------->
       <div class="stats" v-if="ready">
-        <p>
-          <strong>{{ n_row }}</strong> righe × <strong>{{ n_cln }}</strong> colonne
-          <strong>{{ n_row * n_cln }}</strong> pezzi
-        </p>
-        <p>
-          Start: X {{ offsetX.toFixed(1) }} mm, Y {{ offsetY.toFixed(1) }} mm — Totale: {{ width }} × {{ height }} mm
-        </p>
+        <p><strong>{{ $t('grating.rowsCols', { rows: n_row, cols: n_cln, tot: n_row * n_cln }) }}</strong></p>
+        <p>{{ $t('grating.startTotal', { x: offsetX.toFixed(1), y: offsetY.toFixed(1), w: width, h: height }) }}</p>
       </div>
     </div>
 
@@ -189,9 +192,11 @@ const el = ref()
 
     
     <div v-else class="help-image">
-      <h4 style="margin:8px 0 6px;">{{ helpKey }}</h4>
+      <!-- (UI v2 fase 1.3) prima il titolo era il nome interno del campo
+           ("referenceGrating", "minBordoX"...) e la didascalia era italiano
+           fisso: ora un solo titolo tradotto, con la lettera della quota -->
+      <h4 class="help-title">{{ $t('grating.help.' + helpKey) }}</h4>
       <img :src="helpImages[helpKey]" alt="" />
-      <p class="caption">{{ helpCaptions[helpKey] }}</p>
     </div>
   </div>
 </div>
@@ -256,15 +261,6 @@ export default {
         SAFEY: new URL('../../../assets/SAFEY.png', import.meta.url).href,
         widthPiece: new URL('../../../assets/widthPice.png', import.meta.url).href,
         heightPiece: new URL('../../../assets/heightPice.png', import.meta.url).href,
-      },
-      helpCaptions: {
-        referenceGrating: '',
-        minBordoX: 'Bordo laterale X',
-        minBordoY: 'Bordo superiore/inferiore Y',
-        SAFEX: 'Spaziatura orizzontale tra i pezzi',
-        SAFEY: 'Spaziatura verticale tra i pezzi',
-        widthPiece: 'Larghezza del pezzo',
-        heightPiece: 'Altezza del pezzo',
       },
     }
   },
@@ -525,11 +521,16 @@ export default {
   max-width: 100%;
   height: auto;
   display: block;
+  /* i disegni sono tratti e lettere NERE su trasparente, fatti per il
+     fondo bianco: sul tema scuro sparivano. Lastra chiara come un foglio
+     tecnico (niente filtri: cambierebbero il rosso delle frecce). */
+  background: var(--text-primary);
+  border-radius: var(--radius-md);
+  padding: var(--space-2);
+  box-sizing: border-box;
 }
-.help-image .caption {
-  color: var(--text-muted);
-  font-size: var(--font-size-sm);
-  margin-top: var(--space-2);
+.help-title {
+  margin: var(--space-2) 0;
 }
 
 .help {
@@ -578,11 +579,21 @@ export default {
 .form-spaced {
   margin-top: var(--space-4);
 }
-.action-spaced {
+/* legend come etichetta di sezione: pure.css la colorava #333 con riga
+   #E5E5E5, quasi invisibile sul fondo scuro */
+.form-spaced legend.section-label {
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-default);
+  padding-bottom: var(--space-2);
+}
+.form-actions {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
   margin-top: var(--space-4);
 }
-.reset-btn {
-  margin-left: var(--space-2);
+.field-label {
+  text-align: center;
 }
 .save-row {
   margin-top: var(--space-2);
