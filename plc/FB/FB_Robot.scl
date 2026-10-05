@@ -215,6 +215,11 @@ BEGIN
 	                "DB_RobotMission".Command := "CMD_RestartMainProg";
 	                "DB_MQTT".lastCmdReceived := 0;
 	                #WAIT_END_MISSION := FALSE;
+	                // il restart del programma robot abbandona la missione in corso (5/10):
+	                // si azzerano le catene come per i movimenti manuali, altrimenti
+	                // restano ad aspettare un "eseguito" che non arrivera' mai.
+	                #RESET_ALL_DISPATCH := TRUE;
+	                #MissionCode := 0;
 	        END_CASE;
 	    END_IF;
 	    
@@ -487,6 +492,48 @@ BEGIN
 	            "DB_RobotMission".Command := 0;
 	        ELSIF "DB_RobotMissionStatus".StatusCode = "cmd_rejected" OR "DB_RobotMissionStatus".StatusCode = "cmd_aborted" THEN
 	            #WAIT_END_MISSION := FALSE;
+	            // COMANDO MANUALE RIFIUTATO O ABORTITO (5/10): senza missione in
+	            // corso si azzera anche il comando. Altrimenti il 4/5 resta esposto
+	            // e la sorveglianza qui sotto lo attribuirebbe alla missione dopo.
+	            IF #Dispatcher["_master"] = 0 THEN
+	                "DB_RobotMission".Command := 0;
+	            END_IF;
+	        END_IF;
+	    END_IF;
+	    
+	    // ---- Sorveglianza risposta robot (5/10) ----
+	    // Le risposte 4 (abortito) e 5 (rifiutato) erano gestite solo qui sopra,
+	    // per i comandi manuali, e nelle catene chele. Le catene pezzi e cassetto
+	    // restavano ad aspettare un 3 che non arriva: cella ferma con Error = 0 e
+	    // nessuna spiegazione. Con una missione in corso e un comando al robot,
+	    // una risposta anomala che dura 1 s diventa un errore dichiarato, che il
+	    // reset (99) toglie. Il secondo di filtro evita di leggere lo StatusCode
+	    // rimasto dal comando precedente nei primi cicli dopo un comando nuovo.
+	    // Esclusi: lo scan del reset (99, AUX, ResetAreaRobot), in cui il master
+	    // e' ancora valorizzato; l'HOLD, in cui il programma robot e' in pausa; la
+	    // ripartenza del programma dopo HOLD o restart (FB8 dispatcher 0 e 1), che
+	    // puo' durare fino a 17 s.
+	    // Il codice 6 ("interrotto") NON e' gestito: non e' fra le costanti cmd_
+	    // e va prima confermato col robotista.
+	    // PollingDB[1] e' un timer gia' dichiarato e mai usato: nessuna variabile
+	    // nuova, interfaccia invariata.
+	    #PollingDB[1](IN := #Dispatcher["_master"] <> 0
+	                  AND #Error = 0
+	                  AND "DB_RobotMission".Command <> 0
+	                  AND NOT #HOLD
+	                  AND NOT #RESET_ALL_DISPATCH
+	                  AND NOT "Start_AUX"
+	                  AND NOT "ResetAreaRobot"
+	                  AND "DB_Robot_Efort".dispatcher[0] = 0
+	                  AND "DB_Robot_Efort".dispatcher[1] = 0
+	                  AND ("DB_RobotMissionStatus".StatusCode = "cmd_aborted"
+	                  OR "DB_RobotMissionStatus".StatusCode = "cmd_rejected"),
+	                  PT := T#1s);
+	    IF #PollingDB[1].Q THEN
+	        IF "DB_RobotMissionStatus".StatusCode = "cmd_aborted" THEN
+	            #Error := 961;   // missione abortita dal robot
+	        ELSE
+	            #Error := 962;   // comando rifiutato dal robot
 	        END_IF;
 	    END_IF;
 	END_REGION
@@ -800,7 +847,15 @@ BEGIN
 	                    #Dispatcher["_master"] := 120;
 	                END_IF;
 	            120: //gripper OK -> start mission
-	                IF #Gripper_ID[1] = #GripperRequested AND #Dispatcher["get_TCP_Data"] = 0 THEN
+	                // TCP NON AGGIORNATO = NIENTE MISSIONE (5/10): se get_TCP_Data chiude
+	                // in errore (2205 pinza assente dal DB, 99 errore DB) il robot ha
+	                // ancora il TCP della pinza precedente. Prima si lanciava comunque il
+	                // prelievo pallet; ora la missione si chiude e resta l'errore.
+	                IF #Dispatcher["get_TCP_Data"] = 0 AND #Error <> 0 THEN
+	                    #MissionCode := 0;
+	                    #MCRequested := 0;
+	                    #Dispatcher["_master"] := 0;
+	                ELSIF #Gripper_ID[1] = #GripperRequested AND #Dispatcher["get_TCP_Data"] = 0 THEN
 	                    #Dispatcher["_Pallet_TRAY_to_Robot"] := 10;
 	                    #Dispatcher["_master"] := 130;
 	                END_IF;
@@ -1020,17 +1075,43 @@ BEGIN
 	                
 	                /////////////////////////// 
 	            600: //MISSION_UnloadPartOnRobot
-	                //se comando questa missione ho la pinza presente e piena
-	                IF #Gripper_ID[1] = #GripperRequested THEN
+	                // SI SCARICA CON LA PINZA CHE C'E' (5/10). Il confronto con
+	                // GripperRequested era un residuo: FB204 lancia questa missione da 35,
+	                // 52, 58, 95 e 104 senza impostarlo, dopo un riavvio vale 0 e il ramo
+	                // gancio di get_TCP_Data lo azzera. Il master restava qui per sempre,
+	                // senza errore. Part_Robot_to_TRAY non lo usa: lo si allinea alla pinza
+	                // a bordo e si parte.
+	                IF #Gripper_ID[1] > 0 THEN
+	                    #GripperRequested := #Gripper_ID[1];
 	                    #Dispatcher["_Part_Robot_to_TRAY"] := 10;
 	                    #Dispatcher["_master"] := 630;
+	                ELSE
+	                    #Error := 964;   // scarico pezzo senza pinza registrata a bordo
+	                    #MissionCode := 0;
+	                    #Dispatcher["_master"] := 0;
 	                END_IF;
 	            630:
-	                IF NOT #GripperOccuped["DB_RobotMission".Gripper_Side] AND
-	                    ("DB_RobotMissionStatus".StatusCode = "cmd_executed" OR "DB_RobotMissionStatus".StatusCode = "cmd_waitingNewCmd") AND
-	                    #Dispatcher["_Part_Robot_to_TRAY"] = 0
+	                // LATO CONFRONTATO, NON USATO COME INDICE (5/10). Gripper_Side vale 0
+	                // dopo STOP->RUN (DB_RobotMission non ritentivo) finche' il 30 di
+	                // Part_Robot_to_TRAY non lo scrive, e questo stato lo legge prima:
+	                // GripperOccuped[0] e' fuori dall'array [1..2], errore di accesso.
+	                // Prima il 600 restava fermo dopo un riavvio e qui non si arrivava.
+	                IF (("DB_RobotMission".Gripper_Side = 1 AND NOT #GripperOccuped[1])
+	                    OR ("DB_RobotMission".Gripper_Side = 2 AND NOT #GripperOccuped[2]))
+	                    AND ("DB_RobotMissionStatus".StatusCode = "cmd_executed" OR "DB_RobotMissionStatus".StatusCode = "cmd_waitingNewCmd")
+	                    AND #Dispatcher["_Part_Robot_to_TRAY"] = 0
 	                THEN
 	                    "DB_RobotMission".Command := 0;  ///\\\
+	                    #MissionCode := 0;
+	                    #MCRequested := 0;
+	                    #Dispatcher["_master"] := 0;
+	                ELSIF #Dispatcher["_Part_Robot_to_TRAY"] = 0
+	                    AND (#Error <> 0
+	                    OR ("DB_RobotMission".Gripper_Side <> 1 AND "DB_RobotMission".Gripper_Side <> 2))
+	                THEN
+	                    // la catena ha chiuso in errore (es. 949 porta operatore aperta)
+	                    // prima di scrivere il lato: si chiude la missione, resta l'errore
+	                    "DB_RobotMission".Command := 0;
 	                    #MissionCode := 0;
 	                    #MCRequested := 0;
 	                    #Dispatcher["_master"] := 0;
@@ -1078,6 +1159,13 @@ BEGIN
 	            800://MISSION_ReleaseTray
 	                IF #Dispatcher["Release_TRAY"] > 10 THEN
 	                    #Dispatcher["_master"] := 810;
+	                ELSIF #Dispatcher["Release_TRAY"] = 0 THEN
+	                    // CHIUSURA SE IL 10 HA GIA' RIFIUTATO (5/10): porta aperta (949),
+	                    // pinza assente (2022) o nessun cassetto fuori (20001) portano la
+	                    // catena a 0 nello stesso scan in cui la si lancia. L'800 aspettava
+	                    // "> 10" per sempre e MissionCode restava a 203.
+	                    #MissionCode := 0;
+	                    #Dispatcher["_master"] := 0;
 	                END_IF;
 	            810:
 	                // CHIUDE ANCHE IN ERRORE (19/9): vedi nota al 750.
@@ -2000,11 +2088,14 @@ BEGIN
 	                        // la cerca e basta — stessa variabile che _Set_Gripper_OnBoard
 	                        // usera' per scrivere i registri.
 	                        IF #GripperRequested > 0 THEN
+	                            // GEMELLA SOLO CON SUB_POS VALORIZZATO (5/10, concordato 1/9): una pinza
+	                            // singola ha SUB_POS = 0, e "SUB_POS in (0)" tirava dentro tutte le altre
+	                            // pinze singole a scaffale come se fossero il suo lato 2.
 	                            #queryTemp := CONCAT_STRING(IN1 := 'select X,Y,Z,X_rot,Y_rot,Z_ROT, APPROACH_TYPE, APPROACH_X, APPROACH_Y, APPROACH_Z, ID from COORDINATES_GRIPPER_SHELF where id=',
 	                                                        IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#GripperRequested),
-	                                                        IN3 := ' OR SUB_POS in (select sub_pos from COORDINATES_GRIPPER_SHELF where id=',
+	                                                        IN3 := ' OR (SUB_POS>0 AND SUB_POS in (select sub_pos from COORDINATES_GRIPPER_SHELF where id=',
 	                                                        IN4 := "INT_TO_STRING_WITHOUT_SIGN"(#GripperRequested),
-	                                                        IN5 := ') order by gripper_sub_pos');
+	                                                        IN5 := ')) order by gripper_sub_pos');
 	                            #queryStartExecution := TRUE;
 	                            #Dispatcher["_Gripper_TRAY_to_Robot"] := 20;
 	                        ELSE
@@ -3573,15 +3664,22 @@ BEGIN
 	                    "DB_RobotMission".Object_Type := "Part";
 	                    "DB_RobotMission".Unit_code := #MCRequested + 10;
 	                    "DB_RobotMission".Gripper_code := #GripperRequested;
+	                    // LATO SEMPRE DECISO (5/10): mancava l'ELSE. Con la doppia e il lato 2
+	                    // pieno, o con la singola piena, Gripper_Side restava quello della
+	                    // missione precedente e il robot prelevava con un lato occupato. Il lato
+	                    // 1 della doppia e' del grezzo: il finito non ci va.
+	                    "DB_executeQuery".readyForNextQuery := true;
 	                    IF (#Gripper_ID[2] <> 0 AND NOT #GripperOccuped[2]) THEN
 	                        "DB_RobotMission".Gripper_Side := 2;
+	                        #Dispatcher["_Part_MC_to_Robot"] := 37;
 	                    ELSIF (#Gripper_ID[2] = 0 AND #Gripper_ID[1] <> 0 AND NOT #GripperOccuped[1]) THEN
 	                        "DB_RobotMission".Gripper_Side := 1;
+	                        #Dispatcher["_Part_MC_to_Robot"] := 37;
+	                    ELSE
+	                        #Error := 18;   // nessun lato libero adatto al finito
+	                        #Dispatcher["_Part_MC_to_Robot"] := "_Part_MC_to_Robot" * 100 + 1;
 	                    END_IF;
 	                    //"DB_RobotMission".Option
-	                    
-	                    "DB_executeQuery".readyForNextQuery := true;
-	                    #Dispatcher["_Part_MC_to_Robot"] := 37;
 	                ELSIF "DB_executeQuery".dataError THEN
 	                    "DB_executeQuery".readyForNextQuery := true;
 	                    
@@ -3712,12 +3810,14 @@ BEGIN
 	                        END_IF;
 	                    ELSE
 	                        #Error := 19001;
-	                        #Dispatcher["Extract_TRAY"] := 19001;
+	                        // la catena chiude anche in errore (5/10): il parcheggio a 19001/19002
+	                        // teneva il 750 fermo e MissionCode a 202 fino al reset
+	                        #Dispatcher["Extract_TRAY"] := 0;
 	                    END_IF;
 	                ELSE
 	                    IF "DB_BOX_1".ExtractedTray <> #Tray_ID THEN
 	                        #Error := 19002;
-	                        #Dispatcher["Extract_TRAY"] := 19002;
+	                        #Dispatcher["Extract_TRAY"] := 0;   // vedi nota al 19001
 	                    END_IF;
 	                END_IF;
 	                IF #Dispatcher["Extract_TRAY"] = 10 THEN
@@ -3760,8 +3860,18 @@ BEGIN
 	                END_IF;
 	                
 	            20:  // wait result
-	                IF "DB_executeQuery".dataReady AND NOT "DB_executeQuery".dataError THEN
+	                // ZERO RIGHE = CASSETTO SENZA QUOTE (5/10). Con FB6 corretto "zero
+	                // righe" non e' dataError: il 30 leggeva rows[0] rimasto dalla query
+	                // PRECEDENTE e il robot andava a estrarre con quote altrui. Dopo le
+	                // cancellazioni del 29/9 e' un caso reale.
+	                IF "DB_executeQuery".dataReady AND NOT "DB_executeQuery".dataError
+	                    AND NOT "DB_executeQuery".noData THEN
 	                    #Dispatcher["Extract_TRAY"] := 30;
+	                ELSIF "DB_executeQuery".dataReady AND NOT "DB_executeQuery".dataError THEN
+	                    #Error := 19004;   // nessuna riga in COORDINATES_FOR_EXTRACT per il cassetto
+	                    "DB_executeQuery".readyForNextQuery := TRUE;
+	                    #queryTemp := '';
+	                    #Dispatcher["Extract_TRAY"] := 0;
 	                ELSIF "DB_executeQuery".dataReady AND "DB_executeQuery".dataError THEN
 	                    #Error := 99; //DB ERROR
 	                    "DB_executeQuery".readyForNextQuery := TRUE;
@@ -3893,12 +4003,22 @@ BEGIN
 	                END_IF;
 	                
 	            20: // wait result
-	                IF "DB_executeQuery".dataReady AND NOT "DB_executeQuery".dataError THEN
+	                // ZERO RIGHE (5/10): vedi nota al 20 di Extract_TRAY. Qui il cassetto
+	                // rientrerebbe con le quote di un altro.
+	                // L'errore DB adesso chiude la catena (era parcheggiata a 99): l'810
+	                // aspetta Release_TRAY = 0 e senza chiusura MissionCode restava a 203.
+	                IF "DB_executeQuery".dataReady AND NOT "DB_executeQuery".dataError
+	                    AND NOT "DB_executeQuery".noData THEN
 	                    #Dispatcher["Release_TRAY"] := 30;
+	                ELSIF "DB_executeQuery".dataReady AND NOT "DB_executeQuery".dataError THEN
+	                    #Error := 20009;   // nessuna riga in COORDINATES_FOR_EXTRACT per il cassetto estratto
+	                    "DB_executeQuery".readyForNextQuery := TRUE;
+	                    #queryTemp := '';
+	                    #Dispatcher["Release_TRAY"] := 0;
 	                ELSIF "DB_executeQuery".dataError THEN
 	                    #Error := 99;
 	                    "DB_executeQuery".readyForNextQuery := TRUE;
-	                    #Dispatcher["Release_TRAY"] := 99;
+	                    #Dispatcher["Release_TRAY"] := 0;
 	                END_IF;
 	                
 	            30:  // prepare mission data
@@ -4041,20 +4161,26 @@ BEGIN
 	                END_IF;
 	                
 	            20: //wait answer
-	                IF "DB_executeQuery".dataReady AND NOT "DB_executeQuery".dataError THEN
+	                // ZERO RIGHE PRIMA DEL SUCCESSO (5/10). Il ramo noData stava dopo quello
+	                // di successo, che e' vero anche con zero righe: era irraggiungibile, e
+	                // il 30 mandava al robot le dimensioni TCP della query precedente.
+	                // La ricerca gancio (22-26, TODO mai finito) non parte piu' da qui:
+	                // pinza a bordo assente dal database = errore dichiarato.
+	                IF "DB_executeQuery".dataReady AND NOT "DB_executeQuery".dataError
+	                    AND "DB_executeQuery".noData THEN
+	                    "DB_executeQuery".readyForNextQuery := TRUE;
+	                    #queryTemp := '';
+	                    #queryStartExecution := FALSE;
+	                    #Error := 2205;   // pinza a bordo assente da GRIPPERS / GRIPPER_HOOK
+	                    #Dispatcher["get_TCP_Data"] := 0;
+	                ELSIF "DB_executeQuery".dataReady AND NOT "DB_executeQuery".dataError THEN
 	                    #Dispatcher["get_TCP_Data"] := 30;
-	                ELSIF "DB_executeQuery".dataReady AND "DB_executeQuery".noData THEN
-	                    //#Error := -999;  //TODO: Devo cercare una pinza che ha il gancio
-	                    #Dispatcher["_Gripper_Hook_Search"] := 10;
-	                    "DB_executeQuery".readyForNextQuery := true; //****
-	                    
-	                    #Dispatcher["get_TCP_Data"] := 22;
-	                    
 	                ELSIF "DB_executeQuery".dataError THEN
-	                    //ALARM
+	                    // chiusura anche in errore DB (5/10): il parcheggio a 99 lasciava
+	                    // appesi i chiamanti (120, 960, 980, Declare 50) fino al reset
 	                    "DB_executeQuery".readyForNextQuery := true; //****
 	                    #Error := 99;
-	                    #Dispatcher["get_TCP_Data"] := 99;
+	                    #Dispatcher["get_TCP_Data"] := 0;
 	                END_IF;
 	                
 	            22:
@@ -4373,23 +4499,50 @@ BEGIN
 	                ;
 	                
 	            10..15: // Update DB -----------------------------------------
-	                IF "SqlCommands".sqlCommands[0] = '' THEN
+	                // NOT queryStartExecution (5/10): questa catena la lancia anche FB204
+	                // (36, 37, 41, riconciliazione al 50), in modo asincrono. Se nello
+	                // stesso scan un'altra catena di FB7 ha appena composto la sua query,
+	                // il ponte e' ancora vuoto ma queryTemp e' occupato: non va sovrascritto.
+	                IF "SqlCommands".sqlCommands[0] = '' AND NOT #queryStartExecution THEN
 	                    #pieceReq := DINT_TO_INT("DB_MC1".order.PIECE);
 	                    IF (#MCRequested = 2) THEN
 	                        #pieceReq := DINT_TO_INT("DB_MC2".order.PIECE);
 	                    END_IF;
+	                    // MACCHINA DI DEFAULT MC1 (5/10): a riposo MCRequested vale 0 e la
+	                    // UPDATE andava su PARENT 'MC_0%', nessuna riga: il DB non seguiva i
+	                    // comandi 36, 37 e 41 del pannello. La cella ha una sola macchina.
+	                    #temp := #MCRequested;
+	                    IF #temp <= 0 THEN
+	                        #temp := 1;
+	                    END_IF;
 	                    #queryTemp := CONCAT(IN1 := 'UPDATE POSITION SET STATUS=',
 	                                         IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#Dispatcher["updatePartOnMC"] - 10),
 	                                         IN3 := ' WHERE PARENT like $'MC_',
-	                                         IN4 := "INT_TO_STRING_WITHOUT_SIGN"(#MCRequested),
+	                                         IN4 := "INT_TO_STRING_WITHOUT_SIGN"(#temp),
 	                                         IN5 := '%$' AND PARENT NOT LIKE $'%pallet%$' ');  //AND Part_Type='
 	                    //IN6 := "INT_TO_STRING_WITHOUT_SIGN"(#pieceReq));
 	                    #queryStartExecution := TRUE;
 	                    
-	                    IF (#MCRequested = 1) THEN
-	                        "DB_MC1".piecepresent[1] := DINT_TO_INT("DB_MC1".order.PIECE);
-	                    ELSIF (#MCRequested = 2) THEN
-	                        "DB_MC1".piecepresent[2] := DINT_TO_INT("DB_MC2".order.PIECE);
+	                    // REGISTRO PEZZO IN MACCHINA (5/10). EMPTY vuol dire vuota: registro
+	                    // a zero. Prima si scriveva order.PIECE anche per EMPTY, e dopo un
+	                    // prelievo il 60 di Part_MC_to_Robot azzerava il registro e qui
+	                    // tornava subito "pieno".
+	                    // Per RAW e FINISHED l'ordine si scrive SOLO a registro vuoto: un
+	                    // valore gia' presente l'ha messo chi sa cosa c'e' in morsa (FB204
+	                    // prima del deposito, la dichiarazione 36 dal pannello) e l'ordine,
+	                    // a riposo, puo' valere zero o essere un altro.
+	                    IF #temp = 1 THEN
+	                        IF #Dispatcher["updatePartOnMC"] - 10 = DINT_TO_INT("EMPTY") THEN
+	                            "DB_MC1".piecepresent[1] := 0;
+	                        ELSIF "DB_MC1".piecepresent[1] = 0 THEN
+	                            "DB_MC1".piecepresent[1] := DINT_TO_INT("DB_MC1".order.PIECE);
+	                        END_IF;
+	                    ELSIF #temp = 2 THEN
+	                        IF #Dispatcher["updatePartOnMC"] - 10 = DINT_TO_INT("EMPTY") THEN
+	                            "DB_MC2".piecepresent[1] := 0;
+	                        ELSIF "DB_MC2".piecepresent[1] = 0 THEN
+	                            "DB_MC2".piecepresent[1] := DINT_TO_INT("DB_MC2".order.PIECE);
+	                        END_IF;
 	                    END_IF;
 	                    
 	                    #Dispatcher["updatePartOnMC"] := 20;
@@ -5148,6 +5301,15 @@ BEGIN
 	    END_IF;
 	    
 	    //Dispatchers value
+	    // GRIPPER/ROBOT NEL REFRESH (5/10, concordato 24/7): era l'unico one-shot
+	    // che il 90 non ripubblicava. Va accodato DOPO i 32 DISPATCH: il refresh
+	    // ne inserisce piu' di quanti il buffer d'invio (11 posti, circolare) ne
+	    // tenga, e sopravvivono solo gli ultimi. Il 90 mette Dispatcher_old a -1:
+	    // lo si annota in #temp prima che il FOR lo riallinei.
+	    #temp := 0;
+	    IF #Dispatcher_old[31] = -1 THEN
+	        #temp := 1;
+	    END_IF;
 	    FOR #i := 0 TO 31 DO
 	        IF #Dispatcher_old[#i] <> #Dispatcher[#i] THEN
 	            "FC_MQTT"(insert := true,
@@ -5158,6 +5320,12 @@ BEGIN
 	            #Dispatcher_old[#i] := #Dispatcher[#i];
 	        END_IF;
 	    END_FOR;
+	    IF #temp = 1 THEN
+	        "FC_MQTT"(insert := true,
+	                  send := false,
+	                  topic := 'FROM_PLANT/GRIPPER/ROBOT',
+	                  payload := STRING_TO_WSTRING("INT_TO_STRING_WITHOUT_SIGN"(#Gripper_ID[1])));
+	    END_IF;
 	    
 	END_REGION
 	
@@ -5213,6 +5381,48 @@ BEGIN
 	        "Q_PushEnable_MC" := FALSE;
 	        "Ok_PushSpinta_MC" := FALSE;
 	        "Ok_PushArrivo_MC" := FALSE;
+	        // e il consenso di fase 2 della missione 16 (5/10): stesso motivo
+	        "Ok_Phase2_MC" := FALSE;
+	        
+	        // COMANDO MANUALE CON FB204 IN CICLO (5/10). I comandi manuali in HOLD
+	        // (home, posizionamenti, restart programma) e la dichiarazione 35 azzerano
+	        // le catene e MissionCode senza errore: FB204, fermo ad aspettare una
+	        // missione, leggeva "MissionCode = 0" come missione riuscita e andava
+	        // avanti (es. 57 -> 58 -> ricetta e start con la morsa vuota).
+	        // Il reset robot (99) e AUX riportano gia' FB204 a 0 (qui il master e'
+	        // gia' 0 per il 99, e AUX lo azzera piu' sotto). Per gli altri comandi:
+	        //   - stati di attesa missione fuori lavorazione (lista della guardia D2
+	        //     di FB204 senza il 95): 9999 con allarme 959, si riparte dal pannello
+	        //     dopo aver dichiarato lo stato della cella;
+	        //   - 95 (HAAS in lavorazione): non si abbandona il ciclo macchina, si
+	        //     salta al substate 6 e si aspetta la fine ciclo;
+	        //   - tutti gli altri stati restano dove sono.
+	        // Si ritira la query prenotata di FB204 (il ponte e' appena stato
+	        // svuotato) ma NON queryTemp: il rilevamento "query persa" di FB204 la
+	        // rifa' da solo.
+	        IF #RESET_ALL_DISPATCH AND "DB_MC1".Dispatcher["_master"] <> 0 THEN
+	            IF "DB_MC1".Dispatcher["_master"] = 95 THEN
+	                "DB_MC1".subState := 6;
+	            ELSIF ("DB_MC1".Dispatcher["_master"] = 30 AND ("DB_MC1".subState = 1 OR "DB_MC1".subState = 2))
+	                OR "DB_MC1".Dispatcher["_master"] = 35
+	                OR "DB_MC1".Dispatcher["_master"] = 43
+	                OR "DB_MC1".Dispatcher["_master"] = 44
+	                OR "DB_MC1".Dispatcher["_master"] = 46
+	                OR ("DB_MC1".Dispatcher["_master"] >= 50 AND "DB_MC1".Dispatcher["_master"] <= 59)
+	                OR "DB_MC1".Dispatcher["_master"] = 96
+	                OR "DB_MC1".Dispatcher["_master"] = 965
+	                OR "DB_MC1".Dispatcher["_master"] = 966
+	                OR ("DB_MC1".Dispatcher["_master"] >= 103 AND "DB_MC1".Dispatcher["_master"] <= 105)
+	            THEN
+	                "FC_MQTT"(insert := true,
+	               send := false,
+	               topic := 'FROM_PLANT/ALARM/MC1',
+	               payload := STRING_TO_WSTRING('959'));   // ciclo interrotto da comando manuale
+	                "DB_MC1".io_out.startWork := FALSE;
+	                "DB_MC1".Dispatcher["_master"] := 9999;
+	            END_IF;
+	            "DB_MC1".queryStartExecution := FALSE;
+	        END_IF;
 	        
 	        #RESET_ALL_DISPATCH := FALSE;
 	        

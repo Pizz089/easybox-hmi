@@ -32,23 +32,74 @@ BEGIN
 	        "DB_MQTT".control.enable := FALSE;
 	    END_IF;
 	    
-	    //SUBSCRIPTION
+	    // RISOTTOSCRIZIONE A CONNESSIONE AVVENUTA (5/10, concordata 24/7).
+	    // Prima la sottoscrizione partiva nello stesso istante della
+	    // riabilitazione, a connessione non ancora stabilita: LMQTT prende il
+	    // fronte di subscribe solo da connesso (16#7004) e lo perdeva. Dopo un
+	    // riavvio del broker il PLC restava sordo fino ad AUX.
+	    // Adesso "testmqtt" vuol dire "sottoscrizione da fare". Lo alzano:
+	    //   - ogni (ri)connessione: LMQTT passa sempre da 16#7003 (connecting),
+	    //     e con clean session il broker ha dimenticato la sottoscrizione;
+	    //   - un errore del client, la riabilitazione dopo errore (timeout[1]);
+	    //   - AUX, ResetAreaRobot, l'avvio del PLC (OB_startUp).
+	    // La sottoscrizione parte a client connesso, senza pubblicazioni in
+	    // corso o pronte e senza un "done" rimasto da un publish. testmqtt si
+	    // abbassa SOLO col SUBACK (done con subscribe alto): se non arriva,
+	    // dopo 6 s subscribe scende e si ritenta alla prossima occasione.
+	    // DB_MQTT.timeout[4] non serve piu' e resta libero.
 	    "DB_MQTT".timeout[1](IN := NOT "DB_MQTT".control.enable,
 	                         PT := t#1s);
-	    
-	    IF "DB_MQTT".timeout[1].Q OR "testmqtt" OR "Start_AUX" OR "ResetAreaRobot" THEN
+	    IF "DB_MQTT".timeout[1].Q THEN
 	        "DB_MQTT".control.enable := TRUE;
-	        
+	        "testmqtt" := TRUE;
+	    END_IF;
+	    
+	    IF "DB_MQTT".control.enable
+	        AND ("DB_MQTT".output.error OR "DB_MQTT".output.status = 16#7003)
+	    THEN
+	        "testmqtt" := TRUE;
+	    END_IF;
+	    
+	    IF "Start_AUX" OR "ResetAreaRobot" THEN
+	        "DB_MQTT".control.enable := TRUE;
+	        "testmqtt" := TRUE;
+	    END_IF;
+	    
+	    //SUBSCRIPTION
+	    // Parte solo nella chiamata d'invio (Net6, subito dopo LMQTT: stato e
+	    // done sono quelli appena aggiornati) e solo con timeout[2] a riposo:
+	    // altrimenti, dopo un timeout, subscribe salirebbe e scenderebbe nella
+	    // stessa chiamata senza che LMQTT lo veda mai.
+	    IF #send
+	        AND NOT "DB_MQTT".timeout[2].Q
+	        AND "testmqtt"
+	        AND "DB_MQTT".control.enable
+	        AND "DB_MQTT".output.status = 16#7004
+	        AND NOT "DB_MQTT".output.done
+	        AND NOT "DB_MQTT".control.publish
+	        AND NOT "DB_MQTT".readyToSend
+	        AND NOT "DB_MQTT".control.subscribe
+	    THEN
 	        "DB_MQTT".mqttTopic := STRING_TO_WSTRING('TO_PLANT/CMD/#');
 	        "DB_MQTT".control.subscribe := TRUE;
 	    END_IF;
 	    
-	    "DB_MQTT".timeout[2](IN := "DB_MQTT".control.enable AND "DB_MQTT".control.subscribe,
-	                         PT := T#800ms);
+	    // SUBACK ricevuto: le pubblicazioni sono ferme finche' subscribe e'
+	    // alto (Prepare_to_SEND), quindi questo done e' della sottoscrizione.
+	    // Si abbassa subito anche subscribe: le pubblicazioni ripartono.
+	    IF "DB_MQTT".control.subscribe AND "DB_MQTT".output.done THEN
+	        "testmqtt" := FALSE;
+	        "DB_MQTT".control.subscribe := FALSE;
+	    END_IF;
+	    
+	    // 6 s: piu' del timeOut di LMQTT (5 s, OB1 rete 6). Con 800 ms un SUBACK
+	    // lento lasciava ripartire le pubblicazioni con LMQTT ancora in
+	    // sottoscrizione, e il done tardivo veniva preso per quello del publish.
+	    "DB_MQTT".timeout[2](IN := "DB_MQTT".control.subscribe,
+	                         PT := T#6s);
 	    
 	    IF "DB_MQTT".timeout[2].Q THEN
 	        "DB_MQTT".control.subscribe := FALSE;
-	        "testmqtt" := FALSE;
 	    END_IF;
 	    
 	END_REGION
@@ -173,6 +224,14 @@ BEGIN
 	        END_IF;
 	        
 	        IF NOT "DB_MQTT".control.enable THEN
+	            RETURN;
+	        END_IF;
+	        
+	        // SOTTOSCRIZIONE IN CORSO (5/10): mqttTopic e' lo stesso campo per
+	        // publish e subscribe, e LMQTT lo legge per piu' cicli. Finche' subscribe
+	        // e' alto (fino al SUBACK, al massimo 6 s) non si prepara nessuna
+	        // pubblicazione: i messaggi restano nel buffer e partono subito dopo.
+	        IF "DB_MQTT".control.subscribe THEN
 	            RETURN;
 	        END_IF;
 	        

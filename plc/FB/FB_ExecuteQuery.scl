@@ -46,12 +46,19 @@ BEGIN
 	    #queryTemp := CONCAT(IN1 := 'SELECT TRAY,X,Y,Z,X_ROT,Y_ROT,Z_ROT from COORDINATES_FOR_EXTRACT where tray=',
 	                         IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#params[0]));
 	ELSIF #query = 'tcpData' THEN
+	    // ORDINE DELLE RIGHE GARANTITO (5/10): get_TCP_Data legge rows[0] come
+	    // lato 1 e rows[1] come lato 2, ma "id in (a,b)" senza ORDER BY non
+	    // garantisce l'ordine. Torna giusto solo se l'ID del lato 1 e' il
+	    // minore. L'inizio della stringa resta 'select X_BODY+X_CLAW': FB7
+	    // (get_TCP_Data 15) riconosce la presa in carico da quello.
 	    IF ("DB_Robot".Gripper_ID[1] <> 0 AND "DB_Robot".Gripper_ID[2] <> 0) THEN
 	        #queryTemp := CONCAT(IN1 := 'select X_BODY+X_CLAW as X,Y_BODY+Y_CLAW as Y,Z_BODY+Z_CLAW as Z, VALVES, X_ROT, Y_ROT, Z_ROT from grippers where id in (',
 	                             IN2 := "INT_TO_STRING_WITHOUT_SIGN"("DB_Robot".Gripper_ID[1]),
 	                             IN3 := ',',
 	                             IN4 := "INT_TO_STRING_WITHOUT_SIGN"("DB_Robot".Gripper_ID[2]),
-	                             IN5 := ')');
+	                             IN5 := ') order by case when id=',
+	                             IN6 := "INT_TO_STRING_WITHOUT_SIGN"("DB_Robot".Gripper_ID[1]),
+	                             IN7 := ' then 0 else 1 end');
 	    ELSE
 	        #queryTemp := CONCAT(IN1 := 'select X_BODY+X_CLAW as X,Y_BODY+Y_CLAW as Y,Z_BODY+Z_CLAW as Z, VALVES, X_ROT, Y_ROT, Z_ROT from grippers where id=',
 	                             IN2 := "INT_TO_STRING_WITHOUT_SIGN"("DB_Robot".Gripper_ID[1]));
@@ -85,6 +92,15 @@ BEGIN
 	            "SqlCommands".sqlCommands[0] := '';
 	        END_IF;
 	        
+	        // A RIPOSO TIMER E ESITO PULITI (5/10). Se FB7 azzera il ponte mentre
+	        // e' al 30 o al 35, timeoutAbbandono resta con IN alto: alla query dopo
+	        // non c'e' fronte e scadrebbe subito, abortendo una query appena
+	        // partita. Dispatch[1] (mai usato prima) dice "timeout di esecuzione":
+	        // si spegne qui.
+	        #timeoutAbbandono(IN := FALSE,
+	                          PT := T#20s);
+	        #Dispatch[1] := 0;
+	        
 	        IF #exec THEN
 	            #Dispatch["_master"] := 10;
 	            #readyForNextQuery := FALSE;
@@ -100,17 +116,45 @@ BEGIN
 	            "SqlCommands".currentSqlCommand := 0;
 	            
 	            #Dispatch["_master"] := 20;
+	        ELSIF NOT #exec THEN
+	            // RICHIESTA RITIRATA (5/10): il richiedente ha rinunciato fra la
+	            // presa in carico (0) e la scrittura (qui), per esempio il timeout
+	            // del 10 di FB204. La query in ingresso e' vuota, la condizione
+	            // sopra non diventa mai vera e il ponte restava qui con
+	            // readyForNextQuery basso: chi aspetta il ponte libero (Extract 12)
+	            // non partiva piu'. Si torna a riposo.
+	            #readyForNextQuery := TRUE;
+	            #Dispatch["_master"] := 0;
 	        END_IF;
 	        
 	    20: // execute query
 	        "SqlConfig".executeSqlCommand := TRUE;
 	        #Dispatch["_master"] := 30;
 	        
-	    30: // wait result 
+	    30: // wait result
+	        // TIMEOUT DI ESECUZIONE (5/10): se la connessione cade con una query in
+	        // volo, executeSqlCommand resta alto e il 30 non esce piu', tutta la
+	        // cella ferma. In campo si rimediava forzando executeSqlCommand a FALSE:
+	        // dopo 20 s lo fa il codice e si va al 35 con zero righe e dataError
+	        // alto (Dispatch[1]): il richiedente chiude la sua catena col proprio
+	        // ramo d'errore.
+	        // timeoutAbbandono qui e al 35 non si sovrappone: stati esclusivi, e lo
+	        // si azzera a ogni uscita.
+	        #timeoutAbbandono(IN := TRUE,
+	                          PT := T#20s);
 	        IF "SqlTdsReceive".tdsTelegramArrayLength > 0
 	            AND NOT "SqlConfig".executeSqlCommand THEN
+	            #timeoutAbbandono(IN := FALSE,
+	                              PT := T#20s);
 	            #queryCounter := #queryCounter + 1;
 	            
+	            #Dispatch["_master"] := 35;
+	        ELSIF #timeoutAbbandono.Q THEN
+	            #timeoutAbbandono(IN := FALSE,
+	                              PT := T#20s);
+	            "SqlConfig".executeSqlCommand := FALSE;
+	            "SqlData".data.rowCount := 0;
+	            #Dispatch[1] := 1;   // il 35 lo presenta come dataError
 	            #Dispatch["_master"] := 35;
 	        END_IF;
 	        
@@ -155,7 +199,9 @@ BEGIN
 	// stringa vuota quando nessuno ha richieste pendenti. Cosi' dataError
 	// diventava vero su un risultato perfettamente valido, appena il flag del
 	// richiedente cadeva (visto 4/9: errore al parsing con SqlData corretto).
-	#dataError := "SqlConfig".diagnostics.status > 8000;
-	
+	// (5/10) anche il timeout di esecuzione del 30 e' un errore: con il solo
+	// "zero righe" ogni richiedente lo avrebbe letto come risposta vuota
+	// (FB204 al 42: materiale finito; al 102: produzione finita).
+	#dataError := "SqlConfig".diagnostics.status > 8000 OR #Dispatch[1] = 1;
 END_FUNCTION_BLOCK
 

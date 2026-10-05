@@ -165,17 +165,10 @@ BEGIN
 	    "cmd_status_Gripper_2_Ready" := "DB_Robot".Gripper_ID[2] > 0;
 	END_REGION
 	
-	REGION ACQ richieste robot
-	    // ACQ = richiesta robot attiva AND riscontro fisico DIRETTO raggiunto
-	    // (riscontri affermativi: a organo in corsa nessun ACQ sale)
-	    "ACQ_PalletLockedReq" := "Robot_cmd_LockPallet" AND "DB_MC1".io_in.palletLocked;
-	    "ACQ_PalletUnlockedReq" := "Robot_cmd_UnlockPallet" AND "DB_MC1".io_in.palletUnlocked;
-	    "ACQ_GripperLockedReq" := "Robot_cmd_LockPart" AND "DB_MC1".io_in.viceClosed;
-	    "ACQ_GripperUnlockedReq" := "Robot_cmd_UnlockPart" AND "DB_MC1".io_in.viceOpened;
-	    "ACQ_DoorUnlockedReq" := "Robot_cmd_OpenDoor" AND "DB_MC1".io_in.doorOpened;
-	    "ACQ_DoorLockedReq" := "Robot_cmd_CloseDoor" AND "DB_MC1".io_in.doorClosed;
-	END_REGION
-	
+	// REGION "ACQ richieste robot" RIMOSSA (5/10, decisione D1-A): riscriveva
+	// gli stessi sei ACQ subito dopo le righe in Signal_TO_ROBOT, senza
+	// l'interlock incrociato, che cosi' era codice morto. Resta un solo
+	// scrittore: Signal_TO_ROBOT (ACQ_PalletLockedReq ... ACQ_DoorUnlockedReq).
 	
 	REGION Signal_FROM_ROBOT
 	    //INPUT
@@ -243,11 +236,15 @@ BEGIN
 	END_REGION
 	
 	REGION reset alarm
-	    IF ("sys_Robot_AlarmState" AND "Start_AUX") OR ("sys_Robot_AlarmState" AND "ResetAreaRobot") OR "DB_plant".Hold THEN
+	    // RESET SUL FRONTE DEL PULSANTE HOLD (5/10). "DB_plant".Hold e' lo stato
+	    // del toggle, non l'impulso: preso a livello azzerava DB_Robot.Error a
+	    // ogni scan per tutto l'hold, e gli errori sparivano prima che pannello
+	    // e FB204 li vedessero. FP[1] era gia' dichiarato (riga commentata qui).
+	    #FP[1](CLK := "DB_plant".Hold);
+	    IF ("sys_Robot_AlarmState" AND "Start_AUX") OR ("sys_Robot_AlarmState" AND "ResetAreaRobot") OR #FP[1].Q THEN
 	        "DB_Robot".Error := 0;
 	    END_IF;
 	    
-	    //#FP[1](CLK := "DB_plant".Hold);
 	    "sys_resetAlarm" := "Start_AUX" OR "ResetAreaRobot" OR "DB_plant".Hold;
 	END_REGION
 	
@@ -313,7 +310,14 @@ BEGIN
 	
 	REGION rewind program
 	    #timeout[1](IN := #dispatcher[1] > 0 AND ("sys_resetProgram"),  //OR "sys_HOLD"
-	                PT := t#800ms);
+	   PT := t#800ms);
+	    // USCITA DI SICUREZZA (5/10): se il robot non si ferma (20) o non alza
+	    // ResetProgramState (30), pausa e reset programma restavano alti e se ne
+	    // usciva solo con STOP/RUN del PLC. Dopo 15 s: errore 967, reset
+	    // programma basso, comando azzerato (altrimenti lo 0 ripartirebbe
+	    // subito), catena a riposo.
+	    #timeout[4](IN := #dispatcher[1] >= 20,
+	   PT := T#15s);
 	    
 	    CASE #dispatcher[1] OF
 	        0: //nothing to do
@@ -329,6 +333,13 @@ BEGIN
 	            IF #timeout[1].Q OR NOT "sys_Robot_Run_State" THEN
 	                "sys_resetProgram" := TRUE;
 	                #dispatcher[1] := 30;
+	            ELSIF #timeout[4].Q THEN
+	                "sys_resetProgram" := FALSE;
+	                IF "DB_RobotMission".Command = "CMD_RestartMainProg" THEN
+	                    "DB_RobotMission".Command := 0;
+	                END_IF;
+	                "DB_Robot".Error := 967;   // restart programma robot: timeout
+	                #dispatcher[1] := 0;
 	            END_IF;
 	        30:
 	            IF #timeout[1].Q AND "sys_ResetProgramState" THEN
@@ -338,6 +349,13 @@ BEGIN
 	                    "DB_RobotMission".Command := 0;
 	                END_IF;
 	                
+	                #dispatcher[1] := 0;
+	            ELSIF #timeout[4].Q THEN
+	                "sys_resetProgram" := FALSE;
+	                IF "DB_RobotMission".Command = "CMD_RestartMainProg" THEN
+	                    "DB_RobotMission".Command := 0;
+	                END_IF;
+	                "DB_Robot".Error := 967;   // restart programma robot: timeout
 	                #dispatcher[1] := 0;
 	            END_IF;
 	    END_CASE;

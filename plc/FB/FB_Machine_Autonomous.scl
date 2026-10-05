@@ -154,7 +154,24 @@ BEGIN
 	            "MC_unlockPallet", "MC_lockPallet",
 	            "MC_openDoor", "MC_closeDoor",
 	            "MC_unlockPartOnTable", "MC_lockPartOnTable":
-	                #cmd.code := "DB_MQTT".lastCmdReceived;
+	                // SOLO A CICLO FERMO (5/10, decisione D8-A): bastava il robot
+	                // fermo, quindi con la HAAS in lavorazione il pannello poteva
+	                // aprire la morsa o sbloccare il pallet. Ammessi a riposo (0), in
+	                // attesa operatore (5), in errore (9999) o con la cella in HOLD;
+	                // altrimenti 947 al pannello, come le dichiarazioni.
+	                IF #Dispatcher["_master"] = 0
+	                    OR #Dispatcher["_master"] = 5
+	                    OR #Dispatcher["_master"] = 9999
+	                    OR "DB_Robot".HOLD
+	                THEN
+	                    #cmd.code := "DB_MQTT".lastCmdReceived;
+	                ELSE
+	                    "FC_MQTT"(insert := TRUE,
+	                   send := FALSE,
+	                   topic := CONCAT(IN1 := 'FROM_PLANT/ALARM/MC',
+	                  IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#MC_number)),
+	                   payload := STRING_TO_WSTRING('947'));
+	                END_IF;
 	                // consumo il comando: evita ri-arm a ogni scan
 	                "DB_MQTT".lastCmdReceived := 0;
 	                "DB_MQTT".lastTopicReceived := '';
@@ -170,6 +187,46 @@ BEGIN
 	    // DOPO) lo richiamava con query vuota e annullava la richiesta.
 	    // Come FB7: si scrive #queryTemp + #queryStartExecution e OB1 fa il resto.
 	    
+	    // MISSIONE FALLITA NON E' MISSIONE RIUSCITA (5/10, decisione D2-A).
+	    // Gli stati che aspettano una missione robot leggono "MissionCode tornato
+	    // a 0" come esito positivo, ma FB7 lo azzera anche in errore, e a ogni scan
+	    // quando manca AUX. Esiti visti nella simulazione: ricetta e start col
+	    // finito ancora in morsa, piecepresent azzerato col pezzo dentro, #pallet
+	    // scritto su un montaggio mai fatto.
+	    // Negli stati di attesa missione (non in quelli con una query in volo, non
+	    // a macchina in lavoro: 95 substate 6) un errore robot o AUX assente
+	    // portano in 9999 col codice. Si riparte col reset robot (99) o con AUX:
+	    // entrambi riportano questo dispatcher a 0 (FB7, resetDispatcher).
+	    IF ((#Dispatcher["_master"] = 30 AND (#subState = 1 OR #subState = 2))
+	        OR #Dispatcher["_master"] = 35
+	        OR #Dispatcher["_master"] = 43
+	        OR #Dispatcher["_master"] = 44
+	        OR #Dispatcher["_master"] = 46
+	        OR (#Dispatcher["_master"] >= 50 AND #Dispatcher["_master"] <= 59)
+	        OR (#Dispatcher["_master"] = 95 AND (#subState = 0 OR #subState = 1 OR #subState = 5))
+	        OR #Dispatcher["_master"] = 96
+	        OR #Dispatcher["_master"] = 965
+	        OR #Dispatcher["_master"] = 966
+	        OR (#Dispatcher["_master"] >= 103 AND #Dispatcher["_master"] <= 105))
+	        AND ("DB_Robot".Error <> 0 OR NOT "Main_Safety_RTG1_DB".Aux_OK)
+	    THEN
+	        IF NOT "Main_Safety_RTG1_DB".Aux_OK THEN
+	            "FC_MQTT"(insert := TRUE,
+	                      send := FALSE,
+	                      topic := CONCAT(IN1 := 'FROM_PLANT/ALARM/MC',
+	                                      IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#MC_number)),
+	                      payload := STRING_TO_WSTRING('953'));   // AUX assente durante una missione
+	        ELSE
+	            "FC_MQTT"(insert := TRUE,
+	                      send := FALSE,
+	                      topic := CONCAT(IN1 := 'FROM_PLANT/ALARM/MC',
+	                                      IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#MC_number)),
+	                      payload := STRING_TO_WSTRING('952'));   // errore robot durante una missione
+	        END_IF;
+	        #io_out.startWork := FALSE;
+	        #Dispatcher["_master"] := 9999;
+	    END_IF;
+	    
 	    CASE #Dispatcher["_master"] OF
 	            
 	        0:  // IDLE - attesa macchina pronta + robot disponibile, poi pull workorder
@@ -177,6 +234,25 @@ BEGIN
 	            #cmd.aborted := FALSE;
 	            #io_out.startWork := FALSE;
 	            #subState := 0;
+	            // A RIPOSO NESSUNA RICHIESTA PENDENTE (5/10): se un reset esterno (99,
+	            // AUX, comandi manuali) ci riporta qui con la query ancora prenotata,
+	            // la rete 7 la eseguirebbe senza nessuno che legga, e il ponte resterebbe
+	            // occupato 60 s. timer[9] e' il timeout del 10: si riarma da zero.
+	            #queryStartExecution := FALSE;
+	            #timer[9](IN := FALSE,
+	                      PT := T#30s);
+	            // idem per i timer di 44 e 35: armati da un reset esterno davano un
+	            // ritentativo immediato e un 958 falso al primo ingresso
+	            #timer[3](IN := FALSE,
+	                      PT := T#120s);
+	            #timer[4](IN := FALSE,
+	                      PT := T#180s);
+	            
+	            // PAUSA FRA DUE INTERROGAZIONI (5/10): senza ordini il giro 0-10-20-0
+	            // girava senza sosta, una query e tre messaggi DISPATCH a giro. Il timer
+	            // gira sempre allo 0: dopo una sosta lunga la prima query parte subito.
+	            #timer[8](IN := TRUE,
+	                      PT := T#3s);
 	            
 	            IF #AutoModeFromHandController
 	                AND #io_in.autoMode
@@ -202,7 +278,9 @@ BEGIN
 	                    // salto il pull, sarebbe la stessa query a un ciclo di distanza.
 	                    #orderFresh := FALSE;
 	                    #Dispatcher["_master"] := 30;
-	                ELSE
+	                ELSIF #timer[8].Q THEN
+	                    #timer[8](IN := FALSE,
+	                              PT := T#3s);
 	                    #queryTemp := CONCAT(
 	                                         IN1 := 'select top 1 id,PIECE_ID,GRIPPER_ID,MACHINE_ID,PALLET_ID,VICE_ID,QUANTITY,[OPTIONS],Gripper4Pallet,PP_id ',
 	                                         IN2 := 'from WORKORDERS where MACHINE_ID=',
@@ -249,30 +327,45 @@ BEGIN
 	            // fragile: FB6 puo' completare fra due valutazioni di questo stato
 	            // e la finestra si perde (visto 4/9, dispatcher fermo al 10 con
 	            // stringhe uguali e ponte gia' libero).
+	            // TIMEOUT (5/10): col difetto della rete 7 (1/10) la query non entrava
+	            // mai e il 10 aspettava per sempre senza dirlo. Dopo 30 s si ritira la
+	            // richiesta e si riprova dallo 0. Se FB6 l'avesse gia' presa in carico
+	            // senza scriverla, torna a riposo da solo (FB6, stato 10).
+	            #timer[9](IN := TRUE,
+	                      PT := T#30s);
 	            IF "SqlCommands".sqlCommands[0] = #queryTemp THEN
+	                #timer[9](IN := FALSE,
+	                          PT := T#30s);
 	                #Dispatcher["_master"] := 20;
+	            ELSIF #timer[9].Q THEN
+	                #timer[9](IN := FALSE,
+	                          PT := T#30s);
+	                #queryStartExecution := FALSE;
+	                #queryTemp := '';
+	                #Dispatcher["_master"] := 0;
 	            END_IF;
 	            
 	        20: // parsing risultato -> order
-	            IF "DB_executeQuery".dataReady AND "DB_executeQuery".noData THEN
-	                // nessun ordine attivo per questa macchina: NON e' un errore,
-	                // torno a riposo e riprovero'.
-	                "DB_executeQuery".readyForNextQuery := TRUE;
-	                #queryTemp := '';
-	                #queryStartExecution := FALSE;
-	                #Dispatcher["_master"] := 0;
-	                
-	            ELSIF "DB_executeQuery".dataReady AND NOT "DB_executeQuery".dataError THEN
-	                // LETTURA UNICA E VALIDATA PRIMA DELLA COPIA.
-	                // Prima le assegnazioni stavano FUORI dal controllo sull'ID: order
-	                // veniva riscritto a OGNI scansione in cui dataReady restava alto,
-	                // e SqlData e' condiviso con FB7 -> bastava una query del robot in
-	                // mezzo per sovrascrivere order con dati altrui. Sintomo visto il
-	                // 3/9: PartProgID 100000 e GRIPPER4PALLET 0 con l'ordine a DB che
-	                // diceva 1 e 1 -> sottoprogramma sbagliato e ciclo pallet bloccato.
-	                // Ora si valida sui dati grezzi, si copia una volta sola e si esce
-	                // nello stesso scan.
-	                IF "SqlData".data.rows[0].col[0] > 0 THEN
+	            // SOLO IL RISULTATO DELLA NOSTRA QUERY (5/10). Con un ponte solo per FB7
+	            // e FB204, dataReady puo' essere quello di una query di FB7, e un reset
+	            // di FB7 svuota il ponte con la nostra query dentro. Si legge solo con
+	            // sqlCommands[0] = queryTemp (il ponte la svuota uscendo dal 35). Se il
+	            // flag e' gia' giu' (la query era entrata: la rete 7 lo abbassa solo
+	            // allora) e il buffer non e' piu' il nostro, la query e' persa: si
+	            // riparte. Stesso schema in 42, 95/4, 99 e 102.
+	            IF "DB_executeQuery".dataReady AND "SqlCommands".sqlCommands[0] = #queryTemp THEN
+	                IF "DB_executeQuery".dataError OR "DB_executeQuery".noData THEN
+	                    // nessun ordine attivo per questa macchina (o errore DB): NON
+	                    // e' un errore del ciclo, torno a riposo e riprovero'.
+	                    "DB_executeQuery".readyForNextQuery := TRUE;
+	                    #queryTemp := '';
+	                    #queryStartExecution := FALSE;
+	                    #Dispatcher["_master"] := 0;
+	                    
+	                ELSIF "SqlData".data.rows[0].col[0] > 0 THEN
+	                    // LETTURA UNICA E VALIDATA PRIMA DELLA COPIA (3/9): si valida
+	                    // sui dati grezzi, si copia una volta sola e si esce nello
+	                    // stesso scan.
 	                    #order.ID := "SqlData".data.rows[0].col[0];
 	                    #order.PIECE := "SqlData".data.rows[0].col[1];
 	                    #order.GRIPPER := "SqlData".data.rows[0].col[2];
@@ -292,17 +385,15 @@ BEGIN
 	                    #Dispatcher["_master"] := 30;
 	                ELSE
 	                    // riga presente ma ID nullo: dato non valido, non lo copio.
-	                    // Torno a riposo e riprovo al giro dopo.
 	                    "DB_executeQuery".readyForNextQuery := TRUE;
 	                    #queryTemp := '';
 	                    #queryStartExecution := FALSE;
 	                    #Dispatcher["_master"] := 0;
 	                END_IF;
 	                
-	            ELSIF "DB_executeQuery".dataError THEN
-	                "DB_executeQuery".readyForNextQuery := TRUE;
+	            ELSIF NOT #queryStartExecution AND "SqlCommands".sqlCommands[0] <> #queryTemp THEN
+	                // query persa (reset del ponte, risultato preso da altri): da capo
 	                #queryTemp := '';
-	                #queryStartExecution := FALSE;
 	                #Dispatcher["_master"] := 0;
 	            END_IF;
 	            
@@ -381,6 +472,12 @@ BEGIN
 	                    // ordine senza pinza: dato non valido, non si puo' lavorare.
 	                    // Senza questa guardia si tenterebbe uno swap verso la pinza 0
 	                    // che FB7 rifiuta con 937, ritentando all'infinito.
+	                    // 957 al pannello (5/10): prima il 9999 non diceva perche'.
+	                    "FC_MQTT"(insert := TRUE,
+	                              send := FALSE,
+	                              topic := CONCAT(IN1 := 'FROM_PLANT/ALARM/MC',
+	                                              IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#MC_number)),
+	                              payload := STRING_TO_WSTRING('957'));
 	                    #Dispatcher["_master"] := 9999;
 	                    
 	                ELSIF "DB_Robot".Gripper_ID[1] = DINT_TO_INT(#order.GRIPPER) THEN
@@ -418,6 +515,11 @@ BEGIN
 	            IF #timer[4].Q THEN
 	                #timer[4](IN := FALSE,
 	                          PT := T#180s);
+	                "FC_MQTT"(insert := TRUE,
+	                          send := FALSE,
+	                          topic := CONCAT(IN1 := 'FROM_PLANT/ALARM/MC',
+	                                          IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#MC_number)),
+	                          payload := STRING_TO_WSTRING('958'));   // pinza dell'ordine non a bordo dopo 3 min
 	                #Dispatcher["_master"] := 9999;
 	            END_IF;
 	            
@@ -461,15 +563,21 @@ BEGIN
 	            END_IF;
 	            
 	        42: // esito: cassetto trovato, oppure nessun grezzo disponibile
-	            IF "DB_executeQuery".dataReady THEN
-	                IF "DB_executeQuery".noData THEN
+	            // Solo il risultato della NOSTRA query (5/10), vedi nota al 20.
+	            // L'errore DB (anche il timeout del ponte) si guarda per primo: prima
+	            // un timeout arrivava come "zero righe" e chiudeva la produzione.
+	            IF "DB_executeQuery".dataReady AND "SqlCommands".sqlCommands[0] = #queryTemp THEN
+	                IF "DB_executeQuery".dataError THEN
+	                    "DB_executeQuery".readyForNextQuery := TRUE;
+	                    #queryTemp := '';
+	                    #queryStartExecution := FALSE;
+	                    #Dispatcher["_master"] := 9999;
+	                    
+	                ELSIF "DB_executeQuery".noData THEN
 	                    // Nessun grezzo a magazzino per quest'ordine.
 	                    // MA se il robot ha gia' un grezzo a bordo, o se in macchina
 	                    // c'e' un pezzo da lavorare, la produzione NON e' finita: quel
 	                    // materiale va portato a termine. Si torna al 50 che decide.
-	                    // Senza questa guardia il ciclo chiudeva la produzione col
-	                    // grezzo appena prelevato ancora in pinza (visto 5/9: 96
-	                    // bloccato dalla guardia sulle chele, cella ferma).
 	                    // materialeFinito resta alzato in ogni caso: fa chiudere il
 	                    // cassetto al 58, dopo che l'ultimo finito e' stato depositato.
 	                    "DB_executeQuery".readyForNextQuery := TRUE;
@@ -489,18 +597,21 @@ BEGIN
 	                        #Dispatcher["_master"] := 96;
 	                    END_IF;
 	                    
-	                ELSIF "DB_executeQuery".dataError THEN
-	                    "DB_executeQuery".readyForNextQuery := TRUE;
-	                    #queryTemp := '';
-	                    #queryStartExecution := FALSE;
-	                    #Dispatcher["_master"] := 9999;
 	                ELSE
 	                    #trayNeeded := DINT_TO_INT("SqlData".data.rows[0].col[0]);
+	                    // grezzi trovati: il materiale non e' finito (5/10). Serve al 50,
+	                    // che ora sceglie la sequenza in due tempi anche con materialeFinito.
+	                    #materialeFinito := FALSE;
 	                    "DB_executeQuery".readyForNextQuery := TRUE;
 	                    #queryTemp := '';
 	                    #queryStartExecution := FALSE;
 	                    #Dispatcher["_master"] := 43;
 	                END_IF;
+	                
+	            ELSIF NOT #queryStartExecution AND "SqlCommands".sqlCommands[0] <> #queryTemp THEN
+	                // query persa: si rifa' la ricerca del cassetto
+	                #queryTemp := '';
+	                #Dispatcher["_master"] := 40;
 	            END_IF;
 	            
 	        43: // il cassetto giusto e' gia' fuori? altrimenti lo chiedo al magazzino.
@@ -628,7 +739,12 @@ BEGIN
 	                            // estratto. Altrimenti il check cassetto scatterebbe
 	                            // col finito ancora dentro e chiuderebbe la sua tasca
 	                            // fuori portata (visto 5/9, dispatcher fermo al 44).
+	                            // GREZZI FINITI (5/10): senza grezzi a magazzino il ramo "doppio" andava
+	                            // al check cassetto, il 42 non trovava niente e tornava qui: giro
+	                            // 50-40-42-50 senza fine col finito in macchina. Con materialeFinito si
+	                            // scarica prima il finito (52), poi il 53 scopre che non c'e' altro.
 	                            IF #order.OPTION.%X0
+	                                OR #materialeFinito
 	                                OR (#trayProssimoGrezzo > 0
 	                                AND #trayProssimoGrezzo <> "DB_BOX_1".ExtractedTray)
 	                            THEN
@@ -771,6 +887,14 @@ BEGIN
 	            // ---- SEQUENZA CICLO: ricetta -> start -> fine ciclo -> cycle done ----
 	            
 	        90: // DISPATCH RICETTA - setMacro #10200 = PartProgID
+	            // MAILBOX PULITA PRIMA DELLA RICETTA (5/10, decisione D3-B).
+	            // lastTopicReceived non e' un messaggio nuovo: FC_MQTT lo ricalcola a
+	            // ogni chiamata da receivedTopic, che resta quello dell'ultimo messaggio
+	            // arrivato. Al secondo ciclo il 91 trovava ancora l'ACK HAAS del ciclo
+	            // prima e dava lo start senza conferma. Svuotato qui, il 91 vede solo
+	            // una risposta arrivata DOPO questa richiesta.
+	            "DB_MQTT".receivedTopic := WSTRING#'';
+	            "DB_MQTT".lastTopicReceived := '';
 	            "FC_MQTT"(insert := TRUE,
 	                      send := FALSE,
 	                      topic := CONCAT(IN1 := 'FROM_PLANT/HAAS_CMD/MC',
@@ -779,11 +903,24 @@ BEGIN
 	                                                                                       IN1 := '{"cmd":"setMacro","var":10200,"value":',
 	                                                                                       IN2 := "INT_TO_STRING_WITHOUT_SIGN"(DINT_TO_INT(#order.PartProgID)),
 	                                                                                       IN3 := '}')));
-	            #timer[1](IN := TRUE,
+	            // TIMER AZZERATI IN INGRESSO (5/10): se un reset esterno (99, AUX)
+	            // aveva lasciato il 91 o il 92 a meta', timer[1], [6] e [7] restavano
+	            // armati e al ciclo dopo davano subito un 956 o un 954 finti. Il 91
+	            // riparte da qui con un fronte pulito.
+	            #timer[1](IN := FALSE,
 	                      PT := T#10s);
+	            #timer[6](IN := FALSE,
+	                      PT := T#120s);
+	            #timer[7](IN := FALSE,
+	                      PT := T#120s);
 	            #Dispatcher["_master"] := 91;
 	            
 	        91: // attesa esito ricetta: ACK -> ok ; NACK -> fallita
+	            // TIMER CHIAMATO QUI (5/10): un TON avanza solo quando viene eseguito.
+	            // Il 91 leggeva timer[1].Q senza chiamarlo, e il timeout di 10 s non
+	            // scadeva mai.
+	            #timer[1](IN := TRUE,
+	                      PT := T#10s);
 	            IF "DB_MQTT".lastTopicReceived
 	                = CONCAT(IN1 := 'HAAS_ACK/MC',
 	                         IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#MC_number))
@@ -797,10 +934,20 @@ BEGIN
 	            THEN
 	                #timer[1](IN := FALSE,
 	                          PT := T#10s);
+	                "FC_MQTT"(insert := TRUE,
+	                          send := FALSE,
+	                          topic := CONCAT(IN1 := 'FROM_PLANT/ALARM/MC',
+	                                          IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#MC_number)),
+	                          payload := STRING_TO_WSTRING('955'));   // ricetta rifiutata dalla HAAS
 	                #Dispatcher["_master"] := 9999;
 	            ELSIF #timer[1].Q THEN
 	                #timer[1](IN := FALSE,
 	                          PT := T#10s);
+	                "FC_MQTT"(insert := TRUE,
+	                          send := FALSE,
+	                          topic := CONCAT(IN1 := 'FROM_PLANT/ALARM/MC',
+	                                          IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#MC_number)),
+	                          payload := STRING_TO_WSTRING('956'));   // nessuna risposta HAAS alla ricetta
 	                #Dispatcher["_master"] := 9999;
 	            END_IF;
 	            
@@ -810,6 +957,16 @@ BEGIN
 	            // automatico e non cade mai, quindi il 92 andava sempre in timeout
 	            // (visto 4/9). Il segnale giusto e' la PORTA CHE SI CHIUDE: la HAAS
 	            // la chiude quando il ciclo parte.
+	            // DUE CORREZIONI (5/10):
+	            // - la porta chiusa conta solo dopo almeno 2 s di startWork. Con la
+	            //   porta gia' chiusa all'ingresso startWork saliva e scendeva nello
+	            //   stesso scan e la HAAS non partiva;
+	            // - senza fuori ingombro startWork non sale e timer[6] non parte: dopo
+	            //   120 s (timer[7]) si va in 9999 invece di restare qui per sempre.
+	            // Entrambe le uscite in errore pubblicano 954. Se il fuori ingombro cade
+	            // durante lo start, startWork scende e i 2 s ripartono da capo.
+	            #timer[7](IN := NOT #io_out.fuoriIngombro,
+	                      PT := T#120s);
 	            IF #io_out.fuoriIngombro THEN
 	                #io_out.startWork := TRUE;
 	                #timer[6](IN := TRUE,
@@ -817,17 +974,49 @@ BEGIN
 	                IF #timer[6].Q THEN
 	                    #io_out.startWork := FALSE;
 	                    #timer[6](IN := FALSE,
-	                              PT := T#30s);
+	                              PT := T#120s);
+	                    #timer[7](IN := FALSE,
+	                              PT := T#120s);
+	                    "FC_MQTT"(insert := TRUE,
+	                              send := FALSE,
+	                              topic := CONCAT(IN1 := 'FROM_PLANT/ALARM/MC',
+	                                              IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#MC_number)),
+	                              payload := STRING_TO_WSTRING('954'));   // start HAAS non confermato
 	                    #Dispatcher["_master"] := 9999;
 	                END_IF;
-	            END_IF;
-	            IF #io_in.doorClosed THEN
+	            ELSIF #timer[7].Q THEN
 	                #io_out.startWork := FALSE;
 	                #timer[6](IN := FALSE,
-	                          PT := T#30s);
+	                          PT := T#120s);
+	                #timer[7](IN := FALSE,
+	                          PT := T#120s);
+	                "FC_MQTT"(insert := TRUE,
+	                          send := FALSE,
+	                          topic := CONCAT(IN1 := 'FROM_PLANT/ALARM/MC',
+	                                          IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#MC_number)),
+	                          payload := STRING_TO_WSTRING('954'));   // start HAAS non confermato
+	                #Dispatcher["_master"] := 9999;
+	            ELSE
+	                // fuori ingombro caduto durante lo start: startWork giu' e conteggio
+	                // dei 2 s da capo (5/10). Prima startWork restava alto.
+	                #io_out.startWork := FALSE;
+	                #timer[6](IN := FALSE,
+	                          PT := T#120s);
+	            END_IF;
+	            IF #Dispatcher["_master"] = 92
+	                AND #io_in.doorClosed
+	                AND #io_out.startWork
+	                AND #timer[6].ET >= T#2S
+	            THEN
+	                #io_out.startWork := FALSE;
+	                #timer[6](IN := FALSE,
+	                          PT := T#120s);
+	                #timer[7](IN := FALSE,
+	                          PT := T#120s);
 	                
 	                // armo la rilevazione del fronte di endWork per il 95
 	                #endWorkPrev := #io_in.endWork;
+	                #doorOpened := FALSE;   // memoria di fine ciclo, vedi 95
 	                
 	                #subState := 0;
 	                #Dispatcher["_master"] := 95;
@@ -837,6 +1026,18 @@ BEGIN
 	            IF #io_in.autoMode THEN
 	                #autoModePrev := TRUE;
 	            END_IF;
+	            
+	            // FINE CICLO MEMORIZZATA (5/10). endWork e' un impulso e lo si guardava
+	            // solo al substate 6: se la HAAS finiva mentre il robot stava ancora
+	            // depositando o prelevando (substate 0-5) il fronte si perdeva e il 95
+	            // aspettava per sempre. Il fronte si prende a ogni scan del 95 e resta in
+	            // #doorOpened, statica dichiarata e mai usata: riusarla evita di cambiare
+	            // l'interfaccia del blocco. Il nome e' storico, qui vuol dire "fine ciclo
+	            // arrivata". Si azzera all'uscita dal 92 e quando il 6 la consuma.
+	            IF #io_in.endWork AND NOT #endWorkPrev THEN
+	                #doorOpened := TRUE;
+	            END_IF;
+	            #endWorkPrev := #io_in.endWork;
 	            
 	            CASE #subState OF
 	                0: // finito a bordo dalla 16: torna nella tasca del suo grezzo,
@@ -883,10 +1084,13 @@ BEGIN
 	                    // perche' il 50 vede grezzo a bordo e pezzo in macchina, e fa
 	                    // la cosa che sa fare.
 	                    IF "SqlCommands".sqlCommands[0] = '' THEN
+	                        // ISNULL (5/10): con zero grezzi min() torna NULL, e un NULL arriva al
+	                        // PLC come valore spazzatura. Stesso discorso per il residuo se l'ordine
+	                        // non c'e' piu'. Con ISNULL arrivano 0: nessun cassetto, nessun residuo.
 	                        #queryTemp := CONCAT(
-	                                             IN1 := 'select count(*),min(CAST(SUBSTRING(PARENT,6,2) AS INT)),(select QUANTITY-PRODUCTED from WORKORDERS where ID=',
+	                                             IN1 := 'select count(*),isnull(min(CAST(SUBSTRING(PARENT,6,2) AS INT)),0),isnull((select QUANTITY-PRODUCTED from WORKORDERS where ID=',
 	                                             IN2 := "INT_TO_STRING_WITHOUT_SIGN"(DINT_TO_INT(#order.ID)),
-	                                             IN3 := ') from [POSITION] where PARENT like $'TRAY%$' AND STATUS=4 AND Part_Type=',
+	                                             IN3 := '),0) from [POSITION] where PARENT like $'TRAY%$' AND STATUS=4 AND Part_Type=',
 	                                             IN4 := "INT_TO_STRING_WITHOUT_SIGN"(DINT_TO_INT(#order.PIECE)));
 	                        #queryStartExecution := TRUE;
 	                        #subState := 3;
@@ -907,49 +1111,57 @@ BEGIN
 	                        #subState := 2;      // ritenta solo a ponte libero
 	                    END_IF;
 	                4: // esito conteggio
-	                    IF "DB_executeQuery".dataReady AND NOT "DB_executeQuery".dataError THEN
-	                        #grezziRimasti := DINT_TO_INT("SqlData".data.rows[0].col[0]);
-	                        #trayProssimoGrezzo := DINT_TO_INT("SqlData".data.rows[0].col[1]);
-	                        #residuoOrdine := DINT_TO_INT("SqlData".data.rows[0].col[2]);
-	                        "DB_executeQuery".readyForNextQuery := TRUE;
-	                        #queryTemp := '';
-	                        #queryStartExecution := FALSE;
-	                        
-	                        IF #grezziRimasti <= 0 THEN
-	                            // GREZZI FINITI: il pezzo in macchina va comunque lavorato
-	                            // e scaricato. La chiusura cassetto avviene dopo, al 58.
-	                            #materialeFinito := TRUE;
+	                    // Solo il risultato della NOSTRA query (5/10), vedi nota al 20. Con
+	                    // zero righe (timeout del ponte) non si leggono righe rimaste da altri.
+	                    IF "DB_executeQuery".dataReady AND "SqlCommands".sqlCommands[0] = #queryTemp THEN
+	                        IF NOT "DB_executeQuery".dataError AND NOT "DB_executeQuery".noData THEN
+	                            #grezziRimasti := DINT_TO_INT("SqlData".data.rows[0].col[0]);
+	                            #trayProssimoGrezzo := DINT_TO_INT("SqlData".data.rows[0].col[1]);
+	                            #residuoOrdine := DINT_TO_INT("SqlData".data.rows[0].col[2]);
+	                            "DB_executeQuery".readyForNextQuery := TRUE;
+	                            #queryTemp := '';
+	                            #queryStartExecution := FALSE;
 	                            
-	                        ELSIF #residuoOrdine <= 1 THEN
-	                            // ULTIMO PEZZO DELL'ORDINE (19/9): non si preleva altro.
-	                            // Qui il pezzo in macchina C'E' per costruzione — al 95
-	                            // ci si arriva solo dal 92, che ha verificato la porta
-	                            // chiusa dopo lo start — quindi il residuo letto adesso
-	                            // NON lo conta: il suo finito sara' depositato nel giro
-	                            // successivo. Residuo 1 significa "quello dentro e'
-	                            // l'ultimo".
-	                            // Il magazzino puo' avere altri grezzi dello stesso tipo:
-	                            // non sono di quest'ordine e non si toccano.
-	                            ;
-	                            
-	                        ELSIF #trayProssimoGrezzo = "DB_BOX_1".ExtractedTray THEN
-	                            // il grezzo e' nel cassetto gia' fuori: prelievo subito,
-	                            // cosi' e' a bordo quando la macchina finisce (missione 16).
-	                            "DB_Robot".MissionCode := "MISSION_LoadPartOnRobot";
-	                            "DB_Robot".GripperRequested := DINT_TO_INT(#order.GRIPPER);
-	                            "DB_Robot".MCRequested := #MC_number;
-	                            #lastMission := "MISSION_LoadPartOnRobot";
+	                            // materialeFinito segue il conteggio in tutti e due i sensi
+	                            // (5/10): se l'operatore ricarica a ordine in corso torna falso,
+	                            // e il 50 non sceglie la sequenza in due tempi senza motivo.
+	                            #materialeFinito := #grezziRimasti <= 0;
+	                            IF #grezziRimasti <= 0 THEN
+	                                // GREZZI FINITI: il pezzo in macchina va comunque lavorato
+	                                // e scaricato. La chiusura cassetto avviene dopo, al 58.
+	                                ;
+	                                
+	                            ELSIF #residuoOrdine <= 1 THEN
+	                                // ULTIMO PEZZO DELL'ORDINE (19/9): non si preleva altro.
+	                                // Residuo 1 significa "quello dentro e' l'ultimo". Il
+	                                // magazzino puo' avere altri grezzi dello stesso tipo: non
+	                                // sono di quest'ordine e non si toccano.
+	                                ;
+	                                
+	                            ELSIF #trayProssimoGrezzo = "DB_BOX_1".ExtractedTray THEN
+	                                // il grezzo e' nel cassetto gia' fuori: prelievo subito,
+	                                // cosi' e' a bordo quando la macchina finisce (missione 16).
+	                                "DB_Robot".MissionCode := "MISSION_LoadPartOnRobot";
+	                                "DB_Robot".GripperRequested := DINT_TO_INT(#order.GRIPPER);
+	                                "DB_Robot".MCRequested := #MC_number;
+	                                #lastMission := "MISSION_LoadPartOnRobot";
+	                            END_IF;
+	                            // Cassetto DIVERSO: non si preleva. Il ciclo chiude a chele
+	                            // vuote e il 50 sceglie la sequenza in due tempi (52-53).
+	                            #subState := 5;
+	                        ELSE
+	                            // errore DB o zero righe: in dubbio proseguo, il ciclo in corso
+	                            // va finito
+	                            "DB_executeQuery".readyForNextQuery := TRUE;
+	                            #queryTemp := '';
+	                            #queryStartExecution := FALSE;
+	                            #subState := 5;
 	                        END_IF;
-	                        // Cassetto DIVERSO: non si preleva. Il ciclo chiude a chele
-	                        // vuote e il 50 sceglie la sequenza in due tempi (52-53):
-	                        // scarica il finito nel cassetto corrente, poi il cambio
-	                        // avviene a robot scarico come il tray manager richiede.
-	                        #subState := 5;
-	                    ELSIF "DB_executeQuery".dataError THEN
-	                        "DB_executeQuery".readyForNextQuery := TRUE;
+	                        
+	                    ELSIF NOT #queryStartExecution AND "SqlCommands".sqlCommands[0] <> #queryTemp THEN
+	                        // query persa: si rifa' il conteggio
 	                        #queryTemp := '';
-	                        #queryStartExecution := FALSE;
-	                        #subState := 5;   // in dubbio proseguo: il ciclo in corso va finito
+	                        #subState := 2;
 	                    END_IF;
 	                5: // attendo che il prelievo del grezzo sia concluso
 	                    // POSIZIONAMENTO RIMOSSO 4/9: MISSION_PositioningMC_AUTO
@@ -959,20 +1171,14 @@ BEGIN
 	                    IF "DB_Robot".MissionCode = 0 THEN
 	                        #subState := 6;
 	                    END_IF;
-	                6: // attendo fine ciclo macchina sul FRONTE di endWork.
-	                    // endWork e' un IMPULSO, non un livello: va preso sul fronte
-	                    // di salita, altrimenti si perde. autoModePrev non serve piu':
-	                    // autoMode resta alto per tutta la produzione.
-	                    IF #io_in.endWork AND NOT #endWorkPrev
-	                        AND "DB_Robot".MissionCode = 0
-	                    THEN
-	                        #endWorkPrev := TRUE;
+	                6: // attendo fine ciclo macchina: il fronte di endWork e' preso sopra,
+	                    // a ogni scan del 95, e memorizzato in #doorOpened (5/10).
+	                    IF #doorOpened AND "DB_Robot".MissionCode = 0 THEN
+	                        #doorOpened := FALSE;
 	                        #subState := 0;
 	                        #Dispatcher["_master"] := 100;
-	                    ELSE
-	                        #endWorkPrev := #io_in.endWork;
 	                    END_IF;
-	            END_CASE;   
+	            END_CASE;
 	            
 	        96: // MATERIALE ESAURITO o PRODUZIONE FINITA: rilascio il cassetto.
 	            // Guardia sulle chele aggiunta 4/9: senza, se il finito e' ancora a
@@ -1042,7 +1248,8 @@ BEGIN
 	            
 	        99: // esito: c'e' un ordine da lavorare -> riparto dallo 0 (pull completo);
 	            // niente -> resto in attesa e ritento fra 10s.
-	            IF "DB_executeQuery".dataReady THEN
+	            // Solo il risultato della NOSTRA query (5/10), vedi nota al 20.
+	            IF "DB_executeQuery".dataReady AND "SqlCommands".sqlCommands[0] = #queryTemp THEN
 	                "DB_executeQuery".readyForNextQuery := TRUE;
 	                #queryTemp := '';
 	                #queryStartExecution := FALSE;
@@ -1060,6 +1267,11 @@ BEGIN
 	                ELSE
 	                    #Dispatcher["_master"] := 97;
 	                END_IF;
+	                
+	            ELSIF NOT #queryStartExecution AND "SqlCommands".sqlCommands[0] <> #queryTemp THEN
+	                // query persa: si torna in attesa e si riprova fra 10 s
+	                #queryTemp := '';
+	                #Dispatcher["_master"] := 97;
 	            END_IF;
 	            
 	        100: // CYCLE_DONE - notifica backend (incrementa PRODUCTED)
@@ -1098,8 +1310,24 @@ BEGIN
 	            END_IF;
 	            
 	        102: // esito rilettura: riallineo la copia e chiudo il ciclo
-	            IF "DB_executeQuery".dataReady THEN
-	                IF "DB_executeQuery".noData OR "DB_executeQuery".dataError THEN
+	            // PRESA IN CARICO VERIFICATA (5/10): il 101 scrive la query e salta qui
+	            // senza conferma, e il 102 accettava QUALSIASI dataReady. Con un ponte
+	            // solo, se una catena di FB7 prendeva il ponte nello stesso scan (ha la
+	            // precedenza), il 102 leggeva il suo risultato: con una UPDATE "zero
+	            // righe" -> 96 a produzione non finita; con una SELECT, l'ordine
+	            // riscritto con dati altrui e un PartProgID sbagliato alla HAAS.
+	            // Si legge solo la nostra query (vedi nota al 20); se e' persa si rilegge.
+	            // L'errore DB (anche il timeout del ponte) rilegge dopo 5 s (106): prima
+	            // andava al 96 come a produzione finita.
+	            IF "DB_executeQuery".dataReady AND "SqlCommands".sqlCommands[0] = #queryTemp THEN
+	                IF "DB_executeQuery".dataError THEN
+	                    "DB_executeQuery".readyForNextQuery := TRUE;
+	                    #queryTemp := '';
+	                    #queryStartExecution := FALSE;
+	                    #timer[2](IN := FALSE,
+	                              PT := T#5s);
+	                    #Dispatcher["_master"] := 106;
+	                ELSIF "DB_executeQuery".noData THEN
 	                    // Nessun ordine piu' lavorabile (PRODUCTED = QUANTITY oppure
 	                    // ordine chiuso): PRODUZIONE FINITA. Deciso 4/9: a fine
 	                    // produzione il cassetto va SEMPRE chiuso, non solo quando
@@ -1168,6 +1396,10 @@ BEGIN
 	                    #orderFresh := FALSE;
 	                    #Dispatcher["_master"] := 0;
 	                END_IF;
+	            ELSIF NOT #queryStartExecution AND "SqlCommands".sqlCommands[0] <> #queryTemp THEN
+	                // query persa: si rilegge
+	                #queryTemp := '';
+	                #Dispatcher["_master"] := 101;
 	            END_IF;
 	            
 	        103: // ULTIMO PEZZO DELL'ORDINE: e' FINITO, va TOLTO — non rilavorato.
@@ -1202,7 +1434,20 @@ BEGIN
 	                #Dispatcher["_master"] := 96;
 	            END_IF;
 	            
+	        106: // PAUSA PRIMA DI RILEGGERE (5/10): errore DB al 102. Senza pausa, con un
+	            // errore SQL che torna subito, 101-102 girerebbero in pochi scan
+	            // riempiendo il buffer MQTT di messaggi DISPATCH.
+	            #timer[2](IN := TRUE,
+	                      PT := T#5s);
+	            IF #timer[2].Q THEN
+	                #timer[2](IN := FALSE,
+	                          PT := T#5s);
+	                #Dispatcher["_master"] := 101;
+	            END_IF;
+	            
 	        9999: // ERROR - reset via MQTT "MC_resetError" dall'HMI
+	            // nessuna query prenotata in errore (5/10): vedi nota allo 0
+	            #queryStartExecution := FALSE;
 	            IF "DB_MQTT".lastTopicReceived
 	                = CONCAT(IN1 := 'MC', IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#MC_number))
 	                AND "DB_MQTT".lastCmdReceived = "MC_resetError"
@@ -1358,30 +1603,37 @@ BEGIN
 	END_REGION ;
 	
 	REGION Declare MC1 from HMI
-	    IF "DB_MQTT".lastTopicReceived = 'MC1' THEN
+	    // DICHIARAZIONI SUI PARAMETRI DEL BLOCCO (5/10). pallet e ManualVice sono
+	    // IN_OUT elementari: il blocco lavora su una copia e la riscrive in
+	    // DB_MC1 all'uscita. Scrivere "DB_MC1".pallet qui dentro veniva poi
+	    // sovrascritto dalla copia vecchia: la dichiarazione non restava (IPOTESI
+	    // ad alta confidenza, test: comando 41 a riposo, DB_MC1.pallet deve
+	    // andare a 0). Si scrive #pallet / #ManualVice. piecepresent e' un array,
+	    // passa per riferimento e non ha il problema. Regione valida solo per MC1.
+	    IF "DB_MQTT".lastTopicReceived = 'MC1' AND #MC_number = 1 THEN
 	        CASE "DB_MQTT".lastCmdReceived OF
 	            "CMD_DeclarePallet_MC":   // 40;palletID
-	                IF "DB_MC1".Dispatcher["_master"] > 30 OR "DB_MC1".pallet > 0 THEN
+	                IF "DB_MC1".Dispatcher["_master"] > 30 OR #pallet > 0 THEN
 	                    "FC_MQTT"(insert := true,
 	                   send := false,
 	                   topic := 'FROM_PLANT/ALARM/MC1',
 	                   payload := STRING_TO_WSTRING('947'));
 	                ELSE
-	                    "DB_MC1".pallet := DINT_TO_INT("DB_MQTT".lastParams[0]);
+	                    #pallet := DINT_TO_INT("DB_MQTT".lastParams[0]);
 	                    "DB_MC1".declPallet_old := -1;   // eco forzato
 	                END_IF;
 	                "DB_MQTT".lastCmdReceived := 0;
 	            "CMD_RemovePallet_MC":    // 41
 	                IF "DB_MC1".Dispatcher["_master"] > 30 THEN
 	                    "FC_MQTT"(insert := true,
-	                              send := false,
-	                              topic := 'FROM_PLANT/ALARM/MC1',
-	                              payload := STRING_TO_WSTRING('947'));
+	                   send := false,
+	                   topic := 'FROM_PLANT/ALARM/MC1',
+	                   payload := STRING_TO_WSTRING('947'));
 	                ELSE
 	                    // PALLET FUORI = MACCHINA VUOTA (18/9): senza attrezzatura non
 	                    // c'e' niente che regga un pezzo. Dichiarare il pallet rimosso
 	                    // e lasciare piecepresent pieno e' uno stato impossibile.
-	                    "DB_MC1".pallet := 0;
+	                    #pallet := 0;
 	                    "DB_MC1".piecepresent[1] := 0;
 	                    "DB_Robot".Dispatcher["updatePartOnMC"] := 10 + DINT_TO_INT("EMPTY");
 	                    "DB_MC1".declPallet_old := -1;   // eco forzato
@@ -1392,7 +1644,12 @@ BEGIN
 	                // Guardia piu' stretta dei 40/41: piecepresent[1] e' letto dal 50
 	                // per decidere la missione, dichiararlo a ciclo avviato cambia la
 	                // decisione a meta'. Solo a riposo o in errore.
-	                IF "DB_MC1".Dispatcher["_master"] <> 0 AND "DB_MC1".Dispatcher["_master"] <> 9999 THEN
+	                // AMMESSO ANCHE AL 5 (5/10): il 5 (morsa chiusa a contenuto ignoto, 951)
+	                // indica proprio il 36 come uscita, ma questa guardia la bloccava con 947.
+	                IF "DB_MC1".Dispatcher["_master"] <> 0
+	                    AND "DB_MC1".Dispatcher["_master"] <> 9999
+	                    AND "DB_MC1".Dispatcher["_master"] <> 5
+	                THEN
 	                    "FC_MQTT"(insert := true,
 	                   send := false,
 	                   topic := 'FROM_PLANT/ALARM/MC1',
@@ -1435,7 +1692,7 @@ BEGIN
 	                   topic := 'FROM_PLANT/ALARM/MC1',
 	                   payload := STRING_TO_WSTRING('947'));
 	                ELSE
-	                    "DB_MC1".ManualVice := 1;
+	                    #ManualVice := 1;
 	                    "DB_MC1".declVice_old := -1;   // eco forzato
 	                END_IF;
 	                "DB_MQTT".lastCmdReceived := 0;
@@ -1446,7 +1703,7 @@ BEGIN
 	                   topic := 'FROM_PLANT/ALARM/MC1',
 	                   payload := STRING_TO_WSTRING('947'));
 	                ELSE
-	                    "DB_MC1".ManualVice := 0;
+	                    #ManualVice := 0;
 	                    "DB_MC1".declVice_old := -1;   // eco forzato
 	                END_IF;
 	                "DB_MQTT".lastCmdReceived := 0;
@@ -1454,20 +1711,21 @@ BEGIN
 	    END_IF;
 	    
 	    // eco stato dichiarato: on-change + republish al power-on (start -1) e su refresh 90
-	    IF "DB_MC1".pallet <> "DB_MC1".declPallet_old OR
-	        "DB_MC1".ManualVice <> "DB_MC1".declVice_old OR
+	    // (5/10) sui parametri del blocco, come le scritture sopra
+	    IF #pallet <> "DB_MC1".declPallet_old OR
+	        #ManualVice <> "DB_MC1".declVice_old OR
 	        "DB_MC1".piecepresent[1] <> "DB_MC1".declPiece_old
 	    THEN
 	        "FC_MQTT"(insert := true,
 	       send := false,
 	       topic := 'FROM_PLANT/DECLARE/MC1',
-	       payload := STRING_TO_WSTRING(CONCAT(IN1 := "INT_TO_STRING_WITHOUT_SIGN"("DB_MC1".pallet),
+	       payload := STRING_TO_WSTRING(CONCAT(IN1 := "INT_TO_STRING_WITHOUT_SIGN"(#pallet),
 	     IN2 := ';',
-	     IN3 := "INT_TO_STRING_WITHOUT_SIGN"("DB_MC1".ManualVice),
+	     IN3 := "INT_TO_STRING_WITHOUT_SIGN"(#ManualVice),
 	     IN4 := ';',
 	     IN5 := "INT_TO_STRING_WITHOUT_SIGN"("DB_MC1".piecepresent[1]))));
-	        "DB_MC1".declPallet_old := "DB_MC1".pallet;
-	        "DB_MC1".declVice_old := "DB_MC1".ManualVice;
+	        "DB_MC1".declPallet_old := #pallet;
+	        "DB_MC1".declVice_old := #ManualVice;
 	        "DB_MC1".declPiece_old := "DB_MC1".piecepresent[1];
 	    END_IF;
 	END_REGION

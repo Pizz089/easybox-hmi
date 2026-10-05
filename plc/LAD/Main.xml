@@ -1,0 +1,3308 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Document>
+  <Engineering version="V20" />
+  <SW.Blocks.OB ID="0">
+    <AttributeList>
+      <Interface><Sections xmlns="http://www.siemens.com/automation/Openness/SW/Interface/v5">
+  <Section Name="Input">
+    <Member Name="Initial_Call" Datatype="Bool" Informative="true">
+      <Comment>
+        <MultiLanguageText Lang="it-IT">Initial call of this OB</MultiLanguageText>
+      </Comment>
+    </Member>
+    <Member Name="Remanence" Datatype="Bool" Informative="true">
+      <Comment>
+        <MultiLanguageText Lang="it-IT">=True, if remanent data are available</MultiLanguageText>
+      </Comment>
+    </Member>
+  </Section>
+  <Section Name="Temp">
+    <Member Name="unitIndex" Datatype="SInt" />
+    <Member Name="query" Datatype="String" />
+    <Member Name="paramsTemp" Datatype="Array[0..5] of Int" />
+    <Member Name="exec" Datatype="Bool" />
+    <Member Name="inWinMC1" Datatype="Array[0..1] of Byte" />
+    <Member Name="outWinMC1" Datatype="Array[0..1] of Byte" />
+    <Member Name="jsonBrand" Datatype="String" />
+  </Section>
+  <Section Name="Constant" />
+</Sections></Interface>
+      <MemoryLayout>Optimized</MemoryLayout>
+      <Name>Main</Name>
+      <Namespace />
+      <Number>1</Number>
+      <ProgrammingLanguage>LAD</ProgrammingLanguage>
+      <SecondaryType>ProgramCycle</SecondaryType>
+      <SetENOAutomatically>false</SetENOAutomatically>
+    </AttributeList>
+    <ObjectList>
+      <MultilingualText ID="1" CompositionName="Comment">
+        <ObjectList>
+          <MultilingualTextItem ID="2" CompositionName="Items">
+            <AttributeList>
+              <Culture>en-US</Culture>
+              <Text />
+            </AttributeList>
+          </MultilingualTextItem>
+          <MultilingualTextItem ID="3" CompositionName="Items">
+            <AttributeList>
+              <Culture>it-IT</Culture>
+              <Text />
+            </AttributeList>
+          </MultilingualTextItem>
+        </ObjectList>
+      </MultilingualText>
+      <SW.Blocks.CompileUnit ID="4" CompositionName="CompileUnits">
+        <AttributeList>
+          <NetworkSource><StructuredText xmlns="http://www.siemens.com/automation/Openness/SW/NetworkSource/StructuredText/v4">
+  <LineComment UId="21">
+    <Text UId="22">manager database function</Text>
+  </LineComment>
+  <NewLine UId="23" />
+  <Access Scope="Call" UId="24">
+    <CallInfo UId="25" BlockType="FC">
+      <Instance Scope="GlobalVariable" UId="27">
+        <Component Name="FC_DBdata" UId="26" />
+      </Instance>
+      <Token Text="(" UId="28" />
+      <Token Text=")" UId="29" />
+    </CallInfo>
+  </Access>
+  <Token Text=";" UId="30" />
+  <NewLine UId="31" />
+  <Access Scope="Call" UId="32">
+    <CallInfo UId="33" BlockType="FC">
+      <Instance Scope="GlobalVariable" UId="35">
+        <Component Name="FC_DBdata2" UId="34" />
+      </Instance>
+      <Token Text="(" UId="36" />
+      <Token Text=")" UId="37" />
+    </CallInfo>
+  </Access>
+  <Token Text=";" UId="38" />
+  <NewLine UId="39" />
+</StructuredText></NetworkSource>
+          <ProgrammingLanguage>SCL</ProgrammingLanguage>
+        </AttributeList>
+        <ObjectList>
+          <MultilingualText ID="5" CompositionName="Comment">
+            <ObjectList>
+              <MultilingualTextItem ID="6" CompositionName="Items">
+                <AttributeList>
+                  <Culture>en-US</Culture>
+                  <Text />
+                </AttributeList>
+              </MultilingualTextItem>
+              <MultilingualTextItem ID="7" CompositionName="Items">
+                <AttributeList>
+                  <Culture>it-IT</Culture>
+                  <Text />
+                </AttributeList>
+              </MultilingualTextItem>
+            </ObjectList>
+          </MultilingualText>
+          <MultilingualText ID="8" CompositionName="Title">
+            <ObjectList>
+              <MultilingualTextItem ID="9" CompositionName="Items">
+                <AttributeList>
+                  <Culture>en-US</Culture>
+                  <Text />
+                </AttributeList>
+              </MultilingualTextItem>
+              <MultilingualTextItem ID="A" CompositionName="Items">
+                <AttributeList>
+                  <Culture>it-IT</Culture>
+                  <Text>DB_FUNCTION</Text>
+                </AttributeList>
+              </MultilingualTextItem>
+            </ObjectList>
+          </MultilingualText>
+        </ObjectList>
+      </SW.Blocks.CompileUnit>
+      <SW.Blocks.CompileUnit ID="B" CompositionName="CompileUnits">
+        <AttributeList>
+          <NetworkSource><StructuredText xmlns="http://www.siemens.com/automation/Openness/SW/NetworkSource/StructuredText/v4">
+  <LineComment UId="21">
+    <Text UId="22">manager for plant events</Text>
+  </LineComment>
+  <NewLine UId="23" />
+  <Access Scope="Call" UId="24">
+    <CallInfo UId="25" BlockType="FB" Name="FB_plant">
+      <Instance Scope="GlobalVariable" UId="26">
+        <Component Name="DB_plant" UId="27">
+          <BooleanAttribute Name="HasQuotes" UId="28">true</BooleanAttribute>
+        </Component>
+      </Instance>
+      <Token Text="(" UId="29" />
+      <Token Text=")" UId="30" />
+    </CallInfo>
+  </Access>
+  <Token Text=";" UId="31" />
+  <NewLine UId="32" />
+</StructuredText></NetworkSource>
+          <ProgrammingLanguage>SCL</ProgrammingLanguage>
+        </AttributeList>
+        <ObjectList>
+          <MultilingualText ID="C" CompositionName="Comment">
+            <ObjectList>
+              <MultilingualTextItem ID="D" CompositionName="Items">
+                <AttributeList>
+                  <Culture>en-US</Culture>
+                  <Text />
+                </AttributeList>
+              </MultilingualTextItem>
+              <MultilingualTextItem ID="E" CompositionName="Items">
+                <AttributeList>
+                  <Culture>it-IT</Culture>
+                  <Text />
+                </AttributeList>
+              </MultilingualTextItem>
+            </ObjectList>
+          </MultilingualText>
+          <MultilingualText ID="F" CompositionName="Title">
+            <ObjectList>
+              <MultilingualTextItem ID="10" CompositionName="Items">
+                <AttributeList>
+                  <Culture>en-US</Culture>
+                  <Text />
+                </AttributeList>
+              </MultilingualTextItem>
+              <MultilingualTextItem ID="11" CompositionName="Items">
+                <AttributeList>
+                  <Culture>it-IT</Culture>
+                  <Text>PLANT</Text>
+                </AttributeList>
+              </MultilingualTextItem>
+            </ObjectList>
+          </MultilingualText>
+        </ObjectList>
+      </SW.Blocks.CompileUnit>
+      <SW.Blocks.CompileUnit ID="12" CompositionName="CompileUnits">
+        <AttributeList>
+          <NetworkSource><StructuredText xmlns="http://www.siemens.com/automation/Openness/SW/NetworkSource/StructuredText/v4">
+  <LineComment UId="21">
+    <Text UId="22">management of Easybox 1 cycle</Text>
+  </LineComment>
+  <NewLine UId="23" />
+  <Access Scope="Call" UId="24">
+    <CallInfo UId="25" BlockType="FB" Name="FB_easyBox">
+      <Instance Scope="GlobalVariable" UId="26">
+        <Component Name="DB_BOX_1" UId="27">
+          <BooleanAttribute Name="HasQuotes" UId="28">true</BooleanAttribute>
+        </Component>
+      </Instance>
+      <Token Text="(" UId="29" />
+      <Parameter Name="Presence_tray1" UId="30">
+        <Blank Num="2" UId="31" />
+        <Token Text=":=" UId="32" />
+        <Blank UId="33" />
+        <Access Scope="GlobalVariable" UId="34">
+          <Symbol UId="35">
+            <Component Name="I_OUT_TRAY1" UId="36">
+              <BooleanAttribute Name="HasQuotes" UId="37">true</BooleanAttribute>
+            </Component>
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="38" />
+      <NewLine UId="39" />
+      <Blank Num="11" UId="40" />
+      <Parameter Name="Presence_tray2" UId="41">
+        <Blank Num="2" UId="42" />
+        <Token Text=":=" UId="43" />
+        <Blank UId="44" />
+        <Access Scope="GlobalVariable" UId="45">
+          <Symbol UId="46">
+            <Component Name="I_OUT_TRAY2" UId="47">
+              <BooleanAttribute Name="HasQuotes" UId="48">true</BooleanAttribute>
+            </Component>
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="49" />
+      <NewLine UId="50" />
+      <Blank Num="11" UId="51" />
+      <Parameter Name="Presence_tray3" UId="52">
+        <Blank Num="2" UId="53" />
+        <Token Text=":=" UId="54" />
+        <Blank UId="55" />
+        <Access Scope="GlobalVariable" UId="56">
+          <Symbol UId="57">
+            <Component Name="I_OUT_TRAY3" UId="58">
+              <BooleanAttribute Name="HasQuotes" UId="59">true</BooleanAttribute>
+            </Component>
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="60" />
+      <NewLine UId="61" />
+      <Blank Num="11" UId="62" />
+      <Parameter Name="Presence_tray4" UId="63">
+        <Blank Num="2" UId="64" />
+        <Token Text=":=" UId="65" />
+        <Blank UId="66" />
+        <Access Scope="GlobalVariable" UId="67">
+          <Symbol UId="68">
+            <Component Name="I_OUT_TRAY4" UId="69">
+              <BooleanAttribute Name="HasQuotes" UId="70">true</BooleanAttribute>
+            </Component>
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="71" />
+      <NewLine UId="72" />
+      <Blank Num="11" UId="73" />
+      <Parameter Name="Presence_tray5" UId="74">
+        <Blank Num="2" UId="75" />
+        <Token Text=":=" UId="76" />
+        <Blank UId="77" />
+        <Access Scope="GlobalVariable" UId="78">
+          <Symbol UId="79">
+            <Component Name="I_OUT_TRAY5" UId="80">
+              <BooleanAttribute Name="HasQuotes" UId="81">true</BooleanAttribute>
+            </Component>
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="82" />
+      <NewLine UId="83" />
+      <Blank Num="11" UId="84" />
+      <Parameter Name="Presence_tray6" UId="85">
+        <Blank Num="2" UId="86" />
+        <Token Text=":=" UId="87" />
+        <Blank UId="88" />
+        <Access Scope="GlobalVariable" UId="89">
+          <Symbol UId="90">
+            <Component Name="I_OUT_TRAY6" UId="91">
+              <BooleanAttribute Name="HasQuotes" UId="92">true</BooleanAttribute>
+            </Component>
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="93" />
+      <NewLine UId="94" />
+      <Blank Num="11" UId="95" />
+      <Parameter Name="Presence_tray7" UId="96">
+        <Blank Num="2" UId="97" />
+        <Token Text=":=" UId="98" />
+        <Blank UId="99" />
+        <Access Scope="GlobalVariable" UId="100">
+          <Symbol UId="101">
+            <Component Name="I_OUT_TRAY7" UId="102">
+              <BooleanAttribute Name="HasQuotes" UId="103">true</BooleanAttribute>
+            </Component>
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="104" />
+      <NewLine UId="105" />
+      <Blank Num="11" UId="106" />
+      <Parameter Name="Presence_tray8" UId="107">
+        <Blank Num="2" UId="108" />
+        <Token Text=":=" UId="109" />
+        <Blank UId="110" />
+        <Access Scope="GlobalVariable" UId="111">
+          <Symbol UId="112">
+            <Component Name="I_OUT_TRAY8" UId="113">
+              <BooleanAttribute Name="HasQuotes" UId="114">true</BooleanAttribute>
+            </Component>
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="115" />
+      <NewLine UId="116" />
+      <Blank Num="11" UId="117" />
+      <Parameter Name="Presence_tray9" UId="118">
+        <Blank Num="2" UId="119" />
+        <Token Text=":=" UId="120" />
+        <Blank UId="121" />
+        <Access Scope="GlobalVariable" UId="122">
+          <Symbol UId="123">
+            <Component Name="I_OUT_TRAY9" UId="124">
+              <BooleanAttribute Name="HasQuotes" UId="125">true</BooleanAttribute>
+            </Component>
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="126" />
+      <NewLine UId="127" />
+      <Blank Num="11" UId="128" />
+      <Parameter Name="Presence_tray10" UId="129">
+        <Blank UId="130" />
+        <Token Text=":=" UId="131" />
+        <Blank UId="132" />
+        <Access Scope="GlobalVariable" UId="133">
+          <Symbol UId="134">
+            <Component Name="I_OUT_TRAY10" UId="135">
+              <BooleanAttribute Name="HasQuotes" UId="136">true</BooleanAttribute>
+            </Component>
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="137" />
+      <NewLine UId="138" />
+      <Blank Num="11" UId="139" />
+      <Parameter Name="Presence_tray11" UId="140">
+        <Blank UId="141" />
+        <Token Text=":=" UId="142" />
+        <Blank UId="143" />
+        <Access Scope="GlobalVariable" UId="144">
+          <Symbol UId="145">
+            <Component Name="I_OUT_TRAY11" UId="146">
+              <BooleanAttribute Name="HasQuotes" UId="147">true</BooleanAttribute>
+            </Component>
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="148" />
+      <NewLine UId="149" />
+      <Blank Num="11" UId="150" />
+      <Parameter Name="Presence_tray12" UId="151">
+        <Blank UId="152" />
+        <Token Text=":=" UId="153" />
+        <Blank UId="154" />
+        <Access Scope="GlobalVariable" UId="155">
+          <Symbol UId="156">
+            <Component Name="I_OUT_TRAY12" UId="157">
+              <BooleanAttribute Name="HasQuotes" UId="158">true</BooleanAttribute>
+            </Component>
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="159" />
+      <NewLine UId="160" />
+      <Blank Num="11" UId="161" />
+      <Parameter Name="AllTrayInside" UId="162">
+        <Blank Num="3" UId="163" />
+        <Token Text=":=" UId="164" />
+        <Blank UId="165" />
+        <Access Scope="GlobalVariable" UId="166">
+          <Symbol UId="167">
+            <Component Name="All_trays_Inside" UId="168">
+              <BooleanAttribute Name="HasQuotes" UId="169">true</BooleanAttribute>
+            </Component>
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="170" />
+      <NewLine UId="171" />
+      <Blank Num="11" UId="172" />
+      <Parameter Name="HL_Start_Aux" UId="173">
+        <Blank Num="4" UId="174" />
+        <Token Text="=&gt;" UId="175" />
+        <Blank UId="176" />
+        <Access Scope="GlobalVariable" UId="177">
+          <Symbol UId="178">
+            <Component Name="HLStartAux" UId="179">
+              <BooleanAttribute Name="HasQuotes" UId="180">true</BooleanAttribute>
+            </Component>
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="181" />
+      <NewLine UId="182" />
+      <Blank Num="11" UId="183" />
+      <Parameter Name="HL_Hold" UId="184">
+        <Blank Num="9" UId="185" />
+        <Token Text="=&gt;" UId="186" />
+        <Blank UId="187" />
+        <Access Scope="GlobalVariable" UId="188">
+          <Symbol UId="189">
+            <Component Name="HL_Hold" UId="190">
+              <BooleanAttribute Name="HasQuotes" UId="191">true</BooleanAttribute>
+            </Component>
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="192" />
+      <NewLine UId="193" />
+      <Blank Num="11" UId="194" />
+      <Parameter Name="HL_Green" UId="195">
+        <Blank Num="8" UId="196" />
+        <Token Text="=&gt;" UId="197" />
+        <Blank UId="198" />
+        <Access Scope="GlobalVariable" UId="199">
+          <Symbol UId="200">
+            <Component Name="HL_GREEN" UId="201">
+              <BooleanAttribute Name="HasQuotes" UId="202">true</BooleanAttribute>
+            </Component>
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="203" />
+      <NewLine UId="204" />
+      <Blank Num="11" UId="205" />
+      <Parameter Name="HL_Orange" UId="206">
+        <Blank Num="7" UId="207" />
+        <Token Text="=&gt;" UId="208" />
+        <Blank UId="209" />
+        <Access Scope="GlobalVariable" UId="210">
+          <Symbol UId="211">
+            <Component Name="HL_ORANGE" UId="212">
+              <BooleanAttribute Name="HasQuotes" UId="213">true</BooleanAttribute>
+            </Component>
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="214" />
+      <NewLine UId="215" />
+      <Blank Num="11" UId="216" />
+      <Parameter Name="HL_Red" UId="217">
+        <Blank Num="10" UId="218" />
+        <Token Text="=&gt;" UId="219" />
+        <Blank UId="220" />
+        <Access Scope="GlobalVariable" UId="221">
+          <Symbol UId="222">
+            <Component Name="HL_RED" UId="223">
+              <BooleanAttribute Name="HasQuotes" UId="224">true</BooleanAttribute>
+            </Component>
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text=")" UId="225" />
+    </CallInfo>
+  </Access>
+  <Token Text=";" UId="226" />
+</StructuredText></NetworkSource>
+          <ProgrammingLanguage>SCL</ProgrammingLanguage>
+        </AttributeList>
+        <ObjectList>
+          <MultilingualText ID="13" CompositionName="Comment">
+            <ObjectList>
+              <MultilingualTextItem ID="14" CompositionName="Items">
+                <AttributeList>
+                  <Culture>en-US</Culture>
+                  <Text />
+                </AttributeList>
+              </MultilingualTextItem>
+              <MultilingualTextItem ID="15" CompositionName="Items">
+                <AttributeList>
+                  <Culture>it-IT</Culture>
+                  <Text />
+                </AttributeList>
+              </MultilingualTextItem>
+            </ObjectList>
+          </MultilingualText>
+          <MultilingualText ID="16" CompositionName="Title">
+            <ObjectList>
+              <MultilingualTextItem ID="17" CompositionName="Items">
+                <AttributeList>
+                  <Culture>en-US</Culture>
+                  <Text />
+                </AttributeList>
+              </MultilingualTextItem>
+              <MultilingualTextItem ID="18" CompositionName="Items">
+                <AttributeList>
+                  <Culture>it-IT</Culture>
+                  <Text>WAREHOUSE</Text>
+                </AttributeList>
+              </MultilingualTextItem>
+            </ObjectList>
+          </MultilingualText>
+        </ObjectList>
+      </SW.Blocks.CompileUnit>
+      <SW.Blocks.CompileUnit ID="19" CompositionName="CompileUnits">
+        <AttributeList>
+          <NetworkSource><StructuredText xmlns="http://www.siemens.com/automation/Openness/SW/NetworkSource/StructuredText/v4">
+  <Blank Num="4" UId="21" />
+  <LineComment UId="22">
+    <Text UId="23"> --- ricezione comando cambio brand da HMI (topic TO_PLANT/CMD/BRANDMC1) ---</Text>
+  </LineComment>
+  <NewLine UId="24" />
+  <Blank Num="4" UId="25" />
+  <Token Text="IF" UId="26" />
+  <Blank UId="27" />
+  <Access Scope="GlobalVariable" UId="28">
+    <Symbol UId="29">
+      <Component Name="DB_MQTT" UId="30">
+        <BooleanAttribute Name="HasQuotes" UId="31">true</BooleanAttribute>
+      </Component>
+      <Token Text="." UId="32" />
+      <Component Name="lastTopicReceived" UId="33" />
+    </Symbol>
+  </Access>
+  <Blank UId="34" />
+  <Token Text="=" UId="35" />
+  <Blank UId="36" />
+  <Access Scope="LiteralConstant" UId="37">
+    <Constant UId="38">
+      <ConstantValue UId="40">'BRANDMC1'</ConstantValue>
+    </Constant>
+  </Access>
+  <NewLine UId="41" />
+  <Blank Num="8" UId="42" />
+  <Token Text="AND" UId="43" />
+  <Blank UId="44" />
+  <Access Scope="GlobalVariable" UId="45">
+    <Symbol UId="46">
+      <Component Name="DB_MQTT" UId="47">
+        <BooleanAttribute Name="HasQuotes" UId="48">true</BooleanAttribute>
+      </Component>
+      <Token Text="." UId="49" />
+      <Component Name="lastCmdReceived" UId="50" />
+    </Symbol>
+  </Access>
+  <Blank UId="51" />
+  <Token Text="&gt;=" UId="52" />
+  <Blank UId="53" />
+  <Access Scope="LiteralConstant" UId="54">
+    <Constant UId="55">
+      <ConstantValue UId="57">1</ConstantValue>
+    </Constant>
+  </Access>
+  <NewLine UId="58" />
+  <Blank Num="8" UId="59" />
+  <Token Text="AND" UId="60" />
+  <Blank UId="61" />
+  <Access Scope="GlobalVariable" UId="62">
+    <Symbol UId="63">
+      <Component Name="DB_MQTT" UId="64">
+        <BooleanAttribute Name="HasQuotes" UId="65">true</BooleanAttribute>
+      </Component>
+      <Token Text="." UId="66" />
+      <Component Name="lastCmdReceived" UId="67" />
+    </Symbol>
+  </Access>
+  <Blank UId="68" />
+  <Token Text="&lt;=" UId="69" />
+  <Blank UId="70" />
+  <Access Scope="LiteralConstant" UId="71">
+    <Constant UId="72">
+      <ConstantValue UId="74">16</ConstantValue>
+    </Constant>
+  </Access>
+  <NewLine UId="75" />
+  <Blank Num="4" UId="76" />
+  <Token Text="THEN" UId="77" />
+  <NewLine UId="78" />
+  <Blank Num="8" UId="79" />
+  <Access Scope="GlobalVariable" UId="80">
+    <Symbol UId="81">
+      <Component Name="DB_MC1" UId="82">
+        <BooleanAttribute Name="HasQuotes" UId="83">true</BooleanAttribute>
+      </Component>
+      <Token Text="." UId="84" />
+      <Component Name="brandID_req" UId="85" />
+    </Symbol>
+  </Access>
+  <Blank UId="86" />
+  <Token Text=":=" UId="87" />
+  <Blank UId="88" />
+  <Access Scope="GlobalVariable" UId="89">
+    <Symbol UId="90">
+      <Component Name="DB_MQTT" UId="91">
+        <BooleanAttribute Name="HasQuotes" UId="92">true</BooleanAttribute>
+      </Component>
+      <Token Text="." UId="93" />
+      <Component Name="lastCmdReceived" UId="94" />
+    </Symbol>
+  </Access>
+  <Token Text=";" UId="95" />
+  <NewLine UId="96" />
+  <Blank Num="8" UId="97" />
+  <LineComment UId="98">
+    <Text UId="99"> consumo il comando: evita perdita per dedup di FC_MQTT</Text>
+  </LineComment>
+  <NewLine UId="100" />
+  <Blank Num="8" UId="101" />
+  <Access Scope="GlobalVariable" UId="102">
+    <Symbol UId="103">
+      <Component Name="DB_MQTT" UId="104">
+        <BooleanAttribute Name="HasQuotes" UId="105">true</BooleanAttribute>
+      </Component>
+      <Token Text="." UId="106" />
+      <Component Name="lastCmdReceived" UId="107" />
+    </Symbol>
+  </Access>
+  <Blank UId="108" />
+  <Token Text=":=" UId="109" />
+  <Blank UId="110" />
+  <Access Scope="LiteralConstant" UId="111">
+    <Constant UId="112">
+      <ConstantValue UId="114">0</ConstantValue>
+    </Constant>
+  </Access>
+  <Token Text=";" UId="115" />
+  <NewLine UId="116" />
+  <Blank Num="8" UId="117" />
+  <Access Scope="GlobalVariable" UId="118">
+    <Symbol UId="119">
+      <Component Name="DB_MQTT" UId="120">
+        <BooleanAttribute Name="HasQuotes" UId="121">true</BooleanAttribute>
+      </Component>
+      <Token Text="." UId="122" />
+      <Component Name="lastTopicReceived" UId="123" />
+    </Symbol>
+  </Access>
+  <Blank UId="124" />
+  <Token Text=":=" UId="125" />
+  <Blank UId="126" />
+  <Access Scope="LiteralConstant" UId="127">
+    <Constant UId="128">
+      <ConstantValue UId="130">''</ConstantValue>
+    </Constant>
+  </Access>
+  <Token Text=";" UId="131" />
+  <NewLine UId="132" />
+  <Blank Num="4" UId="133" />
+  <Token Text="END_IF" UId="134" />
+  <Token Text=";" UId="135" />
+  <NewLine UId="136" />
+  <Blank Num="4" UId="137" />
+  <NewLine UId="138" />
+  <Blank Num="4" UId="139" />
+  <LineComment UId="140">
+    <Text UId="141"> --- 0. clamp brandID e latch SOLO a macchina ferma ---</Text>
+  </LineComment>
+  <NewLine UId="142" />
+  <Blank Num="4" UId="143" />
+  <Token Text="IF" UId="144" />
+  <Blank UId="145" />
+  <Token Text="(" UId="146" />
+  <Access Scope="GlobalVariable" UId="147">
+    <Symbol UId="148">
+      <Component Name="DB_MC1" UId="149">
+        <BooleanAttribute Name="HasQuotes" UId="150">true</BooleanAttribute>
+      </Component>
+      <Token Text="." UId="151" />
+      <Component Name="brandID_req" UId="152" />
+    </Symbol>
+  </Access>
+  <Blank UId="153" />
+  <Token Text="&lt;" UId="154" />
+  <Blank UId="155" />
+  <Access Scope="LiteralConstant" UId="156">
+    <Constant UId="157">
+      <ConstantValue UId="159">1</ConstantValue>
+    </Constant>
+  </Access>
+  <Token Text=")" UId="160" />
+  <Blank UId="161" />
+  <Token Text="OR" UId="162" />
+  <Blank UId="163" />
+  <Token Text="(" UId="164" />
+  <Access Scope="GlobalVariable" UId="165">
+    <Symbol UId="166">
+      <Component Name="DB_MC1" UId="167">
+        <BooleanAttribute Name="HasQuotes" UId="168">true</BooleanAttribute>
+      </Component>
+      <Token Text="." UId="169" />
+      <Component Name="brandID_req" UId="170" />
+    </Symbol>
+  </Access>
+  <Blank UId="171" />
+  <Token Text="&gt;" UId="172" />
+  <Blank UId="173" />
+  <Access Scope="LiteralConstant" UId="174">
+    <Constant UId="175">
+      <ConstantValue UId="177">16</ConstantValue>
+    </Constant>
+  </Access>
+  <Token Text=")" UId="178" />
+  <Blank UId="179" />
+  <Token Text="THEN" UId="180" />
+  <NewLine UId="181" />
+  <Blank Num="8" UId="182" />
+  <Access Scope="GlobalVariable" UId="183">
+    <Symbol UId="184">
+      <Component Name="DB_MC1" UId="185">
+        <BooleanAttribute Name="HasQuotes" UId="186">true</BooleanAttribute>
+      </Component>
+      <Token Text="." UId="187" />
+      <Component Name="brandID_req" UId="188" />
+    </Symbol>
+  </Access>
+  <Blank UId="189" />
+  <Token Text=":=" UId="190" />
+  <Blank UId="191" />
+  <Access Scope="LiteralConstant" UId="192">
+    <Constant UId="193">
+      <ConstantValue UId="195">1</ConstantValue>
+    </Constant>
+  </Access>
+  <Token Text=";" UId="196" />
+  <NewLine UId="197" />
+  <Blank Num="4" UId="198" />
+  <Token Text="END_IF" UId="199" />
+  <Token Text=";" UId="200" />
+  <NewLine UId="201" />
+  <Blank Num="4" UId="202" />
+  <NewLine UId="203" />
+  <Blank Num="4" UId="204" />
+  <LineComment UId="205">
+    <Text UId="206"> idle: dispatcher master a 0 (adatta alla tua condizione di "sicuro riconfigurare")</Text>
+  </LineComment>
+  <NewLine UId="207" />
+  <Blank Num="4" UId="208" />
+  <Token Text="IF" UId="209" />
+  <Blank UId="210" />
+  <Access Scope="GlobalVariable" UId="211">
+    <Symbol UId="212">
+      <Component Name="DB_MC1" UId="213">
+        <BooleanAttribute Name="HasQuotes" UId="214">true</BooleanAttribute>
+      </Component>
+      <Token Text="." UId="215" />
+      <Component Name="Dispatcher" UId="216">
+        <Token Text="[" UId="217" />
+        <Access Scope="LiteralConstant" UId="218">
+          <Constant UId="219">
+            <ConstantValue UId="221">0</ConstantValue>
+          </Constant>
+        </Access>
+        <Token Text="]" UId="222" />
+      </Component>
+    </Symbol>
+  </Access>
+  <Blank UId="223" />
+  <Token Text="=" UId="224" />
+  <Blank UId="225" />
+  <Access Scope="LiteralConstant" UId="226">
+    <Constant UId="227">
+      <ConstantValue UId="229">0</ConstantValue>
+    </Constant>
+  </Access>
+  <Blank UId="230" />
+  <Token Text="THEN" UId="231" />
+  <NewLine UId="232" />
+  <Blank Num="8" UId="233" />
+  <Access Scope="GlobalVariable" UId="234">
+    <Symbol UId="235">
+      <Component Name="DB_MC1" UId="236">
+        <BooleanAttribute Name="HasQuotes" UId="237">true</BooleanAttribute>
+      </Component>
+      <Token Text="." UId="238" />
+      <Component Name="brandID_act" UId="239" />
+    </Symbol>
+  </Access>
+  <Blank UId="240" />
+  <Token Text=":=" UId="241" />
+  <Blank UId="242" />
+  <Access Scope="GlobalVariable" UId="243">
+    <Symbol UId="244">
+      <Component Name="DB_MC1" UId="245">
+        <BooleanAttribute Name="HasQuotes" UId="246">true</BooleanAttribute>
+      </Component>
+      <Token Text="." UId="247" />
+      <Component Name="brandID_req" UId="248" />
+    </Symbol>
+  </Access>
+  <Token Text=";" UId="249" />
+  <NewLine UId="250" />
+  <Blank Num="4" UId="251" />
+  <Token Text="END_IF" UId="252" />
+  <Token Text=";" UId="253" />
+  <NewLine UId="254" />
+  <Blank Num="4" UId="255" />
+  <NewLine UId="256" />
+  <Blank Num="4" UId="257" />
+  <Token Text="IF" UId="258" />
+  <Blank UId="259" />
+  <Token Text="(" UId="260" />
+  <Access Scope="GlobalVariable" UId="261">
+    <Symbol UId="262">
+      <Component Name="DB_MC1" UId="263">
+        <BooleanAttribute Name="HasQuotes" UId="264">true</BooleanAttribute>
+      </Component>
+      <Token Text="." UId="265" />
+      <Component Name="brandID_act" UId="266" />
+    </Symbol>
+  </Access>
+  <Blank UId="267" />
+  <Token Text="&lt;" UId="268" />
+  <Blank UId="269" />
+  <Access Scope="LiteralConstant" UId="270">
+    <Constant UId="271">
+      <ConstantValue UId="273">1</ConstantValue>
+    </Constant>
+  </Access>
+  <Token Text=")" UId="274" />
+  <Blank UId="275" />
+  <Token Text="OR" UId="276" />
+  <Blank UId="277" />
+  <Token Text="(" UId="278" />
+  <Access Scope="GlobalVariable" UId="279">
+    <Symbol UId="280">
+      <Component Name="DB_MC1" UId="281">
+        <BooleanAttribute Name="HasQuotes" UId="282">true</BooleanAttribute>
+      </Component>
+      <Token Text="." UId="283" />
+      <Component Name="brandID_act" UId="284" />
+    </Symbol>
+  </Access>
+  <Blank UId="285" />
+  <Token Text="&gt;" UId="286" />
+  <Blank UId="287" />
+  <Access Scope="LiteralConstant" UId="288">
+    <Constant UId="289">
+      <ConstantValue UId="291">16</ConstantValue>
+    </Constant>
+  </Access>
+  <Token Text=")" UId="292" />
+  <Blank UId="293" />
+  <Token Text="THEN" UId="294" />
+  <NewLine UId="295" />
+  <Blank Num="8" UId="296" />
+  <Access Scope="GlobalVariable" UId="297">
+    <Symbol UId="298">
+      <Component Name="DB_MC1" UId="299">
+        <BooleanAttribute Name="HasQuotes" UId="300">true</BooleanAttribute>
+      </Component>
+      <Token Text="." UId="301" />
+      <Component Name="brandID_act" UId="302" />
+    </Symbol>
+  </Access>
+  <Blank UId="303" />
+  <Token Text=":=" UId="304" />
+  <Blank UId="305" />
+  <Access Scope="LiteralConstant" UId="306">
+    <Constant UId="307">
+      <ConstantValue UId="309">1</ConstantValue>
+    </Constant>
+  </Access>
+  <Token Text=";" UId="310" />
+  <NewLine UId="311" />
+  <Blank Num="4" UId="312" />
+  <Token Text="END_IF" UId="313" />
+  <Token Text=";" UId="314" />
+  <NewLine UId="315" />
+  <Blank Num="4" UId="316" />
+  <NewLine UId="317" />
+  <Blank Num="4" UId="318" />
+  <LineComment UId="319">
+    <Text UId="320"> --- 1. finestra ingressi fisici della posizione MC1 ---</Text>
+  </LineComment>
+  <NewLine UId="321" />
+  <Blank Num="4" UId="322" />
+  <Access Scope="LocalVariable" UId="323">
+    <Symbol UId="324">
+      <Component Name="inWinMC1" UId="325">
+        <Token Text="[" UId="326" />
+        <Access Scope="LiteralConstant" UId="327">
+          <Constant UId="328">
+            <ConstantValue UId="330">0</ConstantValue>
+          </Constant>
+        </Access>
+        <Token Text="]" UId="331" />
+      </Component>
+    </Symbol>
+  </Access>
+  <Blank UId="332" />
+  <Token Text=":=" UId="333" />
+  <Blank UId="334" />
+  <Access Scope="GlobalVariable" UId="335">
+    <Symbol UId="336">
+      <Component Name="Tag_4" UId="337">
+        <BooleanAttribute Name="HasQuotes" UId="338">true</BooleanAttribute>
+      </Component>
+    </Symbol>
+  </Access>
+  <Token Text=";" UId="339" />
+  <Blank Num="6" UId="340" />
+  <LineComment UId="341">
+    <Text UId="342"> byte macchina MC1</Text>
+  </LineComment>
+  <NewLine UId="343" />
+  <Blank Num="4" UId="344" />
+  <Access Scope="LocalVariable" UId="345">
+    <Symbol UId="346">
+      <Component Name="inWinMC1" UId="347">
+        <Token Text="[" UId="348" />
+        <Access Scope="LiteralConstant" UId="349">
+          <Constant UId="350">
+            <ConstantValue UId="352">1</ConstantValue>
+          </Constant>
+        </Access>
+        <Token Text="]" UId="353" />
+      </Component>
+    </Symbol>
+  </Access>
+  <Blank UId="354" />
+  <Token Text=":=" UId="355" />
+  <Blank UId="356" />
+  <Access Scope="LiteralConstant" UId="357">
+    <Constant UId="358">
+      <ConstantValue UId="360">0</ConstantValue>
+    </Constant>
+  </Access>
+  <Token Text=";" UId="361" />
+  <Blank Num="10" UId="362" />
+  <LineComment UId="363">
+    <Text UId="364"> se il modulo MC1 e' 1 byte lascia 0; se 2 byte: := %IB44;</Text>
+  </LineComment>
+  <NewLine UId="365" />
+  <Blank Num="4" UId="366" />
+  <NewLine UId="367" />
+  <Blank Num="4" UId="368" />
+  <LineComment UId="369">
+    <Text UId="370"> --- 2. mappatura parametrica (config del brand attivo) ---</Text>
+  </LineComment>
+  <NewLine UId="371" />
+  <Blank Num="4" UId="372" />
+  <Access Scope="Call" UId="373">
+    <CallInfo UId="374" BlockType="FC">
+      <Instance Scope="GlobalVariable" UId="376">
+        <Component Name="FC_Map_Generic" UId="375" />
+      </Instance>
+      <Token Text="(" UId="377" />
+      <Parameter Name="inBytes" UId="378">
+        <Blank UId="379" />
+        <Token Text=":=" UId="380" />
+        <Blank UId="381" />
+        <Access Scope="LocalVariable" UId="382">
+          <Symbol UId="383">
+            <Component Name="inWinMC1" UId="384" />
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="385" />
+      <NewLine UId="386" />
+      <Blank Num="21" UId="387" />
+      <Parameter Name="cfg" UId="388">
+        <Blank UId="389" />
+        <Token Text=":=" UId="390" />
+        <Blank UId="391" />
+        <Access Scope="GlobalVariable" UId="392">
+          <Symbol UId="393">
+            <Component Name="DB_MachineConfig" UId="394">
+              <BooleanAttribute Name="HasQuotes" UId="395">true</BooleanAttribute>
+            </Component>
+            <Token Text="." UId="396" />
+            <Component Name="brand" UId="397">
+              <Token Text="[" UId="398" />
+              <Access Scope="GlobalVariable" UId="399">
+                <Symbol UId="400">
+                  <Component Name="DB_MC1" UId="401">
+                    <BooleanAttribute Name="HasQuotes" UId="402">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="403" />
+                  <Component Name="brandID_act" UId="404" />
+                </Symbol>
+              </Access>
+              <Token Text="]" UId="405" />
+            </Component>
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="406" />
+      <NewLine UId="407" />
+      <Blank Num="21" UId="408" />
+      <Parameter Name="io_in" UId="409">
+        <Blank UId="410" />
+        <Token Text=":=" UId="411" />
+        <Blank UId="412" />
+        <Access Scope="GlobalVariable" UId="413">
+          <Symbol UId="414">
+            <Component Name="DB_MC1" UId="415">
+              <BooleanAttribute Name="HasQuotes" UId="416">true</BooleanAttribute>
+            </Component>
+            <Token Text="." UId="417" />
+            <Component Name="io_in" UId="418" />
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="419" />
+      <NewLine UId="420" />
+      <Blank Num="21" UId="421" />
+      <Parameter Name="io_out" UId="422">
+        <Blank UId="423" />
+        <Token Text=":=" UId="424" />
+        <Blank UId="425" />
+        <Access Scope="GlobalVariable" UId="426">
+          <Symbol UId="427">
+            <Component Name="DB_MC1" UId="428">
+              <BooleanAttribute Name="HasQuotes" UId="429">true</BooleanAttribute>
+            </Component>
+            <Token Text="." UId="430" />
+            <Component Name="io_out" UId="431" />
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="432" />
+      <NewLine UId="433" />
+      <Blank Num="21" UId="434" />
+      <Parameter Name="outBytes" UId="435">
+        <Blank UId="436" />
+        <Token Text="=&gt;" UId="437" />
+        <Blank UId="438" />
+        <Access Scope="LocalVariable" UId="439">
+          <Symbol UId="440">
+            <Component Name="outWinMC1" UId="441" />
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text=")" UId="442" />
+    </CallInfo>
+  </Access>
+  <Token Text=";" UId="443" />
+  <NewLine UId="444" />
+  <Blank Num="4" UId="445" />
+  <NewLine UId="446" />
+  <Blank Num="4" UId="447" />
+  <LineComment UId="448">
+    <Text UId="449"> --- 3. finestra uscite fisiche della posizione MC1 ---</Text>
+  </LineComment>
+  <NewLine UId="450" />
+  <Blank Num="4" UId="451" />
+  <Access Scope="GlobalVariable" UId="452">
+    <Symbol UId="453">
+      <Component Name="Tag_5" UId="454">
+        <BooleanAttribute Name="HasQuotes" UId="455">true</BooleanAttribute>
+      </Component>
+    </Symbol>
+  </Access>
+  <Blank UId="456" />
+  <Token Text=":=" UId="457" />
+  <Blank UId="458" />
+  <Access Scope="LocalVariable" UId="459">
+    <Symbol UId="460">
+      <Component Name="outWinMC1" UId="461">
+        <Token Text="[" UId="462" />
+        <Access Scope="LiteralConstant" UId="463">
+          <Constant UId="464">
+            <ConstantValue UId="466">0</ConstantValue>
+          </Constant>
+        </Access>
+        <Token Text="]" UId="467" />
+      </Component>
+    </Symbol>
+  </Access>
+  <Token Text=";" UId="468" />
+  <Blank Num="5" UId="469" />
+  <LineComment UId="470">
+    <Text UId="471"> byte uscite macchina MC1</Text>
+  </LineComment>
+  <NewLine UId="472" />
+  <Blank Num="4" UId="473" />
+  <LineComment UId="474">
+    <Text UId="475"> se il modulo uscite MC1 e' 2 byte: %QB46 := #outWinMC1[1];</Text>
+  </LineComment>
+  <NewLine UId="476" />
+  <Blank Num="4" UId="477" />
+  <NewLine UId="478" />
+  <Blank Num="4" UId="479" />
+  <LineComment UId="480">
+    <Text UId="481"> --- 4. archetipo di ciclo del brand -&gt; router ---</Text>
+  </LineComment>
+  <NewLine UId="482" />
+  <Blank Num="4" UId="483" />
+  <Access Scope="GlobalVariable" UId="484">
+    <Symbol UId="485">
+      <Component Name="DB_MC1" UId="486">
+        <BooleanAttribute Name="HasQuotes" UId="487">true</BooleanAttribute>
+      </Component>
+      <Token Text="." UId="488" />
+      <Component Name="MachineType" UId="489" />
+    </Symbol>
+  </Access>
+  <Blank UId="490" />
+  <Token Text=":=" UId="491" />
+  <Blank UId="492" />
+  <Access Scope="GlobalVariable" UId="493">
+    <Symbol UId="494">
+      <Component Name="DB_MachineConfig" UId="495">
+        <BooleanAttribute Name="HasQuotes" UId="496">true</BooleanAttribute>
+      </Component>
+      <Token Text="." UId="497" />
+      <Component Name="brand" UId="498">
+        <Token Text="[" UId="499" />
+        <Access Scope="GlobalVariable" UId="500">
+          <Symbol UId="501">
+            <Component Name="DB_MC1" UId="502">
+              <BooleanAttribute Name="HasQuotes" UId="503">true</BooleanAttribute>
+            </Component>
+            <Token Text="." UId="504" />
+            <Component Name="brandID_act" UId="505" />
+          </Symbol>
+        </Access>
+        <Token Text="]" UId="506" />
+      </Component>
+      <Token Text="." UId="507" />
+      <Component Name="cycleArchetype" UId="508" />
+    </Symbol>
+  </Access>
+  <Token Text=";" UId="509" />
+  <NewLine UId="510" />
+  <Blank Num="4" UId="511" />
+  <NewLine UId="512" />
+  <Blank Num="4" UId="513" />
+  <LineComment UId="514">
+    <Text UId="515"> --- 5. router (INVARIATO) ---</Text>
+  </LineComment>
+  <NewLine UId="516" />
+  <Blank Num="4" UId="517" />
+  <Access Scope="Call" UId="518">
+    <CallInfo UId="519" BlockType="FB" Name="FB_MachinePosition">
+      <Instance Scope="GlobalVariable" UId="520">
+        <Component Name="DB_iPos_MC1" UId="521">
+          <BooleanAttribute Name="HasQuotes" UId="522">true</BooleanAttribute>
+        </Component>
+      </Instance>
+      <Token Text="(" UId="523" />
+      <Parameter Name="MachineType" UId="524">
+        <Blank UId="525" />
+        <Token Text=":=" UId="526" />
+        <Blank UId="527" />
+        <Access Scope="GlobalVariable" UId="528">
+          <Symbol UId="529">
+            <Component Name="DB_MC1" UId="530">
+              <BooleanAttribute Name="HasQuotes" UId="531">true</BooleanAttribute>
+            </Component>
+            <Token Text="." UId="532" />
+            <Component Name="MachineType" UId="533" />
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="534" />
+      <NewLine UId="535" />
+      <Blank Num="18" UId="536" />
+      <Parameter Name="MC_number" UId="537">
+        <Blank UId="538" />
+        <Token Text=":=" UId="539" />
+        <Blank UId="540" />
+        <Access Scope="LiteralConstant" UId="541">
+          <Constant UId="542">
+            <ConstantValue UId="544">1</ConstantValue>
+          </Constant>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="545" />
+      <NewLine UId="546" />
+      <Blank Num="18" UId="547" />
+      <Parameter Name="MC_inRemoteMode" UId="548">
+        <Blank UId="549" />
+        <Token Text=":=" UId="550" />
+        <Blank UId="551" />
+        <Access Scope="LiteralConstant" UId="552">
+          <Constant UId="553">
+            <ConstantValue UId="555">FALSE</ConstantValue>
+          </Constant>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="556" />
+      <NewLine UId="557" />
+      <Blank Num="18" UId="558" />
+      <Parameter Name="AutoModeFromHandController" UId="559">
+        <Blank UId="560" />
+        <Token Text=":=" UId="561" />
+        <Blank UId="562" />
+        <Token Text="NOT" UId="563" />
+        <Blank UId="564" />
+        <Access Scope="GlobalVariable" UId="565">
+          <Symbol UId="566">
+            <Component Name="SA_MC1_MANUAL" UId="567">
+              <BooleanAttribute Name="HasQuotes" UId="568">true</BooleanAttribute>
+            </Component>
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="569" />
+      <NewLine UId="570" />
+      <Blank Num="18" UId="571" />
+      <Parameter Name="io_in" UId="572">
+        <Blank UId="573" />
+        <Token Text=":=" UId="574" />
+        <Blank UId="575" />
+        <Access Scope="GlobalVariable" UId="576">
+          <Symbol UId="577">
+            <Component Name="DB_MC1" UId="578">
+              <BooleanAttribute Name="HasQuotes" UId="579">true</BooleanAttribute>
+            </Component>
+            <Token Text="." UId="580" />
+            <Component Name="io_in" UId="581" />
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="582" />
+      <NewLine UId="583" />
+      <Blank Num="18" UId="584" />
+      <Parameter Name="io_out" UId="585">
+        <Blank UId="586" />
+        <Token Text=":=" UId="587" />
+        <Blank UId="588" />
+        <Access Scope="GlobalVariable" UId="589">
+          <Symbol UId="590">
+            <Component Name="DB_MC1" UId="591">
+              <BooleanAttribute Name="HasQuotes" UId="592">true</BooleanAttribute>
+            </Component>
+            <Token Text="." UId="593" />
+            <Component Name="io_out" UId="594" />
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="595" />
+      <NewLine UId="596" />
+      <Blank Num="18" UId="597" />
+      <Parameter Name="Status" UId="598">
+        <Blank UId="599" />
+        <Token Text=":=" UId="600" />
+        <Blank UId="601" />
+        <Access Scope="GlobalVariable" UId="602">
+          <Symbol UId="603">
+            <Component Name="DB_MC1" UId="604">
+              <BooleanAttribute Name="HasQuotes" UId="605">true</BooleanAttribute>
+            </Component>
+            <Token Text="." UId="606" />
+            <Component Name="Status" UId="607" />
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="608" />
+      <NewLine UId="609" />
+      <Blank Num="18" UId="610" />
+      <Parameter Name="Mode" UId="611">
+        <Blank UId="612" />
+        <Token Text=":=" UId="613" />
+        <Blank UId="614" />
+        <Access Scope="GlobalVariable" UId="615">
+          <Symbol UId="616">
+            <Component Name="DB_MC1" UId="617">
+              <BooleanAttribute Name="HasQuotes" UId="618">true</BooleanAttribute>
+            </Component>
+            <Token Text="." UId="619" />
+            <Component Name="Mode" UId="620" />
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="621" />
+      <NewLine UId="622" />
+      <Blank Num="18" UId="623" />
+      <Parameter Name="cmd" UId="624">
+        <Blank UId="625" />
+        <Token Text=":=" UId="626" />
+        <Blank UId="627" />
+        <Access Scope="GlobalVariable" UId="628">
+          <Symbol UId="629">
+            <Component Name="DB_MC1" UId="630">
+              <BooleanAttribute Name="HasQuotes" UId="631">true</BooleanAttribute>
+            </Component>
+            <Token Text="." UId="632" />
+            <Component Name="cmd" UId="633" />
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="634" />
+      <NewLine UId="635" />
+      <Blank Num="18" UId="636" />
+      <Parameter Name="order" UId="637">
+        <Blank UId="638" />
+        <Token Text=":=" UId="639" />
+        <Blank UId="640" />
+        <Access Scope="GlobalVariable" UId="641">
+          <Symbol UId="642">
+            <Component Name="DB_MC1" UId="643">
+              <BooleanAttribute Name="HasQuotes" UId="644">true</BooleanAttribute>
+            </Component>
+            <Token Text="." UId="645" />
+            <Component Name="order" UId="646" />
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="647" />
+      <NewLine UId="648" />
+      <Blank Num="18" UId="649" />
+      <Parameter Name="pallet" UId="650">
+        <Blank UId="651" />
+        <Token Text=":=" UId="652" />
+        <Blank UId="653" />
+        <Access Scope="GlobalVariable" UId="654">
+          <Symbol UId="655">
+            <Component Name="DB_MC1" UId="656">
+              <BooleanAttribute Name="HasQuotes" UId="657">true</BooleanAttribute>
+            </Component>
+            <Token Text="." UId="658" />
+            <Component Name="pallet" UId="659" />
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="660" />
+      <NewLine UId="661" />
+      <Blank Num="18" UId="662" />
+      <Parameter Name="fixture" UId="663">
+        <Blank UId="664" />
+        <Token Text=":=" UId="665" />
+        <Blank UId="666" />
+        <Access Scope="GlobalVariable" UId="667">
+          <Symbol UId="668">
+            <Component Name="DB_MC1" UId="669">
+              <BooleanAttribute Name="HasQuotes" UId="670">true</BooleanAttribute>
+            </Component>
+            <Token Text="." UId="671" />
+            <Component Name="fixture" UId="672" />
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="673" />
+      <NewLine UId="674" />
+      <Blank Num="18" UId="675" />
+      <Parameter Name="ManualVice" UId="676">
+        <Blank UId="677" />
+        <Token Text=":=" UId="678" />
+        <Blank UId="679" />
+        <Access Scope="GlobalVariable" UId="680">
+          <Symbol UId="681">
+            <Component Name="DB_MC1" UId="682">
+              <BooleanAttribute Name="HasQuotes" UId="683">true</BooleanAttribute>
+            </Component>
+            <Token Text="." UId="684" />
+            <Component Name="ManualVice" UId="685" />
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="686" />
+      <NewLine UId="687" />
+      <Blank Num="18" UId="688" />
+      <Parameter Name="piecepresent" UId="689">
+        <Blank UId="690" />
+        <Token Text=":=" UId="691" />
+        <Blank UId="692" />
+        <Access Scope="GlobalVariable" UId="693">
+          <Symbol UId="694">
+            <Component Name="DB_MC1" UId="695">
+              <BooleanAttribute Name="HasQuotes" UId="696">true</BooleanAttribute>
+            </Component>
+            <Token Text="." UId="697" />
+            <Component Name="piecepresent" UId="698" />
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="699" />
+      <NewLine UId="700" />
+      <Blank Num="18" UId="701" />
+      <Parameter Name="viceLocked" UId="702">
+        <Blank UId="703" />
+        <Token Text=":=" UId="704" />
+        <Blank UId="705" />
+        <Access Scope="GlobalVariable" UId="706">
+          <Symbol UId="707">
+            <Component Name="DB_MC1" UId="708">
+              <BooleanAttribute Name="HasQuotes" UId="709">true</BooleanAttribute>
+            </Component>
+            <Token Text="." UId="710" />
+            <Component Name="viceLocked" UId="711" />
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="712" />
+      <NewLine UId="713" />
+      <Blank Num="18" UId="714" />
+      <Parameter Name="viceUnlocked" UId="715">
+        <Blank UId="716" />
+        <Token Text=":=" UId="717" />
+        <Blank UId="718" />
+        <Access Scope="GlobalVariable" UId="719">
+          <Symbol UId="720">
+            <Component Name="DB_MC1" UId="721">
+              <BooleanAttribute Name="HasQuotes" UId="722">true</BooleanAttribute>
+            </Component>
+            <Token Text="." UId="723" />
+            <Component Name="viceUnlocked" UId="724" />
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="725" />
+      <NewLine UId="726" />
+      <Blank Num="18" UId="727" />
+      <Parameter Name="palletLocked" UId="728">
+        <Blank UId="729" />
+        <Token Text=":=" UId="730" />
+        <Blank UId="731" />
+        <Access Scope="GlobalVariable" UId="732">
+          <Symbol UId="733">
+            <Component Name="DB_MC1" UId="734">
+              <BooleanAttribute Name="HasQuotes" UId="735">true</BooleanAttribute>
+            </Component>
+            <Token Text="." UId="736" />
+            <Component Name="palletLocked" UId="737" />
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="738" />
+      <NewLine UId="739" />
+      <Blank Num="18" UId="740" />
+      <Parameter Name="changePalletReq" UId="741">
+        <Blank UId="742" />
+        <Token Text=":=" UId="743" />
+        <Blank UId="744" />
+        <Access Scope="GlobalVariable" UId="745">
+          <Symbol UId="746">
+            <Component Name="DB_MC1" UId="747">
+              <BooleanAttribute Name="HasQuotes" UId="748">true</BooleanAttribute>
+            </Component>
+            <Token Text="." UId="749" />
+            <Component Name="changePalletReq" UId="750" />
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="751" />
+      <NewLine UId="752" />
+      <Blank Num="18" UId="753" />
+      <Parameter Name="lastMission" UId="754">
+        <Blank UId="755" />
+        <Token Text=":=" UId="756" />
+        <Blank UId="757" />
+        <Access Scope="GlobalVariable" UId="758">
+          <Symbol UId="759">
+            <Component Name="DB_MC1" UId="760">
+              <BooleanAttribute Name="HasQuotes" UId="761">true</BooleanAttribute>
+            </Component>
+            <Token Text="." UId="762" />
+            <Component Name="LastMission" UId="763" />
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="764" />
+      <NewLine UId="765" />
+      <Blank Num="18" UId="766" />
+      <Parameter Name="Dispatcher" UId="767">
+        <Blank UId="768" />
+        <Token Text=":=" UId="769" />
+        <Blank UId="770" />
+        <Access Scope="GlobalVariable" UId="771">
+          <Symbol UId="772">
+            <Component Name="DB_MC1" UId="773">
+              <BooleanAttribute Name="HasQuotes" UId="774">true</BooleanAttribute>
+            </Component>
+            <Token Text="." UId="775" />
+            <Component Name="Dispatcher" UId="776" />
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="777" />
+      <NewLine UId="778" />
+      <Blank Num="18" UId="779" />
+      <Parameter Name="subState" UId="780">
+        <Blank UId="781" />
+        <Token Text=":=" UId="782" />
+        <Blank UId="783" />
+        <Access Scope="GlobalVariable" UId="784">
+          <Symbol UId="785">
+            <Component Name="DB_MC1" UId="786">
+              <BooleanAttribute Name="HasQuotes" UId="787">true</BooleanAttribute>
+            </Component>
+            <Token Text="." UId="788" />
+            <Component Name="subState" UId="789" />
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="790" />
+      <NewLine UId="791" />
+      <Blank Num="18" UId="792" />
+      <Parameter Name="autoModePrev" UId="793">
+        <Blank UId="794" />
+        <Token Text=":=" UId="795" />
+        <Blank UId="796" />
+        <Access Scope="GlobalVariable" UId="797">
+          <Symbol UId="798">
+            <Component Name="DB_MC1" UId="799">
+              <BooleanAttribute Name="HasQuotes" UId="800">true</BooleanAttribute>
+            </Component>
+            <Token Text="." UId="801" />
+            <Component Name="autoModePrev" UId="802" />
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="803" />
+      <NewLine UId="804" />
+      <Blank Num="18" UId="805" />
+      <Parameter Name="queryTemp" UId="806">
+        <Blank UId="807" />
+        <Token Text=":=" UId="808" />
+        <Blank UId="809" />
+        <Access Scope="GlobalVariable" UId="810">
+          <Symbol UId="811">
+            <Component Name="DB_MC1" UId="812">
+              <BooleanAttribute Name="HasQuotes" UId="813">true</BooleanAttribute>
+            </Component>
+            <Token Text="." UId="814" />
+            <Component Name="queryTemp" UId="815" />
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="816" />
+      <NewLine UId="817" />
+      <Blank Num="18" UId="818" />
+      <Parameter Name="queryStartExecution" UId="819">
+        <Blank UId="820" />
+        <Token Text=":=" UId="821" />
+        <Blank UId="822" />
+        <Access Scope="GlobalVariable" UId="823">
+          <Symbol UId="824">
+            <Component Name="DB_MC1" UId="825">
+              <BooleanAttribute Name="HasQuotes" UId="826">true</BooleanAttribute>
+            </Component>
+            <Token Text="." UId="827" />
+            <Component Name="queryStartExecution" UId="828" />
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text=")" UId="829" />
+    </CallInfo>
+  </Access>
+  <Token Text=";" UId="830" />
+  <NewLine UId="831" />
+  <Blank Num="4" UId="832" />
+  <NewLine UId="833" />
+  <Blank Num="4" UId="834" />
+  <LineComment UId="835">
+    <Text UId="836"> --- pubblica brand attivo (on change) -&gt; FROM_PLANT/BRAND/MC1 ---</Text>
+  </LineComment>
+  <NewLine UId="837" />
+  <Blank Num="4" UId="838" />
+  <LineComment UId="839">
+    <Text UId="840"> --- pubblica stato brand (on change di uno qualsiasi dei 4 campi) -&gt; FROM_PLANT/BRAND/MC1 ---</Text>
+  </LineComment>
+  <NewLine UId="841" />
+  <Blank Num="4" UId="842" />
+  <Token Text="IF" UId="843" />
+  <Blank UId="844" />
+  <Access Scope="GlobalVariable" UId="845">
+    <Symbol UId="846">
+      <Component Name="DB_MC1" UId="847">
+        <BooleanAttribute Name="HasQuotes" UId="848">true</BooleanAttribute>
+      </Component>
+      <Token Text="." UId="849" />
+      <Component Name="brandID_req" UId="850" />
+    </Symbol>
+  </Access>
+  <Blank UId="851" />
+  <Token Text="&lt;&gt;" UId="852" />
+  <Blank UId="853" />
+  <Access Scope="GlobalVariable" UId="854">
+    <Symbol UId="855">
+      <Component Name="DB_MC1" UId="856">
+        <BooleanAttribute Name="HasQuotes" UId="857">true</BooleanAttribute>
+      </Component>
+      <Token Text="." UId="858" />
+      <Component Name="brandID_req_old" UId="859" />
+    </Symbol>
+  </Access>
+  <NewLine UId="860" />
+  <Blank Num="8" UId="861" />
+  <Token Text="OR" UId="862" />
+  <Blank UId="863" />
+  <Access Scope="GlobalVariable" UId="864">
+    <Symbol UId="865">
+      <Component Name="DB_MC1" UId="866">
+        <BooleanAttribute Name="HasQuotes" UId="867">true</BooleanAttribute>
+      </Component>
+      <Token Text="." UId="868" />
+      <Component Name="brandID_act" UId="869" />
+    </Symbol>
+  </Access>
+  <Blank UId="870" />
+  <Token Text="&lt;&gt;" UId="871" />
+  <Blank UId="872" />
+  <Access Scope="GlobalVariable" UId="873">
+    <Symbol UId="874">
+      <Component Name="DB_MC1" UId="875">
+        <BooleanAttribute Name="HasQuotes" UId="876">true</BooleanAttribute>
+      </Component>
+      <Token Text="." UId="877" />
+      <Component Name="brandID_act_old" UId="878" />
+    </Symbol>
+  </Access>
+  <NewLine UId="879" />
+  <Blank Num="8" UId="880" />
+  <Token Text="OR" UId="881" />
+  <Blank UId="882" />
+  <Access Scope="GlobalVariable" UId="883">
+    <Symbol UId="884">
+      <Component Name="DB_MachineConfig" UId="885">
+        <BooleanAttribute Name="HasQuotes" UId="886">true</BooleanAttribute>
+      </Component>
+      <Token Text="." UId="887" />
+      <Component Name="lastError" UId="888" />
+    </Symbol>
+  </Access>
+  <Blank UId="889" />
+  <Token Text="&lt;&gt;" UId="890" />
+  <Blank UId="891" />
+  <Access Scope="GlobalVariable" UId="892">
+    <Symbol UId="893">
+      <Component Name="DB_MC1" UId="894">
+        <BooleanAttribute Name="HasQuotes" UId="895">true</BooleanAttribute>
+      </Component>
+      <Token Text="." UId="896" />
+      <Component Name="cfgErr_old" UId="897" />
+    </Symbol>
+  </Access>
+  <NewLine UId="898" />
+  <Blank Num="8" UId="899" />
+  <Token Text="OR" UId="900" />
+  <Blank UId="901" />
+  <Access Scope="GlobalVariable" UId="902">
+    <Symbol UId="903">
+      <Component Name="DB_MachineConfig" UId="904">
+        <BooleanAttribute Name="HasQuotes" UId="905">true</BooleanAttribute>
+      </Component>
+      <Token Text="." UId="906" />
+      <Component Name="lastErrorBrand" UId="907" />
+    </Symbol>
+  </Access>
+  <Blank UId="908" />
+  <Token Text="&lt;&gt;" UId="909" />
+  <Blank UId="910" />
+  <Access Scope="GlobalVariable" UId="911">
+    <Symbol UId="912">
+      <Component Name="DB_MC1" UId="913">
+        <BooleanAttribute Name="HasQuotes" UId="914">true</BooleanAttribute>
+      </Component>
+      <Token Text="." UId="915" />
+      <Component Name="cfgErrBrand_old" UId="916" />
+    </Symbol>
+  </Access>
+  <NewLine UId="917" />
+  <Blank Num="4" UId="918" />
+  <Token Text="THEN" UId="919" />
+  <NewLine UId="920" />
+  <Blank Num="8" UId="921" />
+  <Access Scope="LocalVariable" UId="922">
+    <Symbol UId="923">
+      <Component Name="jsonBrand" UId="924" />
+    </Symbol>
+  </Access>
+  <Blank UId="925" />
+  <Token Text=":=" UId="926" />
+  <Blank UId="927" />
+  <Access Scope="Call" UId="928">
+    <Instruction Name="CONCAT" UId="929">
+      <Token Text="(" UId="930" />
+      <Parameter Name="IN1" UId="931">
+        <Blank UId="932" />
+        <Token Text=":=" UId="933" />
+        <Blank UId="934" />
+        <Access Scope="LiteralConstant" UId="935">
+          <Constant UId="936">
+            <ConstantValue UId="938">'{"req":'</ConstantValue>
+          </Constant>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="939" />
+      <NewLine UId="940" />
+      <Blank Num="29" UId="941" />
+      <Parameter Name="IN2" UId="942">
+        <Blank UId="943" />
+        <Token Text=":=" UId="944" />
+        <Blank UId="945" />
+        <Access Scope="Call" UId="946">
+          <CallInfo UId="947" BlockType="FC">
+            <Instance Scope="GlobalVariable" UId="949">
+              <Component Name="INT_TO_STRING_WITHOUT_SIGN" UId="948" />
+            </Instance>
+            <Token Text="(" UId="950" />
+            <NamelessParameter UId="951">
+              <Access Scope="GlobalVariable" UId="952">
+                <Symbol UId="953">
+                  <Component Name="DB_MC1" UId="954">
+                    <BooleanAttribute Name="HasQuotes" UId="955">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="956" />
+                  <Component Name="brandID_req" UId="957" />
+                </Symbol>
+              </Access>
+            </NamelessParameter>
+            <Token Text=")" UId="959" />
+          </CallInfo>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="960" />
+      <NewLine UId="961" />
+      <Blank Num="29" UId="962" />
+      <Parameter Name="IN3" UId="963">
+        <Blank UId="964" />
+        <Token Text=":=" UId="965" />
+        <Blank UId="966" />
+        <Access Scope="LiteralConstant" UId="967">
+          <Constant UId="968">
+            <ConstantValue UId="970">',"act":'</ConstantValue>
+          </Constant>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="971" />
+      <NewLine UId="972" />
+      <Blank Num="29" UId="973" />
+      <Parameter Name="IN4" UId="974">
+        <Blank UId="975" />
+        <Token Text=":=" UId="976" />
+        <Blank UId="977" />
+        <Access Scope="Call" UId="978">
+          <CallInfo UId="979" BlockType="FC">
+            <Instance Scope="GlobalVariable" UId="981">
+              <Component Name="INT_TO_STRING_WITHOUT_SIGN" UId="980" />
+            </Instance>
+            <Token Text="(" UId="982" />
+            <NamelessParameter UId="983">
+              <Access Scope="GlobalVariable" UId="984">
+                <Symbol UId="985">
+                  <Component Name="DB_MC1" UId="986">
+                    <BooleanAttribute Name="HasQuotes" UId="987">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="988" />
+                  <Component Name="brandID_act" UId="989" />
+                </Symbol>
+              </Access>
+            </NamelessParameter>
+            <Token Text=")" UId="991" />
+          </CallInfo>
+        </Access>
+      </Parameter>
+      <Token Text=")" UId="993" />
+    </Instruction>
+  </Access>
+  <Token Text=";" UId="994" />
+  <NewLine UId="995" />
+  <Blank Num="8" UId="996" />
+  <Access Scope="LocalVariable" UId="997">
+    <Symbol UId="998">
+      <Component Name="jsonBrand" UId="999" />
+    </Symbol>
+  </Access>
+  <Blank UId="1000" />
+  <Token Text=":=" UId="1001" />
+  <Blank UId="1002" />
+  <Access Scope="Call" UId="1003">
+    <Instruction Name="CONCAT" UId="1004">
+      <Token Text="(" UId="1005" />
+      <Parameter Name="IN1" UId="1006">
+        <Blank UId="1007" />
+        <Token Text=":=" UId="1008" />
+        <Blank UId="1009" />
+        <Access Scope="LocalVariable" UId="1010">
+          <Symbol UId="1011">
+            <Component Name="jsonBrand" UId="1012" />
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="1013" />
+      <NewLine UId="1014" />
+      <Blank Num="29" UId="1015" />
+      <Parameter Name="IN2" UId="1016">
+        <Blank UId="1017" />
+        <Token Text=":=" UId="1018" />
+        <Blank UId="1019" />
+        <Access Scope="LiteralConstant" UId="1020">
+          <Constant UId="1021">
+            <ConstantValue UId="1023">',"lastError":'</ConstantValue>
+          </Constant>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="1024" />
+      <NewLine UId="1025" />
+      <Blank Num="29" UId="1026" />
+      <Parameter Name="IN3" UId="1027">
+        <Blank UId="1028" />
+        <Token Text=":=" UId="1029" />
+        <Blank UId="1030" />
+        <Access Scope="Call" UId="1031">
+          <CallInfo UId="1032" BlockType="FC">
+            <Instance Scope="GlobalVariable" UId="1034">
+              <Component Name="INT_TO_STRING_WITHOUT_SIGN" UId="1033" />
+            </Instance>
+            <Token Text="(" UId="1035" />
+            <NamelessParameter UId="1036">
+              <Access Scope="GlobalVariable" UId="1037">
+                <Symbol UId="1038">
+                  <Component Name="DB_MachineConfig" UId="1039">
+                    <BooleanAttribute Name="HasQuotes" UId="1040">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="1041" />
+                  <Component Name="lastError" UId="1042" />
+                </Symbol>
+              </Access>
+            </NamelessParameter>
+            <Token Text=")" UId="1044" />
+          </CallInfo>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="1045" />
+      <NewLine UId="1046" />
+      <Blank Num="29" UId="1047" />
+      <Parameter Name="IN4" UId="1048">
+        <Blank UId="1049" />
+        <Token Text=":=" UId="1050" />
+        <Blank UId="1051" />
+        <Access Scope="LiteralConstant" UId="1052">
+          <Constant UId="1053">
+            <ConstantValue UId="1055">',"lastErrorBrand":'</ConstantValue>
+          </Constant>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="1056" />
+      <NewLine UId="1057" />
+      <Blank Num="29" UId="1058" />
+      <Parameter Name="IN5" UId="1059">
+        <Blank UId="1060" />
+        <Token Text=":=" UId="1061" />
+        <Blank UId="1062" />
+        <Access Scope="Call" UId="1063">
+          <CallInfo UId="1064" BlockType="FC">
+            <Instance Scope="GlobalVariable" UId="1066">
+              <Component Name="INT_TO_STRING_WITHOUT_SIGN" UId="1065" />
+            </Instance>
+            <Token Text="(" UId="1067" />
+            <NamelessParameter UId="1068">
+              <Access Scope="GlobalVariable" UId="1069">
+                <Symbol UId="1070">
+                  <Component Name="DB_MachineConfig" UId="1071">
+                    <BooleanAttribute Name="HasQuotes" UId="1072">true</BooleanAttribute>
+                  </Component>
+                  <Token Text="." UId="1073" />
+                  <Component Name="lastErrorBrand" UId="1074" />
+                </Symbol>
+              </Access>
+            </NamelessParameter>
+            <Token Text=")" UId="1076" />
+          </CallInfo>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="1077" />
+      <NewLine UId="1078" />
+      <Blank Num="29" UId="1079" />
+      <Parameter Name="IN6" UId="1080">
+        <Blank UId="1081" />
+        <Token Text=":=" UId="1082" />
+        <Blank UId="1083" />
+        <Access Scope="LiteralConstant" UId="1084">
+          <Constant UId="1085">
+            <ConstantValue UId="1087">'}'</ConstantValue>
+          </Constant>
+        </Access>
+      </Parameter>
+      <Token Text=")" UId="1089" />
+    </Instruction>
+  </Access>
+  <Token Text=";" UId="1090" />
+  <NewLine UId="1091" />
+  <Blank Num="8" UId="1092" />
+  <Access Scope="Call" UId="1093">
+    <CallInfo UId="1094" BlockType="FC">
+      <Instance Scope="GlobalVariable" UId="1096">
+        <Component Name="FC_MQTT" UId="1095" />
+      </Instance>
+      <Token Text="(" UId="1097" />
+      <Parameter Name="insert" UId="1098">
+        <Blank UId="1099" />
+        <Token Text=":=" UId="1100" />
+        <Blank UId="1101" />
+        <Access Scope="LiteralConstant" UId="1102">
+          <Constant UId="1103">
+            <ConstantValue UId="1105">true</ConstantValue>
+          </Constant>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="1106" />
+      <NewLine UId="1107" />
+      <Blank Num="18" UId="1108" />
+      <Parameter Name="send" UId="1109">
+        <Blank UId="1110" />
+        <Token Text=":=" UId="1111" />
+        <Blank UId="1112" />
+        <Access Scope="LiteralConstant" UId="1113">
+          <Constant UId="1114">
+            <ConstantValue UId="1116">false</ConstantValue>
+          </Constant>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="1117" />
+      <NewLine UId="1118" />
+      <Blank Num="18" UId="1119" />
+      <Parameter Name="topic" UId="1120">
+        <Blank UId="1121" />
+        <Token Text=":=" UId="1122" />
+        <Blank UId="1123" />
+        <Access Scope="LiteralConstant" UId="1124">
+          <Constant UId="1125">
+            <ConstantValue UId="1127">'FROM_PLANT/BRAND/MC1'</ConstantValue>
+          </Constant>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="1128" />
+      <NewLine UId="1129" />
+      <Blank Num="18" UId="1130" />
+      <Parameter Name="payload" UId="1131">
+        <Blank UId="1132" />
+        <Token Text=":=" UId="1133" />
+        <Blank UId="1134" />
+        <Access Scope="Call" UId="1135">
+          <Instruction Name="STRING_TO_WSTRING" UId="1136">
+            <Token Text="(" UId="1137" />
+            <NamelessParameter UId="1138">
+              <Access Scope="LocalVariable" UId="1139">
+                <Symbol UId="1140">
+                  <Component Name="jsonBrand" UId="1141" />
+                </Symbol>
+              </Access>
+            </NamelessParameter>
+            <Token Text=")" UId="1143" />
+          </Instruction>
+        </Access>
+      </Parameter>
+      <Token Text=")" UId="1144" />
+    </CallInfo>
+  </Access>
+  <Token Text=";" UId="1145" />
+  <NewLine UId="1146" />
+  <Blank Num="8" UId="1147" />
+  <Access Scope="GlobalVariable" UId="1148">
+    <Symbol UId="1149">
+      <Component Name="DB_MC1" UId="1150">
+        <BooleanAttribute Name="HasQuotes" UId="1151">true</BooleanAttribute>
+      </Component>
+      <Token Text="." UId="1152" />
+      <Component Name="brandID_req_old" UId="1153" />
+    </Symbol>
+  </Access>
+  <Blank UId="1154" />
+  <Token Text=":=" UId="1155" />
+  <Blank UId="1156" />
+  <Access Scope="GlobalVariable" UId="1157">
+    <Symbol UId="1158">
+      <Component Name="DB_MC1" UId="1159">
+        <BooleanAttribute Name="HasQuotes" UId="1160">true</BooleanAttribute>
+      </Component>
+      <Token Text="." UId="1161" />
+      <Component Name="brandID_req" UId="1162" />
+    </Symbol>
+  </Access>
+  <Token Text=";" UId="1163" />
+  <NewLine UId="1164" />
+  <Blank Num="8" UId="1165" />
+  <Access Scope="GlobalVariable" UId="1166">
+    <Symbol UId="1167">
+      <Component Name="DB_MC1" UId="1168">
+        <BooleanAttribute Name="HasQuotes" UId="1169">true</BooleanAttribute>
+      </Component>
+      <Token Text="." UId="1170" />
+      <Component Name="brandID_act_old" UId="1171" />
+    </Symbol>
+  </Access>
+  <Blank UId="1172" />
+  <Token Text=":=" UId="1173" />
+  <Blank UId="1174" />
+  <Access Scope="GlobalVariable" UId="1175">
+    <Symbol UId="1176">
+      <Component Name="DB_MC1" UId="1177">
+        <BooleanAttribute Name="HasQuotes" UId="1178">true</BooleanAttribute>
+      </Component>
+      <Token Text="." UId="1179" />
+      <Component Name="brandID_act" UId="1180" />
+    </Symbol>
+  </Access>
+  <Token Text=";" UId="1181" />
+  <NewLine UId="1182" />
+  <Blank Num="8" UId="1183" />
+  <Access Scope="GlobalVariable" UId="1184">
+    <Symbol UId="1185">
+      <Component Name="DB_MC1" UId="1186">
+        <BooleanAttribute Name="HasQuotes" UId="1187">true</BooleanAttribute>
+      </Component>
+      <Token Text="." UId="1188" />
+      <Component Name="cfgErr_old" UId="1189" />
+    </Symbol>
+  </Access>
+  <Blank UId="1190" />
+  <Token Text=":=" UId="1191" />
+  <Blank UId="1192" />
+  <Access Scope="GlobalVariable" UId="1193">
+    <Symbol UId="1194">
+      <Component Name="DB_MachineConfig" UId="1195">
+        <BooleanAttribute Name="HasQuotes" UId="1196">true</BooleanAttribute>
+      </Component>
+      <Token Text="." UId="1197" />
+      <Component Name="lastError" UId="1198" />
+    </Symbol>
+  </Access>
+  <Token Text=";" UId="1199" />
+  <NewLine UId="1200" />
+  <Blank Num="8" UId="1201" />
+  <Access Scope="GlobalVariable" UId="1202">
+    <Symbol UId="1203">
+      <Component Name="DB_MC1" UId="1204">
+        <BooleanAttribute Name="HasQuotes" UId="1205">true</BooleanAttribute>
+      </Component>
+      <Token Text="." UId="1206" />
+      <Component Name="cfgErrBrand_old" UId="1207" />
+    </Symbol>
+  </Access>
+  <Blank UId="1208" />
+  <Token Text=":=" UId="1209" />
+  <Blank UId="1210" />
+  <Access Scope="GlobalVariable" UId="1211">
+    <Symbol UId="1212">
+      <Component Name="DB_MachineConfig" UId="1213">
+        <BooleanAttribute Name="HasQuotes" UId="1214">true</BooleanAttribute>
+      </Component>
+      <Token Text="." UId="1215" />
+      <Component Name="lastErrorBrand" UId="1216" />
+    </Symbol>
+  </Access>
+  <Token Text=";" UId="1217" />
+  <NewLine UId="1218" />
+  <Blank Num="4" UId="1219" />
+  <Token Text="END_IF" UId="1220" />
+  <Token Text=";" UId="1221" />
+  <NewLine UId="1222" />
+  <Blank Num="4" UId="1223" />
+</StructuredText></NetworkSource>
+          <ProgrammingLanguage>SCL</ProgrammingLanguage>
+        </AttributeList>
+        <ObjectList>
+          <MultilingualText ID="1A" CompositionName="Comment">
+            <ObjectList>
+              <MultilingualTextItem ID="1B" CompositionName="Items">
+                <AttributeList>
+                  <Culture>en-US</Culture>
+                  <Text />
+                </AttributeList>
+              </MultilingualTextItem>
+              <MultilingualTextItem ID="1C" CompositionName="Items">
+                <AttributeList>
+                  <Culture>it-IT</Culture>
+                  <Text />
+                </AttributeList>
+              </MultilingualTextItem>
+            </ObjectList>
+          </MultilingualText>
+          <MultilingualText ID="1D" CompositionName="Title">
+            <ObjectList>
+              <MultilingualTextItem ID="1E" CompositionName="Items">
+                <AttributeList>
+                  <Culture>en-US</Culture>
+                  <Text />
+                </AttributeList>
+              </MultilingualTextItem>
+              <MultilingualTextItem ID="1F" CompositionName="Items">
+                <AttributeList>
+                  <Culture>it-IT</Culture>
+                  <Text>MC1</Text>
+                </AttributeList>
+              </MultilingualTextItem>
+            </ObjectList>
+          </MultilingualText>
+        </ObjectList>
+      </SW.Blocks.CompileUnit>
+      <SW.Blocks.CompileUnit ID="20" CompositionName="CompileUnits">
+        <AttributeList>
+          <NetworkSource><StructuredText xmlns="http://www.siemens.com/automation/Openness/SW/NetworkSource/StructuredText/v4">
+  <LineComment UId="21">
+    <Text UId="22">management of &gt;GENERIC&lt; Robot cycle</Text>
+  </LineComment>
+  <NewLine UId="23" />
+  <Access Scope="Call" UId="24">
+    <CallInfo UId="25" BlockType="FB" Name="FB_Robot">
+      <Instance Scope="GlobalVariable" UId="26">
+        <Component Name="DB_Robot" UId="27">
+          <BooleanAttribute Name="HasQuotes" UId="28">true</BooleanAttribute>
+        </Component>
+      </Instance>
+      <Token Text="(" UId="29" />
+      <Token Text=")" UId="30" />
+    </CallInfo>
+  </Access>
+  <Token Text=";" UId="31" />
+  <NewLine Num="2" UId="32" />
+  <LineComment UId="33">
+    <Text UId="34">read/write infos with robot &gt;SPECIFIC&lt; implementation</Text>
+  </LineComment>
+  <NewLine UId="35" />
+  <Access Scope="Call" UId="36">
+    <CallInfo UId="37" BlockType="FB" Name="FB_RobotEfort">
+      <Instance Scope="GlobalVariable" UId="38">
+        <Component Name="DB_Robot_Efort" UId="39">
+          <BooleanAttribute Name="HasQuotes" UId="40">true</BooleanAttribute>
+        </Component>
+      </Instance>
+      <Token Text="(" UId="41" />
+      <Token Text=")" UId="42" />
+    </CallInfo>
+  </Access>
+  <Token Text=";" UId="43" />
+  <NewLine UId="44" />
+</StructuredText></NetworkSource>
+          <ProgrammingLanguage>SCL</ProgrammingLanguage>
+        </AttributeList>
+        <ObjectList>
+          <MultilingualText ID="21" CompositionName="Comment">
+            <ObjectList>
+              <MultilingualTextItem ID="22" CompositionName="Items">
+                <AttributeList>
+                  <Culture>en-US</Culture>
+                  <Text />
+                </AttributeList>
+              </MultilingualTextItem>
+              <MultilingualTextItem ID="23" CompositionName="Items">
+                <AttributeList>
+                  <Culture>it-IT</Culture>
+                  <Text />
+                </AttributeList>
+              </MultilingualTextItem>
+            </ObjectList>
+          </MultilingualText>
+          <MultilingualText ID="24" CompositionName="Title">
+            <ObjectList>
+              <MultilingualTextItem ID="25" CompositionName="Items">
+                <AttributeList>
+                  <Culture>en-US</Culture>
+                  <Text />
+                </AttributeList>
+              </MultilingualTextItem>
+              <MultilingualTextItem ID="26" CompositionName="Items">
+                <AttributeList>
+                  <Culture>it-IT</Culture>
+                  <Text>ROBOT</Text>
+                </AttributeList>
+              </MultilingualTextItem>
+            </ObjectList>
+          </MultilingualText>
+        </ObjectList>
+      </SW.Blocks.CompileUnit>
+      <SW.Blocks.CompileUnit ID="27" CompositionName="CompileUnits">
+        <AttributeList>
+          <NetworkSource><StructuredText xmlns="http://www.siemens.com/automation/Openness/SW/NetworkSource/StructuredText/v4">
+  <NewLine UId="21" />
+  <Access Scope="Call" UId="22">
+    <CallInfo UId="23" BlockType="FB" Name="LMQTT_Client">
+      <Instance Scope="GlobalVariable" UId="24">
+        <Component Name="LMQTT_Client_DB" UId="25">
+          <BooleanAttribute Name="HasQuotes" UId="26">true</BooleanAttribute>
+        </Component>
+      </Instance>
+      <Token Text="(" UId="27" />
+      <Parameter Name="enable" UId="28">
+        <Blank UId="29" />
+        <Token Text=":=" UId="30" />
+        <Blank UId="31" />
+        <Access Scope="GlobalVariable" UId="32">
+          <Symbol UId="33">
+            <Component Name="DB_MQTT" UId="34">
+              <BooleanAttribute Name="HasQuotes" UId="35">true</BooleanAttribute>
+            </Component>
+            <Token Text="." UId="36" />
+            <Component Name="control" UId="37" />
+            <Token Text="." UId="38" />
+            <Component Name="enable" UId="39" />
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="40" />
+      <NewLine UId="41" />
+      <Blank Num="18" UId="42" />
+      <Parameter Name="publish" UId="43">
+        <Blank UId="44" />
+        <Token Text=":=" UId="45" />
+        <Blank UId="46" />
+        <Access Scope="GlobalVariable" UId="47">
+          <Symbol UId="48">
+            <Component Name="DB_MQTT" UId="49">
+              <BooleanAttribute Name="HasQuotes" UId="50">true</BooleanAttribute>
+            </Component>
+            <Token Text="." UId="51" />
+            <Component Name="control" UId="52" />
+            <Token Text="." UId="53" />
+            <Component Name="publish" UId="54" />
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="55" />
+      <NewLine UId="56" />
+      <Blank Num="18" UId="57" />
+      <Parameter Name="subscribe" UId="58">
+        <Blank UId="59" />
+        <Token Text=":=" UId="60" />
+        <Blank UId="61" />
+        <Access Scope="GlobalVariable" UId="62">
+          <Symbol UId="63">
+            <Component Name="DB_MQTT" UId="64">
+              <BooleanAttribute Name="HasQuotes" UId="65">true</BooleanAttribute>
+            </Component>
+            <Token Text="." UId="66" />
+            <Component Name="control" UId="67" />
+            <Token Text="." UId="68" />
+            <Component Name="subscribe" UId="69" />
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="70" />
+      <NewLine UId="71" />
+      <Blank Num="18" UId="72" />
+      <Parameter Name="unsubscribe" UId="73">
+        <Blank UId="74" />
+        <Token Text=":=" UId="75" />
+        <Blank UId="76" />
+        <Access Scope="GlobalVariable" UId="77">
+          <Symbol UId="78">
+            <Component Name="DB_MQTT" UId="79">
+              <BooleanAttribute Name="HasQuotes" UId="80">true</BooleanAttribute>
+            </Component>
+            <Token Text="." UId="81" />
+            <Component Name="control" UId="82" />
+            <Token Text="." UId="83" />
+            <Component Name="unsubscribe" UId="84" />
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="85" />
+      <NewLine UId="86" />
+      <Blank Num="18" UId="87" />
+      <Parameter Name="qos" UId="88">
+        <Blank UId="89" />
+        <Token Text=":=" UId="90" />
+        <Blank UId="91" />
+        <Access Scope="GlobalVariable" UId="92">
+          <Symbol UId="93">
+            <Component Name="DB_MQTT" UId="94">
+              <BooleanAttribute Name="HasQuotes" UId="95">true</BooleanAttribute>
+            </Component>
+            <Token Text="." UId="96" />
+            <Component Name="qos" UId="97" />
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="98" />
+      <NewLine UId="99" />
+      <Blank Num="18" UId="100" />
+      <Parameter Name="retain" UId="101">
+        <Blank UId="102" />
+        <Token Text=":=" UId="103" />
+        <Blank UId="104" />
+        <Access Scope="GlobalVariable" UId="105">
+          <Symbol UId="106">
+            <Component Name="DB_MQTT" UId="107">
+              <BooleanAttribute Name="HasQuotes" UId="108">true</BooleanAttribute>
+            </Component>
+            <Token Text="." UId="109" />
+            <Component Name="retain" UId="110" />
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="111" />
+      <NewLine UId="112" />
+      <Blank Num="18" UId="113" />
+      <Parameter Name="publishMsgLen" UId="114">
+        <Blank UId="115" />
+        <Token Text=":=" UId="116" />
+        <Blank UId="117" />
+        <Access Scope="GlobalVariable" UId="118">
+          <Symbol UId="119">
+            <Component Name="DB_MQTT" UId="120">
+              <BooleanAttribute Name="HasQuotes" UId="121">true</BooleanAttribute>
+            </Component>
+            <Token Text="." UId="122" />
+            <Component Name="publishMsgLen" UId="123" />
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="124" />
+      <NewLine UId="125" />
+      <Blank Num="18" UId="126" />
+      <Parameter Name="willMsgLen" UId="127">
+        <Blank UId="128" />
+        <Token Text=":=" UId="129" />
+        <Blank UId="130" />
+        <Access Scope="GlobalVariable" UId="131">
+          <Symbol UId="132">
+            <Component Name="DB_MQTT" UId="133">
+              <BooleanAttribute Name="HasQuotes" UId="134">true</BooleanAttribute>
+            </Component>
+            <Token Text="." UId="135" />
+            <Component Name="willMsgLen" UId="136" />
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="137" />
+      <NewLine UId="138" />
+      <Blank Num="18" UId="139" />
+      <Parameter Name="timeOut" UId="140">
+        <Blank UId="141" />
+        <Token Text=":=" UId="142" />
+        <Blank UId="143" />
+        <Access Scope="TypedConstant" UId="144">
+          <Constant UId="145">
+            <ConstantValue UId="146">t#5s</ConstantValue>
+          </Constant>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="147" />
+      <NewLine UId="148" />
+      <Blank Num="18" UId="149" />
+      <Parameter Name="valid" UId="150">
+        <Blank UId="151" />
+        <Token Text="=&gt;" UId="152" />
+        <Blank UId="153" />
+        <Access Scope="GlobalVariable" UId="154">
+          <Symbol UId="155">
+            <Component Name="DB_MQTT" UId="156">
+              <BooleanAttribute Name="HasQuotes" UId="157">true</BooleanAttribute>
+            </Component>
+            <Token Text="." UId="158" />
+            <Component Name="output" UId="159" />
+            <Token Text="." UId="160" />
+            <Component Name="valid" UId="161" />
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="162" />
+      <NewLine UId="163" />
+      <Blank Num="18" UId="164" />
+      <Parameter Name="done" UId="165">
+        <Blank UId="166" />
+        <Token Text="=&gt;" UId="167" />
+        <Blank UId="168" />
+        <Access Scope="GlobalVariable" UId="169">
+          <Symbol UId="170">
+            <Component Name="DB_MQTT" UId="171">
+              <BooleanAttribute Name="HasQuotes" UId="172">true</BooleanAttribute>
+            </Component>
+            <Token Text="." UId="173" />
+            <Component Name="output" UId="174" />
+            <Token Text="." UId="175" />
+            <Component Name="done" UId="176" />
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="177" />
+      <NewLine UId="178" />
+      <Blank Num="18" UId="179" />
+      <Parameter Name="busy" UId="180">
+        <Blank UId="181" />
+        <Token Text="=&gt;" UId="182" />
+        <Blank UId="183" />
+        <Access Scope="GlobalVariable" UId="184">
+          <Symbol UId="185">
+            <Component Name="DB_MQTT" UId="186">
+              <BooleanAttribute Name="HasQuotes" UId="187">true</BooleanAttribute>
+            </Component>
+            <Token Text="." UId="188" />
+            <Component Name="output" UId="189" />
+            <Token Text="." UId="190" />
+            <Component Name="busy" UId="191" />
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="192" />
+      <NewLine UId="193" />
+      <Blank Num="18" UId="194" />
+      <Parameter Name="error" UId="195">
+        <Blank UId="196" />
+        <Token Text="=&gt;" UId="197" />
+        <Blank UId="198" />
+        <Access Scope="GlobalVariable" UId="199">
+          <Symbol UId="200">
+            <Component Name="DB_MQTT" UId="201">
+              <BooleanAttribute Name="HasQuotes" UId="202">true</BooleanAttribute>
+            </Component>
+            <Token Text="." UId="203" />
+            <Component Name="output" UId="204" />
+            <Token Text="." UId="205" />
+            <Component Name="error" UId="206" />
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="207" />
+      <NewLine UId="208" />
+      <Blank Num="18" UId="209" />
+      <Parameter Name="status" UId="210">
+        <Blank UId="211" />
+        <Token Text="=&gt;" UId="212" />
+        <Blank UId="213" />
+        <Access Scope="GlobalVariable" UId="214">
+          <Symbol UId="215">
+            <Component Name="DB_MQTT" UId="216">
+              <BooleanAttribute Name="HasQuotes" UId="217">true</BooleanAttribute>
+            </Component>
+            <Token Text="." UId="218" />
+            <Component Name="output" UId="219" />
+            <Token Text="." UId="220" />
+            <Component Name="status" UId="221" />
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="222" />
+      <NewLine UId="223" />
+      <Blank Num="18" UId="224" />
+      <Parameter Name="diagnostics" UId="225">
+        <Blank UId="226" />
+        <Token Text="=&gt;" UId="227" />
+        <Blank UId="228" />
+        <Access Scope="GlobalVariable" UId="229">
+          <Symbol UId="230">
+            <Component Name="DB_MQTT" UId="231">
+              <BooleanAttribute Name="HasQuotes" UId="232">true</BooleanAttribute>
+            </Component>
+            <Token Text="." UId="233" />
+            <Component Name="output" UId="234" />
+            <Token Text="." UId="235" />
+            <Component Name="diagnostic" UId="236" />
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="237" />
+      <NewLine UId="238" />
+      <Blank Num="18" UId="239" />
+      <Parameter Name="receivedMsgStatus" UId="240">
+        <Blank UId="241" />
+        <Token Text="=&gt;" UId="242" />
+        <Blank UId="243" />
+        <Access Scope="GlobalVariable" UId="244">
+          <Symbol UId="245">
+            <Component Name="DB_MQTT" UId="246">
+              <BooleanAttribute Name="HasQuotes" UId="247">true</BooleanAttribute>
+            </Component>
+            <Token Text="." UId="248" />
+            <Component Name="receiveMsgStatus" UId="249" />
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="250" />
+      <NewLine UId="251" />
+      <Blank Num="18" UId="252" />
+      <Parameter Name="receivedMsgDataLen" UId="253">
+        <Blank UId="254" />
+        <Token Text="=&gt;" UId="255" />
+        <Blank UId="256" />
+        <Access Scope="GlobalVariable" UId="257">
+          <Symbol UId="258">
+            <Component Name="DB_MQTT" UId="259">
+              <BooleanAttribute Name="HasQuotes" UId="260">true</BooleanAttribute>
+            </Component>
+            <Token Text="." UId="261" />
+            <Component Name="receivedMsgLen" UId="262" />
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="263" />
+      <NewLine UId="264" />
+      <Blank Num="18" UId="265" />
+      <Parameter Name="connParam" UId="266">
+        <Blank UId="267" />
+        <Token Text=":=" UId="268" />
+        <Blank UId="269" />
+        <Access Scope="GlobalVariable" UId="270">
+          <Symbol UId="271">
+            <Component Name="DB_MQTT" UId="272">
+              <BooleanAttribute Name="HasQuotes" UId="273">true</BooleanAttribute>
+            </Component>
+            <Token Text="." UId="274" />
+            <Component Name="connParam" UId="275" />
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="276" />
+      <NewLine UId="277" />
+      <Blank Num="18" UId="278" />
+      <Parameter Name="clientIdentifier" UId="279">
+        <Blank UId="280" />
+        <Token Text=":=" UId="281" />
+        <Blank UId="282" />
+        <Access Scope="GlobalVariable" UId="283">
+          <Symbol UId="284">
+            <Component Name="DB_MQTT" UId="285">
+              <BooleanAttribute Name="HasQuotes" UId="286">true</BooleanAttribute>
+            </Component>
+            <Token Text="." UId="287" />
+            <Component Name="clientIdentifier" UId="288" />
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="289" />
+      <NewLine UId="290" />
+      <Blank Num="18" UId="291" />
+      <Parameter Name="username" UId="292">
+        <Blank UId="293" />
+        <Token Text=":=" UId="294" />
+        <Blank UId="295" />
+        <Access Scope="GlobalVariable" UId="296">
+          <Symbol UId="297">
+            <Component Name="DB_MQTT" UId="298">
+              <BooleanAttribute Name="HasQuotes" UId="299">true</BooleanAttribute>
+            </Component>
+            <Token Text="." UId="300" />
+            <Component Name="username" UId="301" />
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="302" />
+      <NewLine UId="303" />
+      <Blank Num="18" UId="304" />
+      <Parameter Name="password" UId="305">
+        <Blank UId="306" />
+        <Token Text=":=" UId="307" />
+        <Blank UId="308" />
+        <Access Scope="GlobalVariable" UId="309">
+          <Symbol UId="310">
+            <Component Name="DB_MQTT" UId="311">
+              <BooleanAttribute Name="HasQuotes" UId="312">true</BooleanAttribute>
+            </Component>
+            <Token Text="." UId="313" />
+            <Component Name="password" UId="314" />
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="315" />
+      <NewLine UId="316" />
+      <Blank Num="18" UId="317" />
+      <Parameter Name="willtopic" UId="318">
+        <Blank UId="319" />
+        <Token Text=":=" UId="320" />
+        <Blank UId="321" />
+        <Access Scope="GlobalVariable" UId="322">
+          <Symbol UId="323">
+            <Component Name="DB_MQTT" UId="324">
+              <BooleanAttribute Name="HasQuotes" UId="325">true</BooleanAttribute>
+            </Component>
+            <Token Text="." UId="326" />
+            <Component Name="willTopic" UId="327" />
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="328" />
+      <NewLine UId="329" />
+      <Blank Num="18" UId="330" />
+      <Parameter Name="willMsgPayload" UId="331">
+        <Blank UId="332" />
+        <Token Text=":=" UId="333" />
+        <Blank UId="334" />
+        <Access Scope="GlobalVariable" UId="335">
+          <Symbol UId="336">
+            <Component Name="DB_MQTT" UId="337">
+              <BooleanAttribute Name="HasQuotes" UId="338">true</BooleanAttribute>
+            </Component>
+            <Token Text="." UId="339" />
+            <Component Name="willMsgPayload" UId="340" />
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="341" />
+      <NewLine UId="342" />
+      <Blank Num="18" UId="343" />
+      <Parameter Name="mqttTopic" UId="344">
+        <Blank UId="345" />
+        <Token Text=":=" UId="346" />
+        <Blank UId="347" />
+        <Access Scope="GlobalVariable" UId="348">
+          <Symbol UId="349">
+            <Component Name="DB_MQTT" UId="350">
+              <BooleanAttribute Name="HasQuotes" UId="351">true</BooleanAttribute>
+            </Component>
+            <Token Text="." UId="352" />
+            <Component Name="mqttTopic" UId="353" />
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="354" />
+      <NewLine UId="355" />
+      <Blank Num="18" UId="356" />
+      <Parameter Name="publishMsgPayload" UId="357">
+        <Blank UId="358" />
+        <Token Text=":=" UId="359" />
+        <Blank UId="360" />
+        <Access Scope="GlobalVariable" UId="361">
+          <Symbol UId="362">
+            <Component Name="DB_MQTT" UId="363">
+              <BooleanAttribute Name="HasQuotes" UId="364">true</BooleanAttribute>
+            </Component>
+            <Token Text="." UId="365" />
+            <Component Name="publishMsgPayload" UId="366">
+              <BooleanAttribute Name="HasQuotes" UId="367">true</BooleanAttribute>
+            </Component>
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="368" />
+      <NewLine UId="369" />
+      <Blank Num="18" UId="370" />
+      <Parameter Name="receivedTopic" UId="371">
+        <Blank UId="372" />
+        <Token Text=":=" UId="373" />
+        <Blank UId="374" />
+        <Access Scope="GlobalVariable" UId="375">
+          <Symbol UId="376">
+            <Component Name="DB_MQTT" UId="377">
+              <BooleanAttribute Name="HasQuotes" UId="378">true</BooleanAttribute>
+            </Component>
+            <Token Text="." UId="379" />
+            <Component Name="receivedTopic" UId="380" />
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="381" />
+      <NewLine UId="382" />
+      <Blank Num="18" UId="383" />
+      <Parameter Name="receivedMsgPayload" UId="384">
+        <Blank UId="385" />
+        <Token Text=":=" UId="386" />
+        <Blank UId="387" />
+        <Access Scope="GlobalVariable" UId="388">
+          <Symbol UId="389">
+            <Component Name="DB_MQTT" UId="390">
+              <BooleanAttribute Name="HasQuotes" UId="391">true</BooleanAttribute>
+            </Component>
+            <Token Text="." UId="392" />
+            <Component Name="receivedMsgPayload" UId="393" />
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text=")" UId="394" />
+    </CallInfo>
+  </Access>
+  <Token Text=";" UId="395" />
+  <NewLine Num="2" UId="396" />
+  <Access Scope="Call" UId="397">
+    <CallInfo UId="398" BlockType="FC">
+      <Instance Scope="GlobalVariable" UId="400">
+        <Component Name="FC_MQTT" UId="399" />
+      </Instance>
+      <Token Text="(" UId="401" />
+      <Parameter Name="insert" UId="402">
+        <Blank UId="403" />
+        <Token Text=":=" UId="404" />
+        <Blank UId="405" />
+        <Access Scope="LiteralConstant" UId="406">
+          <Constant UId="407">
+            <ConstantValue UId="409">FALSE</ConstantValue>
+          </Constant>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="410" />
+      <NewLine UId="411" />
+      <Blank Num="10" UId="412" />
+      <Parameter Name="send" UId="413">
+        <Blank UId="414" />
+        <Token Text=":=" UId="415" />
+        <Blank UId="416" />
+        <Access Scope="LiteralConstant" UId="417">
+          <Constant UId="418">
+            <ConstantValue UId="420">true</ConstantValue>
+          </Constant>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="421" />
+      <NewLine UId="422" />
+      <Blank Num="10" UId="423" />
+      <Parameter Name="payload" UId="424">
+        <Blank UId="425" />
+        <Token Text=":=" UId="426" />
+        <Blank UId="427" />
+        <Access Scope="TypedConstant" UId="428">
+          <Constant UId="429">
+            <ConstantValue UId="430">wstring#''</ConstantValue>
+          </Constant>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="431" />
+      <NewLine UId="432" />
+      <Blank Num="10" UId="433" />
+      <Parameter Name="topic" UId="434">
+        <Blank UId="435" />
+        <Token Text=":=" UId="436" />
+        <Blank UId="437" />
+        <Access Scope="LiteralConstant" UId="438">
+          <Constant UId="439">
+            <ConstantValue UId="441">''</ConstantValue>
+          </Constant>
+        </Access>
+      </Parameter>
+      <Token Text=")" UId="442" />
+    </CallInfo>
+  </Access>
+  <Token Text=";" UId="443" />
+</StructuredText></NetworkSource>
+          <ProgrammingLanguage>SCL</ProgrammingLanguage>
+        </AttributeList>
+        <ObjectList>
+          <MultilingualText ID="28" CompositionName="Comment">
+            <ObjectList>
+              <MultilingualTextItem ID="29" CompositionName="Items">
+                <AttributeList>
+                  <Culture>en-US</Culture>
+                  <Text />
+                </AttributeList>
+              </MultilingualTextItem>
+              <MultilingualTextItem ID="2A" CompositionName="Items">
+                <AttributeList>
+                  <Culture>it-IT</Culture>
+                  <Text />
+                </AttributeList>
+              </MultilingualTextItem>
+            </ObjectList>
+          </MultilingualText>
+          <MultilingualText ID="2B" CompositionName="Title">
+            <ObjectList>
+              <MultilingualTextItem ID="2C" CompositionName="Items">
+                <AttributeList>
+                  <Culture>en-US</Culture>
+                  <Text />
+                </AttributeList>
+              </MultilingualTextItem>
+              <MultilingualTextItem ID="2D" CompositionName="Items">
+                <AttributeList>
+                  <Culture>it-IT</Culture>
+                  <Text>MQTT Comunication</Text>
+                </AttributeList>
+              </MultilingualTextItem>
+            </ObjectList>
+          </MultilingualText>
+        </ObjectList>
+      </SW.Blocks.CompileUnit>
+      <SW.Blocks.CompileUnit ID="2E" CompositionName="CompileUnits">
+        <AttributeList>
+          <NetworkSource><StructuredText xmlns="http://www.siemens.com/automation/Openness/SW/NetworkSource/StructuredText/v4">
+  <LineComment UId="21">
+    <Text UId="22"> UN SOLO PONTE SQL PER FB7 E FB204 (5/10, ritorno alla configurazione 4-18/9).</Text>
+  </LineComment>
+  <NewLine UId="23" />
+  <LineComment UId="24">
+    <Text UId="25"> FB204 e' sul canale 1: il canale 2 resta chiamato a vuoto e non serve nessuno.</Text>
+  </LineComment>
+  <NewLine UId="26" />
+  <LineComment UId="27">
+    <Text UId="28"> Precedenza al robot (DB_Robot), FB204 (DB_MC1) passa quando il robot non chiede.</Text>
+  </LineComment>
+  <NewLine UId="29" />
+  <LineComment UId="30">
+    <Text UId="31"> Il flag di ciascun richiedente si abbassa SOLO quando la SUA query e' entrata</Text>
+  </LineComment>
+  <NewLine UId="32" />
+  <LineComment UId="33">
+    <Text UId="34"> nel ponte; il controllo di lunghezza evita che due stringhe vuote si confermino.</Text>
+  </LineComment>
+  <NewLine Num="2" UId="35" />
+  <Access Scope="LocalVariable" UId="36">
+    <Symbol UId="37">
+      <Component Name="query" UId="38" />
+    </Symbol>
+  </Access>
+  <Blank UId="39" />
+  <Token Text=":=" UId="40" />
+  <Blank UId="41" />
+  <Access Scope="LiteralConstant" UId="42">
+    <Constant UId="43">
+      <ConstantValue UId="45">''</ConstantValue>
+    </Constant>
+  </Access>
+  <Token Text=";" UId="46" />
+  <NewLine UId="47" />
+  <Access Scope="LocalVariable" UId="48">
+    <Symbol UId="49">
+      <Component Name="exec" UId="50" />
+    </Symbol>
+  </Access>
+  <Blank UId="51" />
+  <Token Text=":=" UId="52" />
+  <Blank UId="53" />
+  <Access Scope="LiteralConstant" UId="54">
+    <Constant UId="55">
+      <ConstantValue UId="57">FALSE</ConstantValue>
+    </Constant>
+  </Access>
+  <Token Text=";" UId="58" />
+  <NewLine UId="59" />
+  <Token Text="IF" UId="60" />
+  <Blank UId="61" />
+  <Access Scope="GlobalVariable" UId="62">
+    <Symbol UId="63">
+      <Component Name="DB_Robot" UId="64">
+        <BooleanAttribute Name="HasQuotes" UId="65">true</BooleanAttribute>
+      </Component>
+      <Token Text="." UId="66" />
+      <Component Name="queryStartExecution" UId="67" />
+    </Symbol>
+  </Access>
+  <Blank UId="68" />
+  <Token Text="AND" UId="69" />
+  <Blank UId="70" />
+  <Access Scope="Call" UId="71">
+    <Instruction Name="LEN" UId="72">
+      <Token Text="(" UId="73" />
+      <NamelessParameter UId="74">
+        <Access Scope="GlobalVariable" UId="75">
+          <Symbol UId="76">
+            <Component Name="DB_Robot" UId="77">
+              <BooleanAttribute Name="HasQuotes" UId="78">true</BooleanAttribute>
+            </Component>
+            <Token Text="." UId="79" />
+            <Component Name="queryTemp" UId="80" />
+          </Symbol>
+        </Access>
+      </NamelessParameter>
+      <Token Text=")" UId="82" />
+    </Instruction>
+  </Access>
+  <Blank UId="83" />
+  <Token Text="&gt;" UId="84" />
+  <Blank UId="85" />
+  <Access Scope="LiteralConstant" UId="86">
+    <Constant UId="87">
+      <ConstantValue UId="89">0</ConstantValue>
+    </Constant>
+  </Access>
+  <Blank UId="90" />
+  <Token Text="THEN" UId="91" />
+  <NewLine UId="92" />
+  <Blank Num="4" UId="93" />
+  <Access Scope="LocalVariable" UId="94">
+    <Symbol UId="95">
+      <Component Name="query" UId="96" />
+    </Symbol>
+  </Access>
+  <Blank UId="97" />
+  <Token Text=":=" UId="98" />
+  <Blank UId="99" />
+  <Access Scope="GlobalVariable" UId="100">
+    <Symbol UId="101">
+      <Component Name="DB_Robot" UId="102">
+        <BooleanAttribute Name="HasQuotes" UId="103">true</BooleanAttribute>
+      </Component>
+      <Token Text="." UId="104" />
+      <Component Name="queryTemp" UId="105" />
+    </Symbol>
+  </Access>
+  <Token Text=";" UId="106" />
+  <NewLine UId="107" />
+  <Blank Num="4" UId="108" />
+  <Access Scope="LocalVariable" UId="109">
+    <Symbol UId="110">
+      <Component Name="paramsTemp" UId="111" />
+    </Symbol>
+  </Access>
+  <Blank UId="112" />
+  <Token Text=":=" UId="113" />
+  <Blank UId="114" />
+  <Access Scope="GlobalVariable" UId="115">
+    <Symbol UId="116">
+      <Component Name="DB_Robot" UId="117">
+        <BooleanAttribute Name="HasQuotes" UId="118">true</BooleanAttribute>
+      </Component>
+      <Token Text="." UId="119" />
+      <Component Name="paramsTemp" UId="120" />
+    </Symbol>
+  </Access>
+  <Token Text=";" UId="121" />
+  <NewLine UId="122" />
+  <Blank Num="4" UId="123" />
+  <Access Scope="LocalVariable" UId="124">
+    <Symbol UId="125">
+      <Component Name="exec" UId="126" />
+    </Symbol>
+  </Access>
+  <Blank UId="127" />
+  <Token Text=":=" UId="128" />
+  <Blank UId="129" />
+  <Access Scope="LiteralConstant" UId="130">
+    <Constant UId="131">
+      <ConstantValue UId="133">TRUE</ConstantValue>
+    </Constant>
+  </Access>
+  <Token Text=";" UId="134" />
+  <NewLine UId="135" />
+  <Token Text="ELSIF" UId="136" />
+  <Blank UId="137" />
+  <Access Scope="GlobalVariable" UId="138">
+    <Symbol UId="139">
+      <Component Name="DB_MC1" UId="140">
+        <BooleanAttribute Name="HasQuotes" UId="141">true</BooleanAttribute>
+      </Component>
+      <Token Text="." UId="142" />
+      <Component Name="queryStartExecution" UId="143" />
+    </Symbol>
+  </Access>
+  <Blank UId="144" />
+  <Token Text="AND" UId="145" />
+  <Blank UId="146" />
+  <Access Scope="Call" UId="147">
+    <Instruction Name="LEN" UId="148">
+      <Token Text="(" UId="149" />
+      <NamelessParameter UId="150">
+        <Access Scope="GlobalVariable" UId="151">
+          <Symbol UId="152">
+            <Component Name="DB_MC1" UId="153">
+              <BooleanAttribute Name="HasQuotes" UId="154">true</BooleanAttribute>
+            </Component>
+            <Token Text="." UId="155" />
+            <Component Name="queryTemp" UId="156" />
+          </Symbol>
+        </Access>
+      </NamelessParameter>
+      <Token Text=")" UId="158" />
+    </Instruction>
+  </Access>
+  <Blank UId="159" />
+  <Token Text="&gt;" UId="160" />
+  <Blank UId="161" />
+  <Access Scope="LiteralConstant" UId="162">
+    <Constant UId="163">
+      <ConstantValue UId="165">0</ConstantValue>
+    </Constant>
+  </Access>
+  <Blank UId="166" />
+  <Token Text="THEN" UId="167" />
+  <NewLine UId="168" />
+  <Blank Num="4" UId="169" />
+  <Access Scope="LocalVariable" UId="170">
+    <Symbol UId="171">
+      <Component Name="query" UId="172" />
+    </Symbol>
+  </Access>
+  <Blank UId="173" />
+  <Token Text=":=" UId="174" />
+  <Blank UId="175" />
+  <Access Scope="GlobalVariable" UId="176">
+    <Symbol UId="177">
+      <Component Name="DB_MC1" UId="178">
+        <BooleanAttribute Name="HasQuotes" UId="179">true</BooleanAttribute>
+      </Component>
+      <Token Text="." UId="180" />
+      <Component Name="queryTemp" UId="181" />
+    </Symbol>
+  </Access>
+  <Token Text=";" UId="182" />
+  <NewLine UId="183" />
+  <Blank Num="4" UId="184" />
+  <Access Scope="LocalVariable" UId="185">
+    <Symbol UId="186">
+      <Component Name="exec" UId="187" />
+    </Symbol>
+  </Access>
+  <Blank UId="188" />
+  <Token Text=":=" UId="189" />
+  <Blank UId="190" />
+  <Access Scope="LiteralConstant" UId="191">
+    <Constant UId="192">
+      <ConstantValue UId="194">TRUE</ConstantValue>
+    </Constant>
+  </Access>
+  <Token Text=";" UId="195" />
+  <NewLine UId="196" />
+  <Token Text="END_IF" UId="197" />
+  <Token Text=";" UId="198" />
+  <NewLine Num="2" UId="199" />
+  <Access Scope="Call" UId="200">
+    <CallInfo UId="201" BlockType="FB" Name="FB_ExecuteQuery">
+      <Instance Scope="GlobalVariable" UId="202">
+        <Component Name="DB_executeQuery" UId="203">
+          <BooleanAttribute Name="HasQuotes" UId="204">true</BooleanAttribute>
+        </Component>
+      </Instance>
+      <Token Text="(" UId="205" />
+      <Parameter Name="query" UId="206">
+        <Blank UId="207" />
+        <Token Text=":=" UId="208" />
+        <Blank UId="209" />
+        <Access Scope="LocalVariable" UId="210">
+          <Symbol UId="211">
+            <Component Name="query" UId="212" />
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="213" />
+      <NewLine UId="214" />
+      <Blank Num="18" UId="215" />
+      <Parameter Name="params" UId="216">
+        <Blank UId="217" />
+        <Token Text=":=" UId="218" />
+        <Blank UId="219" />
+        <Access Scope="LocalVariable" UId="220">
+          <Symbol UId="221">
+            <Component Name="paramsTemp" UId="222" />
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="223" />
+      <NewLine UId="224" />
+      <Blank Num="18" UId="225" />
+      <Parameter Name="exec" UId="226">
+        <Blank UId="227" />
+        <Token Text=":=" UId="228" />
+        <Blank UId="229" />
+        <Access Scope="LocalVariable" UId="230">
+          <Symbol UId="231">
+            <Component Name="exec" UId="232" />
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text=")" UId="233" />
+    </CallInfo>
+  </Access>
+  <Token Text=";" UId="234" />
+  <NewLine Num="2" UId="235" />
+  <Token Text="IF" UId="236" />
+  <Blank UId="237" />
+  <Access Scope="Call" UId="238">
+    <Instruction Name="LEN" UId="239">
+      <Token Text="(" UId="240" />
+      <NamelessParameter UId="241">
+        <Access Scope="GlobalVariable" UId="242">
+          <Symbol UId="243">
+            <Component Name="DB_Robot" UId="244">
+              <BooleanAttribute Name="HasQuotes" UId="245">true</BooleanAttribute>
+            </Component>
+            <Token Text="." UId="246" />
+            <Component Name="queryTemp" UId="247" />
+          </Symbol>
+        </Access>
+      </NamelessParameter>
+      <Token Text=")" UId="249" />
+    </Instruction>
+  </Access>
+  <Blank UId="250" />
+  <Token Text="&gt;" UId="251" />
+  <Blank UId="252" />
+  <Access Scope="LiteralConstant" UId="253">
+    <Constant UId="254">
+      <ConstantValue UId="256">0</ConstantValue>
+    </Constant>
+  </Access>
+  <Blank UId="257" />
+  <Token Text="AND" UId="258" />
+  <NewLine UId="259" />
+  <Blank Num="4" UId="260" />
+  <Access Scope="GlobalVariable" UId="261">
+    <Symbol UId="262">
+      <Component Name="DB_Robot" UId="263">
+        <BooleanAttribute Name="HasQuotes" UId="264">true</BooleanAttribute>
+      </Component>
+      <Token Text="." UId="265" />
+      <Component Name="queryTemp" UId="266" />
+    </Symbol>
+  </Access>
+  <Blank UId="267" />
+  <Token Text="=" UId="268" />
+  <Blank UId="269" />
+  <Access Scope="GlobalVariable" UId="270">
+    <Symbol UId="271">
+      <Component Name="SqlCommands" UId="272">
+        <BooleanAttribute Name="HasQuotes" UId="273">true</BooleanAttribute>
+      </Component>
+      <Token Text="." UId="274" />
+      <Component Name="sqlCommands" UId="275">
+        <Token Text="[" UId="276" />
+        <Access Scope="LiteralConstant" UId="277">
+          <Constant UId="278">
+            <ConstantValue UId="280">0</ConstantValue>
+          </Constant>
+        </Access>
+        <Token Text="]" UId="281" />
+      </Component>
+    </Symbol>
+  </Access>
+  <Blank UId="282" />
+  <Token Text="THEN" UId="283" />
+  <NewLine UId="284" />
+  <Blank Num="4" UId="285" />
+  <Access Scope="GlobalVariable" UId="286">
+    <Symbol UId="287">
+      <Component Name="DB_Robot" UId="288">
+        <BooleanAttribute Name="HasQuotes" UId="289">true</BooleanAttribute>
+      </Component>
+      <Token Text="." UId="290" />
+      <Component Name="queryStartExecution" UId="291" />
+    </Symbol>
+  </Access>
+  <Blank UId="292" />
+  <Token Text=":=" UId="293" />
+  <Blank UId="294" />
+  <Access Scope="LiteralConstant" UId="295">
+    <Constant UId="296">
+      <ConstantValue UId="298">FALSE</ConstantValue>
+    </Constant>
+  </Access>
+  <Token Text=";" UId="299" />
+  <NewLine UId="300" />
+  <Token Text="END_IF" UId="301" />
+  <Token Text=";" UId="302" />
+  <NewLine Num="2" UId="303" />
+  <Token Text="IF" UId="304" />
+  <Blank UId="305" />
+  <Access Scope="Call" UId="306">
+    <Instruction Name="LEN" UId="307">
+      <Token Text="(" UId="308" />
+      <NamelessParameter UId="309">
+        <Access Scope="GlobalVariable" UId="310">
+          <Symbol UId="311">
+            <Component Name="DB_MC1" UId="312">
+              <BooleanAttribute Name="HasQuotes" UId="313">true</BooleanAttribute>
+            </Component>
+            <Token Text="." UId="314" />
+            <Component Name="queryTemp" UId="315" />
+          </Symbol>
+        </Access>
+      </NamelessParameter>
+      <Token Text=")" UId="317" />
+    </Instruction>
+  </Access>
+  <Blank UId="318" />
+  <Token Text="&gt;" UId="319" />
+  <Blank UId="320" />
+  <Access Scope="LiteralConstant" UId="321">
+    <Constant UId="322">
+      <ConstantValue UId="324">0</ConstantValue>
+    </Constant>
+  </Access>
+  <Blank UId="325" />
+  <Token Text="AND" UId="326" />
+  <NewLine UId="327" />
+  <Blank Num="4" UId="328" />
+  <Access Scope="GlobalVariable" UId="329">
+    <Symbol UId="330">
+      <Component Name="DB_MC1" UId="331">
+        <BooleanAttribute Name="HasQuotes" UId="332">true</BooleanAttribute>
+      </Component>
+      <Token Text="." UId="333" />
+      <Component Name="queryTemp" UId="334" />
+    </Symbol>
+  </Access>
+  <Blank UId="335" />
+  <Token Text="=" UId="336" />
+  <Blank UId="337" />
+  <Access Scope="GlobalVariable" UId="338">
+    <Symbol UId="339">
+      <Component Name="SqlCommands" UId="340">
+        <BooleanAttribute Name="HasQuotes" UId="341">true</BooleanAttribute>
+      </Component>
+      <Token Text="." UId="342" />
+      <Component Name="sqlCommands" UId="343">
+        <Token Text="[" UId="344" />
+        <Access Scope="LiteralConstant" UId="345">
+          <Constant UId="346">
+            <ConstantValue UId="348">0</ConstantValue>
+          </Constant>
+        </Access>
+        <Token Text="]" UId="349" />
+      </Component>
+    </Symbol>
+  </Access>
+  <Blank UId="350" />
+  <Token Text="THEN" UId="351" />
+  <NewLine UId="352" />
+  <Blank Num="4" UId="353" />
+  <Access Scope="GlobalVariable" UId="354">
+    <Symbol UId="355">
+      <Component Name="DB_MC1" UId="356">
+        <BooleanAttribute Name="HasQuotes" UId="357">true</BooleanAttribute>
+      </Component>
+      <Token Text="." UId="358" />
+      <Component Name="queryStartExecution" UId="359" />
+    </Symbol>
+  </Access>
+  <Blank UId="360" />
+  <Token Text=":=" UId="361" />
+  <Blank UId="362" />
+  <Access Scope="LiteralConstant" UId="363">
+    <Constant UId="364">
+      <ConstantValue UId="366">FALSE</ConstantValue>
+    </Constant>
+  </Access>
+  <Token Text=";" UId="367" />
+  <NewLine UId="368" />
+  <Token Text="END_IF" UId="369" />
+  <Token Text=";" UId="370" />
+  <NewLine Num="2" UId="371" />
+  <LineComment UId="372">
+    <Text UId="373"> canale 2 chiamato a vuoto: la sorveglianza della connessione resta viva</Text>
+  </LineComment>
+  <NewLine UId="374" />
+  <Access Scope="Call" UId="375">
+    <CallInfo UId="376" BlockType="FB" Name="FB_ExecuteQuery2">
+      <Instance Scope="GlobalVariable" UId="377">
+        <Component Name="DB_executeQuery2" UId="378">
+          <BooleanAttribute Name="HasQuotes" UId="379">true</BooleanAttribute>
+        </Component>
+      </Instance>
+      <Token Text="(" UId="380" />
+      <Parameter Name="query" UId="381">
+        <Blank UId="382" />
+        <Token Text=":=" UId="383" />
+        <Blank UId="384" />
+        <Access Scope="LiteralConstant" UId="385">
+          <Constant UId="386">
+            <ConstantValue UId="388">''</ConstantValue>
+          </Constant>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="389" />
+      <NewLine UId="390" />
+      <Blank Num="19" UId="391" />
+      <Parameter Name="params" UId="392">
+        <Blank UId="393" />
+        <Token Text=":=" UId="394" />
+        <Blank UId="395" />
+        <Access Scope="LocalVariable" UId="396">
+          <Symbol UId="397">
+            <Component Name="paramsTemp" UId="398" />
+          </Symbol>
+        </Access>
+      </Parameter>
+      <Token Text="," UId="399" />
+      <NewLine UId="400" />
+      <Blank Num="19" UId="401" />
+      <Parameter Name="exec" UId="402">
+        <Blank UId="403" />
+        <Token Text=":=" UId="404" />
+        <Blank UId="405" />
+        <Access Scope="LiteralConstant" UId="406">
+          <Constant UId="407">
+            <ConstantValue UId="409">FALSE</ConstantValue>
+          </Constant>
+        </Access>
+      </Parameter>
+      <Token Text=")" UId="410" />
+    </CallInfo>
+  </Access>
+  <Token Text=";" UId="411" />
+</StructuredText></NetworkSource>
+          <ProgrammingLanguage>SCL</ProgrammingLanguage>
+        </AttributeList>
+        <ObjectList>
+          <MultilingualText ID="2F" CompositionName="Comment">
+            <ObjectList>
+              <MultilingualTextItem ID="30" CompositionName="Items">
+                <AttributeList>
+                  <Culture>en-US</Culture>
+                  <Text />
+                </AttributeList>
+              </MultilingualTextItem>
+              <MultilingualTextItem ID="31" CompositionName="Items">
+                <AttributeList>
+                  <Culture>it-IT</Culture>
+                  <Text />
+                </AttributeList>
+              </MultilingualTextItem>
+            </ObjectList>
+          </MultilingualText>
+          <MultilingualText ID="32" CompositionName="Title">
+            <ObjectList>
+              <MultilingualTextItem ID="33" CompositionName="Items">
+                <AttributeList>
+                  <Culture>en-US</Culture>
+                  <Text />
+                </AttributeList>
+              </MultilingualTextItem>
+              <MultilingualTextItem ID="34" CompositionName="Items">
+                <AttributeList>
+                  <Culture>it-IT</Culture>
+                  <Text>SQL OPERATION</Text>
+                </AttributeList>
+              </MultilingualTextItem>
+            </ObjectList>
+          </MultilingualText>
+        </ObjectList>
+      </SW.Blocks.CompileUnit>
+      <MultilingualText ID="35" CompositionName="Title">
+        <ObjectList>
+          <MultilingualTextItem ID="36" CompositionName="Items">
+            <AttributeList>
+              <Culture>en-US</Culture>
+              <Text />
+            </AttributeList>
+          </MultilingualTextItem>
+          <MultilingualTextItem ID="37" CompositionName="Items">
+            <AttributeList>
+              <Culture>it-IT</Culture>
+              <Text>"Main Program Sweep (Cycle)"</Text>
+            </AttributeList>
+          </MultilingualTextItem>
+        </ObjectList>
+      </MultilingualText>
+    </ObjectList>
+  </SW.Blocks.OB>
+</Document>
