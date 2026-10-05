@@ -4021,13 +4021,21 @@ BEGIN
 	                // SqlData e' un buffer unico condiviso: senza verifica il 30 puo'
 	                // leggere la risposta di un altro richiedente e mandare al robot
 	                // dimensioni TCP sbagliate.
-	                // NB: 'tcpData' e' una query SPECIALE che FB6 espande internamente,
-	                // quindi sqlCommands[0] NON sara' mai uguale a #queryTemp su quel
-	                // ramo: li' ci si limita al ponte occupato. Sul ramo del gancio
-	                // (stato 12) la query e' letterale e il confronto vale.
+	                // 'tcpData' e' una query SPECIALE che FB6 espande: sqlCommands[0] non
+	                // coincide mai con #queryTemp, quindi la presa in carico si riconosce
+	                // dall'inizio della query espansa. Sul ramo del gancio (stato 12) la
+	                // query e' letterale e il confronto diretto vale.
+	                // 5/10: a presa in carico avvenuta il flag si abbassa QUI, perche' per
+	                // 'tcpData' OB1 rete 7 non lo abbassa mai: col ponte condiviso il
+	                // robot terrebbe la precedenza per sempre e FB204 non potrebbe piu'
+	                // interrogare il DB.
 	                IF NOT "DB_executeQuery".readyForNextQuery THEN
-	                    IF #queryTemp = 'tcpData'
-	                        OR "SqlCommands".sqlCommands[0] = #queryTemp THEN
+	                    IF (#queryTemp = 'tcpData'
+	                        AND LEFT(IN := "SqlCommands".sqlCommands[0], L := 20) = 'select X_BODY+X_CLAW')
+	                        OR (#queryTemp <> 'tcpData'
+	                        AND "SqlCommands".sqlCommands[0] = #queryTemp)
+	                    THEN
+	                        #queryStartExecution := FALSE;
 	                        #Dispatcher["get_TCP_Data"] := 20;
 	                    END_IF;
 	                END_IF;
