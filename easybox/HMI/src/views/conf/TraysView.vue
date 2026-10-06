@@ -44,6 +44,10 @@
            stanno nel menu "...", cosi' il disegno ha piu' spazio.
            (P1 5/10, decisione 29/9) niente "Aggiungi" ne' "Elimina": i
            cassetti sono la cassettiera fisica.
+           (6/10, Dario) la cassettiera si disegna nell'ORDINE FISICO: piano
+           12 in alto, piano 1 in basso (pila), in largo e in compatto.
+           Numero del piano, scelta del cassetto e frecce restano come prima
+           (precedente = numero piu' basso). tests/test_cassettiera_ordine.mjs
            (6/10) "0 CASSETTIERA" ELIMINATO, decisione di Dario: con i work
            object per cassetto non ha piu' senso e scriverebbe in TRAY valori
            assurdi. Le rotazioni si impostano cassetto per cassetto dalla
@@ -56,7 +60,7 @@
             <span class="trays-rack__n">{{ $t('trays.floors', { n: piani.length }) }}</span>
           </header>
           <div class="trays-rack__list">
-            <button v-for="dt in piani" :key="dt.ID" type="button" class="rack-row"
+            <button v-for="dt in pila" :key="dt.ID" type="button" class="rack-row"
               :class="{ on: sel && dt.ID === sel.ID }" :aria-pressed="!!(sel && dt.ID === sel.ID)"
               :title="$t('tray.dbId', { id: dt.ID })"
               @click="scegli(dt)">
@@ -695,6 +699,14 @@ export default {
         piani(){
             const n = t => (t.FLOOR_MAG > 0 ? Number(t.FLOOR_MAG) : 1e6);
             return (this.datiTab || []).slice().sort((a, b) => n(a) - n(b));
+        },
+        // (6/10, Dario) le righe della cassettiera nell'ordine fisico: dal
+        // piano piu' alto (12) al piu' basso (1); quelli senza piano (fuori)
+        // restano sotto. Solo il disegno: la scelta di partenza e le frecce
+        // usano piani, in ordine di numero.
+        pila(){
+            const p = this.piani;
+            return p.filter(t => t.FLOOR_MAG > 0).reverse().concat(p.filter(t => !(t.FLOOR_MAG > 0)));
         },
         sel(){
             const p = this.piani;

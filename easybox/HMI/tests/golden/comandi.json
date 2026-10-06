@@ -6127,14 +6127,14 @@
         "abilitato": true,
         "effetti": [],
         "stato": [
-         "vm.selFloor = 7"
+         "vm.selFloor = 8"
         ]
        },
        {
         "abilitato": true,
         "effetti": [],
         "stato": [
-         "vm.selFloor = 8"
+         "vm.selFloor = 7"
         ]
        }
       ],
@@ -6143,14 +6143,14 @@
         "abilitato": true,
         "effetti": [],
         "stato": [
-         "vm.selFloor = 7"
+         "vm.selFloor = 8"
         ]
        },
        {
         "abilitato": true,
         "effetti": [],
         "stato": [
-         "vm.selFloor = 8"
+         "vm.selFloor = 7"
         ]
        }
       ],
@@ -6158,56 +6158,56 @@
        {
         "abilitato": true,
         "effetti": [],
-        "stato": []
+        "stato": [
+         "vm.selFloor = 8"
+        ]
        },
        {
         "abilitato": true,
         "effetti": [],
-        "stato": [
-         "vm.selFloor = 8"
-        ]
+        "stato": []
        }
       ],
       "due cassetti liv2, scelto 8": [
        {
         "abilitato": true,
         "effetti": [],
-        "stato": [
-         "vm.selFloor = 7"
-        ]
+        "stato": []
        },
        {
         "abilitato": true,
         "effetti": [],
-        "stato": []
+        "stato": [
+         "vm.selFloor = 7"
+        ]
        }
       ],
       "due cassetti liv0, scelto 7": [
        {
         "abilitato": true,
         "effetti": [],
-        "stato": []
+        "stato": [
+         "vm.selFloor = 8"
+        ]
        },
        {
         "abilitato": true,
         "effetti": [],
-        "stato": [
-         "vm.selFloor = 8"
-        ]
+        "stato": []
        }
       ],
       "due cassetti liv0, scelto 8": [
        {
         "abilitato": true,
         "effetti": [],
-        "stato": [
-         "vm.selFloor = 7"
-        ]
+        "stato": []
        },
        {
         "abilitato": true,
         "effetti": [],
-        "stato": []
+        "stato": [
+         "vm.selFloor = 7"
+        ]
        }
       ]
      }
