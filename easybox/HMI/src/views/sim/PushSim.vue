@@ -113,7 +113,10 @@
                vanno a capo insieme, non si separa il "mm" dal numero -->
           <span class="sim-control">
             <!-- (6/10) altezza di spinta: vuoto = alla quota di presa, il
-                 segnaposto dice quanto; massimo = quota di presa del pezzo -->
+                 segnaposto dice quanto ("vuoto = 10", poi l'unita'); che e'
+                 la quota del deposito lo dice la riga di riscontro sotto: la
+                 frase intera in un campo da 7rem resterebbe tagliata.
+                 Massimo = quota di presa del pezzo -->
             <input
               v-if="canEdit"
               :id="'sim-' + f.key"
@@ -127,8 +130,10 @@
               autocomplete="off"
               v-model="sim[f.key]"
             />
-            <span v-else class="sim-readonly">{{ f.key === 'zPush' && toMicron(sim[f.key]) === null && zPushPlaceholder ? zPushPlaceholder : mmText(sim[f.key]) }}</span>
-            <span class="sim-unit">mm</span>
+            <span v-else class="sim-readonly">{{ f.key === 'zPush' && toMicron(sim[f.key]) === null && zPushPlaceholder ? zPushPlaceholder + " mm" : mmText(sim[f.key]) }}</span>
+            <!-- in sola lettura l'unita' la scrive gia' mmText: qui solo
+                 accanto al campo (prima usciva "0.3 mm mm") -->
+            <span v-if="canEdit" class="sim-unit">mm</span>
             <!-- il pulsante compare SOLO sul campo che e' stato cambiato: e'
                  anche il modo piu' semplice per vedere cosa si sta per salvare -->
             <button

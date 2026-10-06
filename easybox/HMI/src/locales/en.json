@@ -1179,7 +1179,7 @@
       "NO_ROOM": "The part overhangs {over} mm per side, but the rest point is declared {stop} mm from the end of the jaw: the part would be past the stop before being pushed at all."
     },
     "fZPush": "Push height from the bottom of the part",
-    "zPushEmpty": "empty = {mm} mm, as the load",
+    "zPushEmpty": "empty = {mm}",
     "zPushRange": "Out of range: the height goes from 0 to the part's pick height, {max} mm.",
     "zPushNoPick": "The part has no pick height: the push height cannot be set.",
     "zPushNoRow": "The push height is written on that declaration too.",
