@@ -15,9 +15,10 @@
 }
 
 /* Variante kiosk full-height (dashboard, production): scroll interno.
-   100px = 64 topbar + 16 respiro + 20 margine (valore gia' in produzione). */
+   (v3) riempie l'area del contenuto della shell (layout/v3/AppShell.vue,
+   .shell__page ha altezza definita): niente piu' 100vh meno la barra. */
 .view-shell--fill {
-  height: calc(100vh - 100px);
+  height: 100%;
   min-height: 0;
 }
 

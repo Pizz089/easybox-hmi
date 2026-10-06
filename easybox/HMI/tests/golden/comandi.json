@@ -5253,6 +5253,158 @@
      }
     }
    ]
+  },
+  "StatusStrip": {
+   "file": "src/layout/v3/StatusStrip.vue",
+   "scenari": [
+    "robot in HOLD",
+    "robot in lavoro",
+    "robot in AUTO",
+    "robot spento",
+    "stato non ancora noto"
+   ],
+   "controlli": [
+    {
+     "id": "UiChip@click $emit('open-user')",
+     "etichetta": "{{t('changeUser.levelLabel.' + livello)}}",
+     "evento": "click",
+     "handler": "$emit('open-user')",
+     "disabled": "",
+     "classe": "",
+     "esiti": {
+      "robot in HOLD": {
+       "abilitato": true,
+       "effetti": [
+        "evento open-user"
+       ],
+       "stato": []
+      },
+      "robot in lavoro": {
+       "abilitato": true,
+       "effetti": [
+        "evento open-user"
+       ],
+       "stato": []
+      },
+      "robot in AUTO": {
+       "abilitato": true,
+       "effetti": [
+        "evento open-user"
+       ],
+       "stato": []
+      },
+      "robot spento": {
+       "abilitato": true,
+       "effetti": [
+        "evento open-user"
+       ],
+       "stato": []
+      },
+      "stato non ancora noto": {
+       "abilitato": true,
+       "effetti": [
+        "evento open-user"
+       ],
+       "stato": []
+      }
+     }
+    },
+    {
+     "id": "UiChip@click cambiaLingua",
+     "etichetta": "{{locale.toUpperCase()}}",
+     "evento": "click",
+     "handler": "cambiaLingua",
+     "disabled": "",
+     "classe": "",
+     "esiti": {
+      "robot in HOLD": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": []
+      },
+      "robot in lavoro": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": []
+      },
+      "robot in AUTO": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": []
+      },
+      "robot spento": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": []
+      },
+      "stato non ancora noto": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": []
+      }
+     }
+    },
+    {
+     "id": "button@click sendToRobot(17)",
+     "etichetta": "{{plant.robot == dataStored.status_hold ? t('strip.resume') : t('cmd.hold')}}",
+     "evento": "click",
+     "handler": "sendToRobot(17)",
+     "disabled": "",
+     "classe": "{ 'strip__hold--held': plant.robot == dataStored.status_hold }",
+     "esiti": {
+      "robot in HOLD": {
+       "abilitato": true,
+       "effetti": [
+        "emit TO_PLANT/CMD/ROBOT 17"
+       ],
+       "stato": []
+      },
+      "robot in lavoro": {
+       "abilitato": true,
+       "effetti": [
+        "emit TO_PLANT/CMD/ROBOT 17"
+       ],
+       "stato": []
+      },
+      "robot in AUTO": {
+       "abilitato": true,
+       "effetti": [
+        "emit TO_PLANT/CMD/ROBOT 17"
+       ],
+       "stato": []
+      },
+      "robot spento": "nascosto",
+      "stato non ancora noto": {
+       "abilitato": true,
+       "effetti": [
+        "emit TO_PLANT/CMD/ROBOT 17"
+       ],
+       "stato": []
+      }
+     }
+    },
+    {
+     "id": "button@click sendToRobot(17) #2",
+     "etichetta": "{{t('cmd.start')}}",
+     "evento": "click",
+     "handler": "sendToRobot(17)",
+     "disabled": "",
+     "classe": "",
+     "esiti": {
+      "robot in HOLD": "nascosto",
+      "robot in lavoro": "nascosto",
+      "robot in AUTO": "nascosto",
+      "robot spento": {
+       "abilitato": true,
+       "effetti": [
+        "emit TO_PLANT/CMD/ROBOT 17"
+       ],
+       "stato": []
+      },
+      "stato non ancora noto": "nascosto"
+     }
+    }
+   ]
   }
  }
 }

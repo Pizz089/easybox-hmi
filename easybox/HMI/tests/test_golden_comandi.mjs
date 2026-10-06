@@ -29,11 +29,12 @@ globalThis.window = {
 	location: { hostname: 'localhost', reload: noop },
 	matchMedia: () => ({ matches: false, addEventListener: noop, removeEventListener: noop }),
 	addEventListener: noop, removeEventListener: noop,
+	performance: globalThis.performance,   // vue-i18n (istanze SSR)
 };
 globalThis.sessionStorage = { getItem: () => null, setItem: noop, removeItem: noop };
 globalThis.localStorage = { getItem: () => null, setItem: noop, removeItem: noop };
 
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const { parse } = require('@vue/compiler-sfc');
@@ -227,7 +228,7 @@ function abilitato(vm, lv, c) {
 	} catch (e) { return 'errore: ' + e.message; }
 }
 function visibile(vm, lv, c) {
-	try { return c.conds.every(x => !!valuta(vm, lv, x)); } catch (e) { return false; }
+	try { return c.conds.every(x => !!valuta(vm, lv, x)); } catch (e) { if (process.env.GOLDEN_DEBUG) console.log('visibile: ' + c.id + ': ' + e.message); return false; }
 }
 // combinazioni dei v-for (primi MAX_ITEM elementi di ogni sorgente)
 function combinazioni(vm, loops) {
@@ -356,13 +357,86 @@ const PAGINE = [
 	{ nome: 'TrayPockets', file: 'src/components/layout/TrayPockets.vue',
 		props: { pockets: [{ SUB_POS: 1, x: 65, y: 50, status: 4, prisma: true, order_ID: 0 }], dimX: 40, dimY: 110 },
 		scenari: { 'una tasca': () => {} } },
+	// (v3 fase A) striscia di stato: il pulsante HOLD / Riprendi / START deve
+	// mandare lo stesso comando del pulsante di robotView (17), con la stessa
+	// logica a tre stati. Componente solo <script setup>: istanza SSR vera.
+	{ nome: 'StatusStrip', file: 'src/layout/v3/StatusStrip.vue', modo: 'ssr', scenari: {
+		'robot in HOLD': () => { plantStore.plant.robot = S.status_hold; },
+		'robot in lavoro': () => { plantStore.plant.robot = S.status_working; },
+		'robot in AUTO': () => { plantStore.plant.robot = S.status_auto; },
+		'robot spento': () => { plantStore.plant.robot = S.status_off; },
+		'stato non ancora noto': () => { plantStore.plant.robot = null; },
+	} },
 ];
+
+// ------------------------------------------------------------ istanze SSR
+// Per i componenti scritti solo con <script setup> (shell v3): il template
+// vede i binding di setup (store, sendToRobot, computed), che solo un'istanza
+// vera espone. Render SSR con i18n e router in memoria; il proxy del
+// componente fa da vm (with() funziona sul proxy). onMounted non gira.
+const plantStore = await server.ssrLoadModule('/src/stores/plantStatus.js');
+const { createSSRApp, h } = await import('vue');
+const { renderToString } = await import('vue/server-renderer');
+const { createI18n } = await import('vue-i18n');
+const { createRouter, createMemoryHistory } = await import('vue-router');
+// In SSR Vite compila <script setup> col template incorporato: il proxy non
+// espone i binding. Qui lo script si ricompila SENZA template incorporato
+// (setup restituisce i binding) in un modulo temporaneo; gli import
+// relativi diventano assoluti, cosi' Vite li risolve come nel file vero.
+const { compileScript } = require('@vue/compiler-sfc');
+const TMP = 'tests/.golden_tmp';
+const compilati = new Map();
+async function componenteConBinding(file) {
+	if (compilati.has(file)) return compilati.get(file);
+	const P = require('node:path').posix;
+	const { descriptor } = parse(readFileSync(file, 'utf8'), { filename: file });
+	const out = compileScript(descriptor, { id: 'golden-' + compilati.size, inlineTemplate: false, isProd: false });
+	const dirFile = '/' + P.dirname(file);
+	const codice = out.content.replace(/(from\s+|import\s+)(['"])(\.{1,2}\/[^'"]+)\2/g, (m, pre, q, rel) => pre + q + P.normalize(P.join(dirFile, rel)) + q);
+	mkdirSync(TMP, { recursive: true });
+	const nome = file.replace(/[\/.]/g, '_') + '.mjs';
+	writeFileSync(TMP + '/' + nome, codice);
+	const comp = Object.assign({}, (await server.ssrLoadModule('/' + TMP + '/' + nome)).default, { render: () => null });
+	compilati.set(file, comp);
+	return comp;
+}
+async function istanzaSSR(comp, props, route) {
+	const i18n = createI18n({ legacy: false, globalInjection: true, locale: 'it', fallbackLocale: 'it', messages: { it: IT }, missingWarn: false, fallbackWarn: false });
+	const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/:p(.*)*', component: { render: () => null } }] });
+	await router.push((route && route.path) || '/');
+	await router.isReady();
+	// gli eventi verso il padre si registrano come per i componenti options
+	const ascolto = {};
+	for (const ev of (Array.isArray(comp.emits) ? comp.emits : Object.keys(comp.emits || {})))
+		ascolto['on' + ev.split('-').map(x => x[0].toUpperCase() + x.slice(1)).join('')] = (...a) => rec('evento ' + ev + (a.length ? ' ' + J(a) : ''));
+	let px = null;
+	const app = createSSRApp({ render: () => h(comp, Object.assign({}, props || {}, ascolto)) });
+	app.use(i18n); app.use(router);
+	app.mixin({ created() { if (this.$.type === comp) px = this; } });
+	await renderToString(app);
+	if (!px) return null;
+	// Vue nasconde i binding di <script setup> al trap "has" del proxy
+	// pubblico (che e' quello che usa with()): si legge setupState
+	// dell'istanza vera (ref gia' spacchettati), il resto dal proxy.
+	const st = px.$.setupState;
+	return new Proxy({}, {
+		has: (_, k) => typeof k === 'string' && (k in st || k in px),
+		get: (_, k) => (typeof k === 'string' && k in st ? st[k] : px[k]),
+		set: (_, k, v) => { if (k in st) st[k] = v; else px[k] = v; return true; },
+		ownKeys: () => Object.keys(st),
+		getOwnPropertyDescriptor: (_, k) => (k in st ? { enumerable: true, configurable: true, value: st[k] } : undefined),
+	});
+}
 
 // ------------------------------------------------------------ esecuzione
 async function prova(pagina, comp, ctrls, scen, catena) {
 	// catena: [{c, lv}] controlli da eseguire in ordine; ritorna effetti e stato
 	resetDS(); timers = []; timerId = 1; effetti = [];
-	const vm = vmDi(comp, JSON.parse(JSON.stringify(pagina.props || {})), pagina.route && JSON.parse(JSON.stringify(pagina.route)));
+	if (pagina.modo === 'ssr') Object.assign(plantStore.plant, { robot: null, mc1: null, mc2: null, box: null, robotAlarm: '', trayOut: null });
+	const vm = pagina.modo === 'ssr'
+		? await istanzaSSR(comp, JSON.parse(JSON.stringify(pagina.props || {})), pagina.route)
+		: vmDi(comp, JSON.parse(JSON.stringify(pagina.props || {})), pagina.route && JSON.parse(JSON.stringify(pagina.route)));
+	effetti = [];
 	try { pagina.scenari[scen](vm, dataStored); } catch (e) { return { errore: 'scenario: ' + e.message }; }
 	const dataKeys = typeof comp.data === 'function' ? Object.keys(comp.data.call(vmDi({}, {}, {}))) : [];
 	let prima = istantanea(vm, dataKeys);
@@ -395,8 +469,8 @@ async function importSetup(file) {
 	return Object.assign({}, SCOPE_BASE, scope);
 }
 async function mappaPagina(pagina) {
-	const comp = (await server.ssrLoadModule('/' + pagina.file)).default;
-	scopeCorrente = await importSetup(pagina.file);
+	const comp = pagina.modo === 'ssr' ? await componenteConBinding(pagina.file) : (await server.ssrLoadModule('/' + pagina.file)).default;
+	scopeCorrente = pagina.modo === 'ssr' ? SCOPE_BASE : await importSetup(pagina.file);
 	const ctrls = estrai(pagina.file);
 	const out = [];
 	for (const c of ctrls) {
@@ -440,6 +514,7 @@ async function mappaPagina(pagina) {
 const mappa = { versione: 1, pagine: {} };
 for (const p of PAGINE) mappa.pagine[p.nome] = await mappaPagina(p);
 await server.close();
+rmSync(TMP, { recursive: true, force: true });
 
 // ------------------------------------------------------------ md leggibile
 function md(m) {

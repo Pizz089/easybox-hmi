@@ -61,6 +61,65 @@
     "reset": "Reset",
     "out": "OUT"
   },
+  "nav": {
+    "aria": "Navigazione principale",
+    "tabsAria": "Schede della sezione",
+    "home": "Home",
+    "controls": "Controlli",
+    "production": "Produzione",
+    "warehouse": "Magazzino",
+    "tooling": "Attrezzaggio",
+    "alarms": "Allarmi",
+    "settings": "Impostazioni",
+    "short": {
+      "tooling": "Attrezz.",
+      "settings": "Impost."
+    },
+    "tab": {
+      "mc1": "Macchina MC1",
+      "mc2": "Macchina MC2"
+    }
+  },
+  "strip": {
+    "cell": {
+      "hold": "HOLD",
+      "holdSub": "Cella ferma",
+      "alarm": "ALLARME",
+      "auto": "AUTO",
+      "off": "SPENTA",
+      "manual": "MANUALE",
+      "unknown": "In attesa dati"
+    },
+    "robot": "Robot",
+    "easybox": "EasyBox",
+    "trayOut": "cassetto {n} fuori",
+    "st": {
+      "hold": "HOLD",
+      "alarm": "allarme",
+      "off": "spento",
+      "working": "in lavoro",
+      "auto": "AUTO",
+      "remote": "remoto",
+      "local": "locale",
+      "manual": "manuale",
+      "notDef": "non definito",
+      "normal": "normale",
+      "unknown": "—"
+    },
+    "offline": "Server non collegato",
+    "online": "Server collegato",
+    "alarms": "Allarmi attivi: {n}",
+    "user": "Cambia livello utente",
+    "lang": "Cambia lingua",
+    "resume": "Riprendi"
+  },
+  "alarms": {
+    "activeNow": "In allarme adesso",
+    "noneActive": "Nessuna unità in allarme.",
+    "unitInAlarm": "{unit} in allarme",
+    "history": "Storico",
+    "historyEmpty": "Nessun allarme registrato."
+  },
   "layout": {
     "viewOnly": "SOLO VISUALIZZAZIONE!!",
     "legend": "LEGENDA:",

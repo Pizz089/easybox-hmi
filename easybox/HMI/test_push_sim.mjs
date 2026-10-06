@@ -354,8 +354,10 @@ check(/pagina della morsa/.test(it.pushSim.reason.NO_FIT) && /vice page/.test(en
 const router = readFileSync('src/router/index.js', 'utf8');
 check(/path: "\/sim\/push"/.test(router), 'rotta registrata');
 check(!/path: "\/sim\/push"[\s\S]{0,200}requiresLevel/.test(router), 'nessun gate sulla rotta: il livello 0 la deve poter aprire');
-const side = readFileSync('src/components/SidebarPlugin/SideBar.vue', 'utf8');
-check(/menu\.pushSim[\s\S]{0,80}\/sim\/push/.test(side) && !/menu\.pushSim[\s\S]{0,120}requiresLevel/.test(side), 'voce di menu senza requiresLevel');
+// (v3) la voce sta nelle schede di Attrezzaggio (layout/navConfig.js)
+const nav = readFileSync('src/layout/navConfig.js', 'utf8');
+const rigaNav = nav.split('\n').find(l => /'\/sim\/push'/.test(l)) || '';
+check(/label: 'menu\.pushSim'/.test(rigaNav) && !/level:/.test(rigaNav), 'scheda di Attrezzaggio senza livello minimo: il livello 0 la vede');
 
 await server.close();
 console.log('\n' + (failed ? failed + ' CHECK FALLITI' : 'TUTTI I CHECK PASSATI'));

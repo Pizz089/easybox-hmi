@@ -258,3 +258,14 @@ Scenari: una tasca
 | {{p.SUB_POS != null ? p.SUB_POS : index+1}} | `pick(index)` |  | una tasca: sì | evento pick [{"index":0,"subPos":1,"status":4,"orderID":0}] | no |
 | {{p.SUB_POS != null ? p.SUB_POS : index+1}} | `pick(index)` |  | una tasca: – |  | no |
 
+## StatusStrip (`src/layout/v3/StatusStrip.vue`)
+
+Scenari: robot in HOLD · robot in lavoro · robot in AUTO · robot spento · stato non ancora noto
+
+| Etichetta | Handler | Abilitazione | Abilitato per scenario | Effetto | Conferma |
+|---|---|---|---|---|---|
+| {{t('changeUser.levelLabel.' + livello)}} | `$emit('open-user')` |  | robot in HOLD: sì<br>robot in lavoro: sì<br>robot in AUTO: sì<br>robot spento: sì<br>stato non ancora noto: sì | evento open-user | no |
+| {{locale.toUpperCase()}} | `cambiaLingua` |  | robot in HOLD: sì<br>robot in lavoro: sì<br>robot in AUTO: sì<br>robot spento: sì<br>stato non ancora noto: sì | – | no |
+| {{plant.robot == dataStored.status_hold ? t('strip.resume') : t('cmd.hold')}} | `sendToRobot(17)` | `{ 'strip__hold--held': plant.robot == dataStored.status_hold }` | robot in HOLD: sì<br>robot in lavoro: sì<br>robot in AUTO: sì<br>robot spento: –<br>stato non ancora noto: sì | emit TO_PLANT/CMD/ROBOT 17 | no |
+| {{t('cmd.start')}} | `sendToRobot(17)` |  | robot in HOLD: –<br>robot in lavoro: –<br>robot in AUTO: –<br>robot spento: sì<br>stato non ancora noto: – | emit TO_PLANT/CMD/ROBOT 17 | no |
+

@@ -41,7 +41,9 @@ defineProps({
   white-space: nowrap;
   box-sizing: border-box;
 }
-button.ui-chip { cursor: pointer; }
+/* cliccabile (utente, lingua): bersaglio touch minimo 48, anche se la
+   tavola li disegna a 44 come gli altri chip */
+button.ui-chip { cursor: pointer; height: var(--touch-target-min); }
 .ui-chip :deep(b) { color: var(--text-primary); font-weight: var(--font-weight-extrabold); }
 .ui-chip__dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
 .ui-chip__dot--success { background: var(--color-success); }

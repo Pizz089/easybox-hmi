@@ -91,7 +91,8 @@ check(loc.it.robot.alarm_20006 === undefined, 'nessuna robot.alarm_20006 aggiunt
 check(loc.en.robot.alarm_18 === 'Gripper not empty' && loc.en.robot.alarm_18 !== loc.it.robot.alarm_18, '18 in en.json tradotto ("' + loc.en.robot.alarm_18 + '")');
 
 console.log('\n4) la famiglia e\' quella che il pannello usa davvero');
-const menu = readFileSync('src/layout/StandardMenu.vue', 'utf8');
+// (v3) gli handler globali sono in layout/plantGlobals.js (prima in StandardMenu)
+const menu = readFileSync('src/layout/plantGlobals.js', 'utf8');
 check(/'robot\.alarm_' \+ code/.test(menu) && /socket\.on\('ALARM\/MC1'/.test(menu), 'allarmi MC1: evento ALARM/MC1 -> robot.alarm_<codice>');
 check(/'robot\.alarm_' \+ payload/.test(menu), 'errori robot: robot.alarm_<codice>');
 

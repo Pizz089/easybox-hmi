@@ -61,6 +61,65 @@
     "reset": "Reset",
     "out": "OUT"
   },
+  "nav": {
+    "aria": "Main navigation",
+    "tabsAria": "Section tabs",
+    "home": "Home",
+    "controls": "Controls",
+    "production": "Production",
+    "warehouse": "Warehouse",
+    "tooling": "Tooling",
+    "alarms": "Alarms",
+    "settings": "Settings",
+    "short": {
+      "tooling": "Tooling",
+      "settings": "Settings"
+    },
+    "tab": {
+      "mc1": "Machine MC1",
+      "mc2": "Machine MC2"
+    }
+  },
+  "strip": {
+    "cell": {
+      "hold": "HOLD",
+      "holdSub": "Cell stopped",
+      "alarm": "ALARM",
+      "auto": "AUTO",
+      "off": "OFF",
+      "manual": "MANUAL",
+      "unknown": "Waiting for data"
+    },
+    "robot": "Robot",
+    "easybox": "EasyBox",
+    "trayOut": "tray {n} out",
+    "st": {
+      "hold": "HOLD",
+      "alarm": "alarm",
+      "off": "off",
+      "working": "working",
+      "auto": "AUTO",
+      "remote": "remote",
+      "local": "local",
+      "manual": "manual",
+      "notDef": "not defined",
+      "normal": "normal",
+      "unknown": "—"
+    },
+    "offline": "Server not connected",
+    "online": "Server connected",
+    "alarms": "Active alarms: {n}",
+    "user": "Change user level",
+    "lang": "Change language",
+    "resume": "Resume"
+  },
+  "alarms": {
+    "activeNow": "In alarm now",
+    "noneActive": "No unit in alarm.",
+    "unitInAlarm": "{unit} in alarm",
+    "history": "History",
+    "historyEmpty": "No alarm recorded."
+  },
   "layout": {
     "viewOnly": "VIEW ONLY!!",
     "legend": "LEGEND:",

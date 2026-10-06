@@ -84,8 +84,14 @@ for (const [comp, name, snapOk] of cases) {
 	check((s.listeners.connect || []).length === 0, 'listener connect staccato (off specifico)');
 }
 
-console.log('=== StandardMenu (layout sempre montato, rete di sicurezza globale) ===');
-const sm = readFileSync('src/layout/StandardMenu.vue', 'utf8').replace(/<!--[\s\S]*?-->/g, '');
+console.log('=== layout sempre montato (rete di sicurezza globale) ===');
+// (v3, 6/10) gli handler globali sono passati da StandardMenu a
+// layout/plantGlobals.js, usato dalla shell v3 (e da StandardMenu finche'
+// esiste): si controlla la sorgente unica, e che la shell la usi davvero.
+const sm = readFileSync('src/layout/plantGlobals.js', 'utf8');
+const shell = readFileSync('src/layout/v3/AppShell.vue', 'utf8');
+check(/import \{ usePlantGlobals \} from '\.\.\/plantGlobals\.js'/.test(shell) && /^usePlantGlobals\(\);?$/m.test(shell), 'la shell v3 monta gli handler globali');
+check(/meta: \{ layout: AppShell \}/.test(readFileSync('src/router/index.js', 'utf8')), 'e la shell e\' il layout delle rotte');
 check(/const requestOneShotStates = \(\) => \{[\s\S]*?GRIPPER\/REQUEST_SNAPSHOT[\s\S]*?PLC\/REFRESH_REQUEST[\s\S]*?\}/.test(sm), 'handler unico: snapshot pinza/AUX/DECLARE + refresh 90');
 check(/on\('connect', requestOneShotStates\)/.test(sm) && /requestOneShotStates\(\)/.test(sm), 'agganciato al mount e a ogni connect');
 check(/off\('connect', requestOneShotStates\)/.test(sm), 'off specifico in onUnmounted');
@@ -95,7 +101,7 @@ const mc = readFileSync('src/views/conf/Machine/MachineConfigView.vue', 'utf8').
 check(/function requestSnapshot\(\) \{[\s\S]*?BRAND\/REQUEST_SNAPSHOT[\s\S]*?PLC\/REFRESH_REQUEST[\s\S]*?\}/.test(mc), 'requestSnapshot chiede anche il refresh 90');
 
 console.log('=== throttle: il client non lo aggira (nessun timer client, solo richieste) ===');
-const all = ['src/views/unit/robotView.vue', 'src/components/units.vue', 'src/views/unit/smallboxView.vue', 'src/views/unit/CNC1View.vue', 'src/layout/StandardMenu.vue', 'src/views/conf/Machine/MachineConfigView.vue']
+const all = ['src/views/unit/robotView.vue', 'src/components/units.vue', 'src/views/unit/smallboxView.vue', 'src/views/unit/CNC1View.vue', 'src/layout/StandardMenu.vue', 'src/layout/plantGlobals.js', 'src/stores/plantStatus.js', 'src/layout/v3/StatusStrip.vue', 'src/views/conf/Machine/MachineConfigView.vue']
 	.map(f => readFileSync(f, 'utf8')).join('\n');
 check(!/TO_PLANT\/CMD\/ROBOT'\s*,\s*'?90/.test(all), "nessuna vista manda il 90 direttamente: solo PLC/REFRESH_REQUEST (throttle nel backend)");
 
