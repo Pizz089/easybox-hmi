@@ -1063,6 +1063,8 @@
       "partProgramMissing": "Il particolare non ha un part program: impostalo nell'anagrafica pezzo prima di creare l'ordine",
       "push": "Spinta in battuta",
       "pushOn": "attiva, corsa {mm} mm",
+      "pushZ": "chela a {from} mm dal fondo, {drop} mm sotto il deposito",
+      "pushZDefault": "chela alla quota di presa, come il deposito",
       "pushNoVice": "Spinta in battuta attiva sul pezzo, ma sul pallet non c'è una morsa: il ciclo non è eseguibile.",
       "pushNoData": "Spinta in battuta attiva, ma manca una misura: la ganascia della morsa o la lunghezza della chela della pinza. Completare l'anagrafica prima di creare l'ordine.",
       "pushNoFit": "Il pezzo è lungo {piece} mm e la ganascia della morsa {claw} mm: il pezzo sporge, e non è stato dichiarato dove appoggia davvero. Si dichiara nella pagina della morsa.",
@@ -1175,6 +1177,17 @@
       "NO_FIT": "Il pezzo \u00e8 lungo {piece} mm e la ganascia {claw} mm: sporge {over} mm per lato, e nessuno ha dichiarato dove appoggia davvero. Si dichiara nella pagina della morsa.",
       "NO_COMP": "La compensazione e' {comp} mm ma la corsa e' {travel} mm: il pezzo dovrebbe fermarsi dietro il punto di partenza e il robot spingerebbe nel verso opposto contro il pezzo in morsa. La spinta non viene eseguita: ridurre la compensazione.",
       "NO_ROOM": "Il pezzo sporge {over} mm per lato, ma l'appoggio \u00e8 dichiarato a {stop} mm dalla fine della ganascia: il pezzo sarebbe oltre la battuta prima ancora di essere spinto."
-    }
+    },
+    "fZPush": "Altezza di spinta dal fondo del pezzo",
+    "zPushEmpty": "vuoto = {mm} mm, come il deposito",
+    "zPushRange": "Fuori campo: l'altezza va da 0 alla quota di presa del pezzo, {max} mm.",
+    "zPushNoPick": "Il pezzo non ha una quota di presa: l'altezza di spinta non si può impostare.",
+    "zPushNoRow": "Anche l'altezza di spinta si scrive su quella dichiarazione.",
+    "zPushPreview": "La chela spinge a {from} mm dal fondo del pezzo, {drop} mm più in basso del deposito.",
+    "zPushPreviewSame": "La chela spinge a {from} mm dal fondo del pezzo, alla stessa quota del deposito.",
+    "confirmZPush": "Altezza di spinta di {obj} per {piece}: da {from} a {to} dal fondo del pezzo.",
+    "confirmZPushClear": "Altezza di spinta di {obj} per {piece}: da {from} a vuoto, cioè alla quota di presa, come il deposito.",
+    "zPushRangeServer": "Il server ha rifiutato l'altezza di spinta: è oltre la quota di presa del pezzo. Ricarica la pagina e controlla il pezzo.",
+    "qZDrop": "Discesa della chela in spinta"
   }
 }

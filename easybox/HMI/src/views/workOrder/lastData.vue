@@ -9,7 +9,7 @@
     import { dataStored } from '../../data.js'
     import { KO_NO_FIXTURE, KO_PUSH_NO_DATA, KO_PUSH_NO_FIT, KO_PUSH_NO_ROOM } from '../../util/errorCodes.js'
     // (push-to-stop 15/9) stessa formula della vista COORDINATES_PUSH_MC
-    import { pushQuotes, PUSH_STATUS } from '../../util/pushQuotes.js'
+    import { pushQuotes, PUSH_STATUS, zPushDrop } from '../../util/pushQuotes.js'
     import { useI18n } from 'vue-i18n'
     import workOrderStep from '../../components/workOrder_step.vue'
 
@@ -99,6 +99,10 @@
       <div class="form-row" v-else-if="piecePush">
         <label class="form-label">{{ t('wizard.lastData.push') }}</label>
         <span class="pp-value">{{ t('wizard.lastData.pushOn', { mm: pushCheck.clearance/1000 }) }}</span>
+        <!-- (6/10) la quota Z della spinta: dove spinge la chela e quanto sotto il deposito -->
+        <span class="pp-value">{{ pieceZPush === null || !(pieceZPick > 0)
+            ? t('wizard.lastData.pushZDefault')
+            : t('wizard.lastData.pushZ', { from: pieceZPush/1000, drop: pushZDrop/1000 }) }}</span>
       </div>
     </section>
 
@@ -143,6 +147,10 @@ export default {
             // nessuna riga in PIECE_ON_VICE, cioe' non dichiarato: e' diverso
             // da zero, che e' una dichiarazione valida.
             pieceStop:null,
+            // (6/10) quota Z della spinta della coppia morsa+pezzo (micron,
+            // null = alla quota di presa) e quota di presa del pezzo
+            pieceZPush:null,
+            pieceZPick:null,
             viceFound:false
         }
     },
@@ -166,6 +174,10 @@ export default {
                 gripperClawLength: this.gripperClaw,
                 stopBeyondClaw: this.pieceStop,
             });
+        },
+        // (6/10) di quanto scende la chela sotto la Z di deposito, come la vista
+        pushZDrop(){
+            return zPushDrop({ zPush: this.pieceZPush, zPick: this.pieceZPick });
         },
         pushOk(){
             const st = this.pushCheck.status;
@@ -212,6 +224,7 @@ export default {
                     this.piecePP = (/^[1-9][0-9]{0,5}$/.test(raw) && n > 0) ? n : null;
                     this.piecePush = !!(data[0] || {}).PUSH_TO_STOP;
                     this.pieceY = Number((data[0] || {}).Y) || 0;
+                    this.pieceZPick = (data[0] || {}).Z_PICK != null ? Number(data[0].Z_PICK) : null;
                     if (this.piecePush) this.getPushData();
                 })
                 .catch(error => {
@@ -238,6 +251,7 @@ export default {
                         .then(list => {
                             const row = (list || []).find(x => x.PIECE_ID == wo.pieceID) || null;
                             this.pieceStop = row ? row.STOP_BEYOND_CLAW : null;
+                            this.pieceZPush = row && row.Z_PUSH != null ? Number(row.Z_PUSH) : null;
                         });
                 })
                 .catch(e => { console.info(e); this.viceFound = false; this.viceClaw = null; this.viceID = null; this.pieceStop = null; });
