@@ -10,7 +10,7 @@
 //   2. guardia: la v3 e la v4 che confronta sono davvero quelle (la v3 dello
 //      script vecchio, la v4 dell'ALTER), tre esiti, RAISERROR prima di NOEXEC;
 //   3. gli script superati (v3, v2) sono INERTI in ogni caso;
-//   4. nessun altro script attivo tocca la vista.
+//   4. nessun altro script attivo tocca la vista (oltre al rollback rollback-wo.sql).
 // Nessun DB: solo lettura dei file.
 //
 // Uso:   node test_robot_tray_view.js
@@ -147,7 +147,9 @@ check(!fs.existsSync(path.join(DIR, 'robot-tray-view-v3.sql')), 'la v3 non sta p
 console.log('\n4) nessun altro script attivo tocca la vista');
 const attivi = fs.readdirSync(DIR).filter(f => f.endsWith('.sql'));
 const tocca = attivi.filter(f => /ALTER VIEW\s+(dbo\.)?COORDINATES_PIECES_TRAYS_4Robot|CREATE VIEW\s+(dbo\.)?COORDINATES_PIECES_TRAYS_4Robot/i.test(codice(leggi(f))));
-check(tocca.join(',') === 'robot-tray-view-v4.sql', 'solo robot-tray-view-v4.sql (' + tocca.join(', ') + ')');
+// (6/10) rollback-wo.sql e' la strada prevista per tornare alla v3: che
+// rimetta ESATTAMENTE la v3 lo controlla test_rollback_wo.js
+check(tocca.sort().join(',') === 'robot-tray-view-v4.sql,rollback-wo.sql', 'solo robot-tray-view-v4.sql e il suo rollback rollback-wo.sql (' + tocca.join(', ') + ')');
 
 console.log('\n' + (failed ? failed + ' CHECK FALLITI' : 'TUTTI I CHECK PASSATI'));
 process.exit(failed ? 1 : 0);
