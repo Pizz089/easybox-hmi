@@ -32,13 +32,17 @@ const COMANDO = /^(emit|fetch) /;
 // ---------------------------------------------------------------- ammesse
 // tipo: 'spostato' (il comando c'e' ancora, altrove: vedi motivo),
 //       'cambiato' (stesso comando, nuovo modo di darlo: vedi motivo),
-//       'nuovo'    (comando che prima su questa pagina non c'era).
+//       'nuovo'    (comando che prima su questa pagina non c'era),
+//       'tolto'    (comando eliminato per decisione: vedi motivo).
 export const AMMESSE = [
 	// ---- fase B
 	{ pagina: 'robotView', tipo: 'spostato', firma: /^emit TO_PLANT\/CMD\/ROBOT 17$/,
 		motivo: 'HOLD / Riprendi / START esce dalla pagina Robot e resta solo nella striscia di stato (stessa logica a tre stati, stesso 17: test_shell_v3 lo confronta col riferimento)' },
 	{ pagina: 'robotView', tipo: 'cambiato', firma: /^emit TO_PLANT\/CMD\/ROBOT "100;\d+"$/,
 		motivo: 'velocita\': stesso comando "100;<val>" (1..100, eco CHANGESPEED), dato con passi -10/-1/+1/+10 (un invio dopo 400 ms senza tocchi) e valori fissi 10/25/50/100 al posto di cursore e campo numerico; il valore nel payload dipende dal controllo premuto' },
+	// ---- work object per cassetto (6/10, da ui-lifting c1ad480)
+	{ pagina: 'TraysView', tipo: 'tolto', firma: /^fetch GET api\/conf\/position\/show\/all \| fetch GET api\/conf\/tray\/extractCoords \| fetch GET api\/conf\/piece\/show\/all$/,
+		motivo: '"0 CASSETTIERA" eliminato (decisione di Dario, work object per cassetto): via il pulsante che apriva il dialog del teaching (queste tre letture) e con lui la scrittura teachTrays, che ora risponde 410 KO_WORKOBJECT. Le rotazioni si impostano dalla scheda del cassetto' },
 ];
 const ammessa = (pagina, firma) => AMMESSE.find(a => (!a.pagina || a.pagina === pagina) && a.firma.test(firma));
 

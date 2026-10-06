@@ -230,7 +230,6 @@ Scenari: due cassetti liv2 · due cassetti liv0
 
 | Etichetta | Handler | Abilitazione | Abilitato per scenario | Effetto | Conferma |
 |---|---|---|---|---|---|
-| 0 CASSETTIERA — teaching | `dataStored.userLevel>1 ? openTeach() : ''` | `{'pure-button-disabled':dataStored.userLevel<=1}` | due cassetti liv2: sì<br>due cassetti liv0: no | fetch GET api/conf/position/show/all<br>fetch GET api/conf/tray/extractCoords<br>fetch GET api/conf/piece/show/all | Piano {{n}} Senza grigliato associato: non eleggibile → –<br>Piano {{n}} Senza grigliato associato: non eleggibile → –<br>Piano {{n}} Senza grigliato associato: non eleggibile → –<br>Avanti → –<br>Annulla → – |
 | {{dt.FAMILY}} | `goToLayout(dt.ID, dt.EXTRACT, dt.STATUS, dt.FLOOR_MAG)` |  | due cassetti liv2: sì<br>due cassetti liv0: sì | router "/layout/21/1/7" | no |
 | Associa | `openAssoc('associate', dt)` | `!assocAllowed(dt)` | due cassetti liv2: –<br>due cassetti liv0: – |  | no |
 | Sostituisci | `openAssoc('replace', dt)` | `!assocAllowed(dt)` | due cassetti liv2: sì<br>due cassetti liv0: no | fetch GET api/conf/grating/show/all<br>fetch GET api/conf/position/show/all<br>fetch GET api/conf/piece/show/all | {{(g.NAME\|\|'').trim()}} - {{(g.DESCR\|\|'').trim()}} → –<br># {{p.ID}} {{(p.FAMILY\|\|'').trim()}} - {{(p.DESCR\|\|'').trim()}} → –<br>{{$t('tray.assoc.confirm.'+assoc.mode)}} → –<br>Annulla → – |
@@ -239,21 +238,6 @@ Scenari: due cassetti liv2 · due cassetti liv0
 | (cmdModify) | `updateTray(dt.ID)` |  | due cassetti liv2: sì<br>due cassetti liv0: sì | router "/conf/tray?trayID=21" | no |
 | (cmdMove) | `sendToBox(dt.EXTRACT, dt.FLOOR_MAG)` |  | due cassetti liv2: sì<br>due cassetti liv0: sì | emit TO_PLANT/CMD/BOX "25;7" | no |
 | (riprova) | `getDataTable()` |  | due cassetti liv2: sì<br>due cassetti liv0: sì | fetch GET api/conf/tray/show/all | no |
-| Piano {{n}} Senza grigliato associato: non eleggibile | `teach.sample=n` | `!eligibleFloors.has(n)` | due cassetti liv2: –<br>due cassetti liv0: – |  | no |
-| Avanti | `teach.sample!=null ? teach.step=2 : ''` | `[teach.sample==null ? 'pure-button-disable' : 'pure-button-mission']` | due cassetti liv2: –<br>due cassetti liv0: – |  | no |
-| Annulla | `closeTeach()` |  | due cassetti liv2: –<br>due cassetti liv0: – |  | no |
-| (update) | `v => teach.px = v` |  | due cassetti liv2: –<br>due cassetti liv0: – |  | no |
-| (update) | `v => teach.py = v` |  | due cassetti liv2: –<br>due cassetti liv0: – |  | no |
-| (update) | `v => teach.pz = v` |  | due cassetti liv2: –<br>due cassetti liv0: – |  | no |
-| (update) | `v => teach.rx = v` |  | due cassetti liv2: –<br>due cassetti liv0: – |  | no |
-| (update) | `v => teach.ry = v` |  | due cassetti liv2: –<br>due cassetti liv0: – |  | no |
-| (update) | `v => teach.rz = v` |  | due cassetti liv2: –<br>due cassetti liv0: – |  | no |
-| Indietro | `teach.step=1` |  | due cassetti liv2: –<br>due cassetti liv0: – |  | no |
-| Avanti | `calcPreview()` |  | due cassetti liv2: –<br>due cassetti liv0: – |  | no |
-| Annulla | `closeTeach()` |  | due cassetti liv2: –<br>due cassetti liv0: – |  | no |
-| Indietro | `teach.step=2` |  | due cassetti liv2: –<br>due cassetti liv0: – |  | no |
-| CONFERMA E SCRIVI | `confirmTeach()` |  | due cassetti liv2: –<br>due cassetti liv0: – |  | no |
-| Annulla | `closeTeach()` |  | due cassetti liv2: –<br>due cassetti liv0: – |  | no |
 | {{(g.NAME\|\|'').trim()}} - {{(g.DESCR\|\|'').trim()}} | `onAssocGratingChange()` |  | due cassetti liv2: –<br>due cassetti liv0: – |  | no |
 | # {{p.ID}} {{(p.FAMILY\|\|'').trim()}} - {{(p.DESCR\|\|'').trim()}} | `onAssocGratingChange()` |  | due cassetti liv2: –<br>due cassetti liv0: – |  | no |
 | {{$t('tray.assoc.copyFrom', { n: c.floor, k: c.n })}} proposto | `assoc.sourceFloor=c.floor` | `{ selected: assoc.sourceFloor===c.floor }` | due cassetti liv2: –<br>due cassetti liv0: – |  | no |

@@ -32,6 +32,7 @@ export const KO_NOT_FOUND         = "KO_NOT_FOUND";
 // (P1 5/10) aggiunta/eliminazione cassetti disabilitata: insertTray e
 // DELETE /tray/:ID rispondono 403 con questo codice
 export const KO_TRAY_LOCKED       = "KO_TRAY_LOCKED";
+export const KO_WORKOBJECT        = "KO_WORKOBJECT";        // "0 CASSETTIERA" eliminato (6/10): /teachTrays risponde 410
 // (P2 5/10) rilancia ordine finito
 export const KO_ORDER_NOT_FINISHED = "KO_ORDER_NOT_FINISHED"; // ordine non finito (STATUS<>5)
 export const KO_NO_RAW             = "KO_NO_RAW";             // nessun grezzo disponibile: reinserire i grezzi e scegliere Si'

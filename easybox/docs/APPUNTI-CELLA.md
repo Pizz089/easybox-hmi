@@ -27,7 +27,7 @@ La vista v3 sommava le correzioni del cassetto (`TRAY.X_CORR`, `Y_CORR`, `Z_CORR
 - **niente più `t.X_CORR`, `t.Y_CORR`, `t.Z_CORR`**. Il join su TRAY resta: limita la vista ai piani configurati.
 - `ISNULL` su ogni correzione: il ponte SQL verso il PLC non converte NULL in zero, passa valori casuali.
 
-**Le correzioni del cassetto in TRAY non contano più** per le quote del robot: restano nel DB, la posizione del cassetto è nel robot. Il pannello lo dice nella pagina Cassetto (avviso fisso sopra X/Y/Z) e nella conferma di "0 CASSETTIERA", che resta perché scrive le rotazioni anche nelle tasche.
+**Le correzioni del cassetto in TRAY non contano più** per le quote del robot: restano nel DB, la posizione del cassetto è nel robot. Il pannello lo dice nella pagina Cassetto (avviso fisso sopra X/Y/Z, e accanto alle rotazioni che si impostano lì).
 
 **Quando:** a cella ferma, **insieme** al cambio del programma robot (work object per cassetto), non prima. Da PowerShell, con il backup della definizione vecchia nel file:
 ```
@@ -41,7 +41,24 @@ cd D:\Prog\easybox\serverDati\scripts; sqlcmd -S .\SQLEXPRESS -E -d ADMG -y 0 -i
 
 **Causa dello scarto trovata il 6/10.** Il grigliato 2098 aveva distanze 18/24 contro la piastra vera, che misurata col metro dà 19/25: passi 709/12 e 405/3. La piastra è centrata nel cassetto 819 × 605: tasca 1 a 100 / 55 misurata, contro 101,5 / 61,5 del modello. Rimedio: rigenerare le tasche col grigliato a 19/25.
 
-**Avvertenza.** Se anche l'estrazione passa al work object del cassetto, le quote di estrazione (`COORDINATES_FOR_EXTRACT`, oggi assolute per piano) vanno riscritte relative al cassetto. È un lavoro a parte, che aspetta la decisione del robotista.
+**Estrazione** (25) e rilascio (26) usano anche loro il WO del cassetto. Le 12 righe `[POSITION]` con PARENT `EXTRACT_TRAY_n`, che FB7 legge attraverso `COORDINATES_FOR_EXTRACT`, diventano relative al cassetto con `serverDati/scripts/extract-coords-workobject.sql` (scritto da Dario):
+- quota relativa = quota attuale meno `TRAY.X/Y/Z_CORR` del piano: si conserva la differenza fra prelievo e cassetto che era già corretta;
+- le correzioni della riga (`X_CORR`, `Y_CORR`, `Z_CORR`) restano libere per i ritocchi a mano dalla pagina Posizioni (±5 mm); rotazioni, avvicinamenti e tabella TRAY non si toccano;
+- backup nella tabella `dbo.POSITION_EXTRACT_PRE_WO` e nel file `D:\Backup\estrazione_prima_WO.txt`; parte solo con `-v ROBOT_WO=SI`;
+- la Z sale di 0,2 mm a piano (passo delle righe 100 mm, cassetti 99,8): ereditato dalla tabella vecchia, si corregge a mano se serve.
+
+**"0 CASSETTIERA" eliminato** (decisione di Dario). Ricavava le correzioni di ogni piano dalle differenze fra le righe di `COORDINATES_FOR_EXTRACT`: dopo lo script di estrazione quelle differenze valgono circa 0,2 mm, e il comando scriverebbe in TRAY valori senza senso. Il robot non se ne accorgerebbe (la v4 li ignora), ma il ritorno alla v3 non sarebbe più possibile. Il pulsante e il dialog non ci sono più; la rotta `/teachTrays` resta e risponde 410 `KO_WORKOBJECT` senza toccare il DB (per un pannello rimasto aperto su una versione vecchia). Le **rotazioni** si impostano cassetto per cassetto dalla scheda del cassetto: salva → `propagateTeaching` → tutte le tasche del cassetto. Da qui la Z delle tasche, che "0 CASSETTIERA" portava a 0, la garantiscono gli inserimenti (Z = 0) e la controlla la verifica della vista v4.
+
+**Ordine della fermata di passaggio**, tutto nella stessa fermata:
+1. Robot: WO insegnati sui cassetti che si useranno (l'8 per primo) e programma pronto a usare `N_Cassetto`.
+2. PLC con la REGION `N_Cassetto` scaricata (può essere fatto anche prima).
+3. `git pull` in cella. È qui che arrivano i testi del pannello e l'eliminazione di "0 CASSETTIERA": non prima.
+4. Vista v4 (comando nella sua intestazione).
+5. `extract-coords-workobject.sql` (comando nella sua intestazione, con `-v ROBOT_WO=SI`).
+6. Robot sul programma con i WO.
+7. Prova lenta: estrazione dell'8, rilascio dell'8, prelievo dalla tasca 1 con l'8 fuori.
+
+**Rollback.** Si torna indietro su tre cose insieme: vista v3 dal file di backup, rollback commentato in coda allo script di estrazione, robot di nuovo sul riferimento unico. Per riavere "0 CASSETTIERA" si annulla il commit che lo ha tolto, `c1ad480` (pannello e rotta `/teachTrays` insieme).
 
 ### 5/10 sera — dati pezzo al robot e larghezza corretta
 - Su richiesta del robotista il PLC passa le tre misure del pezzo dell'ordine in mm interi, troncati: %QW636 `Part_Width_mm` = PIECE.Y, %QW640 `Part_Length_mm` = PIECE.X, %QW642 `Part_Height_mm` = PIECE.Z, accanto a %QW634 `Vice_ClawLength_mm` e %QW638 `X_Support_mm`. Libere da %QW644 a %QW666 (dal 6/10 %QW644 è `N_Cassetto`: vedi sopra).

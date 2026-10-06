@@ -64,7 +64,8 @@ const NORMALI = [
 	['src/views/unit/robotView.vue', 'confirmUnload()'], ['src/views/unit/robotView.vue', 'confirmPickPlace()'],
 	['src/views/unit/robotView.vue', 'confirmDialog()'], ['src/views/unit/robotView.vue', 'confirmTestDialog()'],
 	['src/views/conf/Fixture/Fixture.vue', 'confermaAllineamento()'], ['src/views/conf/WarehousesView.vue', 'confirmToggle()'],
-	['src/components/RelaunchDialog.vue', "confirm('replaced')"], ['src/views/conf/TraysView.vue', 'confirmTeach()'],
+	// (6/10) la conferma di "0 CASSETTIERA" (confirmTeach) non c'e' piu': comando eliminato
+	['src/components/RelaunchDialog.vue', "confirm('replaced')"],
 ];
 for (const [f, h] of NORMALI) {
 	const c = contenitore(f, h);

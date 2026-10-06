@@ -4,8 +4,6 @@
     
     import { ref, onMounted } from 'vue'
     import { dataStored } from '../../data';
-    // (tray-teaching) campo numerico condiviso per i 6 valori pendant
-    import numericField from '../../components/numericField.vue'
     // (grating-model) associazione grigliato <-> cassetto: griglia dalla
     // stessa util dell'anteprima modello, ingombro e avviso taratura
     import { buildGrid, gridCenters, taughtMismatch, pickClearance } from '../../util/gratingGrid.js'
@@ -25,16 +23,14 @@
             <!-- (P1 5/10, decisione 29/9) niente "Aggiungi" ne' "Elimina": i
                  cassetti sono la cassettiera fisica, il cliente ne ha cancellati
                  di non eliminabili. Anche il backend rifiuta (403 KO_TRAY_LOCKED). -->
-            <!-- (tray-teaching) comando "0 CASSETTIERA": un solo teaching sul
-                 cassetto campione, derivazione automatica degli altri 11.
-                 (teach-pick-target) gate REALE sul click, non solo classe: il
-                 dialog confermato scrive i CORR di TUTTI e 12 i cassetti —
-                 stessa soglia della classe (userLevel<=1 = locked). Il vizio
-                 solo-CSS di "Add" e dei bottoni AttrezzaggiView resta censito
-                 a backlog, qui il danno e' concreto. -->
-            <button class="pure-button pure-button-primary" :class="{'pure-button-disabled':dataStored.userLevel<=1}" :id="locked" @click="dataStored.userLevel>1 ? openTeach() : ''">
-                {{$t('tray.teach.button')}}
-            </button>
+            <!-- (6/10) "0 CASSETTIERA" ELIMINATO, decisione di Dario: con i work
+                 object per cassetto (vista 4Robot v4, quote di estrazione
+                 relative al cassetto) non ha piu' senso e scriverebbe in TRAY
+                 valori assurdi (le differenze fra le righe di estrazione ora
+                 valgono ~0,2 mm). Le rotazioni si impostano cassetto per
+                 cassetto dalla scheda del cassetto. Il codice di prima (pulsante,
+                 dialog, calcPreview) e' nella storia git, commit 7fc7964, per un
+                 eventuale ritorno al riferimento unico. -->
         </div>
         <div class="table-scroll">
         <table class="pure-table pure-table-horizontal">
@@ -136,157 +132,6 @@
         />
         </div>
 
-        <!-- ===== (tray-teaching) dialog comando "0 CASSETTIERA" =====
-             3 passi: campione eleggibile -> 6 valori pendant -> ANTEPRIMA
-             obbligatoria (12 righe in mm) -> scrittura transazionale. -->
-        <div v-if="teach.open" class="mission-dialog-overlay">
-          <div class="mission-dialog mission-dialog--wide">
-            <h3 class="command-section-title">{{ $t('tray.teach.title') }}</h3>
-
-            <!-- passo 1: cassetto CAMPIONE (eleggibile = posizioni a DB) -->
-            <template v-if="teach.step==1">
-              <div class="teach-hint">{{ $t('tray.teach.chooseSample') }}</div>
-              <div class="teach-list">
-                <button v-for="n in 12" :key="n" class="mission-dialog-item"
-                  :class="{ selected: teach.sample===n }"
-                  :disabled="!eligibleFloors.has(n)"
-                  @click="teach.sample=n">
-                  <span>{{ $t('tray.teach.floor') }} {{ n }}</span>
-                  <span v-if="!eligibleFloors.has(n)" class="teach-muted">{{ $t('tray.teach.notEligible') }}</span>
-                </button>
-              </div>
-              <div class="pure-g">
-                <div class="pure-u-1-2">
-                  <button style="width:100%" class="button_pressed"
-                    :class="[teach.sample==null ? 'pure-button-disable' : 'pure-button-mission']"
-                    @click="teach.sample!=null ? teach.step=2 : ''">
-                    {{ $t('tray.teach.next') }}
-                  </button>
-                </div>
-                <div class="pure-u-1-2">
-                  <button style="width:100%" class="btn-ghost" @click="closeTeach()">
-                    {{ $t('robot.dialog.cancel') }}
-                  </button>
-                </div>
-              </div>
-            </template>
-
-            <!-- passo 2: valori pendant (X/Y/Z mm, RX/RY/RZ gradi) -->
-            <template v-if="teach.step==2">
-              <div class="teach-hint">{{ $t('tray.teach.pendantHint', { n: teach.sample }) }}</div>
-              <div class="teach-field">
-                <label>X [mm]</label>
-                <numericField name="teachX" step=0.01 min=-3000 max=3000
-                  :model-value="teach.px" @update="v => teach.px = v"></numericField>
-              </div>
-              <div class="teach-field">
-                <label>Y [mm]</label>
-                <numericField name="teachY" step=0.01 min=-3000 max=3000
-                  :model-value="teach.py" @update="v => teach.py = v"></numericField>
-              </div>
-              <div class="teach-field">
-                <label>Z [mm]</label>
-                <numericField name="teachZ" step=0.01 min=-3000 max=3000
-                  :model-value="teach.pz" @update="v => teach.pz = v"></numericField>
-              </div>
-              <!-- (teach-pick-target) pezzo della posizione 1 irrisolvibile:
-                   calcolo BLOCCATO con motivo esplicito, mai stime silenziose -->
-              <div class="teach-warning" v-if="teach.calcError">{{ $t(teach.calcError) }}</div>
-              <div class="teach-hint">{{ $t('tray.teach.rotHint') }}</div>
-              <div class="teach-field">
-                <label>RX [&deg;]</label>
-                <numericField name="teachRX" step=0.1 min=-360 max=360
-                  :model-value="teach.rx" @update="v => teach.rx = v"></numericField>
-              </div>
-              <div class="teach-field">
-                <label>RY [&deg;]</label>
-                <numericField name="teachRY" step=0.1 min=-360 max=360
-                  :model-value="teach.ry" @update="v => teach.ry = v"></numericField>
-              </div>
-              <div class="teach-field">
-                <label>RZ [&deg;]</label>
-                <numericField name="teachRZ" step=0.1 min=-360 max=360
-                  :model-value="teach.rz" @update="v => teach.rz = v"></numericField>
-              </div>
-              <div class="pure-g">
-                <div class="pure-u-1-3">
-                  <button style="width:100%" class="btn-ghost" @click="teach.step=1">
-                    {{ $t('tray.teach.back') }}
-                  </button>
-                </div>
-                <div class="pure-u-1-3">
-                  <button style="width:100%" class="button_pressed pure-button-mission" @click="calcPreview()">
-                    {{ $t('tray.teach.next') }}
-                  </button>
-                </div>
-                <div class="pure-u-1-3">
-                  <button style="width:100%" class="btn-ghost" @click="closeTeach()">
-                    {{ $t('robot.dialog.cancel') }}
-                  </button>
-                </div>
-              </div>
-            </template>
-
-            <!-- passo 3: ANTEPRIMA obbligatoria -->
-            <template v-if="teach.step==3">
-              <!-- (teach-pick-target) la posa DICHIARATA, scolpita sopra la
-                   tabella: e' esattamente cio' che uscira' per la pos.1 -->
-              <div class="teach-hint">
-                {{ $t('tray.teach.pickPose', { n: teach.sample }) }}:
-                X {{ teach.px }} &middot; Y {{ teach.py }} &middot; Z {{ teach.pz }} mm
-                &middot; RX {{ teach.rx }}&deg; RY {{ teach.ry }}&deg; RZ {{ teach.rz }}&deg;
-              </div>
-              <div class="teach-hint">{{ $t('tray.teach.preview') }}</div>
-              <div class="table-scroll">
-                <table class="pure-table pure-table-horizontal teach-table">
-                  <thead>
-                    <tr>
-                      <th>{{ $t('tray.teach.floor') }}</th>
-                      <th>X_CORR [mm]</th>
-                      <th>Y_CORR [mm]</th>
-                      <th>Z_CORR [mm]</th>
-                      <th>&nbsp;</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="r in teach.preview" :key="r.tray" :class="{'pure-table-odd': r.tray % 2==1}">
-                      <td><strong>{{ r.tray }}</strong>{{ r.tray==teach.sample ? ' *' : '' }}</td>
-                      <td>{{ mm(r.xCorr) }}</td>
-                      <td>{{ mm(r.yCorr) }}</td>
-                      <td>{{ mm(r.zCorr) }}</td>
-                      <td><span v-if="!r.hasTray" class="teach-muted">{{ $t('tray.teach.noTrayRow') }}</span></td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <div class="teach-hint">
-                {{ $t('tray.teach.rotSummary') }}: RX {{ teach.rx }}&deg; &middot; RY {{ teach.ry }}&deg; &middot; RZ {{ teach.rz }}&deg;
-              </div>
-              <!-- (work object per cassetto, 6/10) il comando resta perche'
-                   scrive le rotazioni anche nelle tasche, ma X/Y/Z del
-                   cassetto non contano piu' per le quote del robot (vista
-                   4Robot v4): la conferma lo dice prima di scrivere -->
-              <div class="teach-hint teach-wo-note">{{ $t('tray.teach.workObjectNote') }}</div>
-              <div class="pure-g">
-                <div class="pure-u-1-3">
-                  <button style="width:100%" class="btn-ghost" @click="teach.step=2">
-                    {{ $t('tray.teach.back') }}
-                  </button>
-                </div>
-                <div class="pure-u-1-3">
-                  <button style="width:100%" class="button_pressed pure-button-mission" @click="confirmTeach()">
-                    {{ $t('tray.teach.write') }}
-                  </button>
-                </div>
-                <div class="pure-u-1-3">
-                  <button style="width:100%" class="btn-ghost" @click="closeTeach()">
-                    {{ $t('robot.dialog.cancel') }}
-                  </button>
-                </div>
-              </div>
-            </template>
-          </div>
-        </div>
         <!-- ===== (grating-model) dialog Associa / Sostituisci / Rigenera / Dissocia =====
              Un solo dialog, 4 modi. Copia da cassetto tarato = default quando
              esiste una sorgente (proposta = piu' tasche a DB, MOSTRATA e
@@ -377,20 +222,6 @@ export default {
             statoElenco: STATO.ATTESA,
             //polling:true,
 			allInside:false,
-            // (tray-teaching) dialog "0 CASSETTIERA": step 1 campione,
-            // step 2 pendant (mm/gradi), step 3 anteprima (millesimi interi).
-            teach: {
-                open: false,
-                step: 1,
-                sample: null,
-                px: 0, py: 0, pz: 0,
-                rx: 0, ry: 0, rz: 0,
-                positions: [],   // [POSITION] TRAY_% raw (eleggibilita' + SUB_POS 1)
-                cfe: [],         // COORDINATES_FOR_EXTRACT (delta tra piani)
-                pieces: [],      // anagrafica PIECE (componente pezzo in Z)
-                calcError: '',   // chiave i18n del blocco calcolo (pezzo irrisolvibile)
-                preview: []      // 12 righe {tray, xCorr, yCorr, zCorr, hasTray}
-            },
             // (grating-model) dialog associazione grigliato <-> cassetto
             assoc: {
                 open: false,
@@ -636,104 +467,6 @@ export default {
                 })
                 .catch(e => { console.info(e); a.busy = false; a.error = 'tray.assoc.err.generic'; a.errorParams = { code: String(e) }; });
         },
-        // ===== (tray-teaching) comando "0 CASSETTIERA" =====
-        openTeach(){
-            this.teach.open = true;
-            this.teach.step = 1;
-            this.teach.sample = null;
-            this.teach.px = 0; this.teach.py = 0; this.teach.pz = 0;
-            this.teach.rx = 0; this.teach.ry = 0; this.teach.rz = 0;
-            this.teach.preview = [];
-            this.teach.calcError = '';
-            // posizioni raw dei cassetti (PARENT nchar PADDATO: trim),
-            // coordinate di estrazione per-piano per i delta e anagrafica
-            // PIECE (componente pezzo della Z di prelievo)
-            fetch(dataStored.server+'api/conf/position/show/all',{ method: 'GET'})
-                .then(r => { if (!r.ok) throw new Error('Network response was not ok'); return r.json(); })
-                .then(d => { this.teach.positions = (d || []).filter(p => (p.PARENT || '').trim().indexOf('TRAY_') == 0); })
-                .catch(e => { console.info(e); this.teach.positions = []; });
-            fetch(dataStored.server+'api/conf/tray/extractCoords',{ method: 'GET'})
-                .then(r => { if (!r.ok) throw new Error('Network response was not ok'); return r.json(); })
-                .then(d => { this.teach.cfe = d || []; })
-                .catch(e => { console.info(e); this.teach.cfe = []; });
-            fetch(dataStored.server+'api/conf/piece/show/all',{ method: 'GET'})
-                .then(r => { if (!r.ok) throw new Error('Network response was not ok'); return r.json(); })
-                .then(d => { this.teach.pieces = d || []; })
-                .catch(e => { console.info(e); this.teach.pieces = []; });
-        },
-        closeTeach(){
-            this.teach.open = false;
-        },
-        mm(v){
-            return (v / 1000).toFixed(3);
-        },
-        calcPreview(){
-            this.teach.calcError = '';
-            const f = this.teach.sample;
-            const p1 = this.teach.positions.find(p => p.PARENT.trim() == 'TRAY_'+f && p.SUB_POS == 1);
-            const cfeC = this.teach.cfe.find(c => c.TRAY == f);
-            if (!p1 || !cfeC) return;
-            // (teach-pick-target) i 6 valori dichiarati sono la POSA DI
-            // PRELIEVO della posizione 1 (robot IN PRESA sul pezzo).
-            // (z-pick 14/9) PIECE.Z_PICK e' la QUOTA DI PRESA DAL FONDO del
-            // cassetto (vista 4Robot v3: Z = TRAY.Z_CORR + PIECE.Z_PICK), quindi
-            // TRAY.Z_CORR = fondo del cassetto = pendant - Z_PICK. Pezzo
-            // irrisolvibile o Z_PICK non positivo -> BLOCCO esplicito (mai
-            // calcolare con una componente pezzo assunta).
-            const piece = this.teach.pieces.find(x => x.ID == p1.Part_Type);
-            if (!piece || piece.Z_PICK == null) {
-                this.teach.calcError = 'tray.teach.pieceMissing';
-                return;
-            }
-            if (!(Number(piece.Z_PICK) > 0)) {
-                this.teach.calcError = 'tray.teach.zPickInvalid';
-                return;
-            }
-            // (Q1) CORR campione = pendant - (pos + pos_CORR) della POSIZIONE 1.
-            // Z: si sottraggono pos.Z_CORR e la quota di presa del pezzo — pos.Z
-            // NON va sottratta perche' la transazione teachTrays la porta a 0
-            // (convenzione E/Q6): sottrarla e poi azzerarla conterebbe doppio.
-            // X/Y: in presa il pendant e' il centro pezzo = identico al piano.
-            const corrC = {
-                x: Math.round(this.teach.px * 1000 - (p1.X + p1.X_CORR)),
-                y: Math.round(this.teach.py * 1000 - (p1.Y + p1.Y_CORR)),
-                z: Math.round(this.teach.pz * 1000 - p1.Z_CORR - piece.Z_PICK)
-            };
-            // delta tra piani da COORDINATES_FOR_EXTRACT (tutti e 3 gli assi:
-            // in cella varia solo Z, ma X/Y coprono i piani fuori canone)
-            const floorsWithTray = new Set(this.datiTab.map(t => t.FLOOR_MAG));
-            this.teach.preview = this.teach.cfe
-                .filter(c => c.TRAY >= 1 && c.TRAY <= 12)
-                .map(c => ({
-                    tray: c.TRAY,
-                    xCorr: corrC.x + (c.X - cfeC.X),
-                    yCorr: corrC.y + (c.Y - cfeC.Y),
-                    zCorr: corrC.z + (c.Z - cfeC.Z),
-                    hasTray: floorsWithTray.has(c.TRAY)
-                }));
-            this.teach.step = 3;
-        },
-        confirmTeach(){
-            // rotazioni pendant: uniformi per tutta la cassettiera (gradi ->
-            // millesimi di grado)
-            const rows = this.teach.preview.map(r => ({
-                tray: r.tray,
-                xCorr: r.xCorr, yCorr: r.yCorr, zCorr: r.zCorr,
-                xRot: Math.round(this.teach.rx * 1000),
-                yRot: Math.round(this.teach.ry * 1000),
-                zRot: Math.round(this.teach.rz * 1000)
-            }));
-            fetch(dataStored.server+'api/conf/tray/teachTrays?rows='+encodeURIComponent(JSON.stringify(rows)),{ method: 'GET'})
-                .then(r => { if (!r.ok) throw new Error('Network response was not ok'); return r.text(); })
-                .then(body => {
-                    dataStored.alert.title = body == 'OK' ? 'INFO' : this.$t('WARNING');
-                    dataStored.alert.desc = body == 'OK' ? 'tray.teach.writeOk' : 'tray.teach.writeErr';
-                    dataStored.alert.type = body == 'OK' ? 'message' : 'warning';
-                    this.closeTeach();
-                    this.getDataTable();
-                })
-                .catch(e => { console.info(e); });
-        },
         getClassFromStatusDesc(status){
             //alert(JSON.stringify(status,null,4))
             return status.toString().trim().toLowerCase();
@@ -772,18 +505,6 @@ export default {
             if (a.mismatch && !a.ack) return false;
             return true;
         },
-        // (tray-teaching) piani eleggibili come campione: hanno la POSIZIONE 1
-        // a DB (un cassetto senza grigliato associato non e' eleggibile)
-        eligibleFloors(){
-            return new Set(this.teach.positions
-                .filter(p => p.SUB_POS == 1)
-                .map(p => parseInt(p.PARENT.trim().slice(5))));
-        },
-        locked(){
-            if (dataStored.userLevel<=1)
-                return 'locked4maintenance'
-            return ''
-        }
     },
     mounted(){
         this.getDataTable();
@@ -940,10 +661,7 @@ export default {
         border-radius: var(--radius-lg);
     }
 
-    /* ===== (tray-teaching) overlay canonico (stesso pattern scoped di
-       robotView/AttrezzaggiView: overlay a schermo pieno z 1000, card
-       dialog, voci touch) ===== */
-    /* dialog: stile comune in assets/css/dialogs.css (UI-DESIGN-SYSTEM v2 §12) */
+    /* dialog (oggi solo quello del grigliato): stile comune in assets/css/dialogs.css (UI-DESIGN-SYSTEM v3 §12) */
 
 
     .mission-dialog-item {
@@ -986,13 +704,6 @@ export default {
         padding: var(--space-2) var(--space-4);
         font-size: var(--font-size-sm);
     }
-    /* (work object per cassetto, 6/10) X/Y/Z del cassetto non contano piu':
-       avviso, non informazione */
-    .teach-hint.teach-wo-note {
-        background: var(--color-warning-bg);
-        color: var(--color-warning);
-    }
-
     .teach-warning {
         background: var(--color-warning-bg);
         color: var(--color-warning);
@@ -1007,22 +718,4 @@ export default {
         font-style: italic;
     }
 
-    .teach-field {
-        display: flex;
-        align-items: center;
-        gap: var(--space-2);
-    }
-
-    .teach-field label {
-        min-width: 64px;
-        color: var(--text-secondary);
-    }
-
-    .teach-table td, .teach-table th {
-        text-align: right;
-    }
-
-    .teach-table td:first-child, .teach-table th:first-child {
-        text-align: left;
-    }
 </style>
