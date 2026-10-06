@@ -2,6 +2,10 @@
     import { RouterLink, RouterView } from 'vue-router'
        
     import { dataStored } from '../../data.js';
+    // (v3 fase D-bis) icone del set v3 (lucide, stroke 2) al posto delle PNG
+    // nere del pannello vecchio e degli SVG scritti a mano. Solo l'aspetto:
+    // pulsanti, eventi, guardie, abilitazioni e conferme non cambiano.
+    import { Play, Pause, Square, Pencil, Target, FishingHook, Save, Trash2 } from 'lucide-vue-next'
 </script>
 
 <template>
@@ -13,35 +17,31 @@
         <div class="pure-button-group" role="group">
             <button v-if="play" class="pure-button button_pressed play" @click="$emit('cmdPlay')" :disabled="playDisable"
                 :title="$t('rowCmd.play')" :aria-label="$t('rowCmd.play')">
-                <svg viewBox="0 0 24 24" fill="currentColor" class="cmd-icon">
-                    <polygon points="6,4 20,12 6,20" />
-                </svg>
+                <Play class="cmd-icon" :stroke-width="2" aria-hidden="true" />
             </button>
             <button v-if="pause" class="pure-button button_pressed" @click="$emit('cmdPause')" :disabled="pauseDisable"
                 :title="$t('rowCmd.pause')" :aria-label="$t('rowCmd.pause')">
-                <img src="../../assets/pause.png" style="width:20px">
+                <Pause class="cmd-icon" :stroke-width="2" aria-hidden="true" />
             </button>
             <button v-if="stop" class="pure-button button_pressed stop" @click="$emit('cmdStop')" :disabled="stopDisable"
                 :title="$t('rowCmd.stop')" :aria-label="$t('rowCmd.stop')">
-                <svg viewBox="0 0 24 24" fill="currentColor" class="cmd-icon">
-                    <rect x="6" y="6" width="12" height="12" />
-                </svg>
+                <Square class="cmd-icon" :stroke-width="2" aria-hidden="true" />
             </button>
             <button v-if="modify" class="pure-button button_pressed" @click="modifyItem()" :id="lockedLevelOP" :disabled="modifyDisable"
                 :title="$t('rowCmd.modify')" :aria-label="$t('rowCmd.modify')">
-                <img src="../../assets/modification.png" style="width:20px">
+                <Pencil class="cmd-icon" :stroke-width="2" aria-hidden="true" />
             </button>
             <button v-if="place" class="pure-button button_pressed" @click="$emit('cmdPlace')" :disabled="placeDisable"
                 :title="$t('rowCmd.place')" :aria-label="$t('rowCmd.place')">
-                <img src="../../assets/target_black.png" style="width:20px">
+                <Target class="cmd-icon" :stroke-width="2" aria-hidden="true" />
             </button>
             <button v-if="move" class="pure-button button_pressed" @click="extract()" :id="lockedNotLocal" :disabled="moveDisable"
                 :title="$t('rowCmd.move')" :aria-label="$t('rowCmd.move')">
-                <img src="../../assets/hook.png"  style="width:20px">
+                <FishingHook class="cmd-icon" :stroke-width="2" aria-hidden="true" />
             </button>
             <button v-if="save" class="pure-button button_pressed" @click="$emit('cmdSave')" :disabled="saveDisable"
                 :title="$t('rowCmd.save')" :aria-label="$t('rowCmd.save')">
-                <img src="../../assets/disk.png"  style="width:20px">
+                <Save class="cmd-icon" :stroke-width="2" aria-hidden="true" />
             </button>
 
             <!-- CANCELLA per ultimo e staccato dagli altri: prima stava in
@@ -49,12 +49,7 @@
                  irreversibile del gruppo e deve stare da solo. -->
             <button v-if="del" class="pure-button button_pressed del cmd-destructive"  @click="deleteItem()" :id="lockedLevelOP" :disabled="delDisable"
                 :title="$t('rowCmd.delete')" :aria-label="$t('rowCmd.delete')">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="cmd-icon">
-                    <polyline points="3 6 5 6 21 6"/>
-                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-                    <path d="M10 11v6M14 11v6"/>
-                    <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-                </svg>
+                <Trash2 class="cmd-icon" :stroke-width="2" aria-hidden="true" />
             </button>
         </div>
     </span>
@@ -232,15 +227,12 @@
     background: var(--bg-surface-2);
     color: var(--text-primary);
 }
-/* (v3 fase C) le icone PNG (modifica, pausa, posiziona, estrai, salva)
-   sono nere: sul fondo grafite si schiariscono */
-.pure-button-group .pure-button img {
-    filter: invert(0.92);
-}
-
+/* (v3 fase D-bis) icone lucide del set v3, nel colore del testo del
+   pulsante (currentColor): niente piu' PNG nere da schiarire */
 .cmd-icon {
-    width: 22px;
-    height: 22px;
+    width: var(--icon-size-md);
+    height: var(--icon-size-md);
+    flex: none;
 }
 
 /* (usabilita' 15/9) la cancellazione e' l'unico comando irreversibile della
@@ -303,10 +295,5 @@
     .oneColumn {
         display: table-caption;
     }
-}
-
-/* PNG icons (pause/modify/place/move/save) — out of UI-5 scope, keep size fallback */
-img {
-    width: 16px;
 }
 </style>
