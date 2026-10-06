@@ -115,7 +115,15 @@ check(/SELECT COUNT\(\*\) FROM \[POSITION\]\s*\n?\s*WHERE PARENT LIKE 'TRAY%' AN
 check(/IF @zNon0 <> 0\s*BEGIN\s*PRINT 'ATTENZIONE:/.test(verifica), 'se non e\' 0: avviso chiaro');
 check(!/RAISERROR|SET NOEXEC ON|ALTER |UPDATE |INSERT |DELETE /i.test(verifica), 'e niente FERMO ne\' scritture: la verifica e\' in sola lettura, la vista ormai e\' applicata');
 check(/sqlcmd -S \.\\SQLEXPRESS -E -d ADMG -y 0 -i robot-tray-view-v4\.sql -o D:\\Backup\\vista4Robot_prima_v4\.txt; Get-Content D:\\Backup\\vista4Robot_prima_v4\.txt/.test(v4), 'nell\'intestazione il comando per Dario, col backup nel file');
-check(/WHERE cast\(TRAY as int\) = 8 AND SUB_POS IN \(1, 13, 40, 52\)/.test(v4code), 'verifica sulle tasche 1, 13, 40 e 52 del cassetto 8');
+check(/WHERE TRAY = '8' AND SUB_POS IN \(1, 13, 40, 52\)/.test(v4code), 'verifica sulle tasche 1, 13, 40 e 52 del cassetto 8, con TRAY = \'8\' come le query del PLC');
+// (6/10, prova sul clone del DB di cella) cast(TRAY as int) nella WHERE e'
+// andato in errore 245: l'ottimizzatore lo calcola anche sulle righe
+// EXTRACT_TRAY_n, dove TRAY vale 'CT'. Nessun cast o convert su TRAY in
+// nessuna WHERE dello script (codice, commenti esclusi; anche dentro le
+// definizioni v3/v4 scritte nella guardia).
+const where = [...v4code.matchAll(/\bWHERE\b[\s\S]*?(?=;|\bORDER\s+BY\b|\bGROUP\s+BY\b|\nGO\b)/gi)].map(m => m[0]);
+const castTray = where.filter(w => /\b(TRY_)?(CAST|CONVERT)\s*\(\s*(\w+\s*,\s*)?(\w+\.)?TRAY\b/i.test(w));
+check(where.length >= 4 && castTray.length === 0, 'nessun cast o convert su TRAY nelle WHERE (' + where.length + ' WHERE controllate' + (castTray.length ? '; colpevoli: ' + castTray.map(w => w.replace(/\s+/g, ' ').slice(0, 60)).join(' | ') : '') + ')');
 check(/sys\.default_constraints/.test(v4code), 'stampa i default delle colonne di correzione (non sono scritti nel repo)');
 
 console.log('\n3) script superati: inerti in ogni caso');
