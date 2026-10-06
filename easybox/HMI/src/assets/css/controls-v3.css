@@ -119,3 +119,60 @@
     .ctl__col { gap: var(--space-3); }
     .ctl-row { grid-template-columns: 112px minmax(0, 1fr); }
 }
+
+/* ---- menu "..." (v3 fase C-bis) ----
+   Comandi secondari dietro un pulsante: grigliato nella pagina Cassetti,
+   Azzera produzione nella pagina Produzione. Lo stato aperto/chiuso e'
+   della PAGINA (v-if su un suo dato), cosi' la mappa golden sa quando i
+   comandi si vedono. Il velo trasparente chiude il menu al tocco fuori;
+   il tocco su una voce lo chiude risalendo al contenitore.
+   - .v3-menu            contenitore (pulsante + menu)
+   - .v3-menu__veil      velo a tutto schermo, trasparente
+   - .v3-menu__pop       il menu (--up: si apre verso l'alto)
+   - .v3-menu__label / __item / __item--danger / __sep */
+.v3-menu { position: relative; display: inline-flex; }
+.v3-menu__veil { position: fixed; inset: 0; z-index: 40; }
+.v3-menu__pop {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 8px);
+    z-index: 41;
+    min-width: 280px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: var(--space-2);
+    border-radius: var(--radius-md);
+    background: var(--bg-raised);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+.v3-menu__pop--up { top: auto; bottom: calc(100% + 8px); }
+.v3-menu__label {
+    padding: 6px 14px;
+    font-size: var(--font-size-label);
+    font-weight: var(--font-weight-extrabold);
+    letter-spacing: var(--letter-spacing-label);
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+.v3-menu__item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-height: var(--touch-target-min);
+    padding: 0 14px;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-semibold);
+    text-align: left;
+    cursor: pointer;
+}
+.v3-menu__item svg { width: 22px; height: 22px; flex: none; }
+.v3-menu__item:hover:not(:disabled) { background: var(--bg-surface-2); }
+.v3-menu__item:disabled { color: var(--text-disabled); cursor: not-allowed; }
+.v3-menu__item--danger { color: var(--color-danger-fg); }
+.v3-menu__sep { height: 1px; margin: 4px 0; background: var(--border-subtle); }

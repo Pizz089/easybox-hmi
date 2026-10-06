@@ -122,7 +122,8 @@ check(viaArrow({ trayID: '106', modifyEnable: '0', floorMag: '6' }, 'next', tray
 
 const trays_src = readFileSync('src/views/conf/TraysView.vue', 'utf8');
 const goToStart = trays_src.indexOf('goToLayout(trayID, extracted, status, floorMag){');
-const goTo = trays_src.slice(goToStart, trays_src.indexOf('sendToBox(', goToStart));
+// (C-bis) sendToBox non c'e' piu': si taglia alla fine del metodo
+const goTo = trays_src.slice(goToStart, trays_src.indexOf('\n        },', goToStart));
 check(/trayOpensReadOnly\(\{ EXTRACT: extracted, STATUS: status \}\)/.test(goTo), 'TraysView.goToLayout usa la stessa funzione');
 check(!/status_working|status_locked|status_paused/.test(goTo), 'e non tiene piu\' una copia della condizione');
 check(/layoutModeFor\(this\.\$route\.params\.modifyEnable, n\.tray\)/.test(src), 'le frecce passano dalla stessa regola (layoutModeFor)');

@@ -1395,6 +1395,9 @@
       "noOrder": "none",
       "noPiece": "no code",
       "close": "Close"
-    }
+    },
+    "toRobot": "Extract or release from Robot controls",
+    "gratingMenu": "Grating commands",
+    "toRobotShort": "Extract / release"
   }
 }

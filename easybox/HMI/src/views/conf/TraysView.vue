@@ -4,7 +4,7 @@
     import TrayPockets from '../../components/layout/TrayPockets.vue'
     import UiButton from '../../components/ui/UiButton.vue'
     import UiBadge from '../../components/ui/UiBadge.vue'
-    import { ChevronLeft, ChevronRight, ArrowUp, ArrowDown, Grid3x3, SlidersHorizontal, Lock, ZoomOut, X } from 'lucide-vue-next'
+    import { ChevronLeft, ChevronRight, ArrowUpRight, Ellipsis, Grid3x3, SlidersHorizontal, Lock, ZoomOut, X } from 'lucide-vue-next'
     import { loadTrayPockets } from '../../util/trayPockets.js'
     import { POCKET_STATES, pocketState } from '../../util/pocketColors.js'
     import { pitchOf, needsZoom, zoomFactor, zoneAround, TRAY_FALLBACK } from '../../util/trayZoom.js'
@@ -36,6 +36,12 @@
            ComandsRows): cambia il posto, si danno dal cassetto scelto invece
            che dalla riga. tests/test_golden_equivalenza.mjs (2c) li confronta
            scegliendo un cassetto alla volta.
+           (C-bis, decisioni di Dario) Estrai/Rilascia TOLTO: non ha mai
+           mandato il comando (la guardia di ComandsRows voleva
+           RobotInLocalMode, che non scrive nessuno); al suo posto il rimando
+           ai Controlli Robot, dove i comandi del cassetto funzionano.
+           Collegarlo davvero e' un lavoro a parte. I comandi del grigliato
+           stanno nel menu "...", cosi' il disegno ha piu' spazio.
            (P1 5/10, decisione 29/9) niente "Aggiungi" ne' "Elimina": i
            cassetti sono la cassettiera fisica.
            (6/10) "0 CASSETTIERA" ELIMINATO, decisione di Dario: con i work
@@ -141,15 +147,6 @@
           </div>
 
           <footer class="tray-panel__actions">
-            <!-- estrai / rilascia (25 / 26 alla cassettiera): stessa
-                 condizione per mostrarlo e stessa abilitazione della riga di
-                 prima, stessa guardia di ComandsRows (muovi) -->
-            <UiButton v-if="sel.FLOOR_MAG>0 && (sel.EXTRACT==1 || allInside)"
-              variant="primary" size="main" :icon="sel.EXTRACT==1 ? ArrowUp : ArrowDown"
-              :disabled="!dataStored.cmdActiveMission"
-              @click="muovi(sel)">
-              {{ $t(sel.EXTRACT==1 ? 'trays.release' : 'trays.extract') }}
-            </UiButton>
             <!-- tasche: la pagina layout, in modifica o in sola lettura con la
                  regola di sempre (goToLayout -> trayOpensReadOnly) -->
             <UiButton v-if="(sel.FAMILY||'').trim().length>0" variant="secondary" size="main" :icon="Grid3x3"
@@ -162,6 +159,12 @@
               @click="scheda(sel)">
               {{ $t('trays.card') }}
             </UiButton>
+            <!-- (C-bis) estrai e rilascia: dai Controlli Robot (Gestione
+                 cassetto), dove il comando arriva davvero -->
+            <UiButton variant="outline" size="main" :icon="ArrowUpRight" class="tray-panel__torobot"
+              :title="$t('trays.toRobot')" @click="$router.push('/unit/robot')">
+              <span class="lbl-lungo">{{ $t('trays.toRobot') }}</span><span class="lbl-corto">{{ $t('trays.toRobotShort') }}</span>
+            </UiButton>
 
             <!-- (grating-model) QUI, e solo qui, si associa/sostituisce/
                  rigenera/dissocia il grigliato. Livello tecnico (2): cancellano
@@ -169,23 +172,32 @@
                  bottoni disabilitati, e il backend rifiuta comunque (guardia
                  conservativa). -->
             <div v-if="sel.FLOOR_MAG>0" class="tray-grating">
-              <span class="tray-grating__label">{{ $t('tray.assoc.col') }}</span>
+              <!-- senza grigliato l'unico comando e' Associa: resta in vista -->
               <template v-if="(sel.FAMILY||'').trim().length==0">
-                <UiButton variant="outline" size="min" class="assoc-btn" :disabled="!assocAllowed(sel)" :title="assocTitle(sel)"
+                <UiButton variant="outline" size="main" class="assoc-btn" :disabled="!assocAllowed(sel)" :title="assocTitle(sel)"
                   @click="openAssoc('associate', sel)">{{ $t('tray.assoc.associate') }}</UiButton>
               </template>
-              <div v-else class="assoc-actions">
-                <UiButton variant="outline" size="min" class="assoc-btn" :disabled="!assocAllowed(sel)" :title="assocTitle(sel)"
-                  @click="openAssoc('replace', sel)">{{ $t('tray.assoc.replace') }}</UiButton>
-                <!-- (usabilita' 15/9; UI 5/10) Rigenera e Dissocia rifanno o
-                     buttano via le tasche del cassetto: gruppo a parte, dietro
-                     un divisorio e con uno stacco largo, cosi' un dito che
-                     scivola da Sostituisci non arriva a Rigenera. -->
-                <div class="assoc-destructive-group">
-                  <UiButton variant="outline" size="min" class="assoc-btn" :disabled="!assocAllowed(sel)" :title="assocTitle(sel)"
-                    @click="openAssoc('regenerate', sel)">{{ $t('tray.assoc.regenerate') }}</UiButton>
-                  <UiButton variant="outline" size="min" class="assoc-btn assoc-danger" :disabled="!assocAllowed(sel)" :title="assocTitle(sel)"
-                    @click="openAssoc('dissociate', sel)">{{ $t('tray.assoc.dissociate') }}</UiButton>
+              <!-- (C-bis) con il grigliato: Sostituisci, Rigenera, Dissocia nel
+                   menu "...", stesse guardie e stesso dialog -->
+              <div v-else class="v3-menu">
+                <UiButton variant="outline" size="main" :icon="Ellipsis"
+                  :title="$t('trays.gratingMenu')" :aria-label="$t('trays.gratingMenu')" :aria-expanded="menuGrigliato"
+                  @click="apriMenuGrigliato()" />
+                <div v-if="menuGrigliato" class="v3-menu__veil" @click="menuGrigliato = false"></div>
+                <div v-if="menuGrigliato" class="v3-menu__pop v3-menu__pop--up" role="menu" @click="menuGrigliato = false">
+                  <span class="v3-menu__label">{{ $t('tray.assoc.col') }} {{ (sel.FAMILY||'').trim() }}</span>
+                  <button type="button" role="menuitem" class="v3-menu__item assoc-btn" :disabled="!assocAllowed(sel)" :title="assocTitle(sel)"
+                    @click="openAssoc('replace', sel)">{{ $t('tray.assoc.replace') }}</button>
+                  <!-- (usabilita' 15/9; UI 5/10; C-bis) Rigenera e Dissocia
+                       rifanno o buttano via le tasche del cassetto: gruppo a
+                       parte, sotto un divisorio e staccato, cosi' un dito che
+                       scivola da Sostituisci non arriva a Rigenera. -->
+                  <div class="assoc-destructive-group">
+                    <button type="button" role="menuitem" class="v3-menu__item assoc-btn" :disabled="!assocAllowed(sel)" :title="assocTitle(sel)"
+                      @click="openAssoc('regenerate', sel)">{{ $t('tray.assoc.regenerate') }}</button>
+                    <button type="button" role="menuitem" class="v3-menu__item v3-menu__item--danger assoc-btn assoc-danger" :disabled="!assocAllowed(sel)" :title="assocTitle(sel)"
+                      @click="openAssoc('dissociate', sel)">{{ $t('tray.assoc.dissociate') }}</button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -281,7 +293,8 @@ export default {
             // scrive "nessun cassetto" prima di avere una risposta
             statoElenco: STATO.ATTESA,
             //polling:true,
-			allInside:false,
+            // (C-bis) menu "..." dei comandi del grigliato
+            menuGrigliato: false,
             // (v3 fase C) cassetto scelto (FLOOR_MAG; null = quello fuori, se
             // c'e', altrimenti il primo) e le sue tasche, lette come la
             // pagina layout (util/trayPockets.js)
@@ -331,9 +344,6 @@ export default {
                     return;
                 }
                 this.datiTab = esito.dati;
-                this.allInside = true;
-                for (let i = 0; i < this.datiTab.length; i++)
-                    if (this.datiTab[i].EXTRACT == 1) this.allInside = false;
             });
         },
         updateTray(i){
@@ -663,20 +673,9 @@ export default {
         scala(ev){
             if (ev && !ev.zoned) this.scalaPiena = ev.pxPerMm;
         },
-        // ESTRAI / RILASCIA: la stessa catena della riga di prima. Il pulsante
-        // della riga (ComandsRows.extract) voleva EasyBox e il robot in
-        // modalita' locale (RobotInLocalMode), altrimenti avvisava; poi
-        // sendToBox mandava 25 (estrai) o 26 (rilascia) alla cassettiera.
-        muovi(dt){
-            if (dataStored.EasyBox) {
-                if (dataStored.RobotInLocalMode)
-                    this.sendToBox(dt.EXTRACT, dt.FLOOR_MAG);
-                else {
-                    dataStored.alert.title = this.$t('WARNING');
-                    dataStored.alert.desc = this.$t('LocalModeReq');
-                    dataStored.alert.type = 'warning';
-                }
-            }
+        // (C-bis) menu "..." del grigliato: apre e chiude, nient'altro
+        apriMenuGrigliato(){
+            this.menuGrigliato = !this.menuGrigliato;
         },
         // SCHEDA DEL CASSETTO: come il "Modifica" della riga
         // (ComandsRows.modifyItem), dal livello 1 in su
@@ -689,12 +688,6 @@ export default {
                 dataStored.alert.type = 'alarm';
             }
         },
-        sendToBox(extracted,num){
-            if (extracted)
-			    dataStored.WS.socket.emit("TO_PLANT/CMD/BOX", "26;"+num); //release  ??? codice missione scritto
-            else
-                dataStored.WS.socket.emit("TO_PLANT/CMD/BOX", "25;"+num); //extract
-		}
     },
     computed:{
         // (v3 fase C) piani della cassettiera in ordine di numero; quelli
@@ -802,6 +795,7 @@ export default {
             if (n === o) return;
             this.tascaScelta = null;
             this.zona = null;
+            this.menuGrigliato = false;
             this.caricaTasche();
         }
     },
@@ -1001,21 +995,19 @@ export default {
 
 /* comandi del cassetto */
 .tray-panel__actions { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
-.tray-grating { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; margin-left: auto; }
-.assoc-actions { display: flex; align-items: center; gap: var(--space-2); flex-wrap: nowrap; }
-/* (usabilita' 15/9; UI 5/10) le azioni che rifanno o buttano via le
-   tasche non stanno vicino a Sostituisci: gruppo staccato da un divisorio
-   e da 24 + 16 px */
+.tray-grating { display: flex; align-items: center; gap: var(--space-2); margin-left: auto; }
+.tray-panel__torobot .lbl-corto { display: none; }
+/* (usabilita' 15/9; UI 5/10; C-bis) nel menu "..." le azioni che rifanno
+   o buttano via le tasche stanno sotto un divisorio e staccate da
+   Sostituisci (prima: a destra, dietro un divisorio verticale) */
 .assoc-destructive-group {
   display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin-left: var(--space-5);
-  padding-left: var(--space-4);
-  border-left: 1px solid var(--border-subtle);
+  flex-direction: column;
+  gap: 4px;
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-default);
 }
-.tray-grating .assoc-danger { color: var(--color-danger-fg); }
-.tray-grating .assoc-danger:disabled { color: var(--text-muted); }
 /* dialog del grigliato: spunta dell'avviso taratura */
 .assoc-ack { display: block; margin-top: var(--space-2); }
 
@@ -1025,7 +1017,7 @@ export default {
   .trays { grid-template-columns: 150px minmax(0, 1fr); gap: var(--space-4); }
   .trays-rack { padding: var(--space-3); }
   .trays-rack__head { display: none; }
-  .rack-row { grid-template-columns: 34px minmax(0, 1fr); gap: var(--space-2); min-height: 48px; padding: 0 var(--space-3); }
+  .rack-row { grid-template-columns: 34px minmax(0, 1fr); gap: var(--space-2); padding: 0 var(--space-3); }
   .rack-row__n { font-size: 19px; }
   .rack-row__info,
   .rack-row__where { display: none; }
@@ -1042,7 +1034,13 @@ export default {
   .trays-rack__list { gap: 4px; }
   .tray-panel__actions { gap: var(--space-2); }
   .tray-panel__actions > .ui-btn { flex: 1 1 0; min-width: 0; }
-  .tray-grating { margin-left: 0; width: 100%; }
+  .tray-grating { margin-left: 0; }
+  /* in compatto il rimando ha l'etichetta corta (la lunga e' nel title):
+     sta sulla stessa riga degli altri comandi e il disegno guadagna spazio */
+  .tray-panel__torobot .lbl-lungo { display: none; }
+  .tray-panel__torobot .lbl-corto { display: inline; }
+  /* (C-bis) i 12 piani si vedono senza scorrere: righe da 44 px */
+  .rack-row { min-height: 44px; }
   .pocket-detail { gap: var(--space-3); padding: var(--space-2) var(--space-3); }
 }
 </style>

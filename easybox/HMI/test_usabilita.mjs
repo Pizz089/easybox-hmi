@@ -171,9 +171,11 @@ check(/action-destructive/.test(attr) && /\.action-destructive[\s\S]{0,120}margi
 const trays = leggi('src/views/conf/TraysView.vue');
 // (UI 5/10) stessa riga ma gruppo a parte: divisorio + 24 px di margine +
 // 16 px di padding, piu' dei 16 px verticali di prima.
+// (C-bis) nel menu "..." il gruppo distruttivo sta sotto Sostituisci,
+// dietro un divisorio orizzontale e con 12 + 12 px di stacco
 check(/class="assoc-destructive-group"/.test(trays)
-  && /\.assoc-destructive-group \{[\s\S]{0,200}margin-left: var\(--space-5\)/.test(trays)
-  && /\.assoc-destructive-group \{[\s\S]{0,200}border-left: 1px solid/.test(trays),
+  && /\.assoc-destructive-group \{[\s\S]{0,200}margin-top: var\(--space-3\)/.test(trays)
+  && /\.assoc-destructive-group \{[\s\S]{0,200}border-top: 1px solid/.test(trays),
   'Cassetti: Rigenera e Dissocia staccati (erano a 4 px da Sostituisci)');
 const side = leggi('src/components/SidebarPlugin/SideBar.vue');
 check(/margin: 4px var\(--space-2\)/.test(side), 'menu: 4 px verticali invece di 2, cioe\' il doppio di stacco fra le voci');

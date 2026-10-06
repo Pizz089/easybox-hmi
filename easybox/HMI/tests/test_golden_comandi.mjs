@@ -301,18 +301,18 @@ const tasche = [
 	{ SUB_POS: 1, x: 65, y: 50, status: 4, prisma: true, order_ID: 0, partType: 1035 },
 	{ SUB_POS: 2, x: 65, y: 108, status: 2, prisma: true, order_ID: 0, partType: 1035 },
 ];
-// (v3 fase C) Cassetti: un cassetto scelto alla volta, missioni attive e
-// robot in locale; "tutti dentro" = nessun cassetto fuori (allInside)
+// (v3 fase C) Cassetti: un cassetto scelto alla volta; (C-bis) con il menu
+// "..." del grigliato aperto, dove ora stanno Sostituisci/Rigenera/Dissocia
 function scenariScelta(liv) {
-	const base = (vm, ds, dati) => { ds.userLevel = liv; ds.RobotInLocalMode = true; ds.cmdActiveMission = true; vm.datiTab = dati; };
+	const base = (vm, ds, dati) => { ds.userLevel = liv; vm.datiTab = dati; vm.menuGrigliato = true; };
 	return {
 		['due cassetti liv' + liv + ', scelto 7']: (vm, ds) => { base(vm, ds, JSON.parse(JSON.stringify(cassetti))); vm.selFloor = 7; },
 		['due cassetti liv' + liv + ', scelto 8']: (vm, ds) => { base(vm, ds, JSON.parse(JSON.stringify(cassetti))); vm.selFloor = 8; },
-		['tutti dentro liv' + liv + ', scelto 7']: (vm, ds) => { base(vm, ds, JSON.parse(JSON.stringify(cassetti)).map(t => Object.assign(t, { EXTRACT: 0 }))); vm.allInside = true; vm.selFloor = 7; },
 	};
 }
-// handler che cambiano solo cosa si vede (v3 fase C, Cassetti)
-const SOLO_VISTA = /^\s*(scegli|scegliPiano|toccaTasca|toccaVassoio)\(/;
+// handler che cambiano solo cosa si vede (v3 fase C, Cassetti; C-bis, i menu
+// "..."): non aprono un dialog, i controlli che compaiono non sono conferme
+const SOLO_VISTA = /^\s*(scegli|scegliPiano|toccaTasca|toccaVassoio|apriMenuGrigliato|apriMenu|apriMenuPagina)\(/;
 const PAGINE = [
 	{ nome: 'robotView', file: 'src/views/unit/robotView.vue', scenari: {
 		'HOLD liv2': robotScen(S.status_hold, 2),
@@ -378,14 +378,10 @@ const PAGINE = [
 		'due cassetti liv2': (vm, ds) => { ds.userLevel = 2; vm.datiTab = JSON.parse(JSON.stringify(cassetti)); },
 		'due cassetti liv0': (vm, ds) => { ds.userLevel = 0; vm.datiTab = JSON.parse(JSON.stringify(cassetti)); },
 		// (v3 fase C) i comandi del cassetto si danno dal cassetto SCELTO, non
-		// dalla riga: uno scenario per cassetto. Missioni attive e robot in
-		// locale: lo stato in cui la catena di prima (ComandsRows.extract,
-		// poi sendToBox) mandava 25/26 alla cassettiera. "Tutti dentro": il
-		// 25 (estrai) si vede solo a cassettiera tutta dentro, come prima.
-		// test_golden_equivalenza (2c) confronta l'unione con il riferimento.
+		// dalla riga: uno scenario per cassetto, col menu del grigliato
+		// aperto (C-bis). test_golden_equivalenza (2c) confronta l'unione
+		// con il riferimento. (C-bis) Estrai/Rilascia tolto: nessun 25/26.
 		...scenariScelta(2), ...scenariScelta(0),
-		'due cassetti liv2, scelto 8, missioni spente': (vm, ds) => { ds.userLevel = 2; ds.RobotInLocalMode = true; ds.cmdActiveMission = false; vm.datiTab = JSON.parse(JSON.stringify(cassetti)); vm.selFloor = 8; },
-		'due cassetti liv2, scelto 8, robot non in locale': (vm, ds) => { ds.userLevel = 2; ds.RobotInLocalMode = false; ds.cmdActiveMission = true; vm.datiTab = JSON.parse(JSON.stringify(cassetti)); vm.selFloor = 8; },
 	} },
 	{ nome: 'TrayPockets', file: 'src/components/layout/TrayPockets.vue',
 		props: { pockets: [{ SUB_POS: 1, x: 65, y: 50, status: 4, prisma: true, order_ID: 0 }], dimX: 40, dimY: 110 },

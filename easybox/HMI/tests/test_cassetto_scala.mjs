@@ -41,8 +41,9 @@ const { createSSRApp, h } = await import('vue');
 const { renderToString } = await import('vue/server-renderer');
 
 // riquadri del disegno nella pagina Cassetti (px), misurati nel rilievo del
-// 6/10 sul pannello locale: largo 1920 x 1080, compatto 1024 x 768
-const RIQUADRI = { 'largo (1920x1080)': { w: 1148, h: 482 }, 'compatto (1024x768)': { w: 706, h: 264 } };
+// 6/10 sul pannello locale (fase C-bis, comandi del grigliato nel menu):
+// largo 1920 x 1080, compatto 1024 x 768
+const RIQUADRI = { 'largo (1920x1080)': { w: 1148, h: 542 }, 'compatto (1024x768)': { w: 706, h: 320 } };
 
 const GRIGLIATI = [
 	{ nome: 'A reale (819 x 605, 40 x 110, distanze 19/25)', tray: { w: 819, h: 605 }, pezzo: { x: 40, y: 110 }, safe: { x: 19, y: 25 }, attese: { righe: 4, colonne: 13 } },

@@ -5220,12 +5220,8 @@
     "due cassetti liv0",
     "due cassetti liv2, scelto 7",
     "due cassetti liv2, scelto 8",
-    "tutti dentro liv2, scelto 7",
     "due cassetti liv0, scelto 7",
-    "due cassetti liv0, scelto 8",
-    "tutti dentro liv0, scelto 7",
-    "due cassetti liv2, scelto 8, missioni spente",
-    "due cassetti liv2, scelto 8, robot non in locale"
+    "due cassetti liv0, scelto 8"
    ],
    "controlli": [
     {
@@ -5296,20 +5292,6 @@
         "stato": []
        }
       ],
-      "tutti dentro liv2, scelto 7": [
-       {
-        "abilitato": true,
-        "effetti": [],
-        "stato": []
-       },
-       {
-        "abilitato": true,
-        "effetti": [],
-        "stato": [
-         "vm.selFloor = 8"
-        ]
-       }
-      ],
       "due cassetti liv0, scelto 7": [
        {
         "abilitato": true,
@@ -5325,48 +5307,6 @@
        }
       ],
       "due cassetti liv0, scelto 8": [
-       {
-        "abilitato": true,
-        "effetti": [],
-        "stato": [
-         "vm.selFloor = 7"
-        ]
-       },
-       {
-        "abilitato": true,
-        "effetti": [],
-        "stato": []
-       }
-      ],
-      "tutti dentro liv0, scelto 7": [
-       {
-        "abilitato": true,
-        "effetti": [],
-        "stato": []
-       },
-       {
-        "abilitato": true,
-        "effetti": [],
-        "stato": [
-         "vm.selFloor = 8"
-        ]
-       }
-      ],
-      "due cassetti liv2, scelto 8, missioni spente": [
-       {
-        "abilitato": true,
-        "effetti": [],
-        "stato": [
-         "vm.selFloor = 7"
-        ]
-       },
-       {
-        "abilitato": true,
-        "effetti": [],
-        "stato": []
-       }
-      ],
-      "due cassetti liv2, scelto 8, robot non in locale": [
        {
         "abilitato": true,
         "effetti": [],
@@ -5397,8 +5337,7 @@
        ],
        "stato": [
         "vm.datiTab = []",
-        "vm.statoElenco = \"ok\"",
-        "vm.allInside = true"
+        "vm.statoElenco = \"ok\""
        ]
       },
       "due cassetti liv0": {
@@ -5408,8 +5347,7 @@
        ],
        "stato": [
         "vm.datiTab = []",
-        "vm.statoElenco = \"ok\"",
-        "vm.allInside = true"
+        "vm.statoElenco = \"ok\""
        ]
       },
       "due cassetti liv2, scelto 7": {
@@ -5419,22 +5357,10 @@
        ],
        "stato": [
         "vm.datiTab = []",
-        "vm.statoElenco = \"ok\"",
-        "vm.allInside = true"
+        "vm.statoElenco = \"ok\""
        ]
       },
       "due cassetti liv2, scelto 8": {
-       "abilitato": true,
-       "effetti": [
-        "fetch GET api/conf/tray/show/all"
-       ],
-       "stato": [
-        "vm.datiTab = []",
-        "vm.statoElenco = \"ok\"",
-        "vm.allInside = true"
-       ]
-      },
-      "tutti dentro liv2, scelto 7": {
        "abilitato": true,
        "effetti": [
         "fetch GET api/conf/tray/show/all"
@@ -5451,8 +5377,7 @@
        ],
        "stato": [
         "vm.datiTab = []",
-        "vm.statoElenco = \"ok\"",
-        "vm.allInside = true"
+        "vm.statoElenco = \"ok\""
        ]
       },
       "due cassetti liv0, scelto 8": {
@@ -5462,40 +5387,7 @@
        ],
        "stato": [
         "vm.datiTab = []",
-        "vm.statoElenco = \"ok\"",
-        "vm.allInside = true"
-       ]
-      },
-      "tutti dentro liv0, scelto 7": {
-       "abilitato": true,
-       "effetti": [
-        "fetch GET api/conf/tray/show/all"
-       ],
-       "stato": [
-        "vm.datiTab = []",
         "vm.statoElenco = \"ok\""
-       ]
-      },
-      "due cassetti liv2, scelto 8, missioni spente": {
-       "abilitato": true,
-       "effetti": [
-        "fetch GET api/conf/tray/show/all"
-       ],
-       "stato": [
-        "vm.datiTab = []",
-        "vm.statoElenco = \"ok\"",
-        "vm.allInside = true"
-       ]
-      },
-      "due cassetti liv2, scelto 8, robot non in locale": {
-       "abilitato": true,
-       "effetti": [
-        "fetch GET api/conf/tray/show/all"
-       ],
-       "stato": [
-        "vm.datiTab = []",
-        "vm.statoElenco = \"ok\"",
-        "vm.allInside = true"
        ]
       }
      }
@@ -5534,36 +5426,12 @@
         "vm.selFloor = 7"
        ]
       },
-      "tutti dentro liv2, scelto 7": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": []
-      },
       "due cassetti liv0, scelto 7": {
        "abilitato": false,
        "effetti": [],
        "stato": []
       },
       "due cassetti liv0, scelto 8": {
-       "abilitato": true,
-       "effetti": [],
-       "stato": [
-        "vm.selFloor = 7"
-       ]
-      },
-      "tutti dentro liv0, scelto 7": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": []
-      },
-      "due cassetti liv2, scelto 8, missioni spente": {
-       "abilitato": true,
-       "effetti": [],
-       "stato": [
-        "vm.selFloor = 7"
-       ]
-      },
-      "due cassetti liv2, scelto 8, robot non in locale": {
        "abilitato": true,
        "effetti": [],
        "stato": [
@@ -5602,13 +5470,6 @@
        "effetti": [],
        "stato": []
       },
-      "tutti dentro liv2, scelto 7": {
-       "abilitato": true,
-       "effetti": [],
-       "stato": [
-        "vm.selFloor = 8"
-       ]
-      },
       "due cassetti liv0, scelto 7": {
        "abilitato": true,
        "effetti": [],
@@ -5617,23 +5478,6 @@
        ]
       },
       "due cassetti liv0, scelto 8": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": []
-      },
-      "tutti dentro liv0, scelto 7": {
-       "abilitato": true,
-       "effetti": [],
-       "stato": [
-        "vm.selFloor = 8"
-       ]
-      },
-      "due cassetti liv2, scelto 8, missioni spente": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": []
-      },
-      "due cassetti liv2, scelto 8, robot non in locale": {
        "abilitato": false,
        "effetti": [],
        "stato": []
@@ -5676,13 +5520,6 @@
         "vm.tascaScelta = {\"index\":0,\"subPos\":1,\"status\":4,\"orderID\":0}"
        ]
       },
-      "tutti dentro liv2, scelto 7": {
-       "abilitato": true,
-       "effetti": [],
-       "stato": [
-        "vm.tascaScelta = {\"index\":0,\"subPos\":1,\"status\":4,\"orderID\":0}"
-       ]
-      },
       "due cassetti liv0, scelto 7": {
        "abilitato": true,
        "effetti": [],
@@ -5691,27 +5528,6 @@
        ]
       },
       "due cassetti liv0, scelto 8": {
-       "abilitato": true,
-       "effetti": [],
-       "stato": [
-        "vm.tascaScelta = {\"index\":0,\"subPos\":1,\"status\":4,\"orderID\":0}"
-       ]
-      },
-      "tutti dentro liv0, scelto 7": {
-       "abilitato": true,
-       "effetti": [],
-       "stato": [
-        "vm.tascaScelta = {\"index\":0,\"subPos\":1,\"status\":4,\"orderID\":0}"
-       ]
-      },
-      "due cassetti liv2, scelto 8, missioni spente": {
-       "abilitato": true,
-       "effetti": [],
-       "stato": [
-        "vm.tascaScelta = {\"index\":0,\"subPos\":1,\"status\":4,\"orderID\":0}"
-       ]
-      },
-      "due cassetti liv2, scelto 8, robot non in locale": {
        "abilitato": true,
        "effetti": [],
        "stato": [
@@ -5748,32 +5564,12 @@
        "effetti": [],
        "stato": []
       },
-      "tutti dentro liv2, scelto 7": {
-       "abilitato": true,
-       "effetti": [],
-       "stato": []
-      },
       "due cassetti liv0, scelto 7": {
        "abilitato": true,
        "effetti": [],
        "stato": []
       },
       "due cassetti liv0, scelto 8": {
-       "abilitato": true,
-       "effetti": [],
-       "stato": []
-      },
-      "tutti dentro liv0, scelto 7": {
-       "abilitato": true,
-       "effetti": [],
-       "stato": []
-      },
-      "due cassetti liv2, scelto 8, missioni spente": {
-       "abilitato": true,
-       "effetti": [],
-       "stato": []
-      },
-      "due cassetti liv2, scelto 8, robot non in locale": {
        "abilitato": true,
        "effetti": [],
        "stato": []
@@ -5816,13 +5612,6 @@
         "vm.scalaPiena = undefined"
        ]
       },
-      "tutti dentro liv2, scelto 7": {
-       "abilitato": true,
-       "effetti": [],
-       "stato": [
-        "vm.scalaPiena = undefined"
-       ]
-      },
       "due cassetti liv0, scelto 7": {
        "abilitato": true,
        "effetti": [],
@@ -5831,27 +5620,6 @@
        ]
       },
       "due cassetti liv0, scelto 8": {
-       "abilitato": true,
-       "effetti": [],
-       "stato": [
-        "vm.scalaPiena = undefined"
-       ]
-      },
-      "tutti dentro liv0, scelto 7": {
-       "abilitato": true,
-       "effetti": [],
-       "stato": [
-        "vm.scalaPiena = undefined"
-       ]
-      },
-      "due cassetti liv2, scelto 8, missioni spente": {
-       "abilitato": true,
-       "effetti": [],
-       "stato": [
-        "vm.scalaPiena = undefined"
-       ]
-      },
-      "due cassetti liv2, scelto 8, robot non in locale": {
        "abilitato": true,
        "effetti": [],
        "stato": [
@@ -5872,12 +5640,8 @@
       "due cassetti liv0": "nascosto",
       "due cassetti liv2, scelto 7": "nascosto",
       "due cassetti liv2, scelto 8": "nascosto",
-      "tutti dentro liv2, scelto 7": "nascosto",
       "due cassetti liv0, scelto 7": "nascosto",
-      "due cassetti liv0, scelto 8": "nascosto",
-      "tutti dentro liv0, scelto 7": "nascosto",
-      "due cassetti liv2, scelto 8, missioni spente": "nascosto",
-      "due cassetti liv2, scelto 8, robot non in locale": "nascosto"
+      "due cassetti liv0, scelto 8": "nascosto"
      }
     },
     {
@@ -5892,86 +5656,8 @@
       "due cassetti liv0": "nascosto",
       "due cassetti liv2, scelto 7": "nascosto",
       "due cassetti liv2, scelto 8": "nascosto",
-      "tutti dentro liv2, scelto 7": "nascosto",
       "due cassetti liv0, scelto 7": "nascosto",
-      "due cassetti liv0, scelto 8": "nascosto",
-      "tutti dentro liv0, scelto 7": "nascosto",
-      "due cassetti liv2, scelto 8, missioni spente": "nascosto",
-      "due cassetti liv2, scelto 8, robot non in locale": "nascosto"
-     }
-    },
-    {
-     "id": "UiButton@click muovi(sel)",
-     "etichetta": "{{$t(sel.EXTRACT==1 ? 'trays.release' : 'trays.extract')}}",
-     "evento": "click",
-     "handler": "muovi(sel)",
-     "disabled": "!dataStored.cmdActiveMission",
-     "classe": "",
-     "esiti": {
-      "due cassetti liv2": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": [
-        "dataStored.alert.title = \"WARNING\"",
-        "dataStored.alert.desc = \"LocalModeReq\"",
-        "dataStored.alert.type = \"warning\""
-       ]
-      },
-      "due cassetti liv0": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": [
-        "dataStored.alert.title = \"WARNING\"",
-        "dataStored.alert.desc = \"LocalModeReq\"",
-        "dataStored.alert.type = \"warning\""
-       ]
-      },
-      "due cassetti liv2, scelto 7": "nascosto",
-      "due cassetti liv2, scelto 8": {
-       "abilitato": true,
-       "effetti": [
-        "emit TO_PLANT/CMD/BOX \"26;8\""
-       ],
-       "stato": []
-      },
-      "tutti dentro liv2, scelto 7": {
-       "abilitato": true,
-       "effetti": [
-        "emit TO_PLANT/CMD/BOX \"25;7\""
-       ],
-       "stato": []
-      },
-      "due cassetti liv0, scelto 7": "nascosto",
-      "due cassetti liv0, scelto 8": {
-       "abilitato": true,
-       "effetti": [
-        "emit TO_PLANT/CMD/BOX \"26;8\""
-       ],
-       "stato": []
-      },
-      "tutti dentro liv0, scelto 7": {
-       "abilitato": true,
-       "effetti": [
-        "emit TO_PLANT/CMD/BOX \"25;7\""
-       ],
-       "stato": []
-      },
-      "due cassetti liv2, scelto 8, missioni spente": {
-       "abilitato": false,
-       "effetti": [
-        "emit TO_PLANT/CMD/BOX \"26;8\""
-       ],
-       "stato": []
-      },
-      "due cassetti liv2, scelto 8, robot non in locale": {
-       "abilitato": true,
-       "effetti": [],
-       "stato": [
-        "dataStored.alert.title = \"WARNING\"",
-        "dataStored.alert.desc = \"LocalModeReq\"",
-        "dataStored.alert.type = \"warning\""
-       ]
-      }
+      "due cassetti liv0, scelto 8": "nascosto"
      }
     },
     {
@@ -6010,13 +5696,6 @@
        ],
        "stato": []
       },
-      "tutti dentro liv2, scelto 7": {
-       "abilitato": true,
-       "effetti": [
-        "router \"/layout/21/1/7\""
-       ],
-       "stato": []
-      },
       "due cassetti liv0, scelto 7": {
        "abilitato": true,
        "effetti": [
@@ -6025,27 +5704,6 @@
        "stato": []
       },
       "due cassetti liv0, scelto 8": {
-       "abilitato": true,
-       "effetti": [
-        "router \"/layout/22/0/8\""
-       ],
-       "stato": []
-      },
-      "tutti dentro liv0, scelto 7": {
-       "abilitato": true,
-       "effetti": [
-        "router \"/layout/21/1/7\""
-       ],
-       "stato": []
-      },
-      "due cassetti liv2, scelto 8, missioni spente": {
-       "abilitato": true,
-       "effetti": [
-        "router \"/layout/22/0/8\""
-       ],
-       "stato": []
-      },
-      "due cassetti liv2, scelto 8, robot non in locale": {
        "abilitato": true,
        "effetti": [
         "router \"/layout/22/0/8\""
@@ -6091,13 +5749,6 @@
        ],
        "stato": []
       },
-      "tutti dentro liv2, scelto 7": {
-       "abilitato": true,
-       "effetti": [
-        "router \"/conf/tray?trayID=21\""
-       ],
-       "stato": []
-      },
       "due cassetti liv0, scelto 7": {
        "abilitato": true,
        "effetti": [],
@@ -6113,26 +5764,56 @@
         "dataStored.alert.title = \"WARNING\"",
         "dataStored.alert.desc = \"user_not_enabled\""
        ]
-      },
-      "tutti dentro liv0, scelto 7": {
-       "abilitato": true,
-       "effetti": [],
-       "stato": [
-        "dataStored.alert.title = \"WARNING\"",
-        "dataStored.alert.desc = \"user_not_enabled\""
-       ]
-      },
-      "due cassetti liv2, scelto 8, missioni spente": {
+      }
+     }
+    },
+    {
+     "id": "UiButton@click $router.push('/unit/robot')",
+     "etichetta": "Estrai o rilascia dai Controlli Robot Estrai / rilascia",
+     "evento": "click",
+     "handler": "$router.push('/unit/robot')",
+     "disabled": "",
+     "classe": "",
+     "esiti": {
+      "due cassetti liv2": {
        "abilitato": true,
        "effetti": [
-        "router \"/conf/tray?trayID=22\""
+        "router \"/unit/robot\""
        ],
        "stato": []
       },
-      "due cassetti liv2, scelto 8, robot non in locale": {
+      "due cassetti liv0": {
        "abilitato": true,
        "effetti": [
-        "router \"/conf/tray?trayID=22\""
+        "router \"/unit/robot\""
+       ],
+       "stato": []
+      },
+      "due cassetti liv2, scelto 7": {
+       "abilitato": true,
+       "effetti": [
+        "router \"/unit/robot\""
+       ],
+       "stato": []
+      },
+      "due cassetti liv2, scelto 8": {
+       "abilitato": true,
+       "effetti": [
+        "router \"/unit/robot\""
+       ],
+       "stato": []
+      },
+      "due cassetti liv0, scelto 7": {
+       "abilitato": true,
+       "effetti": [
+        "router \"/unit/robot\""
+       ],
+       "stato": []
+      },
+      "due cassetti liv0, scelto 8": {
+       "abilitato": true,
+       "effetti": [
+        "router \"/unit/robot\""
        ],
        "stato": []
       }
@@ -6150,104 +5831,152 @@
       "due cassetti liv0": "nascosto",
       "due cassetti liv2, scelto 7": "nascosto",
       "due cassetti liv2, scelto 8": "nascosto",
-      "tutti dentro liv2, scelto 7": "nascosto",
       "due cassetti liv0, scelto 7": "nascosto",
-      "due cassetti liv0, scelto 8": "nascosto",
-      "tutti dentro liv0, scelto 7": "nascosto",
-      "due cassetti liv2, scelto 8, missioni spente": "nascosto",
-      "due cassetti liv2, scelto 8, robot non in locale": "nascosto"
+      "due cassetti liv0, scelto 8": "nascosto"
      }
     },
     {
-     "id": "UiButton@click openAssoc('replace', sel)",
+     "id": "UiButton@click apriMenuGrigliato()",
+     "etichetta": "",
+     "evento": "click",
+     "handler": "apriMenuGrigliato()",
+     "disabled": "",
+     "classe": "",
+     "esiti": {
+      "due cassetti liv2": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.menuGrigliato = true"
+       ]
+      },
+      "due cassetti liv0": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.menuGrigliato = true"
+       ]
+      },
+      "due cassetti liv2, scelto 7": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.menuGrigliato = false"
+       ]
+      },
+      "due cassetti liv2, scelto 8": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.menuGrigliato = false"
+       ]
+      },
+      "due cassetti liv0, scelto 7": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.menuGrigliato = false"
+       ]
+      },
+      "due cassetti liv0, scelto 8": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.menuGrigliato = false"
+       ]
+      }
+     }
+    },
+    {
+     "id": "div@click menuGrigliato = false",
+     "etichetta": "",
+     "evento": "click",
+     "handler": "menuGrigliato = false",
+     "disabled": "",
+     "classe": "",
+     "esiti": {
+      "due cassetti liv2": "nascosto",
+      "due cassetti liv0": "nascosto",
+      "due cassetti liv2, scelto 7": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.menuGrigliato = false"
+       ]
+      },
+      "due cassetti liv2, scelto 8": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.menuGrigliato = false"
+       ]
+      },
+      "due cassetti liv0, scelto 7": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.menuGrigliato = false"
+       ]
+      },
+      "due cassetti liv0, scelto 8": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.menuGrigliato = false"
+       ]
+      }
+     }
+    },
+    {
+     "id": "div@click menuGrigliato = false #2",
+     "etichetta": "Grigliato {{(sel.FAMILY||'').trim()}} Sostituisci Rigenera tasche Dissocia",
+     "evento": "click",
+     "handler": "menuGrigliato = false",
+     "disabled": "",
+     "classe": "",
+     "esiti": {
+      "due cassetti liv2": "nascosto",
+      "due cassetti liv0": "nascosto",
+      "due cassetti liv2, scelto 7": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.menuGrigliato = false"
+       ]
+      },
+      "due cassetti liv2, scelto 8": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.menuGrigliato = false"
+       ]
+      },
+      "due cassetti liv0, scelto 7": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.menuGrigliato = false"
+       ]
+      },
+      "due cassetti liv0, scelto 8": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.menuGrigliato = false"
+       ]
+      }
+     }
+    },
+    {
+     "id": "button@click openAssoc('replace', sel)",
      "etichetta": "Sostituisci",
      "evento": "click",
      "handler": "openAssoc('replace', sel)",
      "disabled": "!assocAllowed(sel)",
      "classe": "",
      "esiti": {
-      "due cassetti liv2": {
-       "abilitato": false,
-       "effetti": [
-        "fetch GET api/conf/grating/show/all",
-        "fetch GET api/conf/position/show/all",
-        "fetch GET api/conf/piece/show/all"
-       ],
-       "stato": [
-        "vm.assoc.open = true",
-        "vm.assoc.mode = \"replace\"",
-        "vm.assoc.floor = 8",
-        "vm.assoc.tray = {\"ID\":22,\"FAMILY\":\"GR-PROVA\",\"DESCR\":\"cassetto 8\",\"FLOOR_MAG\":8,\"EXTRACT\":1,\"STA",
-        "vm.assoc.currentName = \"GR-PROVA\""
-       ],
-       "conferme": [
-        {
-         "controllo": "select@change onAssocGratingChange()",
-         "etichetta": "{{(g.NAME||'').trim()}} - {{(g.DESCR||'').trim()}}",
-         "abilitato": true,
-         "effetti": []
-        },
-        {
-         "controllo": "select@change onAssocGratingChange() #2",
-         "etichetta": "# {{p.ID}} {{(p.FAMILY||'').trim()}} - {{(p.DESCR||'').trim()}}",
-         "abilitato": true,
-         "effetti": []
-        },
-        {
-         "controllo": "button@click assocReady ? confirmAssoc() : ''",
-         "etichetta": "{{$t('tray.assoc.confirm.'+assoc.mode)}}",
-         "abilitato": false,
-         "effetti": []
-        },
-        {
-         "controllo": "button@click closeAssoc()",
-         "etichetta": "Annulla",
-         "abilitato": true,
-         "effetti": []
-        }
-       ]
-      },
-      "due cassetti liv0": {
-       "abilitato": false,
-       "effetti": [
-        "fetch GET api/conf/grating/show/all",
-        "fetch GET api/conf/position/show/all",
-        "fetch GET api/conf/piece/show/all"
-       ],
-       "stato": [
-        "vm.assoc.open = true",
-        "vm.assoc.mode = \"replace\"",
-        "vm.assoc.floor = 8",
-        "vm.assoc.tray = {\"ID\":22,\"FAMILY\":\"GR-PROVA\",\"DESCR\":\"cassetto 8\",\"FLOOR_MAG\":8,\"EXTRACT\":1,\"STA",
-        "vm.assoc.currentName = \"GR-PROVA\""
-       ],
-       "conferme": [
-        {
-         "controllo": "select@change onAssocGratingChange()",
-         "etichetta": "{{(g.NAME||'').trim()}} - {{(g.DESCR||'').trim()}}",
-         "abilitato": true,
-         "effetti": []
-        },
-        {
-         "controllo": "select@change onAssocGratingChange() #2",
-         "etichetta": "# {{p.ID}} {{(p.FAMILY||'').trim()}} - {{(p.DESCR||'').trim()}}",
-         "abilitato": true,
-         "effetti": []
-        },
-        {
-         "controllo": "button@click assocReady ? confirmAssoc() : ''",
-         "etichetta": "{{$t('tray.assoc.confirm.'+assoc.mode)}}",
-         "abilitato": false,
-         "effetti": []
-        },
-        {
-         "controllo": "button@click closeAssoc()",
-         "etichetta": "Annulla",
-         "abilitato": true,
-         "effetti": []
-        }
-       ]
-      },
+      "due cassetti liv2": "nascosto",
+      "due cassetti liv0": "nascosto",
       "due cassetti liv2, scelto 7": {
        "abilitato": true,
        "effetti": [
@@ -6301,47 +6030,6 @@
         "vm.assoc.mode = \"replace\"",
         "vm.assoc.floor = 8",
         "vm.assoc.tray = {\"ID\":22,\"FAMILY\":\"GR-PROVA\",\"DESCR\":\"cassetto 8\",\"FLOOR_MAG\":8,\"EXTRACT\":1,\"STA",
-        "vm.assoc.currentName = \"GR-PROVA\""
-       ],
-       "conferme": [
-        {
-         "controllo": "select@change onAssocGratingChange()",
-         "etichetta": "{{(g.NAME||'').trim()}} - {{(g.DESCR||'').trim()}}",
-         "abilitato": true,
-         "effetti": []
-        },
-        {
-         "controllo": "select@change onAssocGratingChange() #2",
-         "etichetta": "# {{p.ID}} {{(p.FAMILY||'').trim()}} - {{(p.DESCR||'').trim()}}",
-         "abilitato": true,
-         "effetti": []
-        },
-        {
-         "controllo": "button@click assocReady ? confirmAssoc() : ''",
-         "etichetta": "{{$t('tray.assoc.confirm.'+assoc.mode)}}",
-         "abilitato": false,
-         "effetti": []
-        },
-        {
-         "controllo": "button@click closeAssoc()",
-         "etichetta": "Annulla",
-         "abilitato": true,
-         "effetti": []
-        }
-       ]
-      },
-      "tutti dentro liv2, scelto 7": {
-       "abilitato": true,
-       "effetti": [
-        "fetch GET api/conf/grating/show/all",
-        "fetch GET api/conf/position/show/all",
-        "fetch GET api/conf/piece/show/all"
-       ],
-       "stato": [
-        "vm.assoc.open = true",
-        "vm.assoc.mode = \"replace\"",
-        "vm.assoc.floor = 7",
-        "vm.assoc.tray = {\"ID\":21,\"FAMILY\":\"GR-PROVA\",\"DESCR\":\"cassetto 7\",\"FLOOR_MAG\":7,\"EXTRACT\":0,\"STA",
         "vm.assoc.currentName = \"GR-PROVA\""
        ],
        "conferme": [
@@ -6452,212 +6140,19 @@
          "effetti": []
         }
        ]
-      },
-      "tutti dentro liv0, scelto 7": {
-       "abilitato": false,
-       "effetti": [
-        "fetch GET api/conf/grating/show/all",
-        "fetch GET api/conf/position/show/all",
-        "fetch GET api/conf/piece/show/all"
-       ],
-       "stato": [
-        "vm.assoc.open = true",
-        "vm.assoc.mode = \"replace\"",
-        "vm.assoc.floor = 7",
-        "vm.assoc.tray = {\"ID\":21,\"FAMILY\":\"GR-PROVA\",\"DESCR\":\"cassetto 7\",\"FLOOR_MAG\":7,\"EXTRACT\":0,\"STA",
-        "vm.assoc.currentName = \"GR-PROVA\""
-       ],
-       "conferme": [
-        {
-         "controllo": "select@change onAssocGratingChange()",
-         "etichetta": "{{(g.NAME||'').trim()}} - {{(g.DESCR||'').trim()}}",
-         "abilitato": true,
-         "effetti": []
-        },
-        {
-         "controllo": "select@change onAssocGratingChange() #2",
-         "etichetta": "# {{p.ID}} {{(p.FAMILY||'').trim()}} - {{(p.DESCR||'').trim()}}",
-         "abilitato": true,
-         "effetti": []
-        },
-        {
-         "controllo": "button@click assocReady ? confirmAssoc() : ''",
-         "etichetta": "{{$t('tray.assoc.confirm.'+assoc.mode)}}",
-         "abilitato": false,
-         "effetti": []
-        },
-        {
-         "controllo": "button@click closeAssoc()",
-         "etichetta": "Annulla",
-         "abilitato": true,
-         "effetti": []
-        }
-       ]
-      },
-      "due cassetti liv2, scelto 8, missioni spente": {
-       "abilitato": false,
-       "effetti": [
-        "fetch GET api/conf/grating/show/all",
-        "fetch GET api/conf/position/show/all",
-        "fetch GET api/conf/piece/show/all"
-       ],
-       "stato": [
-        "vm.assoc.open = true",
-        "vm.assoc.mode = \"replace\"",
-        "vm.assoc.floor = 8",
-        "vm.assoc.tray = {\"ID\":22,\"FAMILY\":\"GR-PROVA\",\"DESCR\":\"cassetto 8\",\"FLOOR_MAG\":8,\"EXTRACT\":1,\"STA",
-        "vm.assoc.currentName = \"GR-PROVA\""
-       ],
-       "conferme": [
-        {
-         "controllo": "select@change onAssocGratingChange()",
-         "etichetta": "{{(g.NAME||'').trim()}} - {{(g.DESCR||'').trim()}}",
-         "abilitato": true,
-         "effetti": []
-        },
-        {
-         "controllo": "select@change onAssocGratingChange() #2",
-         "etichetta": "# {{p.ID}} {{(p.FAMILY||'').trim()}} - {{(p.DESCR||'').trim()}}",
-         "abilitato": true,
-         "effetti": []
-        },
-        {
-         "controllo": "button@click assocReady ? confirmAssoc() : ''",
-         "etichetta": "{{$t('tray.assoc.confirm.'+assoc.mode)}}",
-         "abilitato": false,
-         "effetti": []
-        },
-        {
-         "controllo": "button@click closeAssoc()",
-         "etichetta": "Annulla",
-         "abilitato": true,
-         "effetti": []
-        }
-       ]
-      },
-      "due cassetti liv2, scelto 8, robot non in locale": {
-       "abilitato": false,
-       "effetti": [
-        "fetch GET api/conf/grating/show/all",
-        "fetch GET api/conf/position/show/all",
-        "fetch GET api/conf/piece/show/all"
-       ],
-       "stato": [
-        "vm.assoc.open = true",
-        "vm.assoc.mode = \"replace\"",
-        "vm.assoc.floor = 8",
-        "vm.assoc.tray = {\"ID\":22,\"FAMILY\":\"GR-PROVA\",\"DESCR\":\"cassetto 8\",\"FLOOR_MAG\":8,\"EXTRACT\":1,\"STA",
-        "vm.assoc.currentName = \"GR-PROVA\""
-       ],
-       "conferme": [
-        {
-         "controllo": "select@change onAssocGratingChange()",
-         "etichetta": "{{(g.NAME||'').trim()}} - {{(g.DESCR||'').trim()}}",
-         "abilitato": true,
-         "effetti": []
-        },
-        {
-         "controllo": "select@change onAssocGratingChange() #2",
-         "etichetta": "# {{p.ID}} {{(p.FAMILY||'').trim()}} - {{(p.DESCR||'').trim()}}",
-         "abilitato": true,
-         "effetti": []
-        },
-        {
-         "controllo": "button@click assocReady ? confirmAssoc() : ''",
-         "etichetta": "{{$t('tray.assoc.confirm.'+assoc.mode)}}",
-         "abilitato": false,
-         "effetti": []
-        },
-        {
-         "controllo": "button@click closeAssoc()",
-         "etichetta": "Annulla",
-         "abilitato": true,
-         "effetti": []
-        }
-       ]
       }
      }
     },
     {
-     "id": "UiButton@click openAssoc('regenerate', sel)",
+     "id": "button@click openAssoc('regenerate', sel)",
      "etichetta": "Rigenera tasche",
      "evento": "click",
      "handler": "openAssoc('regenerate', sel)",
      "disabled": "!assocAllowed(sel)",
      "classe": "",
      "esiti": {
-      "due cassetti liv2": {
-       "abilitato": false,
-       "effetti": [
-        "fetch GET api/conf/grating/show/all",
-        "fetch GET api/conf/position/show/all",
-        "fetch GET api/conf/piece/show/all"
-       ],
-       "stato": [
-        "vm.assoc.open = true",
-        "vm.assoc.mode = \"regenerate\"",
-        "vm.assoc.floor = 8",
-        "vm.assoc.tray = {\"ID\":22,\"FAMILY\":\"GR-PROVA\",\"DESCR\":\"cassetto 8\",\"FLOOR_MAG\":8,\"EXTRACT\":1,\"STA",
-        "vm.assoc.currentName = \"GR-PROVA\"",
-        "vm.assoc.error = \"tray.assoc.err.noModel\""
-       ],
-       "conferme": [
-        {
-         "controllo": "select@change onAssocGratingChange() #2",
-         "etichetta": "# {{p.ID}} {{(p.FAMILY||'').trim()}} - {{(p.DESCR||'').trim()}}",
-         "abilitato": true,
-         "effetti": []
-        },
-        {
-         "controllo": "button@click assocReady ? confirmAssoc() : ''",
-         "etichetta": "{{$t('tray.assoc.confirm.'+assoc.mode)}}",
-         "abilitato": false,
-         "effetti": []
-        },
-        {
-         "controllo": "button@click closeAssoc()",
-         "etichetta": "Annulla",
-         "abilitato": true,
-         "effetti": []
-        }
-       ]
-      },
-      "due cassetti liv0": {
-       "abilitato": false,
-       "effetti": [
-        "fetch GET api/conf/grating/show/all",
-        "fetch GET api/conf/position/show/all",
-        "fetch GET api/conf/piece/show/all"
-       ],
-       "stato": [
-        "vm.assoc.open = true",
-        "vm.assoc.mode = \"regenerate\"",
-        "vm.assoc.floor = 8",
-        "vm.assoc.tray = {\"ID\":22,\"FAMILY\":\"GR-PROVA\",\"DESCR\":\"cassetto 8\",\"FLOOR_MAG\":8,\"EXTRACT\":1,\"STA",
-        "vm.assoc.currentName = \"GR-PROVA\"",
-        "vm.assoc.error = \"tray.assoc.err.noModel\""
-       ],
-       "conferme": [
-        {
-         "controllo": "select@change onAssocGratingChange() #2",
-         "etichetta": "# {{p.ID}} {{(p.FAMILY||'').trim()}} - {{(p.DESCR||'').trim()}}",
-         "abilitato": true,
-         "effetti": []
-        },
-        {
-         "controllo": "button@click assocReady ? confirmAssoc() : ''",
-         "etichetta": "{{$t('tray.assoc.confirm.'+assoc.mode)}}",
-         "abilitato": false,
-         "effetti": []
-        },
-        {
-         "controllo": "button@click closeAssoc()",
-         "etichetta": "Annulla",
-         "abilitato": true,
-         "effetti": []
-        }
-       ]
-      },
+      "due cassetti liv2": "nascosto",
+      "due cassetti liv0": "nascosto",
       "due cassetti liv2, scelto 7": {
        "abilitato": true,
        "effetti": [
@@ -6730,42 +6225,6 @@
         }
        ]
       },
-      "tutti dentro liv2, scelto 7": {
-       "abilitato": true,
-       "effetti": [
-        "fetch GET api/conf/grating/show/all",
-        "fetch GET api/conf/position/show/all",
-        "fetch GET api/conf/piece/show/all"
-       ],
-       "stato": [
-        "vm.assoc.open = true",
-        "vm.assoc.mode = \"regenerate\"",
-        "vm.assoc.floor = 7",
-        "vm.assoc.tray = {\"ID\":21,\"FAMILY\":\"GR-PROVA\",\"DESCR\":\"cassetto 7\",\"FLOOR_MAG\":7,\"EXTRACT\":0,\"STA",
-        "vm.assoc.currentName = \"GR-PROVA\"",
-        "vm.assoc.error = \"tray.assoc.err.noModel\""
-       ],
-       "conferme": [
-        {
-         "controllo": "select@change onAssocGratingChange() #2",
-         "etichetta": "# {{p.ID}} {{(p.FAMILY||'').trim()}} - {{(p.DESCR||'').trim()}}",
-         "abilitato": true,
-         "effetti": []
-        },
-        {
-         "controllo": "button@click assocReady ? confirmAssoc() : ''",
-         "etichetta": "{{$t('tray.assoc.confirm.'+assoc.mode)}}",
-         "abilitato": false,
-         "effetti": []
-        },
-        {
-         "controllo": "button@click closeAssoc()",
-         "etichetta": "Annulla",
-         "abilitato": true,
-         "effetti": []
-        }
-       ]
-      },
       "due cassetti liv0, scelto 7": {
        "abilitato": false,
        "effetti": [
@@ -6803,114 +6262,6 @@
        ]
       },
       "due cassetti liv0, scelto 8": {
-       "abilitato": false,
-       "effetti": [
-        "fetch GET api/conf/grating/show/all",
-        "fetch GET api/conf/position/show/all",
-        "fetch GET api/conf/piece/show/all"
-       ],
-       "stato": [
-        "vm.assoc.open = true",
-        "vm.assoc.mode = \"regenerate\"",
-        "vm.assoc.floor = 8",
-        "vm.assoc.tray = {\"ID\":22,\"FAMILY\":\"GR-PROVA\",\"DESCR\":\"cassetto 8\",\"FLOOR_MAG\":8,\"EXTRACT\":1,\"STA",
-        "vm.assoc.currentName = \"GR-PROVA\"",
-        "vm.assoc.error = \"tray.assoc.err.noModel\""
-       ],
-       "conferme": [
-        {
-         "controllo": "select@change onAssocGratingChange() #2",
-         "etichetta": "# {{p.ID}} {{(p.FAMILY||'').trim()}} - {{(p.DESCR||'').trim()}}",
-         "abilitato": true,
-         "effetti": []
-        },
-        {
-         "controllo": "button@click assocReady ? confirmAssoc() : ''",
-         "etichetta": "{{$t('tray.assoc.confirm.'+assoc.mode)}}",
-         "abilitato": false,
-         "effetti": []
-        },
-        {
-         "controllo": "button@click closeAssoc()",
-         "etichetta": "Annulla",
-         "abilitato": true,
-         "effetti": []
-        }
-       ]
-      },
-      "tutti dentro liv0, scelto 7": {
-       "abilitato": false,
-       "effetti": [
-        "fetch GET api/conf/grating/show/all",
-        "fetch GET api/conf/position/show/all",
-        "fetch GET api/conf/piece/show/all"
-       ],
-       "stato": [
-        "vm.assoc.open = true",
-        "vm.assoc.mode = \"regenerate\"",
-        "vm.assoc.floor = 7",
-        "vm.assoc.tray = {\"ID\":21,\"FAMILY\":\"GR-PROVA\",\"DESCR\":\"cassetto 7\",\"FLOOR_MAG\":7,\"EXTRACT\":0,\"STA",
-        "vm.assoc.currentName = \"GR-PROVA\"",
-        "vm.assoc.error = \"tray.assoc.err.noModel\""
-       ],
-       "conferme": [
-        {
-         "controllo": "select@change onAssocGratingChange() #2",
-         "etichetta": "# {{p.ID}} {{(p.FAMILY||'').trim()}} - {{(p.DESCR||'').trim()}}",
-         "abilitato": true,
-         "effetti": []
-        },
-        {
-         "controllo": "button@click assocReady ? confirmAssoc() : ''",
-         "etichetta": "{{$t('tray.assoc.confirm.'+assoc.mode)}}",
-         "abilitato": false,
-         "effetti": []
-        },
-        {
-         "controllo": "button@click closeAssoc()",
-         "etichetta": "Annulla",
-         "abilitato": true,
-         "effetti": []
-        }
-       ]
-      },
-      "due cassetti liv2, scelto 8, missioni spente": {
-       "abilitato": false,
-       "effetti": [
-        "fetch GET api/conf/grating/show/all",
-        "fetch GET api/conf/position/show/all",
-        "fetch GET api/conf/piece/show/all"
-       ],
-       "stato": [
-        "vm.assoc.open = true",
-        "vm.assoc.mode = \"regenerate\"",
-        "vm.assoc.floor = 8",
-        "vm.assoc.tray = {\"ID\":22,\"FAMILY\":\"GR-PROVA\",\"DESCR\":\"cassetto 8\",\"FLOOR_MAG\":8,\"EXTRACT\":1,\"STA",
-        "vm.assoc.currentName = \"GR-PROVA\"",
-        "vm.assoc.error = \"tray.assoc.err.noModel\""
-       ],
-       "conferme": [
-        {
-         "controllo": "select@change onAssocGratingChange() #2",
-         "etichetta": "# {{p.ID}} {{(p.FAMILY||'').trim()}} - {{(p.DESCR||'').trim()}}",
-         "abilitato": true,
-         "effetti": []
-        },
-        {
-         "controllo": "button@click assocReady ? confirmAssoc() : ''",
-         "etichetta": "{{$t('tray.assoc.confirm.'+assoc.mode)}}",
-         "abilitato": false,
-         "effetti": []
-        },
-        {
-         "controllo": "button@click closeAssoc()",
-         "etichetta": "Annulla",
-         "abilitato": true,
-         "effetti": []
-        }
-       ]
-      },
-      "due cassetti liv2, scelto 8, robot non in locale": {
        "abilitato": false,
        "effetti": [
         "fetch GET api/conf/grating/show/all",
@@ -6949,75 +6300,15 @@
      }
     },
     {
-     "id": "UiButton@click openAssoc('dissociate', sel)",
+     "id": "button@click openAssoc('dissociate', sel)",
      "etichetta": "Dissocia",
      "evento": "click",
      "handler": "openAssoc('dissociate', sel)",
      "disabled": "!assocAllowed(sel)",
      "classe": "",
      "esiti": {
-      "due cassetti liv2": {
-       "abilitato": false,
-       "effetti": [
-        "fetch GET api/conf/grating/show/all",
-        "fetch GET api/conf/position/show/all",
-        "fetch GET api/conf/piece/show/all"
-       ],
-       "stato": [
-        "vm.assoc.open = true",
-        "vm.assoc.mode = \"dissociate\"",
-        "vm.assoc.floor = 8",
-        "vm.assoc.tray = {\"ID\":22,\"FAMILY\":\"GR-PROVA\",\"DESCR\":\"cassetto 8\",\"FLOOR_MAG\":8,\"EXTRACT\":1,\"STA",
-        "vm.assoc.currentName = \"GR-PROVA\""
-       ],
-       "conferme": [
-        {
-         "controllo": "button@click assocReady ? confirmAssoc() : ''",
-         "etichetta": "{{$t('tray.assoc.confirm.'+assoc.mode)}}",
-         "abilitato": true,
-         "effetti": [
-          "fetch POST api/conf/tray/dissociateGrating/8"
-         ]
-        },
-        {
-         "controllo": "button@click closeAssoc()",
-         "etichetta": "Annulla",
-         "abilitato": true,
-         "effetti": []
-        }
-       ]
-      },
-      "due cassetti liv0": {
-       "abilitato": false,
-       "effetti": [
-        "fetch GET api/conf/grating/show/all",
-        "fetch GET api/conf/position/show/all",
-        "fetch GET api/conf/piece/show/all"
-       ],
-       "stato": [
-        "vm.assoc.open = true",
-        "vm.assoc.mode = \"dissociate\"",
-        "vm.assoc.floor = 8",
-        "vm.assoc.tray = {\"ID\":22,\"FAMILY\":\"GR-PROVA\",\"DESCR\":\"cassetto 8\",\"FLOOR_MAG\":8,\"EXTRACT\":1,\"STA",
-        "vm.assoc.currentName = \"GR-PROVA\""
-       ],
-       "conferme": [
-        {
-         "controllo": "button@click assocReady ? confirmAssoc() : ''",
-         "etichetta": "{{$t('tray.assoc.confirm.'+assoc.mode)}}",
-         "abilitato": true,
-         "effetti": [
-          "fetch POST api/conf/tray/dissociateGrating/8"
-         ]
-        },
-        {
-         "controllo": "button@click closeAssoc()",
-         "etichetta": "Annulla",
-         "abilitato": true,
-         "effetti": []
-        }
-       ]
-      },
+      "due cassetti liv2": "nascosto",
+      "due cassetti liv0": "nascosto",
       "due cassetti liv2, scelto 7": {
        "abilitato": true,
        "effetti": [
@@ -7080,37 +6371,6 @@
         }
        ]
       },
-      "tutti dentro liv2, scelto 7": {
-       "abilitato": true,
-       "effetti": [
-        "fetch GET api/conf/grating/show/all",
-        "fetch GET api/conf/position/show/all",
-        "fetch GET api/conf/piece/show/all"
-       ],
-       "stato": [
-        "vm.assoc.open = true",
-        "vm.assoc.mode = \"dissociate\"",
-        "vm.assoc.floor = 7",
-        "vm.assoc.tray = {\"ID\":21,\"FAMILY\":\"GR-PROVA\",\"DESCR\":\"cassetto 7\",\"FLOOR_MAG\":7,\"EXTRACT\":0,\"STA",
-        "vm.assoc.currentName = \"GR-PROVA\""
-       ],
-       "conferme": [
-        {
-         "controllo": "button@click assocReady ? confirmAssoc() : ''",
-         "etichetta": "{{$t('tray.assoc.confirm.'+assoc.mode)}}",
-         "abilitato": true,
-         "effetti": [
-          "fetch POST api/conf/tray/dissociateGrating/7"
-         ]
-        },
-        {
-         "controllo": "button@click closeAssoc()",
-         "etichetta": "Annulla",
-         "abilitato": true,
-         "effetti": []
-        }
-       ]
-      },
       "due cassetti liv0, scelto 7": {
        "abilitato": false,
        "effetti": [
@@ -7143,99 +6403,6 @@
        ]
       },
       "due cassetti liv0, scelto 8": {
-       "abilitato": false,
-       "effetti": [
-        "fetch GET api/conf/grating/show/all",
-        "fetch GET api/conf/position/show/all",
-        "fetch GET api/conf/piece/show/all"
-       ],
-       "stato": [
-        "vm.assoc.open = true",
-        "vm.assoc.mode = \"dissociate\"",
-        "vm.assoc.floor = 8",
-        "vm.assoc.tray = {\"ID\":22,\"FAMILY\":\"GR-PROVA\",\"DESCR\":\"cassetto 8\",\"FLOOR_MAG\":8,\"EXTRACT\":1,\"STA",
-        "vm.assoc.currentName = \"GR-PROVA\""
-       ],
-       "conferme": [
-        {
-         "controllo": "button@click assocReady ? confirmAssoc() : ''",
-         "etichetta": "{{$t('tray.assoc.confirm.'+assoc.mode)}}",
-         "abilitato": true,
-         "effetti": [
-          "fetch POST api/conf/tray/dissociateGrating/8"
-         ]
-        },
-        {
-         "controllo": "button@click closeAssoc()",
-         "etichetta": "Annulla",
-         "abilitato": true,
-         "effetti": []
-        }
-       ]
-      },
-      "tutti dentro liv0, scelto 7": {
-       "abilitato": false,
-       "effetti": [
-        "fetch GET api/conf/grating/show/all",
-        "fetch GET api/conf/position/show/all",
-        "fetch GET api/conf/piece/show/all"
-       ],
-       "stato": [
-        "vm.assoc.open = true",
-        "vm.assoc.mode = \"dissociate\"",
-        "vm.assoc.floor = 7",
-        "vm.assoc.tray = {\"ID\":21,\"FAMILY\":\"GR-PROVA\",\"DESCR\":\"cassetto 7\",\"FLOOR_MAG\":7,\"EXTRACT\":0,\"STA",
-        "vm.assoc.currentName = \"GR-PROVA\""
-       ],
-       "conferme": [
-        {
-         "controllo": "button@click assocReady ? confirmAssoc() : ''",
-         "etichetta": "{{$t('tray.assoc.confirm.'+assoc.mode)}}",
-         "abilitato": true,
-         "effetti": [
-          "fetch POST api/conf/tray/dissociateGrating/7"
-         ]
-        },
-        {
-         "controllo": "button@click closeAssoc()",
-         "etichetta": "Annulla",
-         "abilitato": true,
-         "effetti": []
-        }
-       ]
-      },
-      "due cassetti liv2, scelto 8, missioni spente": {
-       "abilitato": false,
-       "effetti": [
-        "fetch GET api/conf/grating/show/all",
-        "fetch GET api/conf/position/show/all",
-        "fetch GET api/conf/piece/show/all"
-       ],
-       "stato": [
-        "vm.assoc.open = true",
-        "vm.assoc.mode = \"dissociate\"",
-        "vm.assoc.floor = 8",
-        "vm.assoc.tray = {\"ID\":22,\"FAMILY\":\"GR-PROVA\",\"DESCR\":\"cassetto 8\",\"FLOOR_MAG\":8,\"EXTRACT\":1,\"STA",
-        "vm.assoc.currentName = \"GR-PROVA\""
-       ],
-       "conferme": [
-        {
-         "controllo": "button@click assocReady ? confirmAssoc() : ''",
-         "etichetta": "{{$t('tray.assoc.confirm.'+assoc.mode)}}",
-         "abilitato": true,
-         "effetti": [
-          "fetch POST api/conf/tray/dissociateGrating/8"
-         ]
-        },
-        {
-         "controllo": "button@click closeAssoc()",
-         "etichetta": "Annulla",
-         "abilitato": true,
-         "effetti": []
-        }
-       ]
-      },
-      "due cassetti liv2, scelto 8, robot non in locale": {
        "abilitato": false,
        "effetti": [
         "fetch GET api/conf/grating/show/all",
@@ -7280,12 +6447,8 @@
       "due cassetti liv0": "nascosto",
       "due cassetti liv2, scelto 7": "nascosto",
       "due cassetti liv2, scelto 8": "nascosto",
-      "tutti dentro liv2, scelto 7": "nascosto",
       "due cassetti liv0, scelto 7": "nascosto",
-      "due cassetti liv0, scelto 8": "nascosto",
-      "tutti dentro liv0, scelto 7": "nascosto",
-      "due cassetti liv2, scelto 8, missioni spente": "nascosto",
-      "due cassetti liv2, scelto 8, robot non in locale": "nascosto"
+      "due cassetti liv0, scelto 8": "nascosto"
      }
     },
     {
@@ -7300,12 +6463,8 @@
       "due cassetti liv0": "nascosto",
       "due cassetti liv2, scelto 7": "nascosto",
       "due cassetti liv2, scelto 8": "nascosto",
-      "tutti dentro liv2, scelto 7": "nascosto",
       "due cassetti liv0, scelto 7": "nascosto",
-      "due cassetti liv0, scelto 8": "nascosto",
-      "tutti dentro liv0, scelto 7": "nascosto",
-      "due cassetti liv2, scelto 8, missioni spente": "nascosto",
-      "due cassetti liv2, scelto 8, robot non in locale": "nascosto"
+      "due cassetti liv0, scelto 8": "nascosto"
      }
     },
     {
@@ -7320,12 +6479,8 @@
       "due cassetti liv0": [],
       "due cassetti liv2, scelto 7": [],
       "due cassetti liv2, scelto 8": [],
-      "tutti dentro liv2, scelto 7": [],
       "due cassetti liv0, scelto 7": [],
-      "due cassetti liv0, scelto 8": [],
-      "tutti dentro liv0, scelto 7": [],
-      "due cassetti liv2, scelto 8, missioni spente": [],
-      "due cassetti liv2, scelto 8, robot non in locale": []
+      "due cassetti liv0, scelto 8": []
      }
     },
     {
@@ -7340,12 +6495,8 @@
       "due cassetti liv0": "nascosto",
       "due cassetti liv2, scelto 7": "nascosto",
       "due cassetti liv2, scelto 8": "nascosto",
-      "tutti dentro liv2, scelto 7": "nascosto",
       "due cassetti liv0, scelto 7": "nascosto",
-      "due cassetti liv0, scelto 8": "nascosto",
-      "tutti dentro liv0, scelto 7": "nascosto",
-      "due cassetti liv2, scelto 8, missioni spente": "nascosto",
-      "due cassetti liv2, scelto 8, robot non in locale": "nascosto"
+      "due cassetti liv0, scelto 8": "nascosto"
      }
     },
     {
@@ -7360,12 +6511,8 @@
       "due cassetti liv0": "nascosto",
       "due cassetti liv2, scelto 7": "nascosto",
       "due cassetti liv2, scelto 8": "nascosto",
-      "tutti dentro liv2, scelto 7": "nascosto",
       "due cassetti liv0, scelto 7": "nascosto",
-      "due cassetti liv0, scelto 8": "nascosto",
-      "tutti dentro liv0, scelto 7": "nascosto",
-      "due cassetti liv2, scelto 8, missioni spente": "nascosto",
-      "due cassetti liv2, scelto 8, robot non in locale": "nascosto"
+      "due cassetti liv0, scelto 8": "nascosto"
      }
     }
    ]

@@ -49,10 +49,10 @@ export const AMMESSE = [
 	// si vede solo il cassetto fuori: il controllo 2c sceglie un cassetto alla
 	// volta e vuole, riunite, esattamente le firme e le abilitazioni della
 	// tabella di prima. La deroga qui vale solo per gli scenari di base.
-	{ pagina: 'TraysView', tipo: 'spostato', firma: /^emit TO_PLANT\/CMD\/BOX "2[56];\d+"$/,
-		motivo: 'estrai (25) / rilascia (26) dal pannello del cassetto scelto (tavola Magazzino), stessa catena di prima (EasyBox e robot in locale, poi sendToBox): verificato dal controllo 2c' },
+	{ pagina: 'TraysView', tipo: 'tolto', firma: /^emit TO_PLANT\/CMD\/BOX "2[56];\d+"$/,
+		motivo: '(C-bis, decisione di Dario) Estrai / Rilascia (25 / 26) tolto dalla pagina Cassetti, come "Inserisci cassetto": non ha mai mandato il comando, perche\' la guardia di ComandsRows voleva RobotInLocalMode, che non scrive nessuno. Al suo posto il rimando ai Controlli Robot, dove i comandi del cassetto funzionano' },
 	{ pagina: 'TraysView', tipo: 'spostato', firma: /^fetch GET api\/conf\/grating\/show\/all \| fetch GET api\/conf\/position\/show\/all \| fetch GET api\/conf\/piece\/show\/all/,
-		motivo: 'associa / sostituisci / rigenera / dissocia il grigliato dal pannello del cassetto scelto, stesso dialog e stesse guardie (assocAllowed): verificato dal controllo 2c' },
+		motivo: 'associa / sostituisci / rigenera / dissocia il grigliato dal pannello del cassetto scelto, (C-bis) nel menu "...", stesso dialog e stesse guardie (assocAllowed): verificato dal controllo 2c' },
 	{ pagina: 'smallboxView', tipo: 'tolto', firma: /^emit TO_PLANT\/CMD\/ROBOT 26$/,
 		motivo: '"Inserisci cassetto" tolto dai Controlli EasyBox (decisione di Dario): era sempre spento, perche\' la sua condizione RobotInLocalMode non la scrive nessuno (le assegnazioni in robotView sono commentate). Il cassetto si rilascia da Robot -> Gestione cassetto' },
 ];
@@ -150,35 +150,34 @@ console.log('\n2b) velocita\': passi e valori fissi abilitati dove lo era il cur
 // scenari di scelta le mettono nello stato in cui il comando partiva, e due
 // scenari a parte controllano che con le missioni spente il rilascio sia
 // spento e che senza modalita' locale non parta nessun comando.
-console.log('\n2c) Cassetti: i comandi della riga di prima, dal cassetto scelto');
-{
-	const rp = RIF.pagine.TraysView, op = ORA.pagine.TraysView;
-	const mr = mappa(rp), mo = mappa(op);
-	const GRUPPI = {
-		'due cassetti liv2': ['due cassetti liv2, scelto 7', 'due cassetti liv2, scelto 8', 'tutti dentro liv2, scelto 7'],
-		'due cassetti liv0': ['due cassetti liv0, scelto 7', 'due cassetti liv0, scelto 8', 'tutti dentro liv0, scelto 7'],
-	};
-	for (const [base, da] of Object.entries(GRUPPI)) {
-		const diff = [];
-		const unione = new Map();
-		for (const s of da) {
-			if (!mo[s]) { diff.push('scenario mancante: ' + s); continue; }
-			for (const [f, ab] of mo[s]) unione.set(f, (unione.get(f) || false) || ab);
-		}
-		// le firme tolte per decisione (es. "0 CASSETTIERA") non si cercano
-		const atteso = new Map([...mr[base]].filter(([f]) => !AMMESSE.some(a => a.pagina === 'TraysView' && a.tipo === 'tolto' && a.firma.test(f))));
-		for (const [f, ab] of atteso) {
-			if (!unione.has(f)) diff.push('manca: ' + f);
-			else if (unione.get(f) !== ab) diff.push((ab ? 'era acceso, ora spento: ' : 'era spento, ora acceso: ') + f);
-		}
-		for (const f of unione.keys()) if (!atteso.has(f)) diff.push('in piu\': ' + f);
-		check(diff.length === 0, base + ' = unione di ' + da.length + ' scenari (' + atteso.size + ' firme)' + (diff.length ? ':\n       ' + diff.join('\n       ') : ''));
+// UNIONE di piu' scenari della mappa di oggi contro UNO scenario del
+// riferimento: stesse firme, stesse abilitazioni. Serve dove un comando che
+// prima si vedeva subito ora sta dietro una scelta (il cassetto) o un menu
+// "..." (C-bis): ogni scenario "aperto" mostra una parte, e l'unione deve
+// rifare il riferimento. Le firme tolte per decisione non si cercano.
+function unioneUguale(pagina, base, da) {
+	const mr = mappa(RIF.pagine[pagina]), mo = mappa(ORA.pagine[pagina]);
+	const diff = [];
+	const unione = new Map();
+	for (const s of da) {
+		if (!mo[s]) { diff.push('scenario mancante: ' + s); continue; }
+		for (const [f, ab] of mo[s]) unione.set(f, (unione.get(f) || false) || ab);
 	}
-	const RIL = 'emit TO_PLANT/CMD/BOX "26;8"';
-	const spente = mo['due cassetti liv2, scelto 8, missioni spente'], locale = mo['due cassetti liv2, scelto 8, robot non in locale'];
-	check(!!spente && spente.has(RIL) && spente.get(RIL) === false, 'missioni spente: rilascia visibile e spento (stessa condizione di prima, !cmdActiveMission)');
-	check(!!locale && ![...locale.keys()].some(f => /^emit TO_PLANT\/CMD\/BOX/.test(f)), 'robot non in locale: nessun comando alla cassettiera (avviso, come ComandsRows.extract)');
+	const atteso = new Map([...mr[base]].filter(([f]) => !AMMESSE.some(a => a.pagina === pagina && a.tipo === 'tolto' && a.firma.test(f))));
+	for (const [f, ab] of atteso) {
+		if (!unione.has(f)) diff.push('manca: ' + f);
+		else if (unione.get(f) !== ab) diff.push((ab ? 'era acceso, ora spento: ' : 'era spento, ora acceso: ') + f);
+	}
+	for (const f of unione.keys()) if (!atteso.has(f)) diff.push('in piu\': ' + f);
+	check(diff.length === 0, pagina + ': ' + base + ' = unione di ' + da.length + ' scenari (' + atteso.size + ' firme)' + (diff.length ? ':\n       ' + diff.join('\n       ') : ''));
 }
+
+console.log('\n2c) comandi dietro una scelta o un menu "...": l\'unione rifa\' il riferimento');
+// Cassetti: un cassetto scelto alla volta, menu del grigliato aperto
+for (const liv of [2, 0])
+	unioneUguale('TraysView', 'due cassetti liv' + liv, ['due cassetti liv' + liv, 'due cassetti liv' + liv + ', scelto 7', 'due cassetti liv' + liv + ', scelto 8']);
+check(!Object.values(mappa(ORA.pagine.TraysView)).some(m => [...m.keys()].some(f => /^emit TO_PLANT\/CMD\/BOX/.test(f))),
+	'TraysView: nessun comando alla cassettiera in nessuno scenario (Estrai/Rilascia tolto, C-bis)');
 
 console.log('\n3) navigazione (informativa)');
 const nav = g => new Set(Object.values(g.pagine).flatMap(p => p.controlli.flatMap(c => Object.values(c.esiti).flatMap(righe)).filter(r => r && typeof r === 'object').flatMap(r => r.effetti.filter(e => /^router /.test(e)).map(e => e.toLowerCase()))));

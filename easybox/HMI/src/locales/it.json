@@ -1395,6 +1395,9 @@
       "noOrder": "nessuno",
       "noPiece": "nessun codice",
       "close": "Chiudi"
-    }
+    },
+    "toRobot": "Estrai o rilascia dai Controlli Robot",
+    "gratingMenu": "Comandi del grigliato",
+    "toRobotShort": "Estrai / rilascia"
   }
 }
