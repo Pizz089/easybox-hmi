@@ -119,7 +119,19 @@
     "noneActive": "No unit in alarm.",
     "unitInAlarm": "{unit} in alarm",
     "history": "History",
-    "historyEmpty": "No alarm recorded."
+    "historyEmpty": "No alarm recorded.",
+    "tabActive": "Active",
+    "tabHistory": "History",
+    "detail": "Alarm detail",
+    "now": "Ongoing",
+    "levelError": "Error",
+    "whatHappened": "What happened",
+    "whatToDo": "What to do",
+    "decoded": "Mission {mission} · error {error}",
+    "noText": "The panel has no text for this code yet.",
+    "originLog": "alarm log, “{descr}”",
+    "openControls": "Open Controls · {unit}",
+    "selectHint": "Pick an alarm from the list."
   },
   "settings": {
     "user": "User",

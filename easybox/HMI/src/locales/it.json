@@ -119,7 +119,19 @@
     "noneActive": "Nessuna unità in allarme.",
     "unitInAlarm": "{unit} in allarme",
     "history": "Storico",
-    "historyEmpty": "Nessun allarme registrato."
+    "historyEmpty": "Nessun allarme registrato.",
+    "tabActive": "Attivi",
+    "tabHistory": "Storico",
+    "detail": "Dettaglio dell'allarme",
+    "now": "In corso",
+    "levelError": "Errore",
+    "whatHappened": "Cosa è successo",
+    "whatToDo": "Cosa fare",
+    "decoded": "Missione {mission} · errore {error}",
+    "noText": "Il pannello non ha ancora un testo per questo codice.",
+    "originLog": "registro allarmi, «{descr}»",
+    "openControls": "Apri Controlli · {unit}",
+    "selectHint": "Scegli un allarme dall'elenco."
   },
   "settings": {
     "user": "Utente",
