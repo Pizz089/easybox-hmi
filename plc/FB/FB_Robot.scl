@@ -1812,7 +1812,7 @@ BEGIN
 	                IF "DB_executeQuery".dataReady THEN
 	                    IF NOT "DB_executeQuery".noData AND NOT "DB_executeQuery".dataError THEN
 	                        "Vice_ClawLength_mm" := DINT_TO_INT("SqlData".data.rows[0].col[0] / 1000);
-	                        "Part_Width_mm" := DINT_TO_INT("SqlData".data.rows[0].col[1] / 1000);
+	                        "Part_Width_mm" := DINT_TO_INT("SqlData".data.rows[0].col[3] / 1000);
 	                        "X_Support_mm" := DINT_TO_INT(("SqlData".data.rows[0].col[0] / 2
 	                                                                                    + "SqlData".data.rows[0].col[2]) / 1000);
 	                        // DATI PEZZO PER IL ROBOT (5/10, richiesta del robotista): lunghezza
@@ -1820,7 +1820,7 @@ BEGIN
 	                        // delle tre qui sopra (mm interi, mai azzerate). Quale colonna di
 	                        // PIECE diventa lunghezza e quale altezza lo decide la vista
 	                        // COORDINATES_BLOW_MC, non il PLC.
-	                        "Part_Length_mm" := DINT_TO_INT("SqlData".data.rows[0].col[3] / 1000);
+	                        "Part_Length_mm" := DINT_TO_INT("SqlData".data.rows[0].col[1] / 1000);
 	                        "Part_Height_mm" := DINT_TO_INT("SqlData".data.rows[0].col[4] / 1000);
 	                    END_IF;
 	                    "DB_executeQuery".readyForNextQuery := TRUE;
@@ -3560,7 +3560,7 @@ BEGIN
 	                IF "DB_executeQuery".dataReady THEN
 	                    IF NOT "DB_executeQuery".noData AND NOT "DB_executeQuery".dataError THEN
 	                        "Vice_ClawLength_mm" := DINT_TO_INT("SqlData".data.rows[0].col[0] / 1000);
-	                        "Part_Width_mm" := DINT_TO_INT("SqlData".data.rows[0].col[1] / 1000);
+	                        "Part_Width_mm" := DINT_TO_INT("SqlData".data.rows[0].col[3] / 1000);
 	                        "X_Support_mm" := DINT_TO_INT(("SqlData".data.rows[0].col[0] / 2
 	                                                                                    + "SqlData".data.rows[0].col[2]) / 1000);
 	                        // DATI PEZZO PER IL ROBOT (5/10, richiesta del robotista): lunghezza
@@ -3568,7 +3568,7 @@ BEGIN
 	                        // delle tre qui sopra (mm interi, mai azzerate). Quale colonna di
 	                        // PIECE diventa lunghezza e quale altezza lo decide la vista
 	                        // COORDINATES_BLOW_MC, non il PLC.
-	                        "Part_Length_mm" := DINT_TO_INT("SqlData".data.rows[0].col[3] / 1000);
+	                        "Part_Length_mm" := DINT_TO_INT("SqlData".data.rows[0].col[1] / 1000);
 	                        "Part_Height_mm" := DINT_TO_INT("SqlData".data.rows[0].col[4] / 1000);
 	                    END_IF;
 	                    "DB_executeQuery".readyForNextQuery := TRUE;
@@ -3858,7 +3858,7 @@ BEGIN
 	                IF "DB_executeQuery".dataReady THEN
 	                    IF NOT "DB_executeQuery".noData AND NOT "DB_executeQuery".dataError THEN
 	                        "Vice_ClawLength_mm" := DINT_TO_INT("SqlData".data.rows[0].col[0] / 1000);
-	                        "Part_Width_mm" := DINT_TO_INT("SqlData".data.rows[0].col[1] / 1000);
+	                        "Part_Width_mm" := DINT_TO_INT("SqlData".data.rows[0].col[3] / 1000);
 	                        "X_Support_mm" := DINT_TO_INT(("SqlData".data.rows[0].col[0] / 2
 	                                                                                    + "SqlData".data.rows[0].col[2]) / 1000);
 	                        // DATI PEZZO PER IL ROBOT (5/10, richiesta del robotista): lunghezza
@@ -3866,7 +3866,7 @@ BEGIN
 	                        // delle tre qui sopra (mm interi, mai azzerate). Quale colonna di
 	                        // PIECE diventa lunghezza e quale altezza lo decide la vista
 	                        // COORDINATES_BLOW_MC, non il PLC.
-	                        "Part_Length_mm" := DINT_TO_INT("SqlData".data.rows[0].col[3] / 1000);
+	                        "Part_Length_mm" := DINT_TO_INT("SqlData".data.rows[0].col[1] / 1000);
 	                        "Part_Height_mm" := DINT_TO_INT("SqlData".data.rows[0].col[4] / 1000);
 	                    END_IF;
 	                    "DB_executeQuery".readyForNextQuery := TRUE;

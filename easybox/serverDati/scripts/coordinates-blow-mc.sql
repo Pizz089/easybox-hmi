@@ -13,13 +13,18 @@
 -- 37-39, scambio 1416-1418) e passa i numeri su variabili PROFINET, in mm
 -- interi troncati, mai azzerate.
 --
--- MAPPA PROFINET DELLE MISURE (Robot_Efort):
+-- MAPPA PROFINET DELLE MISURE (Robot_Efort), dal 6/10 circa le 17:
 --   %QW634  Vice_ClawLength_mm  = CLAW_LENGTH
---   %QW636  Part_Width_mm       = PART_WIDTH   (PIECE.Y)
+--   %QW636  Part_Width_mm       = PART_LENGTH  (PIECE.X)   (6/10: era PART_WIDTH)
 --   %QW638  X_Support_mm        = CLAW_LENGTH/2 + STOP_BEYOND_CLAW
---   %QW640  Part_Length_mm      = PART_LENGTH  (PIECE.X)   (5/10, ex spare_4)
---   %QW642  Part_Height_mm      = PART_HEIGHT  (PIECE.Z)   (5/10, ex spare_5)
---   libere da %QW644 a %QW666.
+--   %QW640  Part_Length_mm      = PART_WIDTH   (PIECE.Y)   (6/10: era PART_LENGTH)
+--   %QW642  Part_Height_mm      = PART_HEIGHT  (PIECE.Z)
+--   libere da %QW644 a %QW666 (dal 6/10 %QW644 e' N_Cassetto).
+-- Il 6/10 Dario ha scambiato X e Y NEL PLC (per il robot erano invertite;
+-- la Z non e' mai stata toccata): la vista resta questa, quindi i nomi delle
+-- colonne qui e quelli delle variabili PROFINET non coincidono piu'.
+-- Riscontro col pezzo 1035 (X 40, Y 109, Z 15): Width 40, Length 109,
+-- Height 15. test_push_to_stop.js controlla la mappa nei tre stati del PLC.
 --
 -- SEMANTICA DELLE MISURE DEL PEZZO (decisa da Dario e dal robotista il 5/10):
 -- PIECE.X = lunghezza, PIECE.Y = larghezza, PIECE.Z = altezza, come le
