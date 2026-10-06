@@ -209,7 +209,13 @@ select  pt.id as partType,
 		where pos.parent like 'TRAY%'
 		and pos.pos > 0;
 GO
-PRINT 'COORDINATES_PIECES_TRAYS_4Robot: v4 applicata.';
+-- controllo: si rilegge la definizione. Se l'ALTER e' fallita (per esempio
+-- per permessi) la vista e' ancora quella di prima e il messaggio non deve
+-- dire il contrario. Prima di SET NOEXEC OFF: dopo un FERMO non parte.
+IF OBJECT_DEFINITION(OBJECT_ID('COORDINATES_PIECES_TRAYS_4Robot')) LIKE N'%ISNULL(pos.Z,0)+ISNULL(pos.Z_CORR,0)+pt.Z_PICK%'
+	PRINT 'COORDINATES_PIECES_TRAYS_4Robot: v4 applicata.';
+ELSE
+	RAISERROR('ALTER non riuscita, la vista e'' ancora quella di prima: vedi l''errore sopra.', 16, 1);
 GO
 SET NOEXEC OFF;
 GO
@@ -223,6 +229,25 @@ SELECT TRAY, SUB_POS, X_PICK, Y_PICK, Z_PICK, X_PLACE, Y_PLACE, Z_PLACE, X_ROT, 
   FROM COORDINATES_PIECES_TRAYS_4Robot
  WHERE cast(TRAY as int) = 8 AND SUB_POS IN (1, 13, 40, 52)
  ORDER BY SUB_POS;
+GO
+
+-- 4. VERIFICA (sola lettura): tasche dei cassetti con Z diversa da 0.
+-- La v4 somma pos.Z alla quota di presa. Finora la Z a 0 la garantiva
+-- "0 CASSETTIERA", che con i work object per cassetto sparisce; i due
+-- inserimenti di tasche del backend (insertPositionTray e "Genera") scrivono
+-- Z = 0. Se il conteggio non e' 0: avviso, niente FERMO (la vista ormai e'
+-- applicata), e l'elenco delle tasche da guardare.
+DECLARE @zNon0 int = (SELECT COUNT(*) FROM [POSITION]
+	WHERE PARENT LIKE 'TRAY%' AND POS > 0 AND ISNULL(Z,0) <> 0);
+PRINT 'VERIFICA: tasche dei cassetti con Z diversa da 0: ' + CAST(@zNon0 AS varchar(10)) + ' (atteso 0).';
+IF @zNon0 <> 0
+BEGIN
+	PRINT 'ATTENZIONE: queste tasche hanno Z diversa da 0 e la v4 la somma alla quota di presa: il robot prenderebbe piu'' in alto o piu'' in basso di Z_PICK. Controllarle prima di lavorare su quei cassetti (elenco qui sotto).';
+	SELECT ID, RTRIM(PARENT) AS PARENT, SUB_POS, Z
+	  FROM [POSITION]
+	 WHERE PARENT LIKE 'TRAY%' AND POS > 0 AND ISNULL(Z,0) <> 0
+	 ORDER BY PARENT, SUB_POS;
+END
 GO
 
 -- ===========================================================================

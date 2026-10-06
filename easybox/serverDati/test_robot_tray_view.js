@@ -92,12 +92,28 @@ console.log('\n2) guardia');
 check(norm(letterale('v4')) === nV4 && nV4.length > 0, 'la v4 che la guardia riconosce e\' esattamente quella dell\'ALTER');
 check(norm(letterale('v3')) === norm(corpoV3) && norm(corpoV3).length > 0, 'la v3 attesa e\' esattamente quella di superati/robot-tray-view-v3.sql');
 check(/OBJECT_DEFINITION\(OBJECT_ID\('COORDINATES_PIECES_TRAYS_4Robot'\)\)/.test(v4code) && /CHAR\(13\)[\s\S]{0,80}CHAR\(10\)[\s\S]{0,80}CHAR\(9\)/.test(v4code) && /WHILE EXISTS[\s\S]{0,120}N'  '/.test(v4code), 'confronto a spazi normalizzati della definizione letta');
-const rami = v4code.slice(v4code.indexOf('IF @def IS NULL'), v4code.indexOf('-- 2. v4') > 0 ? v4code.indexOf('ALTER VIEW') : undefined);
+const iAlter = v4code.search(/ALTER VIEW COORDINATES_PIECES_TRAYS_4Robot AS/);
+const rami = v4code.slice(v4code.indexOf('IF @def IS NULL'), iAlter);
 check(/ELSE IF @nDef = @nV4\s*BEGIN[\s\S]*?conforme[\s\S]*?SET NOEXEC ON;\s*END/.test(rami), 'gia\' v4: "conforme", nessuna modifica');
 check(/ELSE IF @nDef = @nV3\s*BEGIN[\s\S]*?SELECT @def AS definizione_v3_prima_della_v4;[\s\S]*?END/.test(rami) && !/ELSE IF @nDef = @nV3\s*BEGIN[^E]*SET NOEXEC ON/.test(rami), 'v3: stampa la definizione vecchia (backup), poi ALTER');
 const fermi = [...rami.matchAll(/RAISERROR\([\s\S]*?\);\s*SET NOEXEC ON;/g)];
 check(fermi.length === 2 && /IF @def IS NULL\s*BEGIN[\s\S]*?RAISERROR/.test(rami) && /ELSE\s*BEGIN[\s\S]*?SELECT @def AS definizione_trovata;[\s\S]*?RAISERROR/.test(rami), 'vista assente/cifrata o diversa: FERMO, con RAISERROR PRIMA di SET NOEXEC ON');
-check(/SET NOEXEC OFF;\s*\nGO/.test(v4code) && v4code.indexOf('SET NOEXEC OFF') > v4code.indexOf('ALTER VIEW'), 'NOEXEC si spegne dopo l\'ALTER');
+check(/SET NOEXEC OFF;\s*\nGO/.test(v4code) && v4code.indexOf('SET NOEXEC OFF') > iAlter, 'NOEXEC si spegne dopo l\'ALTER');
+// (6/10) dopo l'ALTER si rilegge la definizione: "v4 applicata" solo se c'e'
+// davvero, altrimenti RAISERROR. Sta prima di SET NOEXEC OFF: dopo un FERMO
+// non parte.
+const dopoAlter = v4code.slice(iAlter, v4code.indexOf('SET NOEXEC OFF'));
+const PATT = 'ISNULL(pos.Z,0)+ISNULL(pos.Z_CORR,0)+pt.Z_PICK';
+check(/IF OBJECT_DEFINITION\(OBJECT_ID\('COORDINATES_PIECES_TRAYS_4Robot'\)\) LIKE N'%ISNULL\(pos\.Z,0\)\+ISNULL\(pos\.Z_CORR,0\)\+pt\.Z_PICK%'\s*\n\s*PRINT '[^']*v4 applicata\.';\s*\nELSE\s*\n\s*RAISERROR\('ALTER non riuscita, la vista e'' ancora quella di prima: vedi l''errore sopra\.', 16, 1\);/.test(dopoAlter),
+	'dopo l\'ALTER rilegge la definizione: "v4 applicata" oppure RAISERROR "ALTER non riuscita"');
+check((v4code.match(/v4 applicata/g) || []).length === 1, '"v4 applicata" esce solo da quel controllo (nessun PRINT incondizionato)');
+check(corpoV4.includes(PATT), 'il controllo cerca un testo che la v4 contiene davvero (' + PATT + ')');
+// (6/10) verifica in sola lettura: tasche con Z diversa da 0 (la v4 somma
+// pos.Z, e "0 CASSETTIERA" che la azzerava non c'e' piu')
+const verifica = v4code.slice(v4code.indexOf('SET NOEXEC OFF'));
+check(/SELECT COUNT\(\*\) FROM \[POSITION\]\s*\n?\s*WHERE PARENT LIKE 'TRAY%' AND POS > 0 AND ISNULL\(Z,0\) <> 0/.test(verifica) && /atteso 0/.test(verifica), 'verifica: conta le tasche con Z diversa da 0 (atteso 0)');
+check(/IF @zNon0 <> 0\s*BEGIN\s*PRINT 'ATTENZIONE:/.test(verifica), 'se non e\' 0: avviso chiaro');
+check(!/RAISERROR|SET NOEXEC ON|ALTER |UPDATE |INSERT |DELETE /i.test(verifica), 'e niente FERMO ne\' scritture: la verifica e\' in sola lettura, la vista ormai e\' applicata');
 check(/sqlcmd -S \.\\SQLEXPRESS -E -d ADMG -y 0 -i robot-tray-view-v4\.sql -o D:\\Backup\\vista4Robot_prima_v4\.txt; Get-Content D:\\Backup\\vista4Robot_prima_v4\.txt/.test(v4), 'nell\'intestazione il comando per Dario, col backup nel file');
 check(/WHERE cast\(TRAY as int\) = 8 AND SUB_POS IN \(1, 13, 40, 52\)/.test(v4code), 'verifica sulle tasche 1, 13, 40 e 52 del cassetto 8');
 check(/sys\.default_constraints/.test(v4code), 'stampa i default delle colonne di correzione (non sono scritti nel repo)');
