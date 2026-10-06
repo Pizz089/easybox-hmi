@@ -415,7 +415,7 @@ router.get('/extractCoords', (req, res) => {
 // le righe di COORDINATES_FOR_EXTRACT, ora ~0,2 mm) scriverebbe in TRAY
 // correzioni senza senso, rendendo impossibile il ritorno alla v3.
 // La rotta resta registrata: un pannello rimasto aperto su una versione
-// vecchia, o un cambio di versione con tools/pannello.ps1, potrebbe ancora
+// vecchia, o un cambio di versione con easybox/tools/pannello.ps1, potrebbe ancora
 // chiamarla. Risponde 410 + KO_WORKOBJECT, una riga di log, e NESSUN accesso
 // al DB: nessuna connessione, nessuna query. Il codice di prima (scrittura
 // transazionale di CORR e ROT su TRAY e ROT + Z=0 sulle tasche) e' nella

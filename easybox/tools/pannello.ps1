@@ -1,14 +1,23 @@
 # ============================================================================
-# tools/pannello.ps1 - cambia la versione del pannello in cella
+# easybox/tools/pannello.ps1 - cambia la versione del pannello in cella
 #
 #   stabile  ramo ui-lifting: solo modifiche funzionali (quello di sempre)
 #   v3       ramo ui-v3: ui-lifting + la grafica nuova (pannello v3)
 #   stato    dice su che versione si e', senza cambiare niente
 #
 # Uso (da qualunque cartella):
-#   powershell -ExecutionPolicy Bypass -File D:\Prog\tools\pannello.ps1 -Versione v3
-#   powershell -ExecutionPolicy Bypass -File D:\Prog\tools\pannello.ps1 -Versione stabile
-#   powershell -ExecutionPolicy Bypass -File D:\Prog\tools\pannello.ps1 -Versione stato
+#   powershell -ExecutionPolicy Bypass -File D:\Prog\easybox\tools\pannello.ps1 -Versione v3
+#   powershell -ExecutionPolicy Bypass -File D:\Prog\easybox\tools\pannello.ps1 -Versione stabile
+#   powershell -ExecutionPolicy Bypass -File D:\Prog\easybox\tools\pannello.ps1 -Versione stato
+#
+# Perche' sotto easybox/ e non in tools/ alla radice: il clone di cella e'
+# parziale (sparse-checkout in modalita' cone: D:\Prog\.git\info\sparse-checkout
+# contiene /*, !/*/ e /easybox/). Sul disco della cella vengono scritti solo i
+# file della radice e la cartella easybox/: tools/ e plc/ non ci sono. Il 6/10
+# il pull ha messo tools/pannello.ps1 nell'elenco, ma il file non e' mai
+# comparso. Tutto quello che deve arrivare in cella sta sotto easybox/.
+# La radice del repo lo script la trova da solo, con git rev-parse
+# --show-toplevel dalla sua cartella: da qui funziona come prima.
 #
 # Cosa fa con v3 / stabile:
 #   1. se ci sono modifiche locali le elenca e si ferma, senza toccare niente;
@@ -59,7 +68,7 @@ if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
 $cartella = $PSScriptRoot
 $r = & git -C $cartella rev-parse --show-toplevel 2>$null
 if ($LASTEXITCODE -ne 0 -or -not $r) {
-	Fermati ('la cartella dello script (' + $cartella + ') non e'' dentro un repo git.') 'lo script va lanciato dalla sua posizione nel repo, es. D:\Prog\tools\pannello.ps1.'
+	Fermati ('la cartella dello script (' + $cartella + ') non e'' dentro un repo git.') 'lo script va lanciato dalla sua posizione nel repo, es. D:\Prog\easybox\tools\pannello.ps1.'
 }
 $script:Radice = ($r | Select-Object -First 1).Trim()
 
