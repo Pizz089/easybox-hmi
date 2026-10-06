@@ -10,9 +10,24 @@
  * base.css NON e' nel bundle (importato solo da main.css, mai caricato).
  */
 
-/* Font effettiva del pannello: presa dal design system, non hardcoded. */
+/* Font effettiva del pannello: presa dal design system, non hardcoded.
+   (v3) Manrope inclusa nel pannello; numeri tabellari ovunque, cosi'
+   contatori e quote non ballano quando cambiano. */
 body {
   font-family: var(--font-family);
+  font-variant-numeric: tabular-nums;
+  background: var(--bg-base);
+  color: var(--text-primary);
+}
+
+/* i controlli di form non ereditano il font dal body per default */
+button, input, select, textarea {
+  font-family: inherit;
+}
+
+/* codici e ID */
+code, kbd, .mono {
+  font-family: var(--font-mono);
 }
 
 h1, h2, h3, h4 {

@@ -45,10 +45,12 @@ export function pocketShapeStyle(status, exportMode = false) {
 	return style;
 }
 
-// Numero della tasca: scuro sui colori chiari, chiaro sul nero. Il bianco
-// di prima su azzurro/ambra/verde restava sotto 2:1.
+// Numero della tasca (v3): --pocket-on, scuro, sulle tasche colorate;
+// --text-secondary sulla vuota e sulla non definita, che sono scure. Il
+// bianco della v1 su azzurro/ambra/verde restava sotto 2:1.
 export function pocketLabelFill(status) {
-	return pocketState(status).key === 'undef' ? 'var(--text-primary)' : 'var(--bg-base)';
+	const k = pocketState(status).key;
+	return k === 'empty' || k === 'undef' ? 'var(--text-secondary)' : 'var(--pocket-on)';
 }
 
 // Export (XMLSerializer): un var(--x) non vive fuori dal documento, nel

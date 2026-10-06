@@ -1,73 +1,81 @@
 /* design-tokens.css
- * Design system EasyBox/Vertibox HMI - dark theme.
- * Token unici applicati progressivamente nei .vue (UI-2 -> UI-7).
- * Non sovrascrive theme.css ne custom-fix.css: nomi prefissati distinti.
+ * Design system EasyBox HMI — v3 (docs/UI-DESIGN-SYSTEM.md, approvato da
+ * Dario il 6/10/2026). Linguaggio Bambu Lab con identita' nostra: fondo
+ * grafite neutro, UN solo accento (blu cobalto), colore riservato a stati
+ * e allarmi (ISA-101). I NOMI dei token sono quelli di v1/v2: cambiano i
+ * valori, cosi' le pagine seguono senza toccare i .vue.
+ *
+ * Due misure di layout: LARGO (>= 1600 px, verificato a 1920x1080) e
+ * COMPATTO (< 1600 px, verificato a 1024x768 e 1280x800). I token che
+ * cambiano col compatto sono ridefiniti nel @media in fondo; lo stesso
+ * punto di rottura sta in util/breakpoints.js per chi lo legge da JS.
  */
 
 :root {
-  /* ---------- Color tokens ---------- */
-  --bg-base:        #050A12;
-  --bg-surface:     #243043;
-  --bg-surface-2:   #3A4A60;
-  --bg-input:       #2A3548;
+  /* ---------- Superfici (grafite neutra, niente blu) ---------- */
+  --bg-base:        #121314;   /* fondo pagina */
+  --bg-surface:     #1B1C1F;   /* card */
+  --bg-surface-2:   #2A2C30;   /* pulsante secondario, cerchio icone */
+  --bg-input:       #232528;   /* campi, tile */
+  --bg-sidebar:     #17181A;   /* barra di navigazione */
+  --bg-icon:        #2A2C30;   /* cerchio dietro le icone dei tile */
+  --bg-strip:       #151618;   /* striscia di stato in alto (v3) */
+  --bg-raised:      #222428;   /* voce attiva della barra, riga selezionata (v3) */
 
-  /* Scala testo rivista post-audit WCAG (2026-07-13): secondary e muted
-     alzati per contrasto (FINISHED 4.75:1, muted su bg-input 4.64:1);
-     disabled riallineato all'ex muted (token oggi orfano, tenuto in scala). */
-  --text-primary:   #E8EEF7;
-  --text-secondary: #B2BDCE;
-  --text-muted:     #92A0B2;
-  --text-disabled:  #6B7889;
+  /* ---------- Testo ---------- */
+  --text-primary:   #ECEDEE;
+  --text-secondary: #A4A8AE;
+  --text-muted:     #868A90;   /* >= 4.5:1 su --bg-surface (test_tokens_v3) */
+  --text-disabled:  #5F636A;
 
-  --border-subtle:  #4A5A75;
-  --border-default: #6B7B95;
-  --border-strong:  #8B9AAE;
+  /* ---------- Bordi ---------- */
+  --border-subtle:  #24262A;
+  --border-default: #3A3D42;
+  --border-strong:  #7D8188;   /* >= 3:1 su --bg-input: bordo dei campi */
 
-  /* Card outlined pattern (UI-7.6 Cobra Panel): overlay sottile rgba bianco
-     sopra --bg-base scuro per outlined card con leggero lightening senza
-     hardcoding HEX. Valori di partenza conservativi — affinare
-     post-verifica visuale se necessario. */
-  /* alpha 0.22 -> 0.35 (audit WCAG): il bordo card era il principale
-     tono-su-tono percepito (2.42:1); a 0.35 fa 3.79:1 su bg-base. */
-  --border-card: 1px solid rgba(255, 255, 255, 0.35);
-  --bg-card:     rgba(255, 255, 255, 0.08);
+  /* Card: in v3 piene su --bg-surface, senza contorno bianco (era il
+     pattern "outlined" v1). Nomi tenuti: li usano decine di pagine. */
+  --border-card: 1px solid var(--border-subtle);
+  --bg-card:     var(--bg-surface);
 
-  /* Backdrop overlay per modali/dialog (ChangeUserModal, mission-dialog):
-     unificato a 0.6 (era 0.5 modale utente / 0.6 dialog missione). */
+  /* Velo dietro dialog e modali. */
   --bg-backdrop: rgba(0, 0, 0, 0.6);
 
-  --accent:         #4A9EFF;
-  --accent-hover:   #6BAFFF;
-  --accent-active:  #2E7FE0;
+  /* ---------- Accento: UNO solo ----------
+     Solo per l'azione primaria, la voce attiva e le barre di avanzamento. */
+  --accent:         #4D9BFF;
+  --accent-hover:   #6AACFF;
+  --accent-active:  #3A86EB;
+  --accent-on:      #0A1220;   /* testo scuro sull'accento, >= 4.5:1 */
 
-  --color-success:    #4ADE80;
-  --color-warning:    #FBBF24;
-  --color-danger:     #F87171;
-  --color-info:       #60A5FA;
-  --color-success-bg: #1A3A2A;
-  --color-warning-bg: #3A2F1A;
-  --color-danger-bg:  #3A1F1F;
-  /* info-bg scurito (audit WCAG): badge RAW/EMPTY info-su-info-bg 4.43 -> 5.41 */
-  --color-info-bg:    #142F47;
+  /* ---------- Colori di STATO (solo per lo stato) ----------
+     verde OK/finito, ambra attenzione/HOLD/in lavoro, rosso errore e
+     comandi distruttivi, azzurro grezzo/informazione, arancio tasca
+     bloccata. -bg = tinta per i fondi, -fg = testo colorato su scuro. */
+  --color-success:    #45C27D;
+  --color-warning:    #F2B230;
+  --color-danger:     #E5484D;
+  --color-info:       #5BC0EB;
+  --color-success-bg: rgba(69, 194, 125, 0.14);
+  --color-warning-bg: rgba(242, 178, 48, 0.14);
+  --color-danger-bg:  rgba(229, 72, 77, 0.16);
+  --color-info-bg:    rgba(91, 192, 235, 0.16);
+  --color-success-fg: #5ED394;
+  --color-warning-fg: #F6C65B;
+  --color-danger-fg:  #F26B6F;
+  --color-info-fg:    #7FD0F0;
 
-  /* Warning button-specific (UI-7.6): amber desaturato per CTA mission
-     (.pure-button-mission). Distinto da --color-warning (#FBBF24 saturato)
-     che resta in uso per status/badge (es. units.vue .img-wrapper.manual
-     dashboard manual mode). Pattern asimmetrico vs success/danger/info
-     giustificato dall'uso ambivalente di warning (status + action). */
-  --color-warning-button: #D4A017;
-  /* testo scuro su amber (audit WCAG): 2.04 -> 8.35 */
-  --color-warning-text:   var(--bg-base);
+  /* v1/v2: le missioni erano gialle. In v3 le famiglie di comandi NON
+     hanno colore: il nome resta, punta al pulsante secondario. */
+  --color-warning-button: var(--bg-surface-2);
+  --color-warning-text:   var(--text-primary);
 
-  /* Critical: per CTA macro action (RESET/HOLD/START/RESTART, delete confirms).
-     Distinto da --color-danger (status alarm "errore corrente") - questo e'
-     azione operatore "presta attenzione". Rosso urgente classico (semaforo). */
-  /* Rosso approfondito (audit WCAG): l'ex hover promosso a fill,
-     text-primary sopra fa 4.76 (era 3.57 su #E63946). */
-  --color-critical:       #C92434;
-  --color-critical-hover: #A81C2A;
+  /* Comando distruttivo pieno (RESET, Riavvia programma, conferme di
+     cancellazione), testo bianco. */
+  --color-critical:       #D93B3B;
+  --color-critical-hover: #C23232;
 
-  /* ---------- Spacing tokens (multipli di 4) ---------- */
+  /* ---------- Spaziatura (multipli di 4) ---------- */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -77,72 +85,100 @@
   --space-7: 48px;
   --space-8: 64px;
 
-  /* ---------- Typography tokens ---------- */
-  --font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  /* ---------- Tipografia ----------
+     Manrope per tutto, IBM Plex Mono per codici e ID. Font INCLUSI nel
+     pannello (@fontsource, OFL), mai da internet: main.js. */
+  --font-family: 'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono:   'IBM Plex Mono', ui-monospace, Consolas, monospace;
 
-  --font-size-xs:   12px;   /* tenuto a 12: a 13 causava wrap in celle strette (productionTable) */
+  /* scala storica (pagine di oggi) */
+  --font-size-xs:   12px;
   --font-size-sm:   14px;
   --font-size-base: 16px;
   --font-size-md:   18px;
   --font-size-lg:   22px;
   --font-size-xl:   28px;
   --font-size-2xl:  34px;
+  --font-size-display: 48px;
+  /* scala v3 per ruolo (largo; il compatto e' in fondo) */
+  --font-size-hero:  96px;   /* numero pezzi in Home */
+  --font-size-state: 34px;   /* valore di stato */
+  --font-size-title: 32px;   /* titolo pagina */
+  --font-size-body:  17px;   /* testo */
+  --font-size-label: 13px;   /* etichetta MAIUSCOLA */
+  --letter-spacing-label: 0.08em;
 
-  --font-weight-normal:   400;
-  --font-weight-medium:   500;
-  --font-weight-semibold: 600;
-  --font-weight-bold:     700;
+  --font-weight-normal:    400;
+  --font-weight-medium:    500;
+  --font-weight-semibold:  600;
+  --font-weight-bold:      700;
+  --font-weight-extrabold: 800;
 
   --line-height-tight:  1.2;
   --line-height-normal: 1.5;
 
-  /* ---------- Elevation ---------- */
+  /* ---------- Elevazione: ombra SOLO sui dialog ---------- */
   --elevation-0: none;
-  --elevation-1: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
-  --elevation-2: 0 3px 6px rgba(0,0,0,0.35), 0 2px 4px rgba(0,0,0,0.25);
-  --elevation-3: 0 8px 16px rgba(0,0,0,0.4), 0 4px 8px rgba(0,0,0,0.3);
+  --elevation-1: none;
+  --elevation-2: none;
+  --elevation-3: 0 24px 48px rgba(0, 0, 0, 0.5), 0 8px 16px rgba(0, 0, 0, 0.35);
 
-  /* ---------- Radius ---------- */
+  /* ---------- Forme ---------- */
   --radius-sm:   4px;
   --radius-md:   8px;
-  --radius-lg:   16px;   /* v2: contenitori grandi (card Bambu ~16; era 12) */
+  --radius-lg:   20px;   /* card (16 in compatto) */
   --radius-pill: 999px;
-  /* Raggio dei bottoni AZIONE (doc v2 §3.1, decisione 2 di Dario):
-     AZIONE = rettangolo arrotondato pieno (era pill 999px, K-FIX).
-     Informazione resta squadrata (card, badge, input, voci elenco). */
-  --radius-btn:  14px;
+  --radius-btn:  16px;   /* pulsanti e tile */
+  --radius-chip: 12px;   /* chip e badge (v3) */
 
-  /* ---------- Transitions ---------- */
+  /* ---------- Bersagli touch ----------
+     comandi principali 64 (56 in compatto), secondari 56, minimo assoluto
+     48. --touch-target / -min tengono i nomi v2. */
+  --touch-primary:    64px;
+  --touch-target:     56px;
+  --touch-target-min: 48px;
+
+  /* ---------- Icone (lucide-vue-next, stroke 2) ---------- */
+  --icon-size-sm:   16px;
+  --icon-size-md:   24px;   /* nei pulsanti */
+  --icon-size-lg:   32px;
+  --icon-size-nav:  30px;   /* barra di navigazione */
+  --icon-size-tile: 28px;   /* tile */
+
+  /* ---------- Shell ---------- */
+  --rail-width:          104px;
+  --status-strip-height: 76px;
+
+  /* ---------- Transizioni ---------- */
   --transition-fast: 150ms ease;
   --transition-base: 250ms ease;
 
-  /* ---------- v2 (docs/UI-DESIGN-SYSTEM.md §10-§11, 5/10/2026) ---------- */
-  /* Testo e icone sopra --accent (Primary). Stesso valore scuro che il
-     codice prendeva da --bg-base per il contrasto WCAG (7.20:1). */
-  --accent-on:   var(--bg-base);
-  /* Fondo sidebar e linguetta: era scritto a mano (#141D2A) in SideBar.vue e
-     menu.vue, mid-tone fra --bg-base e --bg-surface. */
-  --bg-sidebar:  #141D2A;
-  /* Cerchio dietro le icone dei tile di stato (fase 3). */
-  --bg-icon:     var(--bg-surface-2);
-  /* Valori di stato grandi, letti a ~1 m dal kiosk (fase 3). */
-  --font-size-display: 48px;
-  /* Target touch: preferito e minimo assoluto (deroghe documentate). */
-  --touch-target:     52px;
-  --touch-target-min: 44px;
-  /* Icone: nel testo, nei bottoni, nei tile. */
-  --icon-size-sm: 16px;
-  --icon-size-md: 24px;
-  --icon-size-lg: 32px;
-
-  /* Stati delle tasche (§11): UN significato per disegno, legenda e
-     tabelle. Il codice di stato e' quello di [POSITION].STATUS. */
-  --pocket-empty:        #6B7889;               /* 2 vuota: grigio */
+  /* ---------- Stati delle tasche (§11) ----------
+     UN significato per disegno, legenda e tabelle; codice di stato =
+     [POSITION].STATUS. Dove il valore coincide con un colore di stato il
+     token lo riprende (test_pocket_colors lo verifica). */
+  --pocket-empty:        #3A3D42;               /* 2 vuota */
   --pocket-raw:          var(--color-info);     /* 4 grezzo: azzurro */
   --pocket-working:      var(--color-warning);  /* 3 in lavoro: ambra */
   --pocket-finished:     var(--color-success);  /* 5 finito: verde */
-  --pocket-abort:        var(--color-danger);   /* 7 scarto/abort: rosso */
-  --pocket-locked:       #F97316;               /* 9 bloccata: arancio, distinto dall'ambra */
-  --pocket-undef:        #0B0F14;               /* 0 non definita: nero... */
-  --pocket-undef-border: var(--border-strong);  /* ...col bordo */
+  --pocket-abort:        var(--color-danger);   /* 7 scarto: rosso */
+  --pocket-locked:       #F47B2A;               /* 9 bloccata: arancio, distinto dall'ambra */
+  --pocket-undef:        #0B0C0D;               /* 0 non definita: nero... */
+  --pocket-undef-border: #4A4D53;               /* ...col bordo */
+  --pocket-on:           #0B1218;               /* numero sulle tasche colorate */
+}
+
+/* ---------- COMPATTO (< 1600 px): stessa struttura, misure ridotte ---------- */
+@media (max-width: 1599px) {
+  :root {
+    --font-size-hero:  60px;
+    --font-size-state: 22px;
+    --font-size-title: 26px;
+    --font-size-body:  15px;
+    --font-size-label: 12px;
+    --radius-lg:       16px;
+    --touch-primary:   56px;
+    --rail-width:          84px;
+    --status-strip-height: 64px;
+  }
 }

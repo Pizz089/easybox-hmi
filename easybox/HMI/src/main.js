@@ -1,3 +1,12 @@
+// (v3) font INCLUSI nel pannello, mai da internet (@fontsource, licenza
+// OFL): Manrope per tutto, IBM Plex Mono per codici e ID. Solo il subset
+// latino, che copre italiano e inglese.
+import '@fontsource/manrope/latin-400.css'
+import '@fontsource/manrope/latin-600.css'
+import '@fontsource/manrope/latin-700.css'
+import '@fontsource/manrope/latin-800.css'
+import '@fontsource/ibm-plex-mono/latin-500.css'
+import '@fontsource/ibm-plex-mono/latin-600.css'
 import '@/assets/css/design-tokens.css'
 import '@/assets/css/typography.css'
 import './assets/pure.css'
