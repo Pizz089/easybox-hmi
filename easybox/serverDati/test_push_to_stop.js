@@ -384,6 +384,20 @@ for (const [regione, n, sequenza, poi] of [['Part_Robot_to_MC', 37, '_Part_Robot
 	check(avanza.length === 2 && avanza.every(x => x === sequenza + ' := ' + poi),
 		'   e fa avanzare la propria sequenza: ' + sequenza + ' := ' + poi + ' (' + (avanza.join(', ') || 'stato non trovato') + ')');
 }
+// (6/10) la MAPPA delle misure del pezzo verso il robot, nei tre stati che
+// leggono l'esito della query: Dario ha scambiato X e Y nel PLC (per il
+// robot erano invertite), la Z non e' mai stata toccata. Colonne della
+// query: 0 CLAW_LENGTH, 1 PART_WIDTH (PIECE.Y), 2 STOP_BEYOND_CLAW,
+// 3 PART_LENGTH (PIECE.X), 4 PART_HEIGHT (PIECE.Z). Un primo tentativo in
+// TIA aveva scambiato X e Z: con questo controllo non passa.
+const MAPPA = { Vice_ClawLength_mm: 0, Part_Width_mm: 3, Part_Length_mm: 1, Part_Height_mm: 4 };
+for (const [regione, n] of [['Part_Robot_to_MC', 39], ['Part_MC_to_Robot', 39], ['Cycle MASTER ROBOT', 1418]]) {
+	const s = statoFB(regione, n);
+	const letto = {};
+	for (const m of s.matchAll(/"(\w+_mm)"\s*:=\s*DINT_TO_INT\("SqlData"\.data\.rows\[0\]\.col\[(\d+)\] \/ 1000\)/g)) letto[m[1]] = Number(m[2]);
+	check(Object.entries(MAPPA).every(([v, c]) => letto[v] === c) && /"X_Support_mm"\s*:=\s*DINT_TO_INT\(\("SqlData"\.data\.rows\[0\]\.col\[0\] \/ 2\s*\+ "SqlData"\.data\.rows\[0\]\.col\[2\]\) \/ 1000\)/.test(s),
+		'soffiaggio: ' + regione + ' ' + n + ' passa al robot Width = PIECE.X (col 3), Length = PIECE.Y (col 1), Height = PIECE.Z (col 4) (' + (Object.entries(letto).map(([v, c]) => v + ' col ' + c).join(', ') || 'stato non trovato') + ')');
+}
 
 const view = fs.readFileSync(path.join(__dirname, 'scripts', 'coordinates-push-mc.sql'), 'utf8');
 // i commenti PARLANO di WITH ENCRYPTION (per dire che non si usa): il controllo
