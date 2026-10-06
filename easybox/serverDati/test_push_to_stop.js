@@ -434,6 +434,56 @@ for (const [regione, n] of [['Part_Robot_to_MC', 39], ['Part_MC_to_Robot', 39], 
 		'soffiaggio: ' + regione + ' ' + n + ' passa al robot Width = PIECE.X (col 3), Length = PIECE.Y (col 1), Height = PIECE.Z (col 4) (' + (Object.entries(letto).map(([v, c]) => v + ' col ' + c).join(', ') || 'stato non trovato') + ')');
 }
 
+// (consegna 31, 6/10) QUOTA Z DELLA SPINTA nel PLC. La query della spinta
+// chiede Z_PUSH_DROP come terza colonna (32 di Part_Robot_to_MC, 1410 del
+// master); l'esito (36, 1412) scrive Z_Push = Z di deposito - Z_PUSH_DROP su
+// Z_Push_HIGH/LOW con FC_Split_Dint in TUTTI i rami: senza dati, con una
+// spinta valida e una discesa plausibile, e altrimenti (Z di deposito, cioe'
+// come prima). col[2] si legge solo nel ramo dei dati validi: il ponte SQL
+// non converte NULL in zero e senza dati il buffer contiene la risposta di
+// prima.
+const SPLIT = ref => '"FC_Split_Dint"(IN := ' + ref;
+const SCRIVE_Z = /HIGH_Word => "Z_Push_HIGH",\s*LOW_Word => "Z_Push_LOW"\);/g;
+for (const [regione, n, rami] of [['Part_Robot_to_MC', 32, 2], ['Cycle MASTER ROBOT', 1410, 2]]) {
+	const s = statoFB(regione, n);
+	check(s.split("'select X_PUSH,X_STOP,Z_PUSH_DROP from COORDINATES_PUSH_MC where MC=1 and ORDER_ID=',").length - 1
+			+ s.split("'select top 1 X_PUSH,X_STOP,Z_PUSH_DROP from COORDINATES_PUSH_MC where MC=1 order by ORDER_ID desc'").length - 1 === rami
+		&& !/X_PUSH,X_STOP from/.test(s),
+		'quota Z: ' + regione + ' ' + n + ' chiede Z_PUSH_DROP come terza colonna in tutti e ' + rami + ' i rami');
+}
+check(!/select X_PUSH,X_STOP from/.test(fb7), '   e in FB_Robot non resta nessuna query della spinta a due colonne');
+const qManuale = "select X_PUSH,X_STOP,Z_PUSH_DROP from COORDINATES_PUSH_MC where MC=1 and ORDER_ID=(select ORDER_ID from MAN_ORDER_MC1 where TRAY='99' and SUB_POS=999)";
+check(qManuale.length < 254, '   la query in manuale (cassetto a 2 cifre, tasca a 3) sta in ' + qManuale.length + ' caratteri, sotto i 254 di queryTemp');
+for (const [regione, n, ref] of [['Part_Robot_to_MC', 36, '"DB_RobotMission"."Z_Pick-Place"'], ['Cycle MASTER ROBOT', 1412, '#zPlaceTemp']]) {
+	const s = statoFB(regione, n);
+	const iData = s.search(/IF "DB_executeQuery"\.noData OR "DB_executeQuery"\.dataError THEN/);
+	const iValidi = s.indexOf('\n', s.indexOf('ELSE', iData));
+	const senzaDati = s.slice(iData, iValidi), validi = s.slice(iValidi);
+	const iX = validi.indexOf('> 500000'), iZ = validi.indexOf('IF #xPushTemp <> 0 AND #xStopTemp <> 0');
+	check(iData > 0 && senzaDati.includes(SPLIT(ref) + ',') && (senzaDati.match(SCRIVE_Z) || []).length === 1,
+		'quota Z: ' + regione + ' ' + n + ' senza dati scrive Z_Push = Z di deposito (' + ref + ')');
+	check(!/col\[2\]/.test(s.slice(0, iValidi)) && iX > 0 && iZ > iX,
+		'   col[2] si legge solo nel ramo dei dati validi, dopo il controllo di plausibilita\' sulla X');
+	check(/IF #xPushTemp <> 0 AND #xStopTemp <> 0\s*AND "SqlData"\.data\.rows\[0\]\.col\[2\] >= 0\s*AND "SqlData"\.data\.rows\[0\]\.col\[2\] <= 300000\s*THEN/.test(validi)
+		&& validi.includes(SPLIT(ref) + ' - "SqlData".data.rows[0].col[2],') && validi.includes(SPLIT(ref) + ',')
+		&& (validi.match(SCRIVE_Z) || []).length === 2,
+		'   spinta valida e discesa in [0, 300 mm]: Z_Push = Z di deposito - Z_PUSH_DROP; altrimenti la Z di deposito');
+}
+check((fb7.match(SCRIVE_Z) || []).length === 6
+	&& (statoFB('Part_Robot_to_MC', 36).match(SCRIVE_Z) || []).length + (statoFB('Cycle MASTER ROBOT', 1412).match(SCRIVE_Z) || []).length === 6,
+	'quota Z: Z_Push_HIGH/LOW si scrivono solo al 36 e al 1412 (6 chiamate di FC_Split_Dint)');
+// la Z di riferimento e' davvero quella di DEPOSITO: Z_PLACE_MC, terza
+// colonna al 30 di Part_Robot_to_MC, quarta al 1402 del master
+check(/'select P\.X,P\.Y,Z\.Z_PLACE_MC,/.test(statoFB('Part_Robot_to_MC', 10) + statoFB('Part_Robot_to_MC', 12))
+	&& /"DB_RobotMission"\."Z_Pick-Place" := \("SqlData"\.data\.rows\[0\]\.col\[2\]\);/.test(statoFB('Part_Robot_to_MC', 30))
+	&& /select X,Y,Z_PICK_MC,Z_PLACE_MC,/.test(fb7) && /#zPlaceTemp := "SqlData"\.data\.rows\[0\]\.col\[3\];/.test(statoFB('Cycle MASTER ROBOT', 1402)),
+	'quota Z: il riferimento e\' Z_PLACE_MC (al 30 in Z_Pick-Place, al 1402 in #zPlaceTemp)');
+const tagRobot = fs.readFileSync(path.join(__dirname, '..', '..', 'plc', 'tags', 'Robot_Efort.xml'), 'utf8');
+check(/<DataTypeName>Int<\/DataTypeName>\s*<LogicalAddress>%QW646<\/LogicalAddress>\s*<Name>Z_Push_LOW<\/Name>/.test(tagRobot)
+	&& /<DataTypeName>Int<\/DataTypeName>\s*<LogicalAddress>%QW648<\/LogicalAddress>\s*<Name>Z_Push_HIGH<\/Name>/.test(tagRobot)
+	&& !/<Name>spare_[78]<\/Name>/.test(tagRobot),
+	'quota Z: tabella Robot_Efort, %QW646 Z_Push_LOW e %QW648 Z_Push_HIGH (Int, ex spare_7/spare_8), come X_Pick-Place');
+
 const view = fs.readFileSync(path.join(__dirname, 'scripts', 'coordinates-push-mc.sql'), 'utf8');
 // i commenti PARLANO di WITH ENCRYPTION (per dire che non si usa): il controllo
 // guarda il solo SQL eseguibile

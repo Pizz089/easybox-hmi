@@ -1729,15 +1729,16 @@ BEGIN
 	                END_IF;
 	                
 	            1410: // SPINTA: query sulle quote di spinta e arrivo per il grezzo che
-	                // sta per entrare. Stesso schema dello stato 32 di Part_Robot_to_MC.
+	                // sta per entrare. Stesso schema dello stato 32 di Part_Robot_to_MC,
+	                // compresa la terza colonna Z_PUSH_DROP (6/10, vedi 1412).
 	                IF #MCRequested <> 1 THEN
 	                    #Dispatcher["_master"] := 1414;          // MC2 non esiste: nessuna spinta
 	                ELSIF "SqlCommands".sqlCommands[0] = '' THEN
 	                    IF "DB_MC1".order.ID > 0 THEN
-	                        #queryTemp := CONCAT(IN1 := 'select X_PUSH,X_STOP from COORDINATES_PUSH_MC where MC=1 and ORDER_ID=',
+	                        #queryTemp := CONCAT(IN1 := 'select X_PUSH,X_STOP,Z_PUSH_DROP from COORDINATES_PUSH_MC where MC=1 and ORDER_ID=',
 	                                             IN2 := "INT_TO_STRING_WITHOUT_SIGN"(DINT_TO_INT("DB_MC1".order.ID)));
 	                    ELSE
-	                        #queryTemp := 'select top 1 X_PUSH,X_STOP from COORDINATES_PUSH_MC where MC=1 order by ORDER_ID desc';
+	                        #queryTemp := 'select top 1 X_PUSH,X_STOP,Z_PUSH_DROP from COORDINATES_PUSH_MC where MC=1 order by ORDER_ID desc';
 	                    END_IF;
 	                    #queryStartExecution := TRUE;
 	                    #Dispatcher["_master"] := 1411;
@@ -1753,10 +1754,15 @@ BEGIN
 	                // Il ponte SQL NON converte NULL in zero: restituisce valori
 	                // casuali (visto 15/9: -1.056.960.259 con PUSH_STATUS DISABLED).
 	                // Il riferimento e' la quota di DEPOSITO congelata.
+	                // QUOTA Z DELLA SPINTA (6/10): come al 36 di Part_Robot_to_MC, con la
+	                // Z di deposito congelata al 1402 (#zPlaceTemp, Z_PLACE_MC).
 	                IF "DB_executeQuery".dataReady THEN
 	                    IF "DB_executeQuery".noData OR "DB_executeQuery".dataError THEN
 	                        #xPushTemp := 0;
 	                        #xStopTemp := 0;
+	                        "FC_Split_Dint"(IN := #zPlaceTemp,
+	                                        HIGH_Word => "Z_Push_HIGH",
+	                                        LOW_Word => "Z_Push_LOW");
 	                    ELSE
 	                        #xPushTemp := "SqlData".data.rows[0].col[0];
 	                        #xStopTemp := "SqlData".data.rows[0].col[1];
@@ -1766,6 +1772,19 @@ BEGIN
 	                        THEN
 	                            #xPushTemp := 0;
 	                            #xStopTemp := 0;
+	                        END_IF;
+	                        
+	                        IF #xPushTemp <> 0 AND #xStopTemp <> 0
+	                            AND "SqlData".data.rows[0].col[2] >= 0
+	                            AND "SqlData".data.rows[0].col[2] <= 300000
+	                        THEN
+	                            "FC_Split_Dint"(IN := #zPlaceTemp - "SqlData".data.rows[0].col[2],
+	                                            HIGH_Word => "Z_Push_HIGH",
+	                                            LOW_Word => "Z_Push_LOW");
+	                        ELSE
+	                            "FC_Split_Dint"(IN := #zPlaceTemp,
+	                                            HIGH_Word => "Z_Push_HIGH",
+	                                            LOW_Word => "Z_Push_LOW");
 	                        END_IF;
 	                    END_IF;
 	                    "DB_executeQuery".readyForNextQuery := TRUE;
@@ -3447,16 +3466,18 @@ BEGIN
 	                // Con un ordine avviato si usa quello. In MANUALE senza ordine avviato
 	                // (6/10) si usa l'ordine in attesa del pezzo prelevato, lo stesso delle
 	                // quote di deposito (vista MAN_ORDER_MC1, controllato all'11-12).
+	                // (6/10 sera) terza colonna Z_PUSH_DROP: di quanto scendere con la
+	                // chela rispetto alla Z di deposito durante la spinta (vedi 36).
 	                IF #MCRequested <> 1 THEN
 	                    // MC2 non esiste in questa cella: nessuna spinta
 	                    #Dispatcher["_Part_Robot_to_MC"] := 40;
 	                ELSIF "SqlCommands".sqlCommands[0] = '' THEN
 	                    IF "DB_MC1".order.ID > 0 THEN
-	                        #queryTemp := CONCAT(IN1 := 'select X_PUSH,X_STOP from COORDINATES_PUSH_MC where MC=1 and ORDER_ID=',
+	                        #queryTemp := CONCAT(IN1 := 'select X_PUSH,X_STOP,Z_PUSH_DROP from COORDINATES_PUSH_MC where MC=1 and ORDER_ID=',
 	                                             IN2 := "INT_TO_STRING_WITHOUT_SIGN"(DINT_TO_INT("DB_MC1".order.ID)));
 	                    ELSE
-	                        // manuale: ordine in attesa del pezzo prelevato (138 caratteri)
-	                        #queryTemp := CONCAT(IN1 := 'select X_PUSH,X_STOP from COORDINATES_PUSH_MC where MC=1 and ORDER_ID=',
+	                        // manuale: ordine in attesa del pezzo prelevato (150 caratteri)
+	                        #queryTemp := CONCAT(IN1 := 'select X_PUSH,X_STOP,Z_PUSH_DROP from COORDINATES_PUSH_MC where MC=1 and ORDER_ID=',
 	                                             IN2 := '(select ORDER_ID from MAN_ORDER_MC1 where TRAY=$'',
 	                                             IN3 := "INT_TO_STRING_WITHOUT_SIGN"(#Tray_ID),
 	                                             IN4 := '$' and SUB_POS=',
@@ -3475,17 +3496,26 @@ BEGIN
 	                
 	            36:  // esito spinta. Le quote sono NULL quando la vista dice che la
 	                // spinta non e' configurata, disabilitata, o il pezzo non ci sta.
-	                // ATTENZIONE: il ponte SQL NON converte NULL in zero — restituisce
+	                // ATTENZIONE: il ponte SQL NON converte NULL in zero: restituisce
 	                // valori casuali (visto 15/9: xStopTemp a -1.056.960.259 con
 	                // PUSH_STATUS DISABLED). Quindi non ci si puo' fidare del valore:
 	                // va verificato che sia PLAUSIBILE rispetto alla quota di deposito.
 	                // Spinta e arrivo stanno per costruzione entro qualche centinaio di
 	                // millimetri da X_PLACE: fuori da mezzo metro il dato e' spazzatura
 	                // e la spinta non si fa.
+	                // QUOTA Z DELLA SPINTA (6/10): Z_Push = Z di deposito (gia' in
+	                // Z_Pick-Place dal 30) meno Z_PUSH_DROP. Va al robot su Z_Push_LOW/
+	                // Z_Push_HIGH (%QW646/%QW648), prima del comando del 40. Senza spinta
+	                // valida o con una discesa non plausibile: Z_Push = Z di deposito,
+	                // cioe' la spinta come prima. La vista limita gia' la discesa a
+	                // [0, quota di presa]; i 300 mm qui scartano solo i valori casuali.
 	                IF "DB_executeQuery".dataReady THEN
 	                    IF "DB_executeQuery".noData OR "DB_executeQuery".dataError THEN
 	                        #xPushTemp := 0;
 	                        #xStopTemp := 0;
+	                        "FC_Split_Dint"(IN := "DB_RobotMission"."Z_Pick-Place",
+	                                        HIGH_Word => "Z_Push_HIGH",
+	                                        LOW_Word => "Z_Push_LOW");
 	                    ELSE
 	                        #xPushTemp := "SqlData".data.rows[0].col[0];
 	                        #xStopTemp := "SqlData".data.rows[0].col[1];
@@ -3497,6 +3527,19 @@ BEGIN
 	                        THEN
 	                            #xPushTemp := 0;
 	                            #xStopTemp := 0;
+	                        END_IF;
+	                        
+	                        IF #xPushTemp <> 0 AND #xStopTemp <> 0
+	                            AND "SqlData".data.rows[0].col[2] >= 0
+	                            AND "SqlData".data.rows[0].col[2] <= 300000
+	                        THEN
+	                            "FC_Split_Dint"(IN := "DB_RobotMission"."Z_Pick-Place" - "SqlData".data.rows[0].col[2],
+	                                            HIGH_Word => "Z_Push_HIGH",
+	                                            LOW_Word => "Z_Push_LOW");
+	                        ELSE
+	                            "FC_Split_Dint"(IN := "DB_RobotMission"."Z_Pick-Place",
+	                                            HIGH_Word => "Z_Push_HIGH",
+	                                            LOW_Word => "Z_Push_LOW");
 	                        END_IF;
 	                    END_IF;
 	                    "DB_executeQuery".readyForNextQuery := TRUE;

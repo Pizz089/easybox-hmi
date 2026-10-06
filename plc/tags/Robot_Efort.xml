@@ -2810,7 +2810,7 @@
         <AttributeList>
           <DataTypeName>Int</DataTypeName>
           <LogicalAddress>%QW646</LogicalAddress>
-          <Name>spare_7</Name>
+          <Name>Z_Push_LOW</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="1C2" CompositionName="Comment">
@@ -2824,7 +2824,7 @@
               <MultilingualTextItem ID="1C4" CompositionName="Items">
                 <AttributeList>
                   <Culture>it-IT</Culture>
-                  <Text />
+                  <Text>Z spinta, parola bassa (come X_Pick-Place_LOW)</Text>
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -2835,7 +2835,7 @@
         <AttributeList>
           <DataTypeName>Int</DataTypeName>
           <LogicalAddress>%QW648</LogicalAddress>
-          <Name>spare_8</Name>
+          <Name>Z_Push_HIGH</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="1C6" CompositionName="Comment">
@@ -2849,7 +2849,7 @@
               <MultilingualTextItem ID="1C8" CompositionName="Items">
                 <AttributeList>
                   <Culture>it-IT</Culture>
-                  <Text />
+                  <Text>Z spinta, parola alta (come X_Pick-Place_HIGH)</Text>
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
