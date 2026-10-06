@@ -634,7 +634,9 @@
       "finished": "Finito",
       "paused": "In pausa",
       "aborted": "Annullato"
-    }
+    },
+    "moreActions": "Altre azioni dell'ordine",
+    "pageMenu": "Altri comandi della pagina"
   },
   "normal": "Normale",
   "cmd": {

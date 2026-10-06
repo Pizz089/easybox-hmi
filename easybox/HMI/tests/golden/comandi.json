@@ -3713,18 +3713,112 @@
    "file": "src/views/productionView.vue",
    "scenari": [
     "liv2",
-    "liv0"
+    "liv0",
+    "liv2, menu",
+    "liv0, menu"
    ],
    "controlli": [
     {
-     "id": "UiButton@click openResetDialog",
+     "id": "UiButton@click apriMenuPagina()",
+     "etichetta": "",
+     "evento": "click",
+     "handler": "apriMenuPagina()",
+     "disabled": "",
+     "classe": "",
+     "esiti": {
+      "liv2": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.menuPagina = true"
+       ]
+      },
+      "liv0": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.menuPagina = true"
+       ]
+      },
+      "liv2, menu": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.menuPagina = false"
+       ]
+      },
+      "liv0, menu": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.menuPagina = false"
+       ]
+      }
+     }
+    },
+    {
+     "id": "div@click menuPagina = false",
+     "etichetta": "",
+     "evento": "click",
+     "handler": "menuPagina = false",
+     "disabled": "",
+     "classe": "",
+     "esiti": {
+      "liv2": "nascosto",
+      "liv0": "nascosto",
+      "liv2, menu": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.menuPagina = false"
+       ]
+      },
+      "liv0, menu": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.menuPagina = false"
+       ]
+      }
+     }
+    },
+    {
+     "id": "div@click menuPagina = false #2",
+     "etichetta": "Azzera produzione",
+     "evento": "click",
+     "handler": "menuPagina = false",
+     "disabled": "",
+     "classe": "",
+     "esiti": {
+      "liv2": "nascosto",
+      "liv0": "nascosto",
+      "liv2, menu": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.menuPagina = false"
+       ]
+      },
+      "liv0, menu": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.menuPagina = false"
+       ]
+      }
+     }
+    },
+    {
+     "id": "button@click openResetDialog",
      "etichetta": "Azzera produzione",
      "evento": "click",
      "handler": "openResetDialog",
      "disabled": "dataStored.userLevel == 0",
      "classe": "",
      "esiti": {
-      "liv2": {
+      "liv2": "nascosto",
+      "liv0": "nascosto",
+      "liv2, menu": {
        "abilitato": true,
        "effetti": [
         "fetch GET api/order/resetProduction/preview/1"
@@ -3750,7 +3844,7 @@
         }
        ]
       },
-      "liv0": {
+      "liv0, menu": {
        "abilitato": false,
        "effetti": [
         "fetch GET api/order/resetProduction/preview/1"
@@ -3799,6 +3893,20 @@
         "router \"/selectRig\""
        ],
        "stato": []
+      },
+      "liv2, menu": {
+       "abilitato": true,
+       "effetti": [
+        "router \"/selectRig\""
+       ],
+       "stato": []
+      },
+      "liv0, menu": {
+       "abilitato": false,
+       "effetti": [
+        "router \"/selectRig\""
+       ],
+       "stato": []
       }
      }
     },
@@ -3811,7 +3919,9 @@
      "classe": "",
      "esiti": {
       "liv2": "nascosto",
-      "liv0": "nascosto"
+      "liv0": "nascosto",
+      "liv2, menu": "nascosto",
+      "liv0, menu": "nascosto"
      }
     },
     {
@@ -3823,7 +3933,9 @@
      "classe": "[resetConfirmEnabled ? 'pure-button-mission' : 'pure-button-disable']",
      "esiti": {
       "liv2": "nascosto",
-      "liv0": "nascosto"
+      "liv0": "nascosto",
+      "liv2, menu": "nascosto",
+      "liv0, menu": "nascosto"
      }
     },
     {
@@ -3835,7 +3947,9 @@
      "classe": "",
      "esiti": {
       "liv2": "nascosto",
-      "liv0": "nascosto"
+      "liv0": "nascosto",
+      "liv2, menu": "nascosto",
+      "liv0, menu": "nascosto"
      }
     }
    ]
@@ -3844,9 +3958,113 @@
    "file": "src/components/productionTable.vue",
    "scenari": [
     "tre ordini liv2",
-    "tre ordini, popup elimina aperto"
+    "tre ordini, popup elimina aperto",
+    "tre ordini liv2, menu 101",
+    "tre ordini, popup elimina aperto, menu 101",
+    "tre ordini liv2, menu 102",
+    "tre ordini, popup elimina aperto, menu 102",
+    "tre ordini liv2, menu 103",
+    "tre ordini, popup elimina aperto, menu 103"
    ],
    "controlli": [
+    {
+     "id": "UiButton@click modifyOrderStatus(o.ID,dataStored.status_raw,o.PIECE_ID)",
+     "etichetta": "Ferma",
+     "evento": "click",
+     "handler": "modifyOrderStatus(o.ID,dataStored.status_raw,o.PIECE_ID)",
+     "disabled": "",
+     "classe": "",
+     "esiti": {
+      "tre ordini liv2": [
+       "nascosto",
+       {
+        "abilitato": true,
+        "effetti": [
+         "emit TO_PLANT/CMD/ORDER {\"id\":102,\"status\":4,\"pieceID\":2}"
+        ],
+        "stato": []
+       },
+       "nascosto"
+      ],
+      "tre ordini, popup elimina aperto": [
+       "nascosto",
+       {
+        "abilitato": true,
+        "effetti": [
+         "emit TO_PLANT/CMD/ORDER {\"id\":102,\"status\":4,\"pieceID\":2}"
+        ],
+        "stato": []
+       },
+       "nascosto"
+      ],
+      "tre ordini liv2, menu 101": [
+       "nascosto",
+       {
+        "abilitato": true,
+        "effetti": [
+         "emit TO_PLANT/CMD/ORDER {\"id\":102,\"status\":4,\"pieceID\":2}"
+        ],
+        "stato": []
+       },
+       "nascosto"
+      ],
+      "tre ordini, popup elimina aperto, menu 101": [
+       "nascosto",
+       {
+        "abilitato": true,
+        "effetti": [
+         "emit TO_PLANT/CMD/ORDER {\"id\":102,\"status\":4,\"pieceID\":2}"
+        ],
+        "stato": []
+       },
+       "nascosto"
+      ],
+      "tre ordini liv2, menu 102": [
+       "nascosto",
+       {
+        "abilitato": true,
+        "effetti": [
+         "emit TO_PLANT/CMD/ORDER {\"id\":102,\"status\":4,\"pieceID\":2}"
+        ],
+        "stato": []
+       },
+       "nascosto"
+      ],
+      "tre ordini, popup elimina aperto, menu 102": [
+       "nascosto",
+       {
+        "abilitato": true,
+        "effetti": [
+         "emit TO_PLANT/CMD/ORDER {\"id\":102,\"status\":4,\"pieceID\":2}"
+        ],
+        "stato": []
+       },
+       "nascosto"
+      ],
+      "tre ordini liv2, menu 103": [
+       "nascosto",
+       {
+        "abilitato": true,
+        "effetti": [
+         "emit TO_PLANT/CMD/ORDER {\"id\":102,\"status\":4,\"pieceID\":2}"
+        ],
+        "stato": []
+       },
+       "nascosto"
+      ],
+      "tre ordini, popup elimina aperto, menu 103": [
+       "nascosto",
+       {
+        "abilitato": true,
+        "effetti": [
+         "emit TO_PLANT/CMD/ORDER {\"id\":102,\"status\":4,\"pieceID\":2}"
+        ],
+        "stato": []
+       },
+       "nascosto"
+      ]
+     }
+    },
     {
      "id": "UiButton@click modifyOrderStatus(o.ID,dataStored.status_working,o.PIECE_ID)",
      "etichetta": "Avvia",
@@ -3863,20 +4081,8 @@
         ],
         "stato": []
        },
-       {
-        "abilitato": true,
-        "effetti": [
-         "emit TO_PLANT/CMD/ORDER {\"id\":102,\"status\":3,\"pieceID\":2}"
-        ],
-        "stato": []
-       },
-       {
-        "abilitato": true,
-        "effetti": [
-         "emit TO_PLANT/CMD/ORDER {\"id\":103,\"status\":3,\"pieceID\":3}"
-        ],
-        "stato": []
-       }
+       "nascosto",
+       "nascosto"
       ],
       "tre ordini, popup elimina aperto": [
        {
@@ -3886,76 +4092,74 @@
         ],
         "stato": []
        },
-       {
-        "abilitato": true,
-        "effetti": [
-         "emit TO_PLANT/CMD/ORDER {\"id\":102,\"status\":3,\"pieceID\":2}"
-        ],
-        "stato": []
-       },
-       {
-        "abilitato": true,
-        "effetti": [
-         "emit TO_PLANT/CMD/ORDER {\"id\":103,\"status\":3,\"pieceID\":3}"
-        ],
-        "stato": []
-       }
-      ]
-     }
-    },
-    {
-     "id": "UiButton@click modifyOrderStatus(o.ID,dataStored.status_raw,o.PIECE_ID)",
-     "etichetta": "Ferma",
-     "evento": "click",
-     "handler": "modifyOrderStatus(o.ID,dataStored.status_raw,o.PIECE_ID)",
-     "disabled": "",
-     "classe": "",
-     "esiti": {
-      "tre ordini liv2": [
-       {
-        "abilitato": true,
-        "effetti": [
-         "emit TO_PLANT/CMD/ORDER {\"id\":101,\"status\":4,\"pieceID\":1}"
-        ],
-        "stato": []
-       },
-       {
-        "abilitato": true,
-        "effetti": [
-         "emit TO_PLANT/CMD/ORDER {\"id\":102,\"status\":4,\"pieceID\":2}"
-        ],
-        "stato": []
-       },
-       {
-        "abilitato": true,
-        "effetti": [
-         "emit TO_PLANT/CMD/ORDER {\"id\":103,\"status\":4,\"pieceID\":3}"
-        ],
-        "stato": []
-       }
+       "nascosto",
+       "nascosto"
       ],
-      "tre ordini, popup elimina aperto": [
+      "tre ordini liv2, menu 101": [
        {
         "abilitato": true,
         "effetti": [
-         "emit TO_PLANT/CMD/ORDER {\"id\":101,\"status\":4,\"pieceID\":1}"
+         "emit TO_PLANT/CMD/ORDER {\"id\":101,\"status\":3,\"pieceID\":1}"
         ],
         "stato": []
        },
+       "nascosto",
+       "nascosto"
+      ],
+      "tre ordini, popup elimina aperto, menu 101": [
        {
         "abilitato": true,
         "effetti": [
-         "emit TO_PLANT/CMD/ORDER {\"id\":102,\"status\":4,\"pieceID\":2}"
+         "emit TO_PLANT/CMD/ORDER {\"id\":101,\"status\":3,\"pieceID\":1}"
         ],
         "stato": []
        },
+       "nascosto",
+       "nascosto"
+      ],
+      "tre ordini liv2, menu 102": [
        {
         "abilitato": true,
         "effetti": [
-         "emit TO_PLANT/CMD/ORDER {\"id\":103,\"status\":4,\"pieceID\":3}"
+         "emit TO_PLANT/CMD/ORDER {\"id\":101,\"status\":3,\"pieceID\":1}"
         ],
         "stato": []
-       }
+       },
+       "nascosto",
+       "nascosto"
+      ],
+      "tre ordini, popup elimina aperto, menu 102": [
+       {
+        "abilitato": true,
+        "effetti": [
+         "emit TO_PLANT/CMD/ORDER {\"id\":101,\"status\":3,\"pieceID\":1}"
+        ],
+        "stato": []
+       },
+       "nascosto",
+       "nascosto"
+      ],
+      "tre ordini liv2, menu 103": [
+       {
+        "abilitato": true,
+        "effetti": [
+         "emit TO_PLANT/CMD/ORDER {\"id\":101,\"status\":3,\"pieceID\":1}"
+        ],
+        "stato": []
+       },
+       "nascosto",
+       "nascosto"
+      ],
+      "tre ordini, popup elimina aperto, menu 103": [
+       {
+        "abilitato": true,
+        "effetti": [
+         "emit TO_PLANT/CMD/ORDER {\"id\":101,\"status\":3,\"pieceID\":1}"
+        ],
+        "stato": []
+       },
+       "nascosto",
+       "nascosto"
       ]
      }
     },
@@ -4004,18 +4208,570 @@
          }
         ]
        }
+      ],
+      "tre ordini liv2, menu 101": [
+       "nascosto",
+       "nascosto",
+       {
+        "abilitato": true,
+        "effetti": [],
+        "stato": [
+         "vm.relaunchOrder = {\"ID\":103,\"PIECE\":\"PZ-C\",\"PIECE_DESC\":\"prova\",\"MACHINE_ID\":1,\"STATUS\":5,\"STATUS_"
+        ],
+        "conferme": [
+         {
+          "controllo": "RelaunchDialog@close relaunchOrder = null",
+          "etichetta": "",
+          "abilitato": true,
+          "effetti": []
+         }
+        ]
+       }
+      ],
+      "tre ordini, popup elimina aperto, menu 101": [
+       "nascosto",
+       "nascosto",
+       {
+        "abilitato": true,
+        "effetti": [],
+        "stato": [
+         "vm.relaunchOrder = {\"ID\":103,\"PIECE\":\"PZ-C\",\"PIECE_DESC\":\"prova\",\"MACHINE_ID\":1,\"STATUS\":5,\"STATUS_"
+        ],
+        "conferme": [
+         {
+          "controllo": "RelaunchDialog@close relaunchOrder = null",
+          "etichetta": "",
+          "abilitato": true,
+          "effetti": []
+         }
+        ]
+       }
+      ],
+      "tre ordini liv2, menu 102": [
+       "nascosto",
+       "nascosto",
+       {
+        "abilitato": true,
+        "effetti": [],
+        "stato": [
+         "vm.relaunchOrder = {\"ID\":103,\"PIECE\":\"PZ-C\",\"PIECE_DESC\":\"prova\",\"MACHINE_ID\":1,\"STATUS\":5,\"STATUS_"
+        ],
+        "conferme": [
+         {
+          "controllo": "RelaunchDialog@close relaunchOrder = null",
+          "etichetta": "",
+          "abilitato": true,
+          "effetti": []
+         }
+        ]
+       }
+      ],
+      "tre ordini, popup elimina aperto, menu 102": [
+       "nascosto",
+       "nascosto",
+       {
+        "abilitato": true,
+        "effetti": [],
+        "stato": [
+         "vm.relaunchOrder = {\"ID\":103,\"PIECE\":\"PZ-C\",\"PIECE_DESC\":\"prova\",\"MACHINE_ID\":1,\"STATUS\":5,\"STATUS_"
+        ],
+        "conferme": [
+         {
+          "controllo": "RelaunchDialog@close relaunchOrder = null",
+          "etichetta": "",
+          "abilitato": true,
+          "effetti": []
+         }
+        ]
+       }
+      ],
+      "tre ordini liv2, menu 103": [
+       "nascosto",
+       "nascosto",
+       {
+        "abilitato": true,
+        "effetti": [],
+        "stato": [
+         "vm.relaunchOrder = {\"ID\":103,\"PIECE\":\"PZ-C\",\"PIECE_DESC\":\"prova\",\"MACHINE_ID\":1,\"STATUS\":5,\"STATUS_"
+        ],
+        "conferme": [
+         {
+          "controllo": "RelaunchDialog@close relaunchOrder = null",
+          "etichetta": "",
+          "abilitato": true,
+          "effetti": []
+         }
+        ]
+       }
+      ],
+      "tre ordini, popup elimina aperto, menu 103": [
+       "nascosto",
+       "nascosto",
+       {
+        "abilitato": true,
+        "effetti": [],
+        "stato": [
+         "vm.relaunchOrder = {\"ID\":103,\"PIECE\":\"PZ-C\",\"PIECE_DESC\":\"prova\",\"MACHINE_ID\":1,\"STATUS\":5,\"STATUS_"
+        ],
+        "conferme": [
+         {
+          "controllo": "RelaunchDialog@close relaunchOrder = null",
+          "etichetta": "",
+          "abilitato": true,
+          "effetti": []
+         }
+        ]
+       }
       ]
      }
     },
     {
-     "id": "UiButton@click chiediCancella(o)",
+     "id": "UiButton@click apriMenu(o.ID)",
      "etichetta": "",
+     "evento": "click",
+     "handler": "apriMenu(o.ID)",
+     "disabled": "",
+     "classe": "",
+     "esiti": {
+      "tre ordini liv2": [
+       {
+        "abilitato": true,
+        "effetti": [],
+        "stato": [
+         "vm.menuOrdine = 101"
+        ]
+       },
+       {
+        "abilitato": true,
+        "effetti": [],
+        "stato": [
+         "vm.menuOrdine = 102"
+        ]
+       },
+       {
+        "abilitato": true,
+        "effetti": [],
+        "stato": [
+         "vm.menuOrdine = 103"
+        ]
+       }
+      ],
+      "tre ordini, popup elimina aperto": [
+       {
+        "abilitato": true,
+        "effetti": [],
+        "stato": [
+         "vm.menuOrdine = 101"
+        ]
+       },
+       {
+        "abilitato": true,
+        "effetti": [],
+        "stato": [
+         "vm.menuOrdine = 102"
+        ]
+       },
+       {
+        "abilitato": true,
+        "effetti": [],
+        "stato": [
+         "vm.menuOrdine = 103"
+        ]
+       }
+      ],
+      "tre ordini liv2, menu 101": [
+       {
+        "abilitato": true,
+        "effetti": [],
+        "stato": [
+         "vm.menuOrdine = null"
+        ]
+       },
+       {
+        "abilitato": true,
+        "effetti": [],
+        "stato": [
+         "vm.menuOrdine = 102"
+        ]
+       },
+       {
+        "abilitato": true,
+        "effetti": [],
+        "stato": [
+         "vm.menuOrdine = 103"
+        ]
+       }
+      ],
+      "tre ordini, popup elimina aperto, menu 101": [
+       {
+        "abilitato": true,
+        "effetti": [],
+        "stato": [
+         "vm.menuOrdine = null"
+        ]
+       },
+       {
+        "abilitato": true,
+        "effetti": [],
+        "stato": [
+         "vm.menuOrdine = 102"
+        ]
+       },
+       {
+        "abilitato": true,
+        "effetti": [],
+        "stato": [
+         "vm.menuOrdine = 103"
+        ]
+       }
+      ],
+      "tre ordini liv2, menu 102": [
+       {
+        "abilitato": true,
+        "effetti": [],
+        "stato": [
+         "vm.menuOrdine = 101"
+        ]
+       },
+       {
+        "abilitato": true,
+        "effetti": [],
+        "stato": [
+         "vm.menuOrdine = null"
+        ]
+       },
+       {
+        "abilitato": true,
+        "effetti": [],
+        "stato": [
+         "vm.menuOrdine = 103"
+        ]
+       }
+      ],
+      "tre ordini, popup elimina aperto, menu 102": [
+       {
+        "abilitato": true,
+        "effetti": [],
+        "stato": [
+         "vm.menuOrdine = 101"
+        ]
+       },
+       {
+        "abilitato": true,
+        "effetti": [],
+        "stato": [
+         "vm.menuOrdine = null"
+        ]
+       },
+       {
+        "abilitato": true,
+        "effetti": [],
+        "stato": [
+         "vm.menuOrdine = 103"
+        ]
+       }
+      ],
+      "tre ordini liv2, menu 103": [
+       {
+        "abilitato": true,
+        "effetti": [],
+        "stato": [
+         "vm.menuOrdine = 101"
+        ]
+       },
+       {
+        "abilitato": true,
+        "effetti": [],
+        "stato": [
+         "vm.menuOrdine = 102"
+        ]
+       },
+       {
+        "abilitato": true,
+        "effetti": [],
+        "stato": [
+         "vm.menuOrdine = null"
+        ]
+       }
+      ],
+      "tre ordini, popup elimina aperto, menu 103": [
+       {
+        "abilitato": true,
+        "effetti": [],
+        "stato": [
+         "vm.menuOrdine = 101"
+        ]
+       },
+       {
+        "abilitato": true,
+        "effetti": [],
+        "stato": [
+         "vm.menuOrdine = 102"
+        ]
+       },
+       {
+        "abilitato": true,
+        "effetti": [],
+        "stato": [
+         "vm.menuOrdine = null"
+        ]
+       }
+      ]
+     }
+    },
+    {
+     "id": "div@click menuOrdine = null",
+     "etichetta": "Avvia Ferma Cancella",
+     "evento": "click",
+     "handler": "menuOrdine = null",
+     "disabled": "",
+     "classe": "",
+     "esiti": {
+      "tre ordini liv2": [
+       "nascosto",
+       "nascosto",
+       "nascosto"
+      ],
+      "tre ordini, popup elimina aperto": [
+       "nascosto",
+       "nascosto",
+       "nascosto"
+      ],
+      "tre ordini liv2, menu 101": [
+       {
+        "abilitato": true,
+        "effetti": [],
+        "stato": [
+         "vm.menuOrdine = null"
+        ]
+       },
+       "nascosto",
+       "nascosto"
+      ],
+      "tre ordini, popup elimina aperto, menu 101": [
+       {
+        "abilitato": true,
+        "effetti": [],
+        "stato": [
+         "vm.menuOrdine = null"
+        ]
+       },
+       "nascosto",
+       "nascosto"
+      ],
+      "tre ordini liv2, menu 102": [
+       "nascosto",
+       {
+        "abilitato": true,
+        "effetti": [],
+        "stato": [
+         "vm.menuOrdine = null"
+        ]
+       },
+       "nascosto"
+      ],
+      "tre ordini, popup elimina aperto, menu 102": [
+       "nascosto",
+       {
+        "abilitato": true,
+        "effetti": [],
+        "stato": [
+         "vm.menuOrdine = null"
+        ]
+       },
+       "nascosto"
+      ],
+      "tre ordini liv2, menu 103": [
+       "nascosto",
+       "nascosto",
+       {
+        "abilitato": true,
+        "effetti": [],
+        "stato": [
+         "vm.menuOrdine = null"
+        ]
+       }
+      ],
+      "tre ordini, popup elimina aperto, menu 103": [
+       "nascosto",
+       "nascosto",
+       {
+        "abilitato": true,
+        "effetti": [],
+        "stato": [
+         "vm.menuOrdine = null"
+        ]
+       }
+      ]
+     }
+    },
+    {
+     "id": "button@click modifyOrderStatus(o.ID,dataStored.status_working,o.PIECE_ID)",
+     "etichetta": "Avvia",
+     "evento": "click",
+     "handler": "modifyOrderStatus(o.ID,dataStored.status_working,o.PIECE_ID)",
+     "disabled": "",
+     "classe": "",
+     "esiti": {
+      "tre ordini liv2": [
+       "nascosto",
+       "nascosto",
+       "nascosto"
+      ],
+      "tre ordini, popup elimina aperto": [
+       "nascosto",
+       "nascosto",
+       "nascosto"
+      ],
+      "tre ordini liv2, menu 101": [
+       "nascosto",
+       "nascosto",
+       "nascosto"
+      ],
+      "tre ordini, popup elimina aperto, menu 101": [
+       "nascosto",
+       "nascosto",
+       "nascosto"
+      ],
+      "tre ordini liv2, menu 102": [
+       "nascosto",
+       {
+        "abilitato": true,
+        "effetti": [
+         "emit TO_PLANT/CMD/ORDER {\"id\":102,\"status\":3,\"pieceID\":2}"
+        ],
+        "stato": []
+       },
+       "nascosto"
+      ],
+      "tre ordini, popup elimina aperto, menu 102": [
+       "nascosto",
+       {
+        "abilitato": true,
+        "effetti": [
+         "emit TO_PLANT/CMD/ORDER {\"id\":102,\"status\":3,\"pieceID\":2}"
+        ],
+        "stato": []
+       },
+       "nascosto"
+      ],
+      "tre ordini liv2, menu 103": [
+       "nascosto",
+       "nascosto",
+       {
+        "abilitato": true,
+        "effetti": [
+         "emit TO_PLANT/CMD/ORDER {\"id\":103,\"status\":3,\"pieceID\":3}"
+        ],
+        "stato": []
+       }
+      ],
+      "tre ordini, popup elimina aperto, menu 103": [
+       "nascosto",
+       "nascosto",
+       {
+        "abilitato": true,
+        "effetti": [
+         "emit TO_PLANT/CMD/ORDER {\"id\":103,\"status\":3,\"pieceID\":3}"
+        ],
+        "stato": []
+       }
+      ]
+     }
+    },
+    {
+     "id": "button@click modifyOrderStatus(o.ID,dataStored.status_raw,o.PIECE_ID)",
+     "etichetta": "Ferma",
+     "evento": "click",
+     "handler": "modifyOrderStatus(o.ID,dataStored.status_raw,o.PIECE_ID)",
+     "disabled": "",
+     "classe": "",
+     "esiti": {
+      "tre ordini liv2": [
+       "nascosto",
+       "nascosto",
+       "nascosto"
+      ],
+      "tre ordini, popup elimina aperto": [
+       "nascosto",
+       "nascosto",
+       "nascosto"
+      ],
+      "tre ordini liv2, menu 101": [
+       {
+        "abilitato": true,
+        "effetti": [
+         "emit TO_PLANT/CMD/ORDER {\"id\":101,\"status\":4,\"pieceID\":1}"
+        ],
+        "stato": []
+       },
+       "nascosto",
+       "nascosto"
+      ],
+      "tre ordini, popup elimina aperto, menu 101": [
+       {
+        "abilitato": true,
+        "effetti": [
+         "emit TO_PLANT/CMD/ORDER {\"id\":101,\"status\":4,\"pieceID\":1}"
+        ],
+        "stato": []
+       },
+       "nascosto",
+       "nascosto"
+      ],
+      "tre ordini liv2, menu 102": [
+       "nascosto",
+       "nascosto",
+       "nascosto"
+      ],
+      "tre ordini, popup elimina aperto, menu 102": [
+       "nascosto",
+       "nascosto",
+       "nascosto"
+      ],
+      "tre ordini liv2, menu 103": [
+       "nascosto",
+       "nascosto",
+       {
+        "abilitato": true,
+        "effetti": [
+         "emit TO_PLANT/CMD/ORDER {\"id\":103,\"status\":4,\"pieceID\":3}"
+        ],
+        "stato": []
+       }
+      ],
+      "tre ordini, popup elimina aperto, menu 103": [
+       "nascosto",
+       "nascosto",
+       {
+        "abilitato": true,
+        "effetti": [
+         "emit TO_PLANT/CMD/ORDER {\"id\":103,\"status\":4,\"pieceID\":3}"
+        ],
+        "stato": []
+       }
+      ]
+     }
+    },
+    {
+     "id": "button@click chiediCancella(o)",
+     "etichetta": "Cancella",
      "evento": "click",
      "handler": "chiediCancella(o)",
      "disabled": "o.STATUS_DESC=='WORKING'",
      "classe": "",
      "esiti": {
       "tre ordini liv2": [
+       "nascosto",
+       "nascosto",
+       "nascosto"
+      ],
+      "tre ordini, popup elimina aperto": [
+       "nascosto",
+       "nascosto",
+       "nascosto"
+      ],
+      "tre ordini liv2, menu 101": [
        {
         "abilitato": true,
         "effetti": [],
@@ -4039,6 +4795,20 @@
          }
         ]
        },
+       "nascosto",
+       "nascosto"
+      ],
+      "tre ordini, popup elimina aperto, menu 101": [
+       {
+        "abilitato": true,
+        "effetti": [],
+        "stato": []
+       },
+       "nascosto",
+       "nascosto"
+      ],
+      "tre ordini liv2, menu 102": [
+       "nascosto",
        {
         "abilitato": false,
         "effetti": [
@@ -4046,6 +4816,22 @@
         ],
         "stato": []
        },
+       "nascosto"
+      ],
+      "tre ordini, popup elimina aperto, menu 102": [
+       "nascosto",
+       {
+        "abilitato": false,
+        "effetti": [
+         "alert \"impossibile cancellare se è in esecuzione\""
+        ],
+        "stato": []
+       },
+       "nascosto"
+      ],
+      "tre ordini liv2, menu 103": [
+       "nascosto",
+       "nascosto",
        {
         "abilitato": true,
         "effetti": [],
@@ -4070,19 +4856,9 @@
         ]
        }
       ],
-      "tre ordini, popup elimina aperto": [
-       {
-        "abilitato": true,
-        "effetti": [],
-        "stato": []
-       },
-       {
-        "abilitato": false,
-        "effetti": [
-         "alert \"impossibile cancellare se è in esecuzione\""
-        ],
-        "stato": []
-       },
+      "tre ordini, popup elimina aperto, menu 103": [
+       "nascosto",
+       "nascosto",
        {
         "abilitato": true,
         "effetti": [],
@@ -4134,6 +4910,60 @@
        },
        "nascosto",
        "nascosto"
+      ],
+      "tre ordini liv2, menu 101": [
+       "nascosto",
+       "nascosto",
+       "nascosto"
+      ],
+      "tre ordini, popup elimina aperto, menu 101": [
+       {
+        "abilitato": true,
+        "effetti": [
+         "fetch DELETE api/order/101"
+        ],
+        "stato": [
+         "vm.showPopUp = 0"
+        ]
+       },
+       "nascosto",
+       "nascosto"
+      ],
+      "tre ordini liv2, menu 102": [
+       "nascosto",
+       "nascosto",
+       "nascosto"
+      ],
+      "tre ordini, popup elimina aperto, menu 102": [
+       {
+        "abilitato": true,
+        "effetti": [
+         "fetch DELETE api/order/101"
+        ],
+        "stato": [
+         "vm.showPopUp = 0"
+        ]
+       },
+       "nascosto",
+       "nascosto"
+      ],
+      "tre ordini liv2, menu 103": [
+       "nascosto",
+       "nascosto",
+       "nascosto"
+      ],
+      "tre ordini, popup elimina aperto, menu 103": [
+       {
+        "abilitato": true,
+        "effetti": [
+         "fetch DELETE api/order/101"
+        ],
+        "stato": [
+         "vm.showPopUp = 0"
+        ]
+       },
+       "nascosto",
+       "nascosto"
       ]
      }
     },
@@ -4160,6 +4990,54 @@
        },
        "nascosto",
        "nascosto"
+      ],
+      "tre ordini liv2, menu 101": [
+       "nascosto",
+       "nascosto",
+       "nascosto"
+      ],
+      "tre ordini, popup elimina aperto, menu 101": [
+       {
+        "abilitato": true,
+        "effetti": [],
+        "stato": [
+         "vm.showPopUp = 0"
+        ]
+       },
+       "nascosto",
+       "nascosto"
+      ],
+      "tre ordini liv2, menu 102": [
+       "nascosto",
+       "nascosto",
+       "nascosto"
+      ],
+      "tre ordini, popup elimina aperto, menu 102": [
+       {
+        "abilitato": true,
+        "effetti": [],
+        "stato": [
+         "vm.showPopUp = 0"
+        ]
+       },
+       "nascosto",
+       "nascosto"
+      ],
+      "tre ordini liv2, menu 103": [
+       "nascosto",
+       "nascosto",
+       "nascosto"
+      ],
+      "tre ordini, popup elimina aperto, menu 103": [
+       {
+        "abilitato": true,
+        "effetti": [],
+        "stato": [
+         "vm.showPopUp = 0"
+        ]
+       },
+       "nascosto",
+       "nascosto"
       ]
      }
     },
@@ -4172,7 +5050,13 @@
      "classe": "",
      "esiti": {
       "tre ordini liv2": "nascosto",
-      "tre ordini, popup elimina aperto": "nascosto"
+      "tre ordini, popup elimina aperto": "nascosto",
+      "tre ordini liv2, menu 101": "nascosto",
+      "tre ordini, popup elimina aperto, menu 101": "nascosto",
+      "tre ordini liv2, menu 102": "nascosto",
+      "tre ordini, popup elimina aperto, menu 102": "nascosto",
+      "tre ordini liv2, menu 103": "nascosto",
+      "tre ordini, popup elimina aperto, menu 103": "nascosto"
      }
     },
     {
@@ -4184,7 +5068,13 @@
      "classe": "",
      "esiti": {
       "tre ordini liv2": "nascosto",
-      "tre ordini, popup elimina aperto": "nascosto"
+      "tre ordini, popup elimina aperto": "nascosto",
+      "tre ordini liv2, menu 101": "nascosto",
+      "tre ordini, popup elimina aperto, menu 101": "nascosto",
+      "tre ordini liv2, menu 102": "nascosto",
+      "tre ordini, popup elimina aperto, menu 102": "nascosto",
+      "tre ordini liv2, menu 103": "nascosto",
+      "tre ordini, popup elimina aperto, menu 103": "nascosto"
      }
     }
    ]

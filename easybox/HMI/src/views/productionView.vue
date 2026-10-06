@@ -5,7 +5,7 @@ import { MACHINE_POSITIONS } from '../util/machineBrands';
 import { KO_CELL_RUNNING } from '../util/errorCodes';
 // (v3 fase C) intestazione con i componenti v3
 import UiButton from '../components/ui/UiButton.vue'
-import { Plus, Lock, Eraser } from 'lucide-vue-next'
+import { Plus, Lock, Eraser, Ellipsis } from 'lucide-vue-next'
 </script>
 
 <template>
@@ -13,15 +13,25 @@ import { Plus, Lock, Eraser } from 'lucide-vue-next'
         <!-- (v3 fase C) tavola Produzione: titolo, poi i due comandi della
              pagina, gli stessi di prima con le stesse abilitazioni (dal
              livello 1). AZZERA PRODUZIONE (1/9): ripristino distruttivo,
-             rosso, solo via dialog con numeri veri letti dal backend
-             (anteprima). Aggiungi ordine: il wizard di sempre (/selectRig). -->
+             solo via dialog con numeri veri letti dal backend (anteprima);
+             (C-bis, decisione di Dario) fuori dalla testata, nel menu "..."
+             della pagina, con la sua conferma. Aggiungi ordine: il wizard
+             di sempre (/selectRig). -->
         <div class="prod-head">
             <h2 class="prod-head__title">{{ $t('nav.production') }}</h2>
-            <UiButton variant="danger" :icon="Eraser"
-                :disabled="dataStored.userLevel == 0"
-                @click="openResetDialog">
-                {{ $t('production.reset.button') }}
-            </UiButton>
+            <div class="v3-menu">
+                <UiButton variant="outline" :icon="Ellipsis"
+                    :title="$t('production.pageMenu')" :aria-label="$t('production.pageMenu')"
+                    :aria-expanded="menuPagina" @click="apriMenuPagina()" />
+                <div v-if="menuPagina" class="v3-menu__veil" @click="menuPagina = false"></div>
+                <div v-if="menuPagina" class="v3-menu__pop" role="menu" @click="menuPagina = false">
+                    <button type="button" role="menuitem" class="v3-menu__item v3-menu__item--danger"
+                        :disabled="dataStored.userLevel == 0"
+                        @click="openResetDialog">
+                        <Eraser :stroke-width="2" aria-hidden="true" />{{ $t('production.reset.button') }}
+                    </button>
+                </div>
+            </div>
             <UiButton variant="primary" size="main" :icon="dataStored.userLevel == 0 ? Lock : Plus"
                 :disabled="dataStored.userLevel == 0"
                 @click="navigateToWizard">
@@ -84,6 +94,8 @@ export default {
     data() {
         return {
             // AZZERA PRODUZIONE: dialog + anteprima dal backend (numeri veri)
+            // (C-bis) menu "..." della pagina (Azzera produzione)
+            menuPagina: false,
             reset: {
                 open: false,
                 machineId: 1,
@@ -100,6 +112,10 @@ export default {
         }
     },
     methods: {
+        // menu "..." della pagina: apre e chiude, nient'altro
+        apriMenuPagina() {
+            this.menuPagina = !this.menuPagina;
+        },
         navigateToWizard() {
             this.$router.push('/selectRig');
         },

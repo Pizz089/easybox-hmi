@@ -53,6 +53,15 @@ export const AMMESSE = [
 		motivo: '(C-bis, decisione di Dario) Estrai / Rilascia (25 / 26) tolto dalla pagina Cassetti, come "Inserisci cassetto": non ha mai mandato il comando, perche\' la guardia di ComandsRows voleva RobotInLocalMode, che non scrive nessuno. Al suo posto il rimando ai Controlli Robot, dove i comandi del cassetto funzionano' },
 	{ pagina: 'TraysView', tipo: 'spostato', firma: /^fetch GET api\/conf\/grating\/show\/all \| fetch GET api\/conf\/position\/show\/all \| fetch GET api\/conf\/piece\/show\/all/,
 		motivo: 'associa / sostituisci / rigenera / dissocia il grigliato dal pannello del cassetto scelto, (C-bis) nel menu "...", stesso dialog e stesse guardie (assocAllowed): verificato dal controllo 2c' },
+	// (C-bis) Produzione: un'azione principale per stato, le altre nel menu
+	// "..." della card; Azzera produzione nel menu "..." della pagina. Negli
+	// scenari di base non si vedono tutte: il controllo 2c apre i menu.
+	{ pagina: 'productionTable', tipo: 'spostato', firma: /^emit TO_PLANT\/CMD\/ORDER /,
+		motivo: 'Avvia / Ferma: uno principale per stato sulla card (in lavoro Ferma, gli altri Avvia), l\'altro nel menu "..." della card; stessi payload e abilitazioni (2c)' },
+	{ pagina: 'productionTable', tipo: 'spostato', firma: /^conferma: fetch DELETE api\/order\/\d+$/,
+		motivo: 'Cancella nel menu "..." della card, stessa guardia di livello e stessa conferma "sei sicuro?" (2c)' },
+	{ pagina: 'productionView', tipo: 'spostato', firma: /^fetch GET api\/order\/resetProduction\/preview\//,
+		motivo: 'Azzera produzione fuori dalla testata, nel menu "..." della pagina, stessa abilitazione e stesso dialog di conferma (2c)' },
 	{ pagina: 'smallboxView', tipo: 'tolto', firma: /^emit TO_PLANT\/CMD\/ROBOT 26$/,
 		motivo: '"Inserisci cassetto" tolto dai Controlli EasyBox (decisione di Dario): era sempre spento, perche\' la sua condizione RobotInLocalMode non la scrive nessuno (le assegnazioni in robotView sono commentate). Il cassetto si rilascia da Robot -> Gestione cassetto' },
 ];
@@ -178,6 +187,12 @@ for (const liv of [2, 0])
 	unioneUguale('TraysView', 'due cassetti liv' + liv, ['due cassetti liv' + liv, 'due cassetti liv' + liv + ', scelto 7', 'due cassetti liv' + liv + ', scelto 8']);
 check(!Object.values(mappa(ORA.pagine.TraysView)).some(m => [...m.keys()].some(f => /^emit TO_PLANT\/CMD\/BOX/.test(f))),
 	'TraysView: nessun comando alla cassettiera in nessuno scenario (Estrai/Rilascia tolto, C-bis)');
+// Produzione (C-bis): la card con l'azione principale, piu' il menu "..." di
+// un ordine alla volta; la pagina col suo menu "..." aperto
+for (const base of ['tre ordini liv2', 'tre ordini, popup elimina aperto'])
+	unioneUguale('productionTable', base, [base].concat([101, 102, 103].map(id => base + ', menu ' + id)));
+for (const liv of ['liv2', 'liv0'])
+	unioneUguale('productionView', liv, [liv, liv + ', menu']);
 
 console.log('\n3) navigazione (informativa)');
 const nav = g => new Set(Object.values(g.pagine).flatMap(p => p.controlli.flatMap(c => Object.values(c.esiti).flatMap(righe)).filter(r => r && typeof r === 'object').flatMap(r => r.effetti.filter(e => /^router /.test(e)).map(e => e.toLowerCase()))));

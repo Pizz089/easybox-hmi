@@ -310,6 +310,16 @@ function scenariScelta(liv) {
 		['due cassetti liv' + liv + ', scelto 8']: (vm, ds) => { base(vm, ds, JSON.parse(JSON.stringify(cassetti))); vm.selFloor = 8; },
 	};
 }
+// (C-bis) Produzione: gli scenari della tabella ordini col menu "..." di un
+// ordine alla volta aperto
+function scenariMenuOrdini() {
+	const out = {};
+	for (const id of [101, 102, 103]) {
+		out['tre ordini liv2, menu ' + id] = (vm, ds) => { ds.userLevel = 2; vm.orders = JSON.parse(JSON.stringify(ordini)); vm.menuOrdine = id; };
+		out['tre ordini, popup elimina aperto, menu ' + id] = (vm, ds) => { ds.userLevel = 2; vm.orders = JSON.parse(JSON.stringify(ordini)); vm.showPopUp = 101; vm.menuOrdine = id; };
+	}
+	return out;
+}
 // handler che cambiano solo cosa si vede (v3 fase C, Cassetti; C-bis, i menu
 // "..."): non aprono un dialog, i controlli che compaiono non sono conferme
 const SOLO_VISTA = /^\s*(scegli|scegliPiano|toccaTasca|toccaVassoio|apriMenuGrigliato|apriMenu|apriMenuPagina)\(/;
@@ -346,10 +356,16 @@ const PAGINE = [
 	{ nome: 'productionView', file: 'src/views/productionView.vue', scenari: {
 		'liv2': (vm, ds) => { ds.userLevel = 2; },
 		'liv0': (vm, ds) => { ds.userLevel = 0; },
+		// (C-bis) Azzera produzione nel menu "..." della pagina: menu aperto
+		'liv2, menu': (vm, ds) => { ds.userLevel = 2; vm.menuPagina = true; },
+		'liv0, menu': (vm, ds) => { ds.userLevel = 0; vm.menuPagina = true; },
 	} },
 	{ nome: 'productionTable', file: 'src/components/productionTable.vue', scenari: {
 		'tre ordini liv2': (vm, ds) => { ds.userLevel = 2; vm.orders = JSON.parse(JSON.stringify(ordini)); },
 		'tre ordini, popup elimina aperto': (vm, ds) => { ds.userLevel = 2; vm.orders = JSON.parse(JSON.stringify(ordini)); vm.showPopUp = 101; },
+		// (C-bis) un'azione principale per stato, le altre nel menu "..." della
+		// card: lo stesso scenario col menu di un ordine alla volta aperto
+		...scenariMenuOrdini(),
 	} },
 	{ nome: 'ComandsRows', file: 'src/components/Comands/ComandsRows.vue',
 		props: { play: true, pause: true, stop: true, modify: true, place: true, move: true, save: true, del: true },

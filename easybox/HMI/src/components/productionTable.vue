@@ -5,7 +5,7 @@
     import UiButton from './ui/UiButton.vue'
     import UiSegmented from './ui/UiSegmented.vue'
     import CubeIcon3D from './CubeIcon3D.vue'
-    import { Play, Square, RotateCcw, Trash2, Lock } from 'lucide-vue-next'
+    import { Play, Square, RotateCcw, Trash2, Lock, Ellipsis } from 'lucide-vue-next'
 </script>
 
 <template>
@@ -18,7 +18,12 @@
          livello 1 come in ComandsRows, conferma "sei sicuro?" nella card).
          NIENTE maniglia di trascinamento: la coda ordini e' un cantiere a
          parte, l'ordine resta quello di oggi. I filtri cambiano solo cosa
-         si vede. -->
+         si vede.
+         (C-bis, decisione di Dario) come nella tavola: UN'azione principale
+         per stato (in lavoro: Ferma; finito: Rilancia; gli altri: Avvia) e
+         le altre nel menu "..." della card. Stessi comandi, stesse
+         abilitazioni, stessa conferma: test_golden_equivalenza (2c) apre il
+         menu di un ordine alla volta e vuole, riuniti, i comandi di prima. -->
     <div class="prod">
         <div v-if="orders.length>0" class="prod-filter">
             <UiSegmented v-model="filtro" :options="opzioniFiltro" />
@@ -51,23 +56,42 @@
                         <span class="prod-badge" :class="String(o.STATUS_DESC || '').trim()"><i aria-hidden="true"></i>{{ stato(o).label ? $t(stato(o).label) : o.STATUS_DESC }}</span>
                     </div>
                     <div class="prod-card__actions">
-                        <UiButton variant="secondary" size="min" :icon="Play"
-                            @click="modifyOrderStatus(o.ID,dataStored.status_working,o.PIECE_ID)">{{ $t('rowCmd.play') }}</UiButton>
-                        <UiButton variant="secondary" size="min" :icon="Square"
+                        <!-- azione principale dello stato -->
+                        <UiButton v-if="principale(o) === 'ferma'" variant="secondary" size="min" :icon="Square"
                             @click="modifyOrderStatus(o.ID,dataStored.status_raw,o.PIECE_ID)">{{ $t('rowCmd.stop') }}</UiButton>
+                        <UiButton v-if="principale(o) === 'avvia'" variant="secondary" size="min" :icon="Play"
+                            @click="modifyOrderStatus(o.ID,dataStored.status_working,o.PIECE_ID)">{{ $t('rowCmd.play') }}</UiButton>
                         <!-- (P2 5/10) RILANCIA: solo sugli ordini FINITI (5). Apre il
                              dialog con l'anteprima vera. Abilitato anche per
                              l'operatore (livello 0, deciso con Dario): le guardie
                              sono nel backend (WORKORDER/Order.js). -->
                         <UiButton v-if="isFinished(o)" variant="secondary" size="min" :icon="RotateCcw"
                             @click="relaunchOrder = o">{{ $t('production.relaunch.button') }}</UiButton>
+                        <!-- (C-bis) le altre azioni nel menu "..." della card -->
+                        <UiButton class="prod-card__more-btn" variant="outline" size="min" :icon="Ellipsis"
+                            :title="$t('production.moreActions')" :aria-label="$t('production.moreActions')"
+                            :aria-expanded="menuOrdine === o.ID" @click="apriMenu(o.ID)" />
+                    </div>
+                    <!-- menu "..." della card: si apre DENTRO la card (una lista
+                         che scorre taglierebbe un menu sovrapposto). Il tocco su
+                         una voce lo chiude risalendo al contenitore. -->
+                    <div v-if="menuOrdine === o.ID" class="prod-card__more" role="menu" @click="menuOrdine = null">
+                        <button v-if="principale(o) !== 'avvia'" type="button" role="menuitem" class="v3-menu__item"
+                            @click="modifyOrderStatus(o.ID,dataStored.status_working,o.PIECE_ID)">
+                            <Play :stroke-width="2" aria-hidden="true" />{{ $t('rowCmd.play') }}
+                        </button>
+                        <button v-if="principale(o) !== 'ferma'" type="button" role="menuitem" class="v3-menu__item"
+                            @click="modifyOrderStatus(o.ID,dataStored.status_raw,o.PIECE_ID)">
+                            <Square :stroke-width="2" aria-hidden="true" />{{ $t('rowCmd.stop') }}
+                        </button>
                         <!-- CANCELLA per ultimo e staccato dagli altri: e' l'unico
                              irreversibile. Spento sull'ordine in lavorazione. -->
-                        <UiButton class="prod-card__del" variant="outline" size="min"
-                            :icon="dataStored.userLevel > 0 ? Trash2 : Lock"
+                        <span class="prod-card__more-sep" aria-hidden="true"></span>
+                        <button type="button" role="menuitem" class="v3-menu__item v3-menu__item--danger"
                             :disabled="o.STATUS_DESC=='WORKING'"
-                            :title="$t('rowCmd.delete')" :aria-label="$t('rowCmd.delete')"
-                            @click="chiediCancella(o)" />
+                            @click="chiediCancella(o)">
+                            <component :is="dataStored.userLevel > 0 ? Trash2 : Lock" :stroke-width="2" aria-hidden="true" />{{ $t('rowCmd.delete') }}
+                        </button>
                     </div>
                     <div v-if="_showPopUp(o.ID)" class="prod-card__confirm">
                         <span class="prod-card__sure">{{ $t('production.sure') }}</span>
@@ -112,7 +136,9 @@ export default {
             // (v3 fase C) filtro della lista (solo vista) e anagrafica pezzi
             // per il disegno e le misure
             filtro: 'tutti',
-            pezzi: []
+            pezzi: [],
+            // (C-bis) ordine col menu "..." aperto (null = nessuno)
+            menuOrdine: null
         }
     },
     computed: {
@@ -160,6 +186,16 @@ export default {
             if (s === dataStored.status_aborted || d === 'ABORTED' || d === 'ABORT') return { key: 'aborted', label: 'production.st.aborted' };
             if (s === dataStored.status_raw || d === 'RAW') return { key: 'queued', label: 'production.st.queued' };
             return { key: 'other', label: null };
+        },
+        // (C-bis) azione principale dello stato, come nella tavola: in lavoro
+        // Ferma, finito Rilancia, tutti gli altri Avvia
+        principale(o){
+            const k = this.stato(o).key;
+            return k === 'working' ? 'ferma' : k === 'finished' ? 'rilancia' : 'avvia';
+        },
+        // menu "..." della card: apre e chiude, nient'altro
+        apriMenu(id){
+            this.menuOrdine = this.menuOrdine === id ? null : id;
         },
         pezzoDi(o){
             return this.pezzi.find(p => p.ID == o.PIECE_ID) || null;
@@ -282,7 +318,7 @@ export default {
     display: grid;
     /* stato e azioni a larghezza fissa: le colonne restano allineate da una
        card all'altra anche quando c'e' Rilancia */
-    grid-template-columns: 88px minmax(220px, 1.3fr) minmax(220px, 1.2fr) minmax(170px, 0.9fr) 150px 450px;
+    grid-template-columns: 88px minmax(220px, 1.3fr) minmax(220px, 1.2fr) minmax(170px, 0.9fr) 150px 260px;
     align-items: center;
     gap: var(--space-5);
     padding: var(--space-4) var(--space-5);
@@ -362,8 +398,20 @@ export default {
 .prod-badge.ABORT { color: var(--pocket-abort); background: var(--color-danger-bg); }
 .prod-badge.ABORTED { color: var(--color-danger-fg); background: var(--color-danger-bg); }
 .prod-card__actions { display: flex; align-items: center; justify-content: flex-end; gap: var(--space-2); }
-/* (usabilita' 15/9) il cestino sta in fondo e staccato */
-.prod-card__del { margin-left: var(--space-4); }
+/* (C-bis) menu "..." della card, aperto dentro la card */
+.prod-card__more {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--border-subtle);
+}
+.prod-card__more .v3-menu__item { background: var(--bg-surface-2); }
+/* (usabilita' 15/9) Cancella sta in fondo e staccato dagli altri */
+.prod-card__more-sep { align-self: stretch; width: 1px; margin: 0 var(--space-3); background: var(--border-default); }
 .prod-card__confirm {
     grid-column: 1 / -1;
     display: flex;
@@ -397,6 +445,7 @@ export default {
     .prod-card__desc { font-size: var(--font-size-base); }
     .prod-card__count b { font-size: 26px; }
     .prod-card__count { font-size: 17px; }
-    .prod-card__del { margin-left: auto; }
+    .prod-card__more-btn { margin-left: auto; }
+    .prod-card__more { justify-content: flex-start; }
 }
 </style>

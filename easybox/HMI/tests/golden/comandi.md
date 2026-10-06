@@ -131,30 +131,37 @@ Scenari: base
 
 ## productionView (`src/views/productionView.vue`)
 
-Scenari: liv2 · liv0
+Scenari: liv2 · liv0 · liv2, menu · liv0, menu
 
 | Etichetta | Handler | Abilitazione | Abilitato per scenario | Effetto | Conferma |
 |---|---|---|---|---|---|
-| Azzera produzione | `openResetDialog` | `dataStored.userLevel == 0` | liv2: sì<br>liv0: no | fetch GET api/order/resetProduction/preview/1 | Azzera → fetch POST api/order/resetProduction/1<br>Annulla → – |
-| Aggiungi ordine | `navigateToWizard` | `dataStored.userLevel == 0` | liv2: sì<br>liv0: no | router "/selectRig" | no |
-| {{$t(pos.labelKey)}} | `loadPreview()` |  | liv2: –<br>liv0: – |  | no |
-| Azzera | `resetConfirmEnabled ? confirmReset() : ''` | `[resetConfirmEnabled ? 'pure-button-mission' : 'pure-button-disable']` | liv2: –<br>liv0: – |  | no |
-| Annulla | `closeResetDialog()` |  | liv2: –<br>liv0: – |  | no |
+| (click) | `apriMenuPagina()` |  | liv2: sì<br>liv0: sì<br>liv2, menu: sì<br>liv0, menu: sì | stato: vm.menuPagina = true | no |
+| (click) | `menuPagina = false` |  | liv2: –<br>liv0: –<br>liv2, menu: sì<br>liv0, menu: sì | stato: vm.menuPagina = false | no |
+| Azzera produzione | `menuPagina = false` |  | liv2: –<br>liv0: –<br>liv2, menu: sì<br>liv0, menu: sì | stato: vm.menuPagina = false | no |
+| Azzera produzione | `openResetDialog` | `dataStored.userLevel == 0` | liv2: –<br>liv0: –<br>liv2, menu: sì<br>liv0, menu: no | fetch GET api/order/resetProduction/preview/1 | Azzera → fetch POST api/order/resetProduction/1<br>Annulla → – |
+| Aggiungi ordine | `navigateToWizard` | `dataStored.userLevel == 0` | liv2: sì<br>liv0: no<br>liv2, menu: sì<br>liv0, menu: no | router "/selectRig" | no |
+| {{$t(pos.labelKey)}} | `loadPreview()` |  | liv2: –<br>liv0: –<br>liv2, menu: –<br>liv0, menu: – |  | no |
+| Azzera | `resetConfirmEnabled ? confirmReset() : ''` | `[resetConfirmEnabled ? 'pure-button-mission' : 'pure-button-disable']` | liv2: –<br>liv0: –<br>liv2, menu: –<br>liv0, menu: – |  | no |
+| Annulla | `closeResetDialog()` |  | liv2: –<br>liv0: –<br>liv2, menu: –<br>liv0, menu: – |  | no |
 
 ## productionTable (`src/components/productionTable.vue`)
 
-Scenari: tre ordini liv2 · tre ordini, popup elimina aperto
+Scenari: tre ordini liv2 · tre ordini, popup elimina aperto · tre ordini liv2, menu 101 · tre ordini, popup elimina aperto, menu 101 · tre ordini liv2, menu 102 · tre ordini, popup elimina aperto, menu 102 · tre ordini liv2, menu 103 · tre ordini, popup elimina aperto, menu 103
 
 | Etichetta | Handler | Abilitazione | Abilitato per scenario | Effetto | Conferma |
 |---|---|---|---|---|---|
-| Avvia | `modifyOrderStatus(o.ID,dataStored.status_working,o.PIECE_ID)` |  | tre ordini liv2: sì<br>tre ordini, popup elimina aperto: sì | emit TO_PLANT/CMD/ORDER {"id":101,"status":3,"pieceID":1} | no |
-| Ferma | `modifyOrderStatus(o.ID,dataStored.status_raw,o.PIECE_ID)` |  | tre ordini liv2: sì<br>tre ordini, popup elimina aperto: sì | emit TO_PLANT/CMD/ORDER {"id":101,"status":4,"pieceID":1} | no |
-| Rilancia | `relaunchOrder = o` |  | tre ordini liv2: sì<br>tre ordini, popup elimina aperto: sì | stato: vm.relaunchOrder = {"ID":103,"PIECE":"PZ-C","PIECE_DESC":"prova","MACHINE_ID":1,"STATUS":5,"STATUS_ |  → – |
-| (click) | `chiediCancella(o)` | `o.STATUS_DESC=='WORKING'` | tre ordini liv2: sì<br>tre ordini, popup elimina aperto: sì | stato: vm.showPopUp = 101 | Cancella → fetch DELETE api/order/101<br>Annulla → – |
-| Cancella | `deleteOrder(o.ID)` |  | tre ordini liv2: –<br>tre ordini, popup elimina aperto: sì | fetch DELETE api/order/101 | no |
-| Annulla | `showPopUp=0` |  | tre ordini liv2: –<br>tre ordini, popup elimina aperto: sì | stato: vm.showPopUp = 0 | no |
-| (riprova) | `getDataTable()` |  | tre ordini liv2: –<br>tre ordini, popup elimina aperto: – |  | no |
-| (close) | `relaunchOrder = null` |  | tre ordini liv2: –<br>tre ordini, popup elimina aperto: – |  | no |
+| Ferma | `modifyOrderStatus(o.ID,dataStored.status_raw,o.PIECE_ID)` |  | tre ordini liv2: sì<br>tre ordini, popup elimina aperto: sì<br>tre ordini liv2, menu 101: sì<br>tre ordini, popup elimina aperto, menu 101: sì<br>tre ordini liv2, menu 102: sì<br>tre ordini, popup elimina aperto, menu 102: sì<br>tre ordini liv2, menu 103: sì<br>tre ordini, popup elimina aperto, menu 103: sì | emit TO_PLANT/CMD/ORDER {"id":102,"status":4,"pieceID":2} | no |
+| Avvia | `modifyOrderStatus(o.ID,dataStored.status_working,o.PIECE_ID)` |  | tre ordini liv2: sì<br>tre ordini, popup elimina aperto: sì<br>tre ordini liv2, menu 101: sì<br>tre ordini, popup elimina aperto, menu 101: sì<br>tre ordini liv2, menu 102: sì<br>tre ordini, popup elimina aperto, menu 102: sì<br>tre ordini liv2, menu 103: sì<br>tre ordini, popup elimina aperto, menu 103: sì | emit TO_PLANT/CMD/ORDER {"id":101,"status":3,"pieceID":1} | no |
+| Rilancia | `relaunchOrder = o` |  | tre ordini liv2: sì<br>tre ordini, popup elimina aperto: sì<br>tre ordini liv2, menu 101: sì<br>tre ordini, popup elimina aperto, menu 101: sì<br>tre ordini liv2, menu 102: sì<br>tre ordini, popup elimina aperto, menu 102: sì<br>tre ordini liv2, menu 103: sì<br>tre ordini, popup elimina aperto, menu 103: sì | stato: vm.relaunchOrder = {"ID":103,"PIECE":"PZ-C","PIECE_DESC":"prova","MACHINE_ID":1,"STATUS":5,"STATUS_ |  → – |
+| (click) | `apriMenu(o.ID)` |  | tre ordini liv2: sì<br>tre ordini, popup elimina aperto: sì<br>tre ordini liv2, menu 101: sì<br>tre ordini, popup elimina aperto, menu 101: sì<br>tre ordini liv2, menu 102: sì<br>tre ordini, popup elimina aperto, menu 102: sì<br>tre ordini liv2, menu 103: sì<br>tre ordini, popup elimina aperto, menu 103: sì | stato: vm.menuOrdine = 101 | no |
+| Avvia Ferma Cancella | `menuOrdine = null` |  | tre ordini liv2: –<br>tre ordini, popup elimina aperto: –<br>tre ordini liv2, menu 101: sì<br>tre ordini, popup elimina aperto, menu 101: sì<br>tre ordini liv2, menu 102: sì<br>tre ordini, popup elimina aperto, menu 102: sì<br>tre ordini liv2, menu 103: sì<br>tre ordini, popup elimina aperto, menu 103: sì | stato: vm.menuOrdine = null | no |
+| Avvia | `modifyOrderStatus(o.ID,dataStored.status_working,o.PIECE_ID)` |  | tre ordini liv2: –<br>tre ordini, popup elimina aperto: –<br>tre ordini liv2, menu 101: –<br>tre ordini, popup elimina aperto, menu 101: –<br>tre ordini liv2, menu 102: sì<br>tre ordini, popup elimina aperto, menu 102: sì<br>tre ordini liv2, menu 103: sì<br>tre ordini, popup elimina aperto, menu 103: sì | emit TO_PLANT/CMD/ORDER {"id":102,"status":3,"pieceID":2} | no |
+| Ferma | `modifyOrderStatus(o.ID,dataStored.status_raw,o.PIECE_ID)` |  | tre ordini liv2: –<br>tre ordini, popup elimina aperto: –<br>tre ordini liv2, menu 101: sì<br>tre ordini, popup elimina aperto, menu 101: sì<br>tre ordini liv2, menu 102: –<br>tre ordini, popup elimina aperto, menu 102: –<br>tre ordini liv2, menu 103: sì<br>tre ordini, popup elimina aperto, menu 103: sì | emit TO_PLANT/CMD/ORDER {"id":101,"status":4,"pieceID":1} | no |
+| Cancella | `chiediCancella(o)` | `o.STATUS_DESC=='WORKING'` | tre ordini liv2: –<br>tre ordini, popup elimina aperto: –<br>tre ordini liv2, menu 101: sì<br>tre ordini, popup elimina aperto, menu 101: sì<br>tre ordini liv2, menu 102: no<br>tre ordini, popup elimina aperto, menu 102: no<br>tre ordini liv2, menu 103: sì<br>tre ordini, popup elimina aperto, menu 103: sì | stato: vm.showPopUp = 101 | Cancella → fetch DELETE api/order/101<br>Annulla → – |
+| Cancella | `deleteOrder(o.ID)` |  | tre ordini liv2: –<br>tre ordini, popup elimina aperto: sì<br>tre ordini liv2, menu 101: –<br>tre ordini, popup elimina aperto, menu 101: sì<br>tre ordini liv2, menu 102: –<br>tre ordini, popup elimina aperto, menu 102: sì<br>tre ordini liv2, menu 103: –<br>tre ordini, popup elimina aperto, menu 103: sì | fetch DELETE api/order/101 | no |
+| Annulla | `showPopUp=0` |  | tre ordini liv2: –<br>tre ordini, popup elimina aperto: sì<br>tre ordini liv2, menu 101: –<br>tre ordini, popup elimina aperto, menu 101: sì<br>tre ordini liv2, menu 102: –<br>tre ordini, popup elimina aperto, menu 102: sì<br>tre ordini liv2, menu 103: –<br>tre ordini, popup elimina aperto, menu 103: sì | stato: vm.showPopUp = 0 | no |
+| (riprova) | `getDataTable()` |  | tre ordini liv2: –<br>tre ordini, popup elimina aperto: –<br>tre ordini liv2, menu 101: –<br>tre ordini, popup elimina aperto, menu 101: –<br>tre ordini liv2, menu 102: –<br>tre ordini, popup elimina aperto, menu 102: –<br>tre ordini liv2, menu 103: –<br>tre ordini, popup elimina aperto, menu 103: – |  | no |
+| (close) | `relaunchOrder = null` |  | tre ordini liv2: –<br>tre ordini, popup elimina aperto: –<br>tre ordini liv2, menu 101: –<br>tre ordini, popup elimina aperto, menu 101: –<br>tre ordini liv2, menu 102: –<br>tre ordini, popup elimina aperto, menu 102: –<br>tre ordini liv2, menu 103: –<br>tre ordini, popup elimina aperto, menu 103: – |  | no |
 
 ## ComandsRows (`src/components/Comands/ComandsRows.vue`)
 
