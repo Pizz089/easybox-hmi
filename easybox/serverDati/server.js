@@ -161,7 +161,8 @@ const server = app.listen(process.env.serverPort, serverHost, () => {
   // se la memoria fosse cresciuta piano per ore o esplosa in un minuto.
   //
   // Il limite dell'heap viene STAMPATO, non dato per buono: --max-old-space-size
-  // si imposta fuori dal repo (parametri del servizio nssm, vedi APPUNTI-CELLA)
+  // si imposta fuori dal repo (in cella e' nella riga di start_server.bat che
+  // avvia node, vedi APPUNTI-CELLA, voce "Avvio e aggiornamento della cella")
   // e l'unico modo di sapere se e' davvero attivo e' chiederlo a V8.
   const mb = (v) => Math.round(v / 1048576);
   log.init('heap limit: ' + mb(v8.getHeapStatistics().heap_size_limit) + ' MB'
