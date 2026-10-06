@@ -48,8 +48,11 @@ const backendProxy = {
 // PERCHE' SERVE: Chrome installa una PWA solo da contesto sicuro. Il touch di
 // cella apre localhost, che Chrome considera sicuro anche in HTTP, quindi li'
 // funzionava gia'; il TABLET arriva per indirizzo IP e senza HTTPS non ha
-// contesto sicuro. Il certificato lo prepara tools/ensure-cert.ps1, che gira
-// prima di Vite (npm run cert, chiamato da start_hmi.bat).
+// contesto sicuro. Il certificato lo prepara tools/ensure-cert.ps1 (npm run
+// cert), che start_hmi.bat deve chiamare prima di Vite. Al 6/10 quello di
+// cella non lo chiama: il certificato c'e' (15/09, vale 2 anni, scade intorno
+// a settembre 2028) ma non si rinnova da solo. Voce aperta in
+// docs/APPUNTI-CELLA.md, sezione HTTPS.
 //
 // VIA DI RITORNO, una riga sola: con HMI_HTTP_ONLY=1 si torna in HTTP, e lo
 // stesso interruttore ferma anche lo script del certificato, che altrimenti lo
