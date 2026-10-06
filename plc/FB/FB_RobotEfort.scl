@@ -40,6 +40,48 @@ BEGIN
 	    
 	    "Object_Type" := "DB_RobotMission".Object_Type;
 	    
+	    // ===========================================================================
+	    // 28 — N_CASSETTO al robot (6/10): un work object per cassetto
+	    //
+	    // Blocco: FB_RobotEfort (FB8). REGION NUOVA, da INSERIRE (non sostituisce
+	    // niente) dentro REGION Signal_TO_ROBOT, subito DOPO la riga:
+	    //     "Object_Type" := "DB_RobotMission".Object_Type;
+	    // Tag: N_Cassetto Int %QW644 (gia' dichiarato da Dario nella tabella Robot_Efort).
+	    // Interfaccia FB8: INVARIATA (nessuna statica nuova) -> niente reinit.
+	    // Precondizioni di download: cella in HOLD, nessuna missione in corso.
+	    //
+	    // Test in watch su "N_Cassetto":
+	    //   - a riposo                                -> 0
+	    //   - estrazione del cassetto n               -> n (gia' prima che esca)
+	    //   - prelievo / deposito pezzo nel cassetto  -> numero del cassetto fuori
+	    //   - rilascio del cassetto                   -> numero del cassetto fuori
+	    //   - missioni pinza, pallet, macchina        -> 0
+	    // ===========================================================================
+	    REGION N_Cassetto
+	        // N_CASSETTO (6/10, richiesta del robotista): numero del cassetto in
+	        // TUTTE le missioni sul cassetto (Unit Warehouse1), per il work object
+	        // del cassetto:
+	        //  - pezzo (prelievo/deposito): il cassetto estratto;
+	        //  - estrazione: il cassetto chiesto a FB7 (Tray_ID), lo stesso con cui
+	        //    FB7 legge COORDINATES_FOR_EXTRACT; ExtractedTray qui non va bene,
+	        //    puo' valere un altro cassetto gia' fuori o ancora 0;
+	        //  - rilascio: il cassetto estratto, come la query del rilascio.
+	        // 0 in tutte le altre missioni (pinze anche se Warehouse1, pallet,
+	        // macchina). Calcolato nello stesso giro in cui Mission_Command viene
+	        // copiato al robot: comando e numero arrivano insieme.
+	        IF "DB_RobotMission".Unit_code = "Warehouse1" AND "DB_RobotMission".Object_Type = "Part" THEN
+	            "N_Cassetto" := "DB_BOX_1".ExtractedTray;
+	        ELSIF "DB_RobotMission".Unit_code = "Warehouse1" AND "DB_RobotMission".Object_Type = "TRAY" THEN
+	            IF "DB_RobotMission".Command = "CMD_RobotExtractTray" THEN
+	                "N_Cassetto" := "DB_Robot".Tray_ID;
+	            ELSE
+	                "N_Cassetto" := "DB_BOX_1".ExtractedTray;
+	            END_IF;
+	        ELSE
+	            "N_Cassetto" := 0;
+	        END_IF;
+	    END_REGION
+	    
 	    "Gripper_Side" := "DB_RobotMission".Gripper_Side;
 	    
 	    "Gripper_code" := DINT_TO_INT("DB_RobotMission".Gripper_code);

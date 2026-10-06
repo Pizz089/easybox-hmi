@@ -2785,7 +2785,7 @@
         <AttributeList>
           <DataTypeName>Int</DataTypeName>
           <LogicalAddress>%QW644</LogicalAddress>
-          <Name>spare_6</Name>
+          <Name>N_Cassetto</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="1BE" CompositionName="Comment">
