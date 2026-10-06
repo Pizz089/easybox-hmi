@@ -367,7 +367,15 @@ vm = await page({ level: 2, pieceID: 1029, stopRow: rigaZ });
 const kz = vm.fields.map(f => f.key);
 check(kz.indexOf('zPush') === kz.indexOf('compPush') + 1, 'campo "altezza di spinta" accanto alla compensazione');
 check(vm.real.zPush === null && vm.sim.zPush === null, 'Z_PUSH vuota a DB: il campo resta vuoto (non "0")');
-check(vm.zPushPlaceholder === 'pushSim.zPushEmpty mm=10', 'il segnaposto dice il valore del vuoto: 10 mm, come il deposito');
+check(vm.zPushPlaceholder === 'pushSim.zPushEmpty mm=10', 'il segnaposto dice il valore del vuoto: 10 (mm, accanto)');
+{
+	const it = JSON.parse(readFileSync(new URL('./src/locales/it.json', import.meta.url), 'utf8'));
+	check(it.pushSim.zPushEmpty === 'vuoto = {mm}' && it.pushSim.zPushPreviewSame.includes('alla stessa quota del deposito'),
+		'   corto, per non restare tagliato nel campo da 7rem; "come il deposito" lo dice il riscontro sotto');
+	const tpl = readFileSync(new URL('./src/views/sim/PushSim.vue', import.meta.url), 'utf8');
+	check(/<span v-if="canEdit" class="sim-unit">mm<\/span>/.test(tpl) && /zPushPlaceholder \+ " mm" : mmText\(sim\[f\.key\]\)/.test(tpl),
+		"   in sola lettura l'unita' una volta sola (mmText la scrive gia': prima \"0.3 mm mm\")");
+}
 check(vm.zPushPreview && vm.zPushPreview.fromMm === 10 && vm.zPushPreview.dropMm === 0, 'riscontro col campo vuoto: 10 mm dal fondo, alla quota del deposito');
 vm.sim.zPush = 4;
 check(vm.zPushError === '' && vm.zPushPreview.fromMm === 4 && vm.zPushPreview.dropMm === 6, '4 mm: la chela spinge a 4 mm dal fondo, 6 mm sotto il deposito (zPushDrop, come la vista)');

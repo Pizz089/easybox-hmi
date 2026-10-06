@@ -1333,7 +1333,7 @@
       "NO_ROOM": "Il pezzo sporge {over} mm per lato, ma l'appoggio \u00e8 dichiarato a {stop} mm dalla fine della ganascia: il pezzo sarebbe oltre la battuta prima ancora di essere spinto."
     },
     "fZPush": "Altezza di spinta dal fondo del pezzo",
-    "zPushEmpty": "vuoto = {mm} mm, come il deposito",
+    "zPushEmpty": "vuoto = {mm}",
     "zPushRange": "Fuori campo: l'altezza va da 0 alla quota di presa del pezzo, {max} mm.",
     "zPushNoPick": "Il pezzo non ha una quota di presa: l'altezza di spinta non si può impostare.",
     "zPushNoRow": "Anche l'altezza di spinta si scrive su quella dichiarazione.",
