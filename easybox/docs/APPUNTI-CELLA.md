@@ -12,7 +12,7 @@
 
 Sul disco vengono scritti solo i file della radice e la cartella `easybox/`: `tools/` e `plc/` in cella non ci sono. **Tutto quello che deve arrivare in cella sta sotto `easybox/`** (per questo `pannello.ps1` sta in `easybox/tools/`).
 
-**Avvio: servizi Windows** (decisione di Dario, 6/10). Installati il ………… (da compilare quando Dario li installa).
+**Avvio: servizi Windows** (decisione di Dario, 6/10). Installati in cella il 6/10 alle 15:16. Verificato subito dopo: tutti e due accesi, avvio automatico ritardato, utente di sistema, porte 8080, 3000 e 5173 in ascolto, Vite in HTTPS su 172.20.70.80 e 192.168.1.152. **Da fare: la prova del riavvio del PC.**
 
 Backend e pannello partono da soli all'accensione, come servizi nssm creati da `easybox/tools/servizi-cella.ps1`:
 - `EasyBoxBackend`: `node --max-old-space-size=1024 server.js` in `easybox\serverDati`;

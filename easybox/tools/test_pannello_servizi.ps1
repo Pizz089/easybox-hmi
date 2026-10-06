@@ -20,6 +20,9 @@
 # Uso: powershell -ExecutionPolicy Bypass -File easybox\tools\test_pannello_servizi.ps1
 # Exit code = numero di controlli falliti. I rami ui-lifting e ui-v3 del
 # repo devono contenere il pannello.ps1 da provare (si prova il committato).
+# Prima dei casi, un controllo sul TESTO del pannello.ps1 accanto a questo
+# file: nessuna variabile assegnata con un nome che differisce da un altro
+# solo per maiuscole e minuscole (per PowerShell e' la stessa).
 # ============================================================================
 $ErrorActionPreference = 'Continue'
 $REPO = ((& git -C $PSScriptRoot rev-parse --show-toplevel) | Select-Object -First 1).Trim()
@@ -33,6 +36,26 @@ function Check([bool]$ok, [string]$cosa) {
 }
 function GitC { & git.exe -C $global:CLONE @args 2>&1 | ForEach-Object { "$_" } }
 function Ramo { ((GitC branch --show-current) -join '').Trim() }
+
+# ------------------------------------------------------------ nomi delle variabili
+# $segno e $SEGNO sono la STESSA variabile (in servizi-cella.ps1 il 6/10
+# $porte sovrascriveva $PORTE). Nomi assegnati: con =, come variabile di un
+# foreach, come parametro; senza "script:" e "global:".
+$tok = $null; $errPars = $null
+$AST = [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $PSScriptRoot 'pannello.ps1'), [ref]$tok, [ref]$errPars)
+$assegnati = @($AST.FindAll({ param($n) $n -is [System.Management.Automation.Language.AssignmentStatementAst] -or $n -is [System.Management.Automation.Language.ForEachStatementAst] -or $n -is [System.Management.Automation.Language.ParameterAst] }, $true) | ForEach-Object {
+	$v = if ($_ -is [System.Management.Automation.Language.AssignmentStatementAst]) { $_.Left } elseif ($_ -is [System.Management.Automation.Language.ForEachStatementAst]) { $_.Variable } else { $_.Name }
+	# $a, $b = ...  e  [int]$x = ...
+	$v = if ($v -is [System.Management.Automation.Language.ArrayLiteralAst]) { $v.Elements } else { @($v) }
+	foreach ($e in $v) {
+		while ($e -is [System.Management.Automation.Language.AttributedExpressionAst]) { $e = $e.Child }
+		if ($e -is [System.Management.Automation.Language.VariableExpressionAst]) { $e.VariablePath.UserPath -replace '^(?i)(script|global|local|private):', '' }
+	}
+})
+$nomiAssegnati = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+foreach ($a in $assegnati) { [void]$nomiAssegnati.Add($a) }
+$stessa = @($nomiAssegnati | Group-Object { $_.ToLowerInvariant() } | Where-Object { $_.Count -gt 1 } | ForEach-Object { ($_.Group | ForEach-Object { '$' + $_ }) -join ' = ' })
+Check ($errPars.Count -eq 0 -and $stessa.Count -eq 0) ('pannello.ps1: nessuna variabile assegnata con un nome che differisce da un altro solo per maiuscole/minuscole (' + $nomiAssegnati.Count + ' nomi' + $(if ($stessa.Count) { '; stessa variabile: ' + ($stessa -join ', ') } else { '' }) + ')')
 
 # ------------------------------------------------------------ clone parziale
 New-Item -ItemType Directory -Force $BASE | Out-Null
