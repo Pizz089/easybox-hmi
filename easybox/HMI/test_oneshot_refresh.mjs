@@ -101,7 +101,7 @@ const mc = readFileSync('src/views/conf/Machine/MachineConfigView.vue', 'utf8').
 check(/function requestSnapshot\(\) \{[\s\S]*?BRAND\/REQUEST_SNAPSHOT[\s\S]*?PLC\/REFRESH_REQUEST[\s\S]*?\}/.test(mc), 'requestSnapshot chiede anche il refresh 90');
 
 console.log('=== throttle: il client non lo aggira (nessun timer client, solo richieste) ===');
-const all = ['src/views/unit/robotView.vue', 'src/components/units.vue', 'src/views/unit/smallboxView.vue', 'src/views/unit/CNC1View.vue', 'src/layout/StandardMenu.vue', 'src/layout/plantGlobals.js', 'src/stores/plantStatus.js', 'src/layout/v3/StatusStrip.vue', 'src/views/conf/Machine/MachineConfigView.vue']
+const all = ['src/views/unit/robotView.vue', 'src/components/units.vue', 'src/views/unit/smallboxView.vue', 'src/views/unit/CNC1View.vue', 'src/layout/plantGlobals.js', 'src/stores/plantStatus.js', 'src/layout/v3/StatusStrip.vue', 'src/views/conf/Machine/MachineConfigView.vue']
 	.map(f => readFileSync(f, 'utf8')).join('\n');
 check(!/TO_PLANT\/CMD\/ROBOT'\s*,\s*'?90/.test(all), "nessuna vista manda il 90 direttamente: solo PLC/REFRESH_REQUEST (throttle nel backend)");
 

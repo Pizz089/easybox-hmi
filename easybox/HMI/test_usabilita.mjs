@@ -177,10 +177,9 @@ check(/class="assoc-destructive-group"/.test(trays)
   && /\.assoc-destructive-group \{[\s\S]{0,200}margin-top: var\(--space-3\)/.test(trays)
   && /\.assoc-destructive-group \{[\s\S]{0,200}border-top: 1px solid/.test(trays),
   'Cassetti: Rigenera e Dissocia staccati (erano a 4 px da Sostituisci)');
-const side = leggi('src/components/SidebarPlugin/SideBar.vue');
-check(/margin: 4px var\(--space-2\)/.test(side), 'menu: 4 px verticali invece di 2, cioe\' il doppio di stacco fra le voci');
-check(/gap: var\(--space-3\)/.test(side), 'lo spazio si e\' preso dai gruppi, dove abbondava');
-check(/1080p/.test(side) && /1010/.test(side), 'e il vincolo del menu operatore dentro 1080p resta scritto, con la misura fatta');
+// (v3 fase D-bis) tolti i controlli sulla barra laterale vecchia
+// (SideBar.vue, spaziatura delle voci): la pagina non c'e' piu'. La
+// navigazione v3 (NavRail) la controlla tests/test_shell_v3.mjs.
 
 await server.close();
 console.log('\n' + (failed ? failed + ' CHECK FALLITI' : 'TUTTI I CHECK PASSATI'));

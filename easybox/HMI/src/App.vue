@@ -1,7 +1,5 @@
 <script setup>
 import { RouterLink, RouterView } from 'vue-router'
-import Card from './components/Cards/Card.vue'
-import stats_card from './components/Cards/StatsCard.vue'
 import { dataStored } from './data';
 </script>
 
@@ -14,10 +12,6 @@ import { dataStored } from './data';
  
 <script>
     export default {
-        components: {
-        stats_card,
-        Card
-        },
         data() {
             return {
                 count :0,

@@ -38,8 +38,6 @@ import router from './router'
 import it from './locales/it.json'
 import en from './locales/en.json'
 
-import MenuLayout from './components/menu.vue'
-
 const i18n = createI18n({
   legacy: false,
   globalInjection: true,
@@ -52,7 +50,5 @@ const app = createApp(App)
 
 app.use(router)
 app.use(i18n)
-
-app.component('menu', MenuLayout)
 
 app.mount('#app')

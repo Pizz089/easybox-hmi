@@ -4,7 +4,8 @@
  *
  * Sezioni:
  *   A. Reset globale + sfondo applicazione
- *   B. TopBar (#rigaInAlto)
+ *   (B. TopBar #rigaInAlto: tolta nella fase D-bis del pannello v3, con
+ *    la barra vecchia barraInAlto.vue che era la sola a usarla)
  *   C. Dashboard card + tabella ordini
  *   D. Hide scrollbars (HMI touch screen)
  */
@@ -30,115 +31,6 @@ body,
 body {
   overflow-x: hidden;
 }
-
-
-/* ============ B. TopBar (#rigaInAlto) ============ */
-/* UI-3.2: TopBar fissa sopra tutto (z-index 1000) full-width.
-   Spazio per logo a sx + controlli a dx via justify-content: space-between.
-   Rimossi i negative-margin trick precedenti (non piu' serve span-out di main.content). */
-
-#rigaInAlto {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 64px;
-  z-index: 1000;
-
-  background: var(--bg-surface);
-  border-radius: 0 0 12px 12px;
-
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-
-  padding: 0 var(--space-4) 0 0;
-
-  overflow: hidden !important;
-  scrollbar-width: none;
-
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
-}
-
-#rigaInAlto::-webkit-scrollbar {
-  width: 0;
-  height: 0;
-}
-
-/* Regole legacy scoped a > div:not(.topbar-logo) per non impattare il logo (UI-3.2 fix-up). */
-
-/* Wrapper dei 3 controlli (terzo figlio non-logo): flex row con gap.
-   Senza questo i 3 controlli (h6 + a inline-flex) erano separati solo
-   dal whitespace (~4px) e sembravano troppo vicini. */
-#rigaInAlto > div:not(.topbar-logo) {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-#rigaInAlto > div:not(.topbar-logo) .operatorLevel,
-#rigaInAlto > div:not(.topbar-logo) .languageMenu,
-#rigaInAlto > div:not(.topbar-logo) .productionMenu {
-  float: none !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  top: auto !important;
-}
-
-#rigaInAlto > div:not(.topbar-logo) h6 {
-  margin: 0 !important;
-  padding: 0 !important;
-  line-height: 0 !important;
-}
-
-#rigaInAlto > div:not(.topbar-logo) :is(div, h6, a, span, button):has(img) {
-  display: inline-flex !important;
-  align-items: center !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  line-height: 0 !important;
-}
-
-#rigaInAlto > div:not(.topbar-logo) img {
-  width: 55px;
-  height: 55px;
-  padding: 7px;
-
-  object-fit: contain;
-  object-position: center;
-
-  border-radius: 16px;
-
-  background: var(--bg-surface-2);
-
-  /* inset highlight/shadow = cue 3D pulsante tattile (HMI touch), preservati */
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.35),
-    var(--elevation-2);
-
-  display: inline-block;
-  box-sizing: border-box;
-
-  transition:
-    transform var(--transition-fast),
-    box-shadow var(--transition-fast),
-    filter var(--transition-fast);
-}
-
-#rigaInAlto > div:not(.topbar-logo) img:hover,
-#rigaInAlto > div:not(.topbar-logo) a:focus-visible img {
-  filter: brightness(1.05);
-}
-
-#rigaInAlto > div:not(.topbar-logo) img:active {
-  transform: translateY(1px);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.05),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.45),
-    var(--elevation-1);
-}
-
 
 
 /* ============ C. Dashboard card + tabella ordini ============ */

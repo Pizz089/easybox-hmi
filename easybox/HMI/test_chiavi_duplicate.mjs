@@ -112,7 +112,10 @@ for (const f of files(SRC)) {
 }
 
 for (const p of problemi) console.log('       ' + p);
-check(componenti > 50, 'letti ' + componenti + ' componenti con l\'oggetto di opzioni');
+// soglia di sanita': il parser legge davvero i componenti. Su ui-lifting
+// sono 75; sul pannello v3 meno (molte pagine in <script setup>, e la fase
+// D-bis ha tolto la shell vecchia): 50 il 6/10.
+check(componenti >= 30, 'letti ' + componenti + ' componenti con l\'oggetto di opzioni');
 check(problemi.length === 0, 'nessuna chiave ripetuta fra computed, methods, data, props (e watch al suo interno)');
 
 // controprova: il caso del 6/10 il test lo vede davvero

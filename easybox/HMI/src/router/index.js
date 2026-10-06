@@ -1,5 +1,4 @@
 import { createRouter, createWebHistory } from "vue-router";
-import HomeView from "../views/HomeView.vue";
 import dashView from "../views/DashboardView.vue";
 // (v3, 6/10) nuova shell: barra a sinistra, striscia di stato, schede.
 // Gli URL restano TUTTI quelli di prima (test, link, preferiti del
