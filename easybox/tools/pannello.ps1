@@ -19,14 +19,23 @@
 # La radice del repo lo script la trova da solo, con git rev-parse
 # --show-toplevel dalla sua cartella: da qui funziona come prima.
 #
-# Cosa fa con v3 / stabile:
-#   1. se ci sono modifiche locali le elenca e si ferma, senza toccare niente;
+# Cosa fa con v3 / stabile (prima ricorda che la cella deve essere in HOLD):
+#   1. se ci sono modifiche locali ai file TRACCIATI le elenca e si ferma,
+#      senza toccare niente. I file non tracciati non contano: in cella ce ne
+#      sono sempre (i due .bat di avvio, la cartella di backup di serverDati)
+#      e fermerebbero lo script ogni volta. Se uno di loro e' d'intralcio al
+#      cambio di ramo, e' git switch a dirlo, e lo script si ferma al passo 3;
 #   2. git fetch origin;
 #   3. git switch sul ramo;
 #   4. git pull --ff-only (se non e' un avanzamento semplice si ferma);
 #   5. npm install in easybox\HMI se package-lock.json e' cambiato (o se
 #      node_modules manca, o se l'ultima installazione e' fallita);
-#   6. dice cosa e' attivo e cosa riavviare.
+#   6. dice cosa e' attivo e cosa riavviare. In cella non ci sono servizi:
+#      backend e pannello girano nelle finestre di start_server.bat e
+#      start_hmi.bat e nessuno dei due si riavvia da solo. Il backend va
+#      riavviato sempre; il pannello solo se c'e' stato npm install o sono
+#      cambiati package.json, package-lock.json o vite.config.js, altrimenti
+#      basta Ctrl+F5 sui client.
 # Non usa MAI reset, clean, stash, checkout -- o --force: nel peggiore dei
 # casi si ferma e spiega, e il repo resta com'era.
 # Testi senza lettere accentate: PowerShell 5.1 legge i file senza BOM come
@@ -42,6 +51,9 @@ $ErrorActionPreference = 'Continue'
 $RAMI = @{ 'v3' = 'ui-v3'; 'stabile' = 'ui-lifting' }
 $NOMI = @{ 'ui-v3' = 'v3 (grafica nuova)'; 'ui-lifting' = 'stabile' }
 $LOCK = 'easybox/HMI/package-lock.json'
+# file del pannello per cui non basta Ctrl+F5: se cambiano, start_hmi.bat
+# va rilanciato
+$HMI_AVVIO = @('easybox/HMI/package.json', $LOCK, 'easybox/HMI/vite.config.js')
 # segno dell'ultima npm install riuscita: se un'installazione fallisce (es.
 # pannello acceso che tiene bloccati dei file) lo script la rifa' al giro dopo
 $SEGNO = 'easybox\HMI\node_modules\.pannello-lock'
@@ -83,15 +95,18 @@ function Stato {
 	Scrivi ('Commit:   ' + $commit)
 	Scrivi ('Data:     ' + $data)
 }
-function ModificheLocali { return @((G @('status', '--porcelain')).Uscita | Where-Object { $_ -and $_.Trim() }) }
+# solo i file tracciati: i non tracciati della cella (i .bat di avvio, il
+# backup di serverDati) ci sono sempre e fermerebbero lo script ogni volta.
+# Se uno di loro e' d'intralcio al cambio di ramo, lo dice git switch.
+function ModificheLocali { return @((G @('status', '--porcelain', '--untracked-files=no')).Uscita | Where-Object { $_ -and $_.Trim() }) }
 
 # ---------------------------------------------------------------- stato
 if ($Versione -eq 'stato') {
 	Stato
 	$mod = ModificheLocali
-	if ($mod.Count -eq 0) { Scrivi 'Modifiche locali: nessuna' 'Green' }
+	if ($mod.Count -eq 0) { Scrivi 'Modifiche locali (file tracciati): nessuna' 'Green' }
 	else {
-		Scrivi ('Modifiche locali: ' + $mod.Count) 'Yellow'
+		Scrivi ('Modifiche locali (file tracciati): ' + $mod.Count) 'Yellow'
 		$mod | ForEach-Object { Scrivi ('  ' + $_) 'Yellow' }
 	}
 	exit 0
@@ -100,6 +115,7 @@ if ($Versione -eq 'stato') {
 # ---------------------------------------------------------------- cambio
 $ramo = $RAMI[$Versione]
 Scrivi ('Passo alla versione ' + $Versione + ' (ramo ' + $ramo + ')') 'Cyan'
+Scrivi 'Promemoria: la cella deve essere in HOLD.' 'Yellow'
 
 # 1. modifiche locali: si guarda e basta
 $mod = ModificheLocali
@@ -118,7 +134,9 @@ if ($f.Codice -ne 0) {
 	Fermati 'git fetch non riuscito.' 'controllare la rete del PC e l''accesso a GitHub, poi rilanciare. Se il problema resta, chiamare Dario.'
 }
 
-# lock di prima (per sapere se serve npm install)
+# commit e lock di prima (per sapere se serve npm install e se il pannello
+# va riavviato)
+$headPrima = ((G @('rev-parse', 'HEAD')).Uscita -join '').Trim()
 $lockPrima = ((G @('rev-parse', ('HEAD:' + $LOCK))).Uscita -join '').Trim()
 
 # 3. switch
@@ -177,9 +195,26 @@ if ($serve) {
 	Scrivi 'Dipendenze del pannello invariate: npm install non serve.'
 }
 
-# 6. riepilogo
+# 6. riepilogo e cosa riavviare. In cella nessuno dei due si riavvia da solo:
+#    sono due finestre aperte da start_server.bat e start_hmi.bat, non servizi.
+#    Il pannello va rilanciato con le stesse regole della procedura in
+#    docs/APPUNTI-CELLA.md: npm install fatto, o cambiato uno di questi file.
+$cambiatiHmi = @((G (@('diff', '--name-only', $headPrima, 'HEAD', '--') + $HMI_AVVIO)).Uscita | Where-Object { $_ -and $_.Trim() })
+$riavviaHmi = $serve -or ($cambiatiHmi.Count -gt 0)
 Scrivi ''
 Stato
 Scrivi ''
-Scrivi 'Fatto. Riavvia la finestra del pannello (npm run dev): Ctrl+C e poi npm run dev; il backend si riavvia da solo.' 'Green'
+Scrivi 'Fatto. Adesso, con la cella sempre in HOLD:' 'Green'
+Scrivi '  backend:  Ctrl+C nella finestra di start_server.bat, poi rilanciare start_server.bat (non si riavvia da solo);' 'Green'
+if ($riavviaHmi) {
+	Scrivi '  pannello: Ctrl+C nella finestra di start_hmi.bat, poi rilanciare start_hmi.bat (npm install fatto o configurazione cambiata).' 'Green'
+} else {
+	Scrivi '  pannello: basta Ctrl+F5 sui client (touch di cella e tablet).' 'Green'
+}
+Scrivi 'Controlli:' 'Green'
+Scrivi '  - porte 5173, 8080 e 3000 in ascolto;' 'Green'
+Scrivi '  - INIT nuovo in easybox\serverDati\log\access.log;' 'Green'
+Scrivi '  - stato del robot che si aggiorna;' 'Green'
+Scrivi '  - DB_executeQuery.readyForNextQuery TRUE.' 'Green'
+Scrivi 'Le due finestre non si chiudono senza rilanciarle: il 6/10 la chiusura di quella del backend ha fermato il ponte fra PLC e SQL per circa 13 minuti.' 'Yellow'
 exit 0
