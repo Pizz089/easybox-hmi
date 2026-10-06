@@ -187,3 +187,34 @@
     color: var(--text-secondary);
     white-space: nowrap;
 }
+
+/* ---- (fase D) Impostazioni: Posizioni, Magazzini, Macchine, Utente e
+   lingua (classe .conf-v3 sulla radice). Le schede interne delle pagine
+   (.tab-bar / .tab di layout-shell.css: categorie delle Posizioni, Pallet /
+   Pinze dei Magazzini) prendono l'aspetto di UiSegmented, come le schede v3:
+   stessi pulsanti, stesso @click, cambia solo l'aspetto. */
+.shell .conf-v3 .tab-bar {
+    display: inline-flex;
+    align-self: flex-start;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+    padding: var(--space-1);
+    border: 0;
+    border-radius: 14px;
+    background: var(--bg-chip);
+}
+.shell .conf-v3 .tab-bar .tab {
+    min-height: var(--touch-target-min);
+    padding: 0 22px;
+    border: 0;
+    border-radius: 11px;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-bold);
+}
+.shell .conf-v3 .tab-bar .tab.active {
+    background: var(--bg-segment-on);
+    color: var(--text-primary);
+    box-shadow: none;
+}

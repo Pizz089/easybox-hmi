@@ -8,7 +8,8 @@
        - Lingua: lo stesso ciclo it -> en della striscia (util/lingua.js).
      ========================================================================== -->
 <template>
-  <div class="view-shell settings-user">
+  <!-- (v3 fase D) conf-v3: titolo, campi e schede v3 (assets/css/catalog-v3.css). Solo aspetto. -->
+  <div class="view-shell settings-user conf-v3">
     <h2 class="view-title">{{ t('nav.tab.userLang') }}</h2>
     <div class="settings-user__grid">
       <UiCard :label="t('settings.user')">

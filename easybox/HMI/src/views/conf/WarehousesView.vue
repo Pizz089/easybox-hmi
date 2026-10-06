@@ -12,7 +12,8 @@
 </script>
 
 <template>
-      <div class="view-shell view-shell--fill conf-card" v-if="dataStored.userLevel>=1">
+      <!-- (v3 fase D) conf-v3: titolo, campi e schede v3 (assets/css/catalog-v3.css). Solo aspetto. -->
+      <div class="view-shell view-shell--fill conf-card conf-v3" v-if="dataStored.userLevel>=1">
         <div class="view-header">
           <h3 class="view-title">{{$t('warehouses.welcome')}}</h3>
         </div>

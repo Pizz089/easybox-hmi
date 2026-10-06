@@ -11,7 +11,8 @@
 </script>
 
 <template>   
-      <div class="view-shell view-shell--fill conf-card">
+      <!-- (v3 fase D) conf-v3: titolo, campi e schede v3 (assets/css/catalog-v3.css). Solo aspetto. -->
+      <div class="view-shell view-shell--fill conf-card conf-v3">
         <div class="view-header">
           <h3 class="view-title">{{$t('position.welcome')}}</h3>
           <!--button class="pure-button pure-button-primary" @click="createposition()">

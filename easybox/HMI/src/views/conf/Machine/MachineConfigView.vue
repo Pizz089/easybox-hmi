@@ -184,7 +184,8 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="view-shell">
+  <!-- (v3 fase D) conf-v3: titolo, campi e schede v3 (assets/css/catalog-v3.css). Solo aspetto. -->
+  <div class="view-shell conf-v3">
     <h1 class="view-title">{{ $t('machine.welcome') }}</h1>
 
     <div v-for="pos in MACHINE_POSITIONS" :key="pos.mc" class="command-section machine-card">
