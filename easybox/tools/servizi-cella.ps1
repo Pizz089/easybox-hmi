@@ -207,7 +207,7 @@ Scrivi ('nssm:       ' + $(if (Test-Path -LiteralPath $Nssm) { $Nssm } else { $N
 Scrivi ('backend:    ' + $Backend)
 Scrivi ('pannello:   ' + $Pannello)
 Scrivi ('log:        ' + $LogB + ' , ' + $LogP)
-$porte = MostraPorte
+$occupate = MostraPorte
 $comandi = ComandiNssm $node
 
 if ($prova) {
@@ -215,7 +215,7 @@ if ($prova) {
 	Scrivi 'PROVA: comandi che installa eseguirebbe (non eseguiti):' 'Cyan'
 	$comandi | ForEach-Object { Scrivi ('  ' + (Testo $_)) }
 	Scrivi '  Start-Service EasyBoxBackend, EasyBoxPannello'
-	if ($porte.Count -gt 0) {
+	if ($occupate.Count -gt 0) {
 		Scrivi ''
 		Scrivi 'ATTENZIONE: queste porte sono occupate (finestre dei .bat ancora aperte?). Prima di installa vanno chiuse: Ctrl+C nella finestra del backend e in quella del pannello.' 'Yellow'
 	}
@@ -225,7 +225,7 @@ if ($prova) {
 }
 
 # ---------------------------------------------------------------- installa
-if ($porte.Count -gt 0) { Fermati 'le porte 8080/3000/5173 sono occupate: backend o pannello girano ancora nelle finestre.' 'con la cella in HOLD, Ctrl+C nella finestra di start_server.bat e in quella di start_hmi.bat, poi rilanciare lo script.' }
+if ($occupate.Count -gt 0) { Fermati 'le porte 8080/3000/5173 sono occupate: backend o pannello girano ancora nelle finestre.' 'con la cella in HOLD, Ctrl+C nella finestra di start_server.bat e in quella di start_hmi.bat, poi rilanciare lo script.' }
 
 if (-not (Test-Path -LiteralPath $Nssm)) {
 	New-Item -ItemType Directory -Path $NssmDir -Force | Out-Null

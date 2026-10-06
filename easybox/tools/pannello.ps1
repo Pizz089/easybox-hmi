@@ -279,8 +279,9 @@ if ((G @('rev-parse', '--verify', '--quiet', ('refs/remotes/origin/' + $ramo))).
 $lockDopo = ((G @('rev-parse', ('HEAD:' + $LOCK))).Uscita -join '').Trim()
 $segnoFile = Join-Path $script:Radice $SEGNO
 $moduli = Split-Path $segnoFile
-$segno = if (Test-Path $segnoFile) { (Get-Content $segnoFile -Raw).Trim() } else { '' }
-$serve = ($lockPrima -ne $lockDopo) -or ($segno -and $segno -ne $lockDopo) -or (-not (Test-Path $moduli))
+# non $segno: per PowerShell e' la stessa variabile di $SEGNO
+$lockSegnato = if (Test-Path $segnoFile) { (Get-Content $segnoFile -Raw).Trim() } else { '' }
+$serve = ($lockPrima -ne $lockDopo) -or ($lockSegnato -and $lockSegnato -ne $lockDopo) -or (-not (Test-Path $moduli))
 $giaCambiato = ('Il ramo e'' gia'' ' + $ramo + ': mancano solo le dipendenze del pannello.')
 if ($serve) {
 	Scrivi 'Le dipendenze del pannello sono cambiate: npm install in easybox\HMI...' 'Cyan'
