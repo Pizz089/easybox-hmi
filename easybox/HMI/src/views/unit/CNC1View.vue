@@ -64,7 +64,7 @@
       </div>
 
       <div v-if="viceLockOpen" class="mission-dialog-overlay">
-        <div class="mission-dialog">
+        <div class="mission-dialog mission-dialog--danger">
           <h3 class="command-section-title">{{ $t('machine.viceLockConfirm') }}</h3>
           <div class="vice-lock-warn">{{ $t('machine.viceLockWarn') }}</div>
           <div class="pure-g">

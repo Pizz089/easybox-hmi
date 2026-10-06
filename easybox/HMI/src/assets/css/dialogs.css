@@ -46,3 +46,27 @@
 @media (max-width: 1599px) {
     .mission-dialog { padding: 28px 24px 22px; gap: 18px; border-radius: 20px; }
 }
+
+/* ---- (v3, 6/10) conferme: primario, rosso solo per i comandi pericolosi ----
+   Il pulsante che conferma nei dialog di oggi ha .pure-button-mission, che in
+   v3 e' il secondario neutro: nei dialog diventa PRIMARIO (accento). Nei
+   dialog dei comandi pericolosi (.mission-dialog--danger: reset e riavvio
+   del programma robot, apertura chela, blocco morsa, azzera / dichiara
+   cassetto, scarta modifiche, azzera produzione, sostituisci / rigenera /
+   dissocia grigliato) e' ROSSO pieno. Niente conferme grigie. Lo spento
+   (.pure-button-disable al posto di -mission, o :disabled) resta spento. */
+.mission-dialog .pure-button-mission:not(:disabled) {
+    background: var(--accent);
+    color: var(--accent-on);
+}
+.mission-dialog .pure-button-mission:hover:not(:disabled) {
+    background: var(--accent-hover);
+    filter: none;
+}
+.mission-dialog--danger .pure-button-mission:not(:disabled) {
+    background: var(--color-critical);
+    color: #fff;
+}
+.mission-dialog--danger .pure-button-mission:hover:not(:disabled) {
+    background: var(--color-critical-hover);
+}

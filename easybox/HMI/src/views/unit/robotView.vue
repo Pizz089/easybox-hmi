@@ -158,7 +158,7 @@
         <!-- dialog conferma APERTURA chela (240/242): la chiusura non passa
              di qui. Entra nell'invariante "un solo overlay". -->
         <div v-if="clawDialog.side" class="mission-dialog-overlay">
-          <div class="mission-dialog">
+          <div class="mission-dialog mission-dialog--danger">
             <h3 class="command-section-title">{{ $t('robot.claw.confirmOpen', { side: clawDialog.side }) }}</h3>
             <small class="cmd-hint">{{ $t('robot.claw.confirmOpenWarn') }}</small>
             <div class="pure-g">
@@ -625,7 +625,7 @@
              cosa NON fa, perche' l'errore che si vuole evitare e' proprio
              premerli credendo di riprendere il ciclo. -->
         <div v-if="criticalDialog.type!=''" class="mission-dialog-overlay">
-          <div class="mission-dialog">
+          <div class="mission-dialog mission-dialog--danger">
             <h3 class="command-section-title">{{ $t('robot.critical.confirmTitle') }}</h3>
             <p class="critical-what">{{ $t('robot.critical.' + criticalDialog.type + 'What') }}</p>
             <small class="cmd-hint">{{ $t('robot.critical.' + criticalDialog.type + 'NotThis') }}</small>

@@ -48,7 +48,7 @@ import { KO_CELL_RUNNING } from '../util/errorCodes';
 
         <!-- dialog conferma AZZERA PRODUZIONE: cosa cambia, con numeri veri -->
         <div v-if="reset.open" class="mission-dialog-overlay">
-            <div class="mission-dialog mission-dialog--wide">
+            <div class="mission-dialog mission-dialog--wide mission-dialog--danger">
                 <h3 class="command-section-title">{{ $t('production.reset.title', { mc: reset.machineId }) }}</h3>
 
                 <div class="reset-machine" v-if="MACHINE_POSITIONS.length > 1">

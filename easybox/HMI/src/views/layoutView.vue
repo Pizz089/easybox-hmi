@@ -41,7 +41,7 @@
     <!-- (P3 5/10) modifiche locali non salvate: la freccia chiede prima di
          scartarle. Mai portare le tasche di questo cassetto su quello di arrivo. -->
     <div v-if="navConfirm" class="mission-dialog-overlay">
-        <div class="mission-dialog">
+        <div class="mission-dialog mission-dialog--danger">
             <h3 class="command-section-title">{{ $t('layout.nav.discardTitle') }}</h3>
             <div class="reset-warn">{{ $t('layout.nav.discardText', { floor: $route.params.floorMag, to: navConfirm.floor }) }}</div>
             <div class="pure-g">
@@ -113,7 +113,7 @@
         </div>
 
         <div v-if="trayReset.open" class="mission-dialog-overlay">
-            <div class="mission-dialog">
+            <div class="mission-dialog mission-dialog--danger">
                 <h3 class="command-section-title">{{ $t('layout.reset.title', { floor: $route.params.floorMag }) }}</h3>
                 <div class="reset-text">{{ $t('layout.reset.what', { n: listPz.length }) }}</div>
                 <div class="reset-warn">{{ $t('layout.reset.warn') }}</div>
@@ -136,7 +136,7 @@
         <!-- si sceglie il codice, e la conferma dice quante tasche cambiano e
              che il ciclo guardera' quel codice: non e' un'etichetta -->
         <div v-if="trayType.open" class="mission-dialog-overlay">
-            <div class="mission-dialog">
+            <div class="mission-dialog mission-dialog--danger">
                 <h3 class="command-section-title">{{ $t('layout.type.title', { floor: $route.params.floorMag }) }}</h3>
                 <div class="reset-text">{{ $t('layout.type.current', { code: currentTypeLabel }) }}</div>
                 <div class="type-field">

@@ -288,7 +288,7 @@
              modificabile); generazione dall'header SOLO senza sorgenti o in
              "Rigenera" (con avviso taratura e spunta obbligatoria). -->
         <div v-if="assoc.open" class="mission-dialog-overlay">
-          <div class="mission-dialog mission-dialog--wide">
+          <div class="mission-dialog mission-dialog--wide" :class="{ 'mission-dialog--danger': assoc.mode !== 'associate' }">
             <h3 class="command-section-title">{{ $t('tray.assoc.title.'+assoc.mode, { n: assoc.floor }) }}</h3>
 
             <template v-if="assoc.mode=='associate' || assoc.mode=='replace'">
