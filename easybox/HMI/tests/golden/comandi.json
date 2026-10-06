@@ -8,7 +8,9 @@
     "HOLD liv0",
     "HOLD liv2 cassetto 8 fuori",
     "AUTO liv2",
-    "OFF liv2"
+    "OFF liv2",
+    "STATUS ignoto liv2",
+    "NOT_DEFINED liv2"
    ],
    "controlli": [
     {
@@ -53,6 +55,20 @@
         "router \"../../conf/grippers\""
        ],
        "stato": []
+      },
+      "STATUS ignoto liv2": {
+       "abilitato": true,
+       "effetti": [
+        "router \"../../conf/grippers\""
+       ],
+       "stato": []
+      },
+      "NOT_DEFINED liv2": {
+       "abilitato": true,
+       "effetti": [
+        "router \"../../conf/grippers\""
+       ],
+       "stato": []
       }
      }
     },
@@ -85,6 +101,16 @@
        "stato": []
       },
       "OFF liv2": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": []
+      },
+      "STATUS ignoto liv2": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": []
+      },
+      "NOT_DEFINED liv2": {
        "abilitato": true,
        "effetti": [],
        "stato": []
@@ -129,6 +155,20 @@
       },
       "OFF liv2": {
        "abilitato": true,
+       "effetti": [
+        "emit TO_PLANT/CMD/ROBOT \"100;1\""
+       ],
+       "stato": []
+      },
+      "STATUS ignoto liv2": {
+       "abilitato": false,
+       "effetti": [
+        "emit TO_PLANT/CMD/ROBOT \"100;1\""
+       ],
+       "stato": []
+      },
+      "NOT_DEFINED liv2": {
+       "abilitato": false,
        "effetti": [
         "emit TO_PLANT/CMD/ROBOT \"100;1\""
        ],
@@ -183,6 +223,22 @@
         "vm.speedManual = \"1\"",
         "vm.speedEditing = true"
        ]
+      },
+      "STATUS ignoto liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": [
+        "vm.speedManual = \"1\"",
+        "vm.speedEditing = true"
+       ]
+      },
+      "NOT_DEFINED liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": [
+        "vm.speedManual = \"1\"",
+        "vm.speedEditing = true"
+       ]
       }
      }
     },
@@ -228,6 +284,20 @@
        "stato": [
         "vm.speedManual = \"1\""
        ]
+      },
+      "STATUS ignoto liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": [
+        "vm.speedManual = \"1\""
+       ]
+      },
+      "NOT_DEFINED liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": [
+        "vm.speedManual = \"1\""
+       ]
       }
      }
     },
@@ -263,6 +333,16 @@
        "abilitato": true,
        "effetti": [],
        "stato": []
+      },
+      "STATUS ignoto liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "NOT_DEFINED liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
       }
      }
     },
@@ -296,6 +376,16 @@
       },
       "OFF liv2": {
        "abilitato": true,
+       "effetti": [],
+       "stato": []
+      },
+      "STATUS ignoto liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "NOT_DEFINED liv2": {
+       "abilitato": false,
        "effetti": [],
        "stato": []
       }
@@ -422,6 +512,30 @@
         "effetti": [],
         "stato": []
        }
+      ],
+      "STATUS ignoto liv2": [
+       {
+        "abilitato": false,
+        "effetti": [],
+        "stato": []
+       },
+       {
+        "abilitato": false,
+        "effetti": [],
+        "stato": []
+       }
+      ],
+      "NOT_DEFINED liv2": [
+       {
+        "abilitato": false,
+        "effetti": [],
+        "stato": []
+       },
+       {
+        "abilitato": false,
+        "effetti": [],
+        "stato": []
+       }
       ]
      }
     },
@@ -513,6 +627,30 @@
         "effetti": [],
         "stato": []
        }
+      ],
+      "STATUS ignoto liv2": [
+       {
+        "abilitato": false,
+        "effetti": [],
+        "stato": []
+       },
+       {
+        "abilitato": false,
+        "effetti": [],
+        "stato": []
+       }
+      ],
+      "NOT_DEFINED liv2": [
+       {
+        "abilitato": false,
+        "effetti": [],
+        "stato": []
+       },
+       {
+        "abilitato": false,
+        "effetti": [],
+        "stato": []
+       }
       ]
      }
     },
@@ -528,7 +666,9 @@
       "HOLD liv0": "nascosto",
       "HOLD liv2 cassetto 8 fuori": "nascosto",
       "AUTO liv2": "nascosto",
-      "OFF liv2": "nascosto"
+      "OFF liv2": "nascosto",
+      "STATUS ignoto liv2": "nascosto",
+      "NOT_DEFINED liv2": "nascosto"
      }
     },
     {
@@ -543,7 +683,9 @@
       "HOLD liv0": "nascosto",
       "HOLD liv2 cassetto 8 fuori": "nascosto",
       "AUTO liv2": "nascosto",
-      "OFF liv2": "nascosto"
+      "OFF liv2": "nascosto",
+      "STATUS ignoto liv2": "nascosto",
+      "NOT_DEFINED liv2": "nascosto"
      }
     },
     {
@@ -612,6 +754,16 @@
        "abilitato": false,
        "effetti": [],
        "stato": []
+      },
+      "STATUS ignoto liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "NOT_DEFINED liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
       }
      }
     },
@@ -673,6 +825,16 @@
        "stato": []
       },
       "OFF liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "STATUS ignoto liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "NOT_DEFINED liv2": {
        "abilitato": false,
        "effetti": [],
        "stato": []
@@ -795,6 +957,16 @@
        "abilitato": false,
        "effetti": [],
        "stato": []
+      },
+      "STATUS ignoto liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "NOT_DEFINED liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
       }
      }
     },
@@ -896,6 +1068,16 @@
        "abilitato": false,
        "effetti": [],
        "stato": []
+      },
+      "STATUS ignoto liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "NOT_DEFINED liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
       }
      }
     },
@@ -976,6 +1158,16 @@
        "stato": []
       },
       "OFF liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "STATUS ignoto liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "NOT_DEFINED liv2": {
        "abilitato": false,
        "effetti": [],
        "stato": []
@@ -1062,6 +1254,16 @@
        "abilitato": false,
        "effetti": [],
        "stato": []
+      },
+      "STATUS ignoto liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "NOT_DEFINED liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
       }
      }
     },
@@ -1077,7 +1279,9 @@
       "HOLD liv0": "nascosto",
       "HOLD liv2 cassetto 8 fuori": "nascosto",
       "AUTO liv2": "nascosto",
-      "OFF liv2": "nascosto"
+      "OFF liv2": "nascosto",
+      "STATUS ignoto liv2": "nascosto",
+      "NOT_DEFINED liv2": "nascosto"
      }
     },
     {
@@ -1092,7 +1296,9 @@
       "HOLD liv0": "nascosto",
       "HOLD liv2 cassetto 8 fuori": "nascosto",
       "AUTO liv2": "nascosto",
-      "OFF liv2": "nascosto"
+      "OFF liv2": "nascosto",
+      "STATUS ignoto liv2": "nascosto",
+      "NOT_DEFINED liv2": "nascosto"
      }
     },
     {
@@ -1107,7 +1313,9 @@
       "HOLD liv0": [],
       "HOLD liv2 cassetto 8 fuori": [],
       "AUTO liv2": [],
-      "OFF liv2": []
+      "OFF liv2": [],
+      "STATUS ignoto liv2": [],
+      "NOT_DEFINED liv2": []
      }
     },
     {
@@ -1122,7 +1330,9 @@
       "HOLD liv0": "nascosto",
       "HOLD liv2 cassetto 8 fuori": "nascosto",
       "AUTO liv2": "nascosto",
-      "OFF liv2": "nascosto"
+      "OFF liv2": "nascosto",
+      "STATUS ignoto liv2": "nascosto",
+      "NOT_DEFINED liv2": "nascosto"
      }
     },
     {
@@ -1137,7 +1347,9 @@
       "HOLD liv0": "nascosto",
       "HOLD liv2 cassetto 8 fuori": "nascosto",
       "AUTO liv2": "nascosto",
-      "OFF liv2": "nascosto"
+      "OFF liv2": "nascosto",
+      "STATUS ignoto liv2": "nascosto",
+      "NOT_DEFINED liv2": "nascosto"
      }
     },
     {
@@ -1152,7 +1364,9 @@
       "HOLD liv0": "nascosto",
       "HOLD liv2 cassetto 8 fuori": "nascosto",
       "AUTO liv2": "nascosto",
-      "OFF liv2": "nascosto"
+      "OFF liv2": "nascosto",
+      "STATUS ignoto liv2": "nascosto",
+      "NOT_DEFINED liv2": "nascosto"
      }
     },
     {
@@ -1167,7 +1381,9 @@
       "HOLD liv0": "nascosto",
       "HOLD liv2 cassetto 8 fuori": "nascosto",
       "AUTO liv2": "nascosto",
-      "OFF liv2": "nascosto"
+      "OFF liv2": "nascosto",
+      "STATUS ignoto liv2": "nascosto",
+      "NOT_DEFINED liv2": "nascosto"
      }
     },
     {
@@ -1182,7 +1398,9 @@
       "HOLD liv0": "nascosto",
       "HOLD liv2 cassetto 8 fuori": "nascosto",
       "AUTO liv2": "nascosto",
-      "OFF liv2": "nascosto"
+      "OFF liv2": "nascosto",
+      "STATUS ignoto liv2": "nascosto",
+      "NOT_DEFINED liv2": "nascosto"
      }
     },
     {
@@ -1197,7 +1415,9 @@
       "HOLD liv0": "nascosto",
       "HOLD liv2 cassetto 8 fuori": "nascosto",
       "AUTO liv2": "nascosto",
-      "OFF liv2": "nascosto"
+      "OFF liv2": "nascosto",
+      "STATUS ignoto liv2": "nascosto",
+      "NOT_DEFINED liv2": "nascosto"
      }
     },
     {
@@ -1212,7 +1432,9 @@
       "HOLD liv0": "nascosto",
       "HOLD liv2 cassetto 8 fuori": "nascosto",
       "AUTO liv2": "nascosto",
-      "OFF liv2": "nascosto"
+      "OFF liv2": "nascosto",
+      "STATUS ignoto liv2": "nascosto",
+      "NOT_DEFINED liv2": "nascosto"
      }
     },
     {
@@ -1227,7 +1449,9 @@
       "HOLD liv0": "nascosto",
       "HOLD liv2 cassetto 8 fuori": "nascosto",
       "AUTO liv2": "nascosto",
-      "OFF liv2": "nascosto"
+      "OFF liv2": "nascosto",
+      "STATUS ignoto liv2": "nascosto",
+      "NOT_DEFINED liv2": "nascosto"
      }
     },
     {
@@ -1242,7 +1466,9 @@
       "HOLD liv0": "nascosto",
       "HOLD liv2 cassetto 8 fuori": "nascosto",
       "AUTO liv2": "nascosto",
-      "OFF liv2": "nascosto"
+      "OFF liv2": "nascosto",
+      "STATUS ignoto liv2": "nascosto",
+      "NOT_DEFINED liv2": "nascosto"
      }
     },
     {
@@ -1257,7 +1483,9 @@
       "HOLD liv0": "nascosto",
       "HOLD liv2 cassetto 8 fuori": "nascosto",
       "AUTO liv2": "nascosto",
-      "OFF liv2": "nascosto"
+      "OFF liv2": "nascosto",
+      "STATUS ignoto liv2": "nascosto",
+      "NOT_DEFINED liv2": "nascosto"
      }
     },
     {
@@ -1272,7 +1500,9 @@
       "HOLD liv0": "nascosto",
       "HOLD liv2 cassetto 8 fuori": "nascosto",
       "AUTO liv2": "nascosto",
-      "OFF liv2": "nascosto"
+      "OFF liv2": "nascosto",
+      "STATUS ignoto liv2": "nascosto",
+      "NOT_DEFINED liv2": "nascosto"
      }
     },
     {
@@ -1307,6 +1537,16 @@
        "nascosto",
        "nascosto",
        "nascosto"
+      ],
+      "STATUS ignoto liv2": [
+       "nascosto",
+       "nascosto",
+       "nascosto"
+      ],
+      "NOT_DEFINED liv2": [
+       "nascosto",
+       "nascosto",
+       "nascosto"
       ]
      }
     },
@@ -1322,7 +1562,9 @@
       "HOLD liv0": "nascosto",
       "HOLD liv2 cassetto 8 fuori": "nascosto",
       "AUTO liv2": "nascosto",
-      "OFF liv2": "nascosto"
+      "OFF liv2": "nascosto",
+      "STATUS ignoto liv2": "nascosto",
+      "NOT_DEFINED liv2": "nascosto"
      }
     },
     {
@@ -1337,7 +1579,9 @@
       "HOLD liv0": "nascosto",
       "HOLD liv2 cassetto 8 fuori": "nascosto",
       "AUTO liv2": "nascosto",
-      "OFF liv2": "nascosto"
+      "OFF liv2": "nascosto",
+      "STATUS ignoto liv2": "nascosto",
+      "NOT_DEFINED liv2": "nascosto"
      }
     },
     {
@@ -1352,15 +1596,17 @@
       "HOLD liv0": "nascosto",
       "HOLD liv2 cassetto 8 fuori": "nascosto",
       "AUTO liv2": "nascosto",
-      "OFF liv2": "nascosto"
+      "OFF liv2": "nascosto",
+      "STATUS ignoto liv2": "nascosto",
+      "NOT_DEFINED liv2": "nascosto"
      }
     },
     {
      "id": "button@click sendToRobot(17)",
-     "etichetta": "HOLD HOLD => CONTINUA ESECUZIONE",
+     "etichetta": "— HOLD HOLD => CONTINUA ESECUZIONE",
      "evento": "click",
      "handler": "sendToRobot(17)",
-     "disabled": "",
+     "disabled": "holdIgnoto",
      "classe": "{'button-hold':dataRobot.STATUS==dataStored.status_hold}",
      "esiti": {
       "HOLD liv2": {
@@ -1391,7 +1637,21 @@
        ],
        "stato": []
       },
-      "OFF liv2": "nascosto"
+      "OFF liv2": "nascosto",
+      "STATUS ignoto liv2": {
+       "abilitato": false,
+       "effetti": [
+        "emit TO_PLANT/CMD/ROBOT 17"
+       ],
+       "stato": []
+      },
+      "NOT_DEFINED liv2": {
+       "abilitato": false,
+       "effetti": [
+        "emit TO_PLANT/CMD/ROBOT 17"
+       ],
+       "stato": []
+      }
      }
     },
     {
@@ -1412,7 +1672,9 @@
         "emit TO_PLANT/CMD/ROBOT 17"
        ],
        "stato": []
-      }
+      },
+      "STATUS ignoto liv2": "nascosto",
+      "NOT_DEFINED liv2": "nascosto"
      }
     },
     {
@@ -1537,6 +1799,52 @@
          "effetti": []
         }
        ]
+      },
+      "STATUS ignoto liv2": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.criticalDialog.type = \"reset\""
+       ],
+       "conferme": [
+        {
+         "controllo": "button@click confirmCritical()",
+         "etichetta": "Conferma",
+         "abilitato": true,
+         "effetti": [
+          "emit TO_PLANT/CMD/ROBOT 99"
+         ]
+        },
+        {
+         "controllo": "button@click closeCriticalDialog()",
+         "etichetta": "Annulla",
+         "abilitato": true,
+         "effetti": []
+        }
+       ]
+      },
+      "NOT_DEFINED liv2": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.criticalDialog.type = \"reset\""
+       ],
+       "conferme": [
+        {
+         "controllo": "button@click confirmCritical()",
+         "etichetta": "Conferma",
+         "abilitato": true,
+         "effetti": [
+          "emit TO_PLANT/CMD/ROBOT 99"
+         ]
+        },
+        {
+         "controllo": "button@click closeCriticalDialog()",
+         "etichetta": "Annulla",
+         "abilitato": true,
+         "effetti": []
+        }
+       ]
       }
      }
     },
@@ -1626,6 +1934,16 @@
        "abilitato": false,
        "effetti": [],
        "stato": []
+      },
+      "STATUS ignoto liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "NOT_DEFINED liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
       }
      }
     },
@@ -1641,7 +1959,9 @@
       "HOLD liv0": "nascosto",
       "HOLD liv2 cassetto 8 fuori": "nascosto",
       "AUTO liv2": "nascosto",
-      "OFF liv2": "nascosto"
+      "OFF liv2": "nascosto",
+      "STATUS ignoto liv2": "nascosto",
+      "NOT_DEFINED liv2": "nascosto"
      }
     },
     {
@@ -1656,7 +1976,9 @@
       "HOLD liv0": "nascosto",
       "HOLD liv2 cassetto 8 fuori": "nascosto",
       "AUTO liv2": "nascosto",
-      "OFF liv2": "nascosto"
+      "OFF liv2": "nascosto",
+      "STATUS ignoto liv2": "nascosto",
+      "NOT_DEFINED liv2": "nascosto"
      }
     },
     {
@@ -1709,6 +2031,16 @@
        "stato": []
       },
       "OFF liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "STATUS ignoto liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "NOT_DEFINED liv2": {
        "abilitato": false,
        "effetti": [],
        "stato": []
@@ -1765,6 +2097,16 @@
        "stato": []
       },
       "OFF liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "STATUS ignoto liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "NOT_DEFINED liv2": {
        "abilitato": false,
        "effetti": [],
        "stato": []
@@ -1846,6 +2188,16 @@
        "abilitato": false,
        "effetti": [],
        "stato": []
+      },
+      "STATUS ignoto liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "NOT_DEFINED liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
       }
      }
     },
@@ -1899,6 +2251,16 @@
        "stato": []
       },
       "OFF liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "STATUS ignoto liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "NOT_DEFINED liv2": {
        "abilitato": false,
        "effetti": [],
        "stato": []
@@ -1963,6 +2325,20 @@
        }
       ],
       "OFF liv2": [
+       {
+        "abilitato": false,
+        "effetti": [],
+        "stato": []
+       }
+      ],
+      "STATUS ignoto liv2": [
+       {
+        "abilitato": false,
+        "effetti": [],
+        "stato": []
+       }
+      ],
+      "NOT_DEFINED liv2": [
        {
         "abilitato": false,
         "effetti": [],
@@ -2084,6 +2460,16 @@
        "abilitato": false,
        "effetti": [],
        "stato": []
+      },
+      "STATUS ignoto liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "NOT_DEFINED liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
       }
      }
     },
@@ -2116,6 +2502,16 @@
        "stato": []
       },
       "OFF liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "STATUS ignoto liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "NOT_DEFINED liv2": {
        "abilitato": false,
        "effetti": [],
        "stato": []
@@ -2207,6 +2603,16 @@
        "abilitato": false,
        "effetti": [],
        "stato": []
+      },
+      "STATUS ignoto liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "NOT_DEFINED liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
       }
      }
     },
@@ -2242,6 +2648,16 @@
        "abilitato": false,
        "effetti": [],
        "stato": []
+      },
+      "STATUS ignoto liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "NOT_DEFINED liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
       }
      }
     },
@@ -2257,7 +2673,9 @@
       "HOLD liv0": "nascosto",
       "HOLD liv2 cassetto 8 fuori": "nascosto",
       "AUTO liv2": "nascosto",
-      "OFF liv2": "nascosto"
+      "OFF liv2": "nascosto",
+      "STATUS ignoto liv2": "nascosto",
+      "NOT_DEFINED liv2": "nascosto"
      }
     },
     {
@@ -2272,7 +2690,9 @@
       "HOLD liv0": "nascosto",
       "HOLD liv2 cassetto 8 fuori": "nascosto",
       "AUTO liv2": "nascosto",
-      "OFF liv2": "nascosto"
+      "OFF liv2": "nascosto",
+      "STATUS ignoto liv2": "nascosto",
+      "NOT_DEFINED liv2": "nascosto"
      }
     },
     {
@@ -2287,7 +2707,9 @@
       "HOLD liv0": [],
       "HOLD liv2 cassetto 8 fuori": [],
       "AUTO liv2": [],
-      "OFF liv2": []
+      "OFF liv2": [],
+      "STATUS ignoto liv2": [],
+      "NOT_DEFINED liv2": []
      }
     },
     {
@@ -2312,6 +2734,12 @@
       ],
       "OFF liv2": [
        "nascosto"
+      ],
+      "STATUS ignoto liv2": [
+       "nascosto"
+      ],
+      "NOT_DEFINED liv2": [
+       "nascosto"
       ]
      }
     },
@@ -2327,7 +2755,9 @@
       "HOLD liv0": [],
       "HOLD liv2 cassetto 8 fuori": [],
       "AUTO liv2": [],
-      "OFF liv2": []
+      "OFF liv2": [],
+      "STATUS ignoto liv2": [],
+      "NOT_DEFINED liv2": []
      }
     },
     {
@@ -2342,7 +2772,9 @@
       "HOLD liv0": "nascosto",
       "HOLD liv2 cassetto 8 fuori": "nascosto",
       "AUTO liv2": "nascosto",
-      "OFF liv2": "nascosto"
+      "OFF liv2": "nascosto",
+      "STATUS ignoto liv2": "nascosto",
+      "NOT_DEFINED liv2": "nascosto"
      }
     },
     {
@@ -2357,7 +2789,9 @@
       "HOLD liv0": "nascosto",
       "HOLD liv2 cassetto 8 fuori": "nascosto",
       "AUTO liv2": "nascosto",
-      "OFF liv2": "nascosto"
+      "OFF liv2": "nascosto",
+      "STATUS ignoto liv2": "nascosto",
+      "NOT_DEFINED liv2": "nascosto"
      }
     },
     {
@@ -2372,7 +2806,9 @@
       "HOLD liv0": "nascosto",
       "HOLD liv2 cassetto 8 fuori": "nascosto",
       "AUTO liv2": "nascosto",
-      "OFF liv2": "nascosto"
+      "OFF liv2": "nascosto",
+      "STATUS ignoto liv2": "nascosto",
+      "NOT_DEFINED liv2": "nascosto"
      }
     },
     {
@@ -2387,7 +2823,9 @@
       "HOLD liv0": "nascosto",
       "HOLD liv2 cassetto 8 fuori": "nascosto",
       "AUTO liv2": "nascosto",
-      "OFF liv2": "nascosto"
+      "OFF liv2": "nascosto",
+      "STATUS ignoto liv2": "nascosto",
+      "NOT_DEFINED liv2": "nascosto"
      }
     },
     {
@@ -2402,7 +2840,9 @@
       "HOLD liv0": "nascosto",
       "HOLD liv2 cassetto 8 fuori": "nascosto",
       "AUTO liv2": "nascosto",
-      "OFF liv2": "nascosto"
+      "OFF liv2": "nascosto",
+      "STATUS ignoto liv2": "nascosto",
+      "NOT_DEFINED liv2": "nascosto"
      }
     }
    ]
@@ -5261,7 +5701,8 @@
     "robot in lavoro",
     "robot in AUTO",
     "robot spento",
-    "stato non ancora noto"
+    "stato non ancora noto",
+    "NOT_DEFINED (0)"
    ],
    "controlli": [
     {
@@ -5306,6 +5747,13 @@
         "evento open-user"
        ],
        "stato": []
+      },
+      "NOT_DEFINED (0)": {
+       "abilitato": true,
+       "effetti": [
+        "evento open-user"
+       ],
+       "stato": []
       }
      }
     },
@@ -5341,15 +5789,20 @@
        "abilitato": true,
        "effetti": [],
        "stato": []
+      },
+      "NOT_DEFINED (0)": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": []
       }
      }
     },
     {
      "id": "button@click sendToRobot(17)",
-     "etichetta": "{{plant.robot == dataStored.status_hold ? t('strip.resume') : t('cmd.hold')}}",
+     "etichetta": "— {{plant.robot == dataStored.status_hold ? t('strip.resume') : t('cmd.hold')}}",
      "evento": "click",
      "handler": "sendToRobot(17)",
-     "disabled": "",
+     "disabled": "ignoto",
      "classe": "{ 'strip__hold--held': plant.robot == dataStored.status_hold }",
      "esiti": {
       "robot in HOLD": {
@@ -5375,7 +5828,14 @@
       },
       "robot spento": "nascosto",
       "stato non ancora noto": {
-       "abilitato": true,
+       "abilitato": false,
+       "effetti": [
+        "emit TO_PLANT/CMD/ROBOT 17"
+       ],
+       "stato": []
+      },
+      "NOT_DEFINED (0)": {
+       "abilitato": false,
        "effetti": [
         "emit TO_PLANT/CMD/ROBOT 17"
        ],
@@ -5401,7 +5861,8 @@
        ],
        "stato": []
       },
-      "stato non ancora noto": "nascosto"
+      "stato non ancora noto": "nascosto",
+      "NOT_DEFINED (0)": "nascosto"
      }
     }
    ]

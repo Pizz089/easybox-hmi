@@ -1,5 +1,5 @@
 // ============================================================================
-// util/holdState.js — quando il pulsante HOLD / CONTINUA / START si puo' usare
+// util/holdState.js — quando il pulsante HOLD / Riprendi / START si puo' usare
 //
 // Nel PLC il comando 17 e' un TOGGLE (FB_Robot, CMD_HOLD: IF NOT #holdButton
 // THEN #HOLD := NOT #HOLD). Se il pannello non sa in che stato e' il robot,
@@ -9,7 +9,8 @@
 //   - STATUS = NOT_DEFINED (0): FB7 lo pubblica quando communication_OK e'
 //     falso, anche con HOLD vero nel PLC.
 // In questi casi il pulsante resta visibile ma DISABILITATO, testo "—",
-// tooltip "Stato del robot non noto" (views/unit/robotView.vue).
+// tooltip "Stato del robot non noto". Stessa regola nella striscia di stato
+// (layout/v3/StatusStrip.vue) e nella pagina Robot (views/unit/robotView.vue).
 // ============================================================================
 import { dataStored } from '../data.js';
 

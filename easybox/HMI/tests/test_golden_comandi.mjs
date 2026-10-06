@@ -306,6 +306,9 @@ const PAGINE = [
 		'HOLD liv2 cassetto 8 fuori': robotScen(S.status_hold, 2, vm => { vm.extractedTray = { ID: 22, FLOOR_MAG: 8, DESCR: 'cassetto 8' }; }),
 		'AUTO liv2': robotScen(S.status_auto, 2),
 		'OFF liv2': robotScen(S.status_off, 2),
+		// (v3) il 17 e' un toggle nel PLC: a stato ignoto il HOLD si spegne
+		'STATUS ignoto liv2': robotScen(undefined, 2),
+		'NOT_DEFINED liv2': robotScen(S.status_notDef, 2),
 	} },
 	{ nome: 'CNC1View', file: 'src/views/unit/CNC1View.vue', scenari: {
 		'base': (vm, ds) => { ds.userLevel = 2; },
@@ -366,6 +369,7 @@ const PAGINE = [
 		'robot in AUTO': () => { plantStore.plant.robot = S.status_auto; },
 		'robot spento': () => { plantStore.plant.robot = S.status_off; },
 		'stato non ancora noto': () => { plantStore.plant.robot = null; },
+		'NOT_DEFINED (0)': () => { plantStore.plant.robot = S.status_notDef; },
 	} },
 ];
 

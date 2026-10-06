@@ -80,6 +80,14 @@ for (const [s, r] of coppie)
 		s + ': ' + JSON.stringify(emitsIn(strip, s)) + ' come robotView (' + JSON.stringify(emitsIn(robot, r)) + ')');
 const vis = (ctrls, scen) => ctrls.filter(c => c.handler.startsWith('sendToRobot(17)')).map(c => c.esiti[scen] === 'nascosto' ? '-' : c.etichetta.includes('start') || c.etichetta === 'START' ? 'START' : 'HOLD');
 check(vis(strip, 'robot spento').join() === '-,START' && vis(strip, 'robot in HOLD').join() === 'HOLD,-', 'a tre stati: HOLD/Riprendi se non spento, START da spento');
+// (6/10) il 17 e' un toggle nel PLC: a STATUS ignoto o NOT_DEFINED il
+// pulsante resta visibile ma spento, in tutti e due i posti
+const spento = (ctrls, scen) => {
+	const visibili = ctrls.filter(c => c.handler.startsWith('sendToRobot(17)')).map(c => c.esiti[scen]).filter(e => e && e !== 'nascosto');
+	return visibili.length === 1 && visibili[0].abilitato === false;
+};
+check(spento(strip, 'stato non ancora noto') && spento(strip, 'NOT_DEFINED (0)') && spento(robot, 'STATUS ignoto liv2') && spento(robot, 'NOT_DEFINED liv2'),
+	'STATUS ignoto o NOT_DEFINED: HOLD spento nella striscia e nella pagina Robot');
 const ss = readFileSync('src/layout/v3/StatusStrip.vue', 'utf8');
 check(/strip__hold--start \{ animation: blinker 1s linear infinite; \}/.test(ss), 'START con la stessa animazione di robotView (blinker 1s)');
 

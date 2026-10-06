@@ -1,6 +1,6 @@
 <script setup>
   import { dataStored } from '../../data.js'
-  // HOLD a stato ignoto: il 17 e' un toggle nel PLC (util/holdState.js)
+  // (v3) HOLD a stato ignoto: il 17 e' un toggle nel PLC (util/holdState.js)
   import { robotStatoIgnoto } from '../../util/holdState.js'
   // (stato cella 16/9) la griglia delle tasche e' quella della pagina layout,
   // estratta in componente: il dialog di dichiarazione fa cliccare la casella
@@ -577,15 +577,11 @@
       <section class="command-section">
         <h3 class="section-label">{{ $t('robot.section.critical') }}</h3>
 
-        <!-- STATUS ignoto o NOT_DEFINED (0): il 17 e' un toggle nel PLC
-             (FB_Robot, CMD_HOLD: IF NOT #holdButton THEN #HOLD := NOT #HOLD)
-             e "HOLD" potrebbe togliere l'hold invece di metterlo. Visibile ma
-             disabilitato, "—", finche' lo stato non si sa. Lo spento e' lo
-             stesso grigio di RESTART MAIN PROGRAM. -->
+        <!-- (v3) STATUS ignoto o NOT_DEFINED: il 17 e' un toggle nel PLC e
+             "HOLD" potrebbe togliere l'hold. Visibile ma disabilitato, "—". -->
         <button class="pure-button-micromission pure-u-1 specialCMD button_pressed" :class="{'button-hold':dataRobot.STATUS==dataStored.status_hold}"
           v-if="dataRobot.STATUS!=dataStored.status_off"
           :disabled="holdIgnoto" :title="holdIgnoto ? $t('cmd.holdUnknown') : null"
-          :style="[holdIgnoto ? 'background-color:lightgray;color:gray' : '']"
           @click="sendToRobot(17)">
           <span v-if="holdIgnoto">—</span>
           <template v-else>
@@ -2168,7 +2164,7 @@ export default {
     'dataRobot.STATUS'() { this.checkMissionPhase(); }
   },
   computed: {
-    // STATUS del robot non noto (assente o NOT_DEFINED): il HOLD si spegne
+    // (v3) STATUS del robot non noto (assente o NOT_DEFINED): il HOLD si spegne
     holdIgnoto() {
       return robotStatoIgnoto(this.dataRobot.STATUS);
     },

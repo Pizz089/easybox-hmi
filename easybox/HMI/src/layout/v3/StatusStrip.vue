@@ -46,12 +46,19 @@
     <UiChip v-if="!compact" clickable :aria-label="t('strip.lang')" @click="cambiaLingua">{{ locale.toUpperCase() }}</UiChip>
     <span class="strip__clock">{{ ora }}</span>
 
-    <!-- HOLD / Riprendi / START: stesso comando del pulsante di robotView -->
+    <!-- HOLD / Riprendi / START: stesso comando del pulsante di robotView.
+         STATUS ignoto o NOT_DEFINED: il 17 e' un toggle nel PLC, "HOLD"
+         potrebbe togliere l'hold -> visibile ma disabilitato, "—"
+         (util/holdState.js) -->
     <button v-if="plant.robot != dataStored.status_off" type="button" class="strip__hold"
-      :class="{ 'strip__hold--held': plant.robot == dataStored.status_hold }" @click="sendToRobot(17)">
-      <Play v-if="plant.robot == dataStored.status_hold" :stroke-width="2" aria-hidden="true" />
-      <Pause v-else :stroke-width="2" aria-hidden="true" />
-      {{ plant.robot == dataStored.status_hold ? t('strip.resume') : t('cmd.hold') }}
+      :class="{ 'strip__hold--held': plant.robot == dataStored.status_hold }"
+      :disabled="ignoto" :title="ignoto ? t('cmd.holdUnknown') : null" @click="sendToRobot(17)">
+      <template v-if="ignoto">—</template>
+      <template v-else>
+        <Play v-if="plant.robot == dataStored.status_hold" :stroke-width="2" aria-hidden="true" />
+        <Pause v-else :stroke-width="2" aria-hidden="true" />
+        {{ plant.robot == dataStored.status_hold ? t('strip.resume') : t('cmd.hold') }}
+      </template>
     </button>
     <button v-else type="button" class="strip__hold strip__hold--start" @click="sendToRobot(17)">
       <Play :stroke-width="2" aria-hidden="true" />{{ t('cmd.start') }}
@@ -69,6 +76,7 @@ import { sendToRobot } from '@/util/globalFunction.js';
 import { configuredMachineNumbers } from '@/util/machineBrands';
 import { useCompact } from '@/util/breakpoints';
 import { plant } from '@/stores/plantStatus.js';
+import { robotStatoIgnoto } from '@/util/holdState.js';
 import UiChip from '@/components/ui/UiChip.vue';
 
 defineProps({ alarms: { type: Number, default: 0 } });
@@ -76,6 +84,7 @@ defineEmits(['open-user']);
 const { t, locale } = useI18n();
 const compact = useCompact();
 const livello = computed(() => Number(dataStored.userLevel) || 0);
+const ignoto = computed(() => robotStatoIgnoto(plant.robot));
 
 // codice di [UNIT].STATUS -> testo e pallino (costanti in data.js)
 function nome(code) {
@@ -197,7 +206,8 @@ onUnmounted(() => clearInterval(timer));
   flex: none;
 }
 .strip__hold svg { width: var(--icon-size-md); height: var(--icon-size-md); }
-.strip__hold:hover { background: var(--accent-hover); }
+.strip__hold:hover:not(:disabled) { background: var(--accent-hover); }
+.strip__hold:disabled { background: var(--bg-input); color: var(--text-muted); cursor: not-allowed; }
 /* START da spento: la stessa animazione del pulsante di robotView
    (blinker, definita in assets/css/unit-views.css) */
 .strip__hold--start { animation: blinker 1s linear infinite; }
