@@ -81,6 +81,17 @@ $argNome = @($servizi | ForEach-Object {
 Check ($argNome.Count -eq $servizi.Count) ('   ogni Start/Stop/Restart-Service dice -Name (' + $argNome.Count + ' su ' + $servizi.Count + ')')
 Check (@($argNome | Where-Object { @('$S_B', '$S_P', '$S_B, $S_P', '$n') -notcontains $_ }).Count -eq 0) ('   Start/Stop/Restart-Service solo su $S_B, $S_P o $n del ciclo (' + (($argNome | Sort-Object -Unique) -join ' | ') + ')')
 
+# 4b. installa crea le cartelle dei DUE log prima di creare i servizi: senza
+#     la cartella nssm non apre il log e il servizio non parte
+$cartelle = @($comandi | Where-Object { (& $nome $_) -eq 'New-Item' -and $_.Extent.Text -match 'Directory' -and $_.Extent.StartOffset -gt $ifProva.Extent.EndOffset })
+# istruzione di primo livello che contiene il nodo (es. il foreach intorno)
+$cima = { param($n) $p = $n; while ($p.Parent -and -not ($p.Parent -is [System.Management.Automation.Language.NamedBlockAst])) { $p = $p.Parent }; $p }
+$conLog = @($cartelle | Where-Object { (& $cima $_).Extent.Text -match 'Split-Path \$Log' })
+$testoCartelle = ($conLog | ForEach-Object { (& $cima $_).Extent.Text }) -join ' '
+$primoNssmInstalla = @($nssm | Where-Object { $_.Extent.StartOffset -gt $ifProva.Extent.EndOffset -and $_.Extent.Text -match '@a' })[0]
+Check ($testoCartelle -match 'Split-Path \$LogB' -and $testoCartelle -match 'Split-Path \$LogP') ('4b. installa crea le cartelle di $LogB e di $LogP (' + $testoCartelle.Trim() + ')')
+Check ($conLog.Count -gt 0 -and $null -ne $primoNssmInstalla -and @($conLog | Where-Object { $_.Extent.StartOffset -lt $primoNssmInstalla.Extent.StartOffset }).Count -eq $conLog.Count) '    prima dei comandi nssm di installa'
+
 # 5. ASCII
 $byte = [IO.File]::ReadAllBytes($file)
 Check (@($byte | Where-Object { $_ -ge 128 }).Count -eq 0) '5. solo ASCII'
