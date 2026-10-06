@@ -1,7 +1,50 @@
 # Appunti cella — interventi manuali da eseguire in impianto
 
+## [ ] 2026-10-06 — work object per cassetto: vista 4Robot **v4**, quote relative al cassetto
+
+**Perché.** Il robotista passa a **un work object per cassetto**: meccanicamente i cassetti non sono paralleli né equidistanti. Da quel momento le quote delle tasche che il PLC gli passa devono essere **relative al cassetto**:
+- X e Y dall'angolo del cassetto;
+- Z = quota di presa dal fondo.
+
+La vista v3 sommava le correzioni del cassetto (`TRAY.X_CORR`, `Y_CORR`, `Z_CORR`; per il piano 8 la Z del piano vale 698,6 mm): con il work object quelle quote sarebbero sbagliate di tutto l'offset del piano. Decisione di Dario: la regola sta nel **codice** (vista v4), non nei dati, così nessun salvataggio dal pannello può rimettere gli offset di piano.
+
+**Convenzione del work object** (da concordare col robotista):
+- origine nell'angolo interno del cassetto vicino alla tasca 1, quello da cui il modello misura 819 × 605;
+- X lungo il lato da 605, verso la tasca 40;
+- Y lungo il lato da 819, verso la tasca 13;
+- Z = 0 sulla superficie su cui appoggiano i pezzi.
+
+**N_Cassetto, %QW644** (REGION `N_Cassetto` in FB_RobotEfort, Signal_TO_ROBOT; Dario la scarica a parte, cella in HOLD):
+- valorizzato in **tutte** le missioni sul cassetto: prelievo/deposito pezzo → il cassetto estratto; estrazione → il cassetto chiesto (`Tray_ID`, perché `ExtractedTray` vale ancora 0); rilascio → il cassetto estratto;
+- 0 in tutte le altre missioni (pinze sullo scaffale, pallet, macchina);
+- a riposo può restare il numero dell'ultimo cassetto usato, e un "Vai a EasyBox" dopo una missione sul cassetto porta N_Cassetto diverso da 0 (il posizionamento scrive Unit_code ma non Object_Type);
+- da qui le uscite libere verso il robot partono da %QW646.
+
+**Vista v4** (`serverDati/scripts/robot-tray-view-v4.sql`): stesse colonne della v3, stessi nomi e stesso ordine; cambiano solo le quote.
+- `X_PICK = pos.X + ISNULL(pos.X_CORR,0) + ISNULL(decentrato pick X,0)`, Y uguale;
+- `Z_PICK = ISNULL(pos.Z,0) + ISNULL(pos.Z_CORR,0) + PIECE.Z_PICK`;
+- place allo stesso modo; rotazioni come la v3, con `ISNULL` sulla correzione della tasca;
+- **niente più `t.X_CORR`, `t.Y_CORR`, `t.Z_CORR`**. Il join su TRAY resta: limita la vista ai piani configurati.
+- `ISNULL` su ogni correzione: il ponte SQL verso il PLC non converte NULL in zero, passa valori casuali.
+
+**Le correzioni del cassetto in TRAY non contano più** per le quote del robot: restano nel DB, la posizione del cassetto è nel robot. Il pannello lo dice nella pagina Cassetto (avviso fisso sopra X/Y/Z) e nella conferma di "0 CASSETTIERA", che resta perché scrive le rotazioni anche nelle tasche.
+
+**Quando:** a cella ferma, **insieme** al cambio del programma robot (work object per cassetto), non prima. Da PowerShell, con il backup della definizione vecchia nel file:
+```
+cd D:\Prog\easybox\serverDati\scripts; sqlcmd -S .\SQLEXPRESS -E -d ADMG -y 0 -i robot-tray-view-v4.sql -o D:\Backup\vista4Robot_prima_v4.txt; Get-Content D:\Backup\vista4Robot_prima_v4.txt
+```
+- La guardia confronta la definizione attuale (a spazi normalizzati) con la v3 attesa e con la v4: v3 → la stampa nel file e passa alla v4; già v4 → "conforme", niente; qualunque altra cosa → FERMO, niente.
+- La **prima tabella** del file è il default delle colonne `*_CORR` di `[POSITION]`, letto dai metadati: nel repo non c'è, e i due inserimenti di tasche del backend (`insertPositionTray` e "Genera") non scrivono nessuna correzione. Annotarlo qui.
+- **Verifica**, in fondo al file (cassetto 8, tasche 1/13/40/52): con il grigliato attuale Z_PICK 10000 e X/Y uguali a prima (tasca 1: 101500 / 61500); dopo la rigenerazione con le distanze 19/25, tasca 1 circa 100150 / 55500.
+- **Rollback:** rilanciare la definizione v3, che è nel file di backup, in fondo allo script v4 (commentata) e in `scripts/superati/robot-tray-view-v3.sql`. Solo insieme al ritorno del robot al riferimento unico.
+- `superati/robot-tray-view-v3.sql` e `superati/robot-tray-view-v2.sql` sono **inerti sempre**: la v3 migrava alla v3 qualunque vista non fosse v3, la v2 si fermava solo trovando la v3. Dopo la v4 entrambe avrebbero riportato indietro la vista.
+
+**Causa dello scarto trovata il 6/10.** Il grigliato 2098 aveva distanze 18/24 contro la piastra vera, che misurata col metro dà 19/25: passi 709/12 e 405/3. La piastra è centrata nel cassetto 819 × 605: tasca 1 a 100 / 55 misurata, contro 101,5 / 61,5 del modello. Rimedio: rigenerare le tasche col grigliato a 19/25.
+
+**Avvertenza.** Se anche l'estrazione passa al work object del cassetto, le quote di estrazione (`COORDINATES_FOR_EXTRACT`, oggi assolute per piano) vanno riscritte relative al cassetto. È un lavoro a parte, che aspetta la decisione del robotista.
+
 ### 5/10 sera — dati pezzo al robot e larghezza corretta
-- Su richiesta del robotista il PLC passa le tre misure del pezzo dell'ordine in mm interi, troncati: %QW636 `Part_Width_mm` = PIECE.Y, %QW640 `Part_Length_mm` = PIECE.X, %QW642 `Part_Height_mm` = PIECE.Z, accanto a %QW634 `Vice_ClawLength_mm` e %QW638 `X_Support_mm`. Libere da %QW644 a %QW666.
+- Su richiesta del robotista il PLC passa le tre misure del pezzo dell'ordine in mm interi, troncati: %QW636 `Part_Width_mm` = PIECE.Y, %QW640 `Part_Length_mm` = PIECE.X, %QW642 `Part_Height_mm` = PIECE.Z, accanto a %QW634 `Vice_ClawLength_mm` e %QW638 `X_Support_mm`. Libere da %QW644 a %QW666 (dal 6/10 %QW644 è `N_Cassetto`: vedi sopra).
 - Semantica (Dario e robotista, 5/10): X lunghezza, Y larghezza, Z altezza, come L/W/H nella pagina Pezzo.
 - Dal 18/9 al 5/10 %QW636 portava PIECE.X, cioè la lunghezza. Corretto in cella il 5/10 alle 19:17 con un ALTER VIEW guardato; il backup della definizione è su `D:\Backup` del PC di cella. Lezione: un nome di colonna o di tag non prova il significato, si confronta col pezzo.
 - Limiti: si aggiornano solo nelle missioni in macchina con un ordine attivo e non si azzerano mai. Al primo prelievo dal cassetto di un ordine nuovo il robot vede ancora le misure dell'ordine precedente.

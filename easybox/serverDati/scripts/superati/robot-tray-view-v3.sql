@@ -1,4 +1,26 @@
 -- ===========================================================================
+-- *** SUPERATO DALLA v4 (../robot-tray-view-v4.sql, 6/10) — NON ESEGUIRE ***
+-- La sua guardia migrava alla v3 qualunque vista non fosse gia' la v3:
+-- lanciato dopo la v4 la riportava alla v3, cioe' alle quote ASSOLUTE con gli
+-- offset di piano (TRAY.X_CORR, Y_CORR, Z_CORR), sbagliate di tutto l'offset
+-- del piano col work object per cassetto. Resta qui come storia e come testo
+-- per un rollback VOLUTO: copiarne l'ALTER VIEW (il file intero non esegue
+-- niente). La stessa definizione e' in fondo a robot-tray-view-v4.sql.
+--
+-- INERTE SEMPRE, qualunque sia la vista in cella:
+--   - con sqlcmd: ":on error exit" + RAISERROR -> esce prima di tutto;
+--   - in SSMS senza modalita' SQLCMD ":on error exit" e' solo un errore di
+--     sintassi nel suo batch; SET NOEXEC ON fa compilare ma non eseguire il
+--     resto. PRIMA il RAISERROR, POI SET NOEXEC ON (audit 5/10: al contrario
+--     il RAISERROR non partirebbe).
+-- ===========================================================================
+:on error exit
+GO
+RAISERROR('robot-tray-view-v3.sql e'' SUPERATO dalla v4 (work object per cassetto): non esegue niente. Per un rollback voluto copiarne l''ALTER VIEW.', 16, 1);
+SET NOEXEC ON;
+GO
+
+-- ===========================================================================
 -- robot-tray-view-v3.sql — vista COORDINATES_PIECES_TRAYS_4Robot v3
 -- (cantiere z-pick 14/9: significato di PIECE.Z_PICK / PIECE.Z_PLACE)
 --
@@ -100,3 +122,7 @@ END
 -- 		where pos.parent like 'TRAY%'
 -- 		and pos.pos > 0;
 -- ===========================================================================
+
+GO
+SET NOEXEC OFF;
+GO

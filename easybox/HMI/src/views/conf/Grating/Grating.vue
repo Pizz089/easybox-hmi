@@ -806,9 +806,10 @@ export default {
         // (finestra fissa [0,width] x [0,height], mm): lo sforo lungo width e'
         // sull'asse robot Y (TRAY.X lo limita), lungo height sull'asse X
         // (TRAY.Y) — vedi ROBOT_AXIS_ALONG. Contorno = TRAY.X/Y del cassetto
-        // selezionato (fresco da trayList). CORR esclusi: nella vista 4Robot
-        // X_CORR/Y_CORR del TRAY sono un offset di teaching uguale per tutte
-        // le tasche (spostano il cassetto nel frame robot, non la griglia).
+        // selezionato (fresco da trayList). CORR esclusi: X_CORR/Y_CORR del
+        // TRAY spostano il cassetto nel frame robot, non la griglia (fino alla
+        // vista 4Robot v3 erano un offset uguale per tutte le tasche; dalla v4,
+        // work object per cassetto 6/10, non entrano piu' nelle quote).
         checkGridFit() {
             if (this.listPz.length === 0) return true;
             const tray = this.trayList[this.grating.trayIndex-1];

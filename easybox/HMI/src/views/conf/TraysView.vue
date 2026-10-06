@@ -262,6 +262,11 @@
               <div class="teach-hint">
                 {{ $t('tray.teach.rotSummary') }}: RX {{ teach.rx }}&deg; &middot; RY {{ teach.ry }}&deg; &middot; RZ {{ teach.rz }}&deg;
               </div>
+              <!-- (work object per cassetto, 6/10) il comando resta perche'
+                   scrive le rotazioni anche nelle tasche, ma X/Y/Z del
+                   cassetto non contano piu' per le quote del robot (vista
+                   4Robot v4): la conferma lo dice prima di scrivere -->
+              <div class="teach-hint teach-wo-note">{{ $t('tray.teach.workObjectNote') }}</div>
               <div class="pure-g">
                 <div class="pure-u-1-3">
                   <button style="width:100%" class="btn-ghost" @click="teach.step=2">
@@ -980,6 +985,12 @@ export default {
         border-radius: var(--radius-md);
         padding: var(--space-2) var(--space-4);
         font-size: var(--font-size-sm);
+    }
+    /* (work object per cassetto, 6/10) X/Y/Z del cassetto non contano piu':
+       avviso, non informazione */
+    .teach-hint.teach-wo-note {
+        background: var(--color-warning-bg);
+        color: var(--color-warning);
     }
 
     .teach-warning {
