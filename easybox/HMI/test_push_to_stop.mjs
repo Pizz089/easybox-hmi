@@ -144,6 +144,25 @@ check(vv.stopRows.length === 2 && r1029 && r1029.exceeds && r1029.overhang === 5
 	&& r1030 && r1030.declared && !r1030.exceeds && r1030.value === 0 && !vv.stopRows.some(r => r.PIECE_ID === 1031),
 	"   righe: il pezzo che eccede con la spinta (sporge 5 mm per lato) e la dichiarazione gia' fatta; non il pezzo senza spinta");
 check(vv.vicePositionLabel === 'Mag 1.1', '   e la posizione in sola lettura resta quella (Mag 1.1)');
+// la sezione compare da oggi: la dichiarazione segue la regola della pagina
+// Spinta in battuta (canEdit, livello >= 1), che scrive la stessa riga
+{
+	const scritte = [];
+	globalThis.fetch = async (url) => { scritte.push(String(url)); return { ok: true, json: async () => [], text: async () => 'OK' }; };
+	vv.loadStops = () => {};
+	dataStored.userLevel = 0;
+	r1029.value = 2;
+	vv.saveStop(r1029); vv.removeStop(r1030); await tick();
+	check(vv.canDeclareStop === false && !scritte.some(u => /setStop|deleteStop/.test(u)), 'appoggi a livello 0: niente setStop ne\' deleteStop (come Spinta in battuta)');
+	dataStored.userLevel = 1;
+	vv.saveStop(r1029); await tick(); vv.removeStop(r1030); await tick();
+	check(vv.canDeclareStop === true && scritte.some(u => /setStop\?VICE_ID=1&PIECE_ID=1029&STOP_BEYOND_CLAW=2000/.test(u)) && scritte.some(u => /deleteStop\?VICE_ID=1&PIECE_ID=1030/.test(u)),
+		'   da livello 1 si dichiara (2 mm -> 2000 micron) e si cancella');
+	check(/:disabled="!stopValueValid\(row\) \|\| stopBusy \|\| !canDeclareStop"/.test(readFileSync('src/views/conf/Vice/Vice.vue', 'utf8'))
+		&& /:disabled="stopBusy \|\| !canDeclareStop"/.test(readFileSync('src/views/conf/Vice/Vice.vue', 'utf8')),
+		'   e a video i due pulsanti sono spenti sotto il livello 1');
+	dataStored.userLevel = 0;
+}
 const srcVice = readFileSync('src/views/conf/Vice/Vice.vue', 'utf8');
 check(/vice\.clawLength"/.test(srcVice) && /vice\.clawLengthHint/.test(srcVice), 'campo etichettato e con il motivo');
 check(/&micro;m/.test(srcVice), 'X/Y/Z smettono di dire mm su valori in micron (difetto storico, ora l\'etichetta e\' onesta)');

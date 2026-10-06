@@ -126,6 +126,9 @@
             <label>{{ $t("vice.stops") }}</label>
             <div class="stops-body">
               <small class="claw-hint">{{ $t("vice.stopsHint") }}</small>
+              <!-- (6/10) stessa regola della pagina Spinta in battuta: la
+                   dichiarazione si scrive da livello 1 -->
+              <small v-if="!canDeclareStop" class="claw-hint">{{ $t("vice.stopsLevel") }}</small>
               <p v-if="!stopRows.length" class="stops-empty">
                 {{ $t("vice.stopsNone") }}
               </p>
@@ -154,7 +157,7 @@
                   <button
                     type="button"
                     class="pure-button button_pressed"
-                    :disabled="!stopValueValid(row) || stopBusy"
+                    :disabled="!stopValueValid(row) || stopBusy || !canDeclareStop"
                     @click="saveStop(row)"
                   >
                     {{ $t("vice.stopsSave") }}
@@ -163,7 +166,7 @@
                     type="button"
                     class="pure-button button_pressed del"
                     v-if="row.declared"
-                    :disabled="stopBusy"
+                    :disabled="stopBusy || !canDeclareStop"
                     @click="removeStop(row)"
                   >
                     {{ $t("vice.stopsDelete") }}
@@ -299,6 +302,14 @@ export default {
     // AF: decodifica in sola lettura — stessa semantica della colonna
     // storica di VicesView (rimossa): POS_PLANT>200 MC2, >100 MC1,
     // altrimenti magazzino morse MAG.
+    // (6/10) la sezione degli appoggi compare da oggi (prima un secondo
+    // blocco computed cancellava clawLengthMicron): la dichiarazione segue la
+    // regola della pagina Spinta in battuta (canEdit, livello >= 1), che
+    // scrive la stessa riga PIECE_ON_VICE con la stessa rotta setStop.
+    canDeclareStop() {
+      return Number(dataStored.userLevel) >= 1;
+    },
+
     vicePositionLabel() {
       if (this.create) return this.$t("OUT");
       if (this.vice.POS_PLANT > 200) return "MC 2";
@@ -538,7 +549,7 @@ export default {
     },
 
     saveStop(row) {
-      if (!this.stopValueValid(row)) return;
+      if (!this.stopValueValid(row) || !this.canDeclareStop) return;
       const viceID = Number(this.$route.query.viceID);
       const micron = Math.round(Number(row.value) * 1000);
       const url =
@@ -566,6 +577,7 @@ export default {
     },
 
     removeStop(row) {
+      if (!this.canDeclareStop) return;
       const viceID = Number(this.$route.query.viceID);
       const url =
         dataStored.server +

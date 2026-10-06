@@ -898,7 +898,8 @@
     "stopsUnused": "no longer needed: the part fits inside the jaw. The declaration stays until it is deleted.",
     "stopsSave": "Save",
     "stopsDelete": "Delete",
-    "stopsSaveError": "The rest-point declaration could not be saved."
+    "stopsSaveError": "The rest-point declaration could not be saved.",
+    "stopsLevel": "Declaring or deleting a rest point needs level 1, as on the Push to stop page."
   },
   "pallet": {
     "inMachine": "IN MACHINE",

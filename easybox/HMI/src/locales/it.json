@@ -898,7 +898,8 @@
     "stopsUnused": "non serve più: il pezzo sta dentro la ganascia. La dichiarazione resta finché non viene cancellata.",
     "stopsSave": "Salva",
     "stopsDelete": "Cancella",
-    "stopsSaveError": "Non è stato possibile salvare la dichiarazione dell'appoggio."
+    "stopsSaveError": "Non è stato possibile salvare la dichiarazione dell'appoggio.",
+    "stopsLevel": "Per dichiarare o cancellare un appoggio serve il livello 1, come nella pagina Spinta in battuta."
   },
   "pallet": {
     "inMachine": "IN MACCHINA",
