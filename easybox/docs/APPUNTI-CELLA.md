@@ -1,5 +1,31 @@
 # Appunti cella — interventi manuali da eseguire in impianto
 
+## Aggiornare il pannello in cella
+
+1. Cella in HOLD.
+2. `cd D:\Prog`, poi `git pull`.
+3. Backend: nella finestra di `start_server.bat` Ctrl+C, poi rilanciare `start_server.bat`.
+4. Pannello: rilanciare `start_hmi.bat` solo se il pull tocca `package.json`, `package-lock.json` o `vite.config.js`; altrimenti basta Ctrl+F5 sui client.
+5. Controlli:
+   - porte 5173, 8080 e 3000 in ascolto;
+   - `INIT` nuovo in `access.log`;
+   - stato del robot che si aggiorna;
+   - `DB_executeQuery.readyForNextQuery` TRUE.
+
+**Avvertenza: le due finestre non si chiudono senza rilanciarle.** Il 6/10 la chiusura della finestra del backend ha fermato il ponte fra PLC e SQL per circa 13 minuti.
+
+Da dove partono i due `.bat` e cosa fanno: voce del 18/9 (limite heap del backend).
+
+## [ ] 2026-10-06 — `tools/pannello.ps1` non c'è in cella: aperto
+
+Dopo il pull del 6/10 `tools/pannello.ps1` non c'è in cella: git l'ha creato, ma il file non risulta. La causa è ancora da capire: checkout parziale o antivirus.
+
+**Finché non è chiarito, nessuna modifica a `pannello.ps1`.** Se in cella risulta cancellato, una modifica in arrivo bloccherebbe il pull.
+
+Da correggere dopo:
+- il messaggio finale (riga 175): «il backend si riavvia da solo» è falso;
+- il controllo delle modifiche locali (riga 77, `ModificheLocali`): `git status --porcelain` conta anche i file non tracciati della cella e fermerebbe sempre lo script.
+
 ## [ ] 2026-10-06 — work object per cassetto: vista 4Robot **v4**, quote relative al cassetto
 
 **Perché.** Il robotista passa a **un work object per cassetto**: meccanicamente i cassetti non sono paralleli né equidistanti. Da quel momento le quote delle tasche che il PLC gli passa devono essere **relative al cassetto**:
@@ -19,7 +45,8 @@ La vista v3 sommava le correzioni del cassetto (`TRAY.X_CORR`, `Y_CORR`, `Z_CORR
 - 0 in tutte le altre missioni (pinze sullo scaffale, pallet, macchina);
 - a riposo può restare il numero dell'ultimo cassetto usato, e un "Vai a EasyBox" dopo una missione sul cassetto porta N_Cassetto diverso da 0 (il posizionamento scrive Unit_code ma non Object_Type);
 - da qui le uscite libere verso il robot partono da %QW646.
-- Il commit 6cabcc4 riporta l'export TIA alle 09:34: è l'ora UTC letta dalla macchina di appoggio. L'export è delle 11:34 ora italiana, dopo l'ultima modifica del progetto delle 11:21.
+
+**Correzione su 6cabcc4.** Il commit riporta l'export TIA alle 09:34, che è l'ora UTC. L'export è delle 11:34 ora italiana, dopo l'ultima modifica del progetto delle 11:21.
 
 **Vista v4** (`serverDati/scripts/robot-tray-view-v4.sql`): stesse colonne della v3, stessi nomi e stesso ordine; cambiano le quote e l'espressione di TRAY.
 - `X_PICK = pos.X + ISNULL(pos.X_CORR,0) + ISNULL(decentrato pick X,0)`, Y uguale;
@@ -107,7 +134,7 @@ $env:MQTT_BROKER_URL='mqtt://utente:password@host:porta'; node tools/haas-probe-
 # ricetta 3 invece di 1: aggiungere 3 dopo --live
 ```
 
-## [ ] 2026-09-18 — limite heap del servizio node (nssm): NON sta nel repo
+## [ ] 2026-09-18 — limite heap del backend: va in `start_server.bat`, NON sta nel repo
 
 Dopo il crash `Fatal process out of memory: Zone` il backend gira con un tetto
 heap dichiarato. `serverDati/package.json` lo mette nello script di avvio:
@@ -116,38 +143,35 @@ heap dichiarato. `serverDati/package.json` lo mette nello script di avvio:
 "start": "node --max-old-space-size=1024 server.js"
 ```
 
-**Ma vale solo se il servizio parte da `npm start`.** nssm di norma lancia
-`node.exe server.js` diretto, e in quel caso il flag non arriva: la
-configurazione del servizio vive nel registro del PC impianto, non qui.
+**Ma in cella `npm start` non si usa.** Corretto il 6/10: in cella non c'è
+nessun servizio nssm. I due programmi partono da due `.bat` che **non sono
+nel repo**:
+- backend: `D:\Prog\easybox\serverDati\start_server.bat` (timeout 10, cd,
+  mkdir log, `node server.js`, pause);
+- pannello: `D:\Prog\easybox\HMI\start_hmi.bat` (timeout 15, cd, `npm run dev`).
 
-Due modi, uno basta. Da prompt amministratore, a servizio fermo:
+Il tetto di memoria va nel `.bat` del backend, nella riga che lo avvia:
 
 ```
-nssm stop  EasyBoxServer
-
-# A) il flag nei parametri
-nssm set   EasyBoxServer AppParameters "--max-old-space-size=1024 server.js"
-
-# B) oppure via ambiente, se si preferisce non toccare i parametri
-nssm set   EasyBoxServer AppEnvironmentExtra NODE_OPTIONS=--max-old-space-size=1024
-
-nssm start EasyBoxServer
+node --max-old-space-size=1024 server.js
 ```
 
-(Il nome del servizio va verificato con `nssm dump` o nell'elenco servizi:
-qui e' scritto come esempio.)
+Vale dal riavvio successivo: cella in HOLD, Ctrl+C nella finestra del
+backend, rilanciare `start_server.bat` (voce «Aggiornare il pannello in
+cella»: la finestra non si chiude senza rilanciarla).
 
 ### Come si CONTROLLA che sia arrivato
 
-Non si da' per buono: all'avvio il backend chiede il limite a V8 e lo scrive
-in `serverDati/log/access.log`.
+Non si dà per buono: all'avvio il backend chiede il limite a V8 e lo scrive
+in `serverDati/log/access.log`, nella riga `INIT`:
 
 ```
--------- INIT --------  ... heap limit: 1024 MB
+-------- INIT --------  ... heap limit: 1072 MB
 ```
 
-Se la riga dice ~2048 o ~4096 MB (il default di node secondo la versione), il
-flag NON e' arrivato al processo e si e' cambiato qualcosa che non conta.
+Con il flag il limite è **circa 1072 MB**, non 1024: è il limite che riporta
+V8. Se la riga dice **4144 MB**, è il default di node in cella: il flag NON è
+arrivato al processo e si è cambiato qualcosa che non conta.
 
 ### La riga periodica
 
