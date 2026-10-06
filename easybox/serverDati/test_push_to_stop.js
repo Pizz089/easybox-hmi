@@ -354,10 +354,36 @@ check(/LIKE N'%ISNULL\(pz\.Y,0\) as PART_WIDTH%'[\s\S]*?conforme, nessuna modifi
 const blowQuery = 'select CLAW_LENGTH,PART_WIDTH,STOP_BEYOND_CLAW,PART_LENGTH,PART_HEIGHT from COORDINATES_BLOW_MC where ORDER_ID=32767';
 check(blowQuery.length < 254, 'soffiaggio: la query del PLC (5 colonne, ORDER_ID a 5 cifre) sta in ' + blowQuery.length
 	+ ' caratteri, sotto i 254 di queryTemp (con i join a mano erano 298: sarebbe arrivata troncata)');
-// e' proprio quella del PLC, nei tre punti del soffiaggio di FB_Robot
+// e' proprio quella del PLC, nei tre punti del soffiaggio di FB_Robot.
+// (consegna 30, 6/10) Il conteggio sul file intero non basta piu': ogni
+// punto ha due rami (ordine avviato e manuale) e il manuale cambia da un
+// punto all'altro. Si controlla stato per stato: la query nei due rami, e
+// lo stato che fa avanzare la PROPRIA sequenza. Il 6/10 il 37 di
+// Part_MC_to_Robot era il blocco di Part_Robot_to_MC: faceva avanzare la
+// sequenza di deposito e il prelievo da MC1 restava fermo al 37.
 const fb7 = fs.readFileSync(path.join(__dirname, '..', '..', 'plc', 'FB', 'FB_Robot.scl'), 'utf8');
-check((fb7.split("'" + blowQuery.replace(/32767$/, '') + "'").length - 1) === 3,
-	'soffiaggio: FB_Robot usa questa stessa query nei tre punti (Part_Robot_to_MC, Part_MC_to_Robot, scambio)');
+function statoFB(regione, n) {
+	const righe = fb7.split(/\r?\n/);
+	const a = righe.findIndex(r => r.trim() === 'REGION ' + regione);
+	if (a < 0) return '';
+	const ind = righe[a].match(/^\s*/)[0];
+	const z = righe.findIndex((r, i) => i > a && r.startsWith(ind + 'END_REGION'));
+	const k = righe.findIndex((r, i) => i > a && i < z && new RegExp('^\\s+' + n + '\\s*:').test(r));
+	if (k < 0) return '';
+	const lab = righe[k].match(/^\s*/)[0];
+	let e = k + 1;
+	while (e < z && !(righe[e].startsWith(lab) && /^(\d+\s*:|ELSE\b|END_CASE\b)/.test(righe[e].slice(lab.length)))) e++;
+	return righe.slice(k, e).join('\n');
+}
+const prefissoBlow = blowQuery.replace(/32767$/, '');
+for (const [regione, n, sequenza, poi] of [['Part_Robot_to_MC', 37, '_Part_Robot_to_MC', 38], ['Part_MC_to_Robot', 37, '_Part_MC_to_Robot', 38], ['Cycle MASTER ROBOT', 1416, '_master', 1417]]) {
+	const s = statoFB(regione, n);
+	const avanza = [...s.matchAll(/#Dispatcher\["(\w+)"\]\s*:=\s*(\d+)/g)].map(m => m[1] + ' := ' + m[2]);
+	check(s.split(prefissoBlow).length - 1 === 2,
+		'soffiaggio: FB_Robot ' + regione + ' ' + n + ' usa questa stessa query, con l\'ordine avviato e in manuale');
+	check(avanza.length === 2 && avanza.every(x => x === sequenza + ' := ' + poi),
+		'   e fa avanzare la propria sequenza: ' + sequenza + ' := ' + poi + ' (' + (avanza.join(', ') || 'stato non trovato') + ')');
+}
 
 const view = fs.readFileSync(path.join(__dirname, 'scripts', 'coordinates-push-mc.sql'), 'utf8');
 // i commenti PARLANO di WITH ENCRYPTION (per dire che non si usa): il controllo
