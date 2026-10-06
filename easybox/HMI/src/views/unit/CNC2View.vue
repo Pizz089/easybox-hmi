@@ -5,13 +5,17 @@
     import { plant } from '../../stores/plantStatus.js'
     import { statusKey, statusTone } from '../../util/unitStatus.js'
     import UiCard from '../../components/ui/UiCard.vue'
+    // (v3 fase C, decisione di Dario) i comandi di MC2 non collegati al PLC
+    // non si mostrano. Il codice resta: quando MC2 sara' cablata si collegano
+    // i comandi e si mette true qui.
+    const MC2_PORTA_CABLATA = false
 </script>
 
 <template>
-  <!-- (v3 fase B) Controlli · Macchina MC2, stesso schema di MC1. I due
-       pulsanti della porta non avevano un comando collegato (nessun @click):
-       restano visibili ma spenti, invece di sembrare comandi che fanno
-       qualcosa. Lo stato e' lo STATUS di MC2 dalla striscia. -->
+  <!-- (v3 fase B) Controlli · Macchina MC2, stesso schema di MC1. Lo stato
+       e' lo STATUS di MC2 dalla striscia. (fase C) I due pulsanti della
+       porta non hanno mai avuto un comando (nessun @click): nascosti finche'
+       MC2 non e' cablata (MC2_PORTA_CABLATA). -->
   <div class="ctl">
     <div class="ctl__col">
       <UiCard :label="$t('Stato')">
@@ -33,7 +37,7 @@
       </UiCard>
     </div>
 
-    <div class="ctl__col">
+    <div class="ctl__col" v-if="MC2_PORTA_CABLATA">
       <UiCard :label="$t('machine.cmdSection')">
         <div class="ctl-row">
           <span class="ctl-row__label">{{ $t('machine.door') }}</span>
