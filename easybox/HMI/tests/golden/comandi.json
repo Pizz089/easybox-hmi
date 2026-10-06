@@ -14,8 +14,113 @@
    ],
    "controlli": [
     {
-     "id": "div@click $router.push('../../conf/grippers')",
-     "etichetta": "{{dataGripper[0].FAMILY}} - {{dataGripper[0].DESCR}} Mag. pinza Pos : {{dataGripper[0].POS_MAG}} Stato Pinza 1: {{getSta",
+     "id": "button@click dataStored.cmdActive==1?openDeclDialog():''",
+     "etichetta": "Reimposta stato cella",
+     "evento": "click",
+     "handler": "dataStored.cmdActive==1?openDeclDialog():''",
+     "disabled": "dataStored.cmdActive==0",
+     "classe": "",
+     "esiti": {
+      "HOLD liv2": {
+       "abilitato": true,
+       "effetti": [
+        "fetch GET api/conf/piece/show/all",
+        "fetch GET api/conf/gripper/show/all"
+       ],
+       "stato": [
+        "vm.declDialog.open = true",
+        "vm.declErr.trayType = undefined"
+       ],
+       "conferme": [
+        {
+         "controllo": "button@click closeDeclDialog()",
+         "etichetta": "Annulla",
+         "abilitato": true,
+         "effetti": []
+        }
+       ]
+      },
+      "HOLD liv0": {
+       "abilitato": true,
+       "effetti": [
+        "fetch GET api/conf/piece/show/all",
+        "fetch GET api/conf/gripper/show/all"
+       ],
+       "stato": [
+        "vm.declDialog.open = true",
+        "vm.declErr.trayType = undefined"
+       ],
+       "conferme": [
+        {
+         "controllo": "button@click closeDeclDialog()",
+         "etichetta": "Annulla",
+         "abilitato": true,
+         "effetti": []
+        }
+       ]
+      },
+      "HOLD liv2 cassetto 8 fuori": {
+       "abilitato": true,
+       "effetti": [
+        "fetch GET api/conf/piece/show/all",
+        "fetch GET api/conf/gripper/show/all"
+       ],
+       "stato": [
+        "vm.declDialog.open = true",
+        "vm.declDialog.boxSel = 8",
+        "vm.declErr.trayType = undefined"
+       ],
+       "conferme": [
+        {
+         "controllo": "button@click closeDeclDialog()",
+         "etichetta": "Annulla",
+         "abilitato": true,
+         "effetti": []
+        }
+       ]
+      },
+      "AUTO liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "OFF liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "STATUS ignoto liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "NOT_DEFINED liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      }
+     }
+    },
+    {
+     "id": "button@click retryPlcRefresh",
+     "etichetta": "Riprova",
+     "evento": "click",
+     "handler": "retryPlcRefresh",
+     "disabled": "",
+     "classe": "",
+     "esiti": {
+      "HOLD liv2": "nascosto",
+      "HOLD liv0": "nascosto",
+      "HOLD liv2 cassetto 8 fuori": "nascosto",
+      "AUTO liv2": "nascosto",
+      "OFF liv2": "nascosto",
+      "STATUS ignoto liv2": "nascosto",
+      "NOT_DEFINED liv2": "nascosto"
+     }
+    },
+    {
+     "id": "UiCard@click $router.push('../../conf/grippers')",
+     "etichetta": "Pinza a bordo {{(dataGripper[0].FAMILY || '').trim()}} {{$t('robot.claw.side', { side: 1 })}} {{$t(gripperContentKey(dat",
      "evento": "click",
      "handler": "$router.push('../../conf/grippers')",
      "disabled": "",
@@ -74,7 +179,7 @@
     },
     {
      "id": "div@click ",
-     "etichetta": "Coerenza pinza Fonti concordi Incoerenza Sensore non disponibile {{gripperSensor==1 ? $t('robot.coherence.mounted') : $t",
+     "etichetta": "{{gripperCoherence.state=='ok' ? $t('robot.coherence.ok') : $t('robot.coherence.mismatch')}} · Sensore non disponibile S",
      "evento": "click",
      "handler": "",
      "disabled": "",
@@ -118,221 +223,57 @@
      }
     },
     {
-     "id": "input@change onSliderChange($event)",
+     "id": "UiStepper@step stepSpeed($event)",
      "etichetta": "",
-     "evento": "change",
-     "handler": "onSliderChange($event)",
+     "evento": "step",
+     "handler": "stepSpeed($event)",
      "disabled": "!speedEnabled",
      "classe": "",
      "esiti": {
       "HOLD liv2": {
        "abilitato": true,
        "effetti": [
-        "emit TO_PLANT/CMD/ROBOT \"100;1\""
+        "emit TO_PLANT/CMD/ROBOT \"100;2\""
        ],
-       "stato": []
+       "stato": [
+        "vm.speedLastSent = 2"
+       ]
       },
       "HOLD liv0": {
        "abilitato": true,
        "effetti": [
-        "emit TO_PLANT/CMD/ROBOT \"100;1\""
+        "emit TO_PLANT/CMD/ROBOT \"100;2\""
        ],
-       "stato": []
+       "stato": [
+        "vm.speedLastSent = 2"
+       ]
       },
       "HOLD liv2 cassetto 8 fuori": {
        "abilitato": true,
        "effetti": [
-        "emit TO_PLANT/CMD/ROBOT \"100;1\""
+        "emit TO_PLANT/CMD/ROBOT \"100;2\""
        ],
-       "stato": []
+       "stato": [
+        "vm.speedLastSent = 2"
+       ]
       },
       "AUTO liv2": {
        "abilitato": true,
        "effetti": [
-        "emit TO_PLANT/CMD/ROBOT \"100;1\""
+        "emit TO_PLANT/CMD/ROBOT \"100;2\""
        ],
-       "stato": []
+       "stato": [
+        "vm.speedLastSent = 2"
+       ]
       },
       "OFF liv2": {
        "abilitato": true,
        "effetti": [
-        "emit TO_PLANT/CMD/ROBOT \"100;1\""
+        "emit TO_PLANT/CMD/ROBOT \"100;2\""
        ],
-       "stato": []
-      },
-      "STATUS ignoto liv2": {
-       "abilitato": false,
-       "effetti": [
-        "emit TO_PLANT/CMD/ROBOT \"100;1\""
-       ],
-       "stato": []
-      },
-      "NOT_DEFINED liv2": {
-       "abilitato": false,
-       "effetti": [
-        "emit TO_PLANT/CMD/ROBOT \"100;1\""
-       ],
-       "stato": []
-      }
-     }
-    },
-    {
-     "id": "input@focus startSpeedEdit",
-     "etichetta": "",
-     "evento": "focus",
-     "handler": "startSpeedEdit",
-     "disabled": "!speedEnabled",
-     "classe": "",
-     "esiti": {
-      "HOLD liv2": {
-       "abilitato": true,
-       "effetti": [],
        "stato": [
-        "vm.speedManual = \"1\"",
-        "vm.speedEditing = true"
+        "vm.speedLastSent = 2"
        ]
-      },
-      "HOLD liv0": {
-       "abilitato": true,
-       "effetti": [],
-       "stato": [
-        "vm.speedManual = \"1\"",
-        "vm.speedEditing = true"
-       ]
-      },
-      "HOLD liv2 cassetto 8 fuori": {
-       "abilitato": true,
-       "effetti": [],
-       "stato": [
-        "vm.speedManual = \"1\"",
-        "vm.speedEditing = true"
-       ]
-      },
-      "AUTO liv2": {
-       "abilitato": true,
-       "effetti": [],
-       "stato": [
-        "vm.speedManual = \"1\"",
-        "vm.speedEditing = true"
-       ]
-      },
-      "OFF liv2": {
-       "abilitato": true,
-       "effetti": [],
-       "stato": [
-        "vm.speedManual = \"1\"",
-        "vm.speedEditing = true"
-       ]
-      },
-      "STATUS ignoto liv2": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": [
-        "vm.speedManual = \"1\"",
-        "vm.speedEditing = true"
-       ]
-      },
-      "NOT_DEFINED liv2": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": [
-        "vm.speedManual = \"1\"",
-        "vm.speedEditing = true"
-       ]
-      }
-     }
-    },
-    {
-     "id": "input@input speedManual = $event.target.value",
-     "etichetta": "",
-     "evento": "input",
-     "handler": "speedManual = $event.target.value",
-     "disabled": "!speedEnabled",
-     "classe": "",
-     "esiti": {
-      "HOLD liv2": {
-       "abilitato": true,
-       "effetti": [],
-       "stato": [
-        "vm.speedManual = \"1\""
-       ]
-      },
-      "HOLD liv0": {
-       "abilitato": true,
-       "effetti": [],
-       "stato": [
-        "vm.speedManual = \"1\""
-       ]
-      },
-      "HOLD liv2 cassetto 8 fuori": {
-       "abilitato": true,
-       "effetti": [],
-       "stato": [
-        "vm.speedManual = \"1\""
-       ]
-      },
-      "AUTO liv2": {
-       "abilitato": true,
-       "effetti": [],
-       "stato": [
-        "vm.speedManual = \"1\""
-       ]
-      },
-      "OFF liv2": {
-       "abilitato": true,
-       "effetti": [],
-       "stato": [
-        "vm.speedManual = \"1\""
-       ]
-      },
-      "STATUS ignoto liv2": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": [
-        "vm.speedManual = \"1\""
-       ]
-      },
-      "NOT_DEFINED liv2": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": [
-        "vm.speedManual = \"1\""
-       ]
-      }
-     }
-    },
-    {
-     "id": "input@keyup $event.target.blur()",
-     "etichetta": "",
-     "evento": "keyup",
-     "handler": "$event.target.blur()",
-     "disabled": "!speedEnabled",
-     "classe": "",
-     "esiti": {
-      "HOLD liv2": {
-       "abilitato": true,
-       "effetti": [],
-       "stato": []
-      },
-      "HOLD liv0": {
-       "abilitato": true,
-       "effetti": [],
-       "stato": []
-      },
-      "HOLD liv2 cassetto 8 fuori": {
-       "abilitato": true,
-       "effetti": [],
-       "stato": []
-      },
-      "AUTO liv2": {
-       "abilitato": true,
-       "effetti": [],
-       "stato": []
-      },
-      "OFF liv2": {
-       "abilitato": true,
-       "effetti": [],
-       "stato": []
       },
       "STATUS ignoto liv2": {
        "abilitato": false,
@@ -347,12 +288,201 @@
      }
     },
     {
-     "id": "input@blur applyManualSpeed",
-     "etichetta": "",
-     "evento": "blur",
-     "handler": "applyManualSpeed",
+     "id": "button@click setSpeedPreset(p)",
+     "etichetta": "{{p}} %",
+     "evento": "click",
+     "handler": "setSpeedPreset(p)",
      "disabled": "!speedEnabled",
-     "classe": "",
+     "classe": "{ on: speedKnown && displaySpeed == p }",
+     "esiti": {
+      "HOLD liv2": [
+       {
+        "abilitato": true,
+        "effetti": [
+         "emit TO_PLANT/CMD/ROBOT \"100;10\""
+        ],
+        "stato": [
+         "vm.speedLastSent = 10"
+        ]
+       },
+       {
+        "abilitato": true,
+        "effetti": [
+         "emit TO_PLANT/CMD/ROBOT \"100;25\""
+        ],
+        "stato": [
+         "vm.speedLastSent = 25"
+        ]
+       },
+       {
+        "abilitato": true,
+        "effetti": [
+         "emit TO_PLANT/CMD/ROBOT \"100;50\""
+        ],
+        "stato": [
+         "vm.speedLastSent = 50"
+        ]
+       }
+      ],
+      "HOLD liv0": [
+       {
+        "abilitato": true,
+        "effetti": [
+         "emit TO_PLANT/CMD/ROBOT \"100;10\""
+        ],
+        "stato": [
+         "vm.speedLastSent = 10"
+        ]
+       },
+       {
+        "abilitato": true,
+        "effetti": [
+         "emit TO_PLANT/CMD/ROBOT \"100;25\""
+        ],
+        "stato": [
+         "vm.speedLastSent = 25"
+        ]
+       },
+       {
+        "abilitato": true,
+        "effetti": [
+         "emit TO_PLANT/CMD/ROBOT \"100;50\""
+        ],
+        "stato": [
+         "vm.speedLastSent = 50"
+        ]
+       }
+      ],
+      "HOLD liv2 cassetto 8 fuori": [
+       {
+        "abilitato": true,
+        "effetti": [
+         "emit TO_PLANT/CMD/ROBOT \"100;10\""
+        ],
+        "stato": [
+         "vm.speedLastSent = 10"
+        ]
+       },
+       {
+        "abilitato": true,
+        "effetti": [
+         "emit TO_PLANT/CMD/ROBOT \"100;25\""
+        ],
+        "stato": [
+         "vm.speedLastSent = 25"
+        ]
+       },
+       {
+        "abilitato": true,
+        "effetti": [
+         "emit TO_PLANT/CMD/ROBOT \"100;50\""
+        ],
+        "stato": [
+         "vm.speedLastSent = 50"
+        ]
+       }
+      ],
+      "AUTO liv2": [
+       {
+        "abilitato": true,
+        "effetti": [
+         "emit TO_PLANT/CMD/ROBOT \"100;10\""
+        ],
+        "stato": [
+         "vm.speedLastSent = 10"
+        ]
+       },
+       {
+        "abilitato": true,
+        "effetti": [
+         "emit TO_PLANT/CMD/ROBOT \"100;25\""
+        ],
+        "stato": [
+         "vm.speedLastSent = 25"
+        ]
+       },
+       {
+        "abilitato": true,
+        "effetti": [
+         "emit TO_PLANT/CMD/ROBOT \"100;50\""
+        ],
+        "stato": [
+         "vm.speedLastSent = 50"
+        ]
+       }
+      ],
+      "OFF liv2": [
+       {
+        "abilitato": true,
+        "effetti": [
+         "emit TO_PLANT/CMD/ROBOT \"100;10\""
+        ],
+        "stato": [
+         "vm.speedLastSent = 10"
+        ]
+       },
+       {
+        "abilitato": true,
+        "effetti": [
+         "emit TO_PLANT/CMD/ROBOT \"100;25\""
+        ],
+        "stato": [
+         "vm.speedLastSent = 25"
+        ]
+       },
+       {
+        "abilitato": true,
+        "effetti": [
+         "emit TO_PLANT/CMD/ROBOT \"100;50\""
+        ],
+        "stato": [
+         "vm.speedLastSent = 50"
+        ]
+       }
+      ],
+      "STATUS ignoto liv2": [
+       {
+        "abilitato": false,
+        "effetti": [],
+        "stato": []
+       },
+       {
+        "abilitato": false,
+        "effetti": [],
+        "stato": []
+       },
+       {
+        "abilitato": false,
+        "effetti": [],
+        "stato": []
+       }
+      ],
+      "NOT_DEFINED liv2": [
+       {
+        "abilitato": false,
+        "effetti": [],
+        "stato": []
+       },
+       {
+        "abilitato": false,
+        "effetti": [],
+        "stato": []
+       },
+       {
+        "abilitato": false,
+        "effetti": [],
+        "stato": []
+       }
+      ]
+     }
+    },
+    {
+     "id": "button@click rvTab='movement'",
+     "etichetta": "Movimenti",
+     "evento": "click",
+     "handler": "rvTab='movement'",
+     "disabled": "",
+     "classe": "{ on: rvTab=='movement' }",
      "esiti": {
       "HOLD liv2": {
        "abilitato": true,
@@ -380,6 +510,190 @@
        "stato": []
       },
       "STATUS ignoto liv2": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": []
+      },
+      "NOT_DEFINED liv2": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": []
+      }
+     }
+    },
+    {
+     "id": "button@click rvTab='mission'",
+     "etichetta": "Missioni",
+     "evento": "click",
+     "handler": "rvTab='mission'",
+     "disabled": "",
+     "classe": "{ on: rvTab=='mission' }",
+     "esiti": {
+      "HOLD liv2": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.rvTab = \"mission\""
+       ]
+      },
+      "HOLD liv0": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.rvTab = \"mission\""
+       ]
+      },
+      "HOLD liv2 cassetto 8 fuori": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.rvTab = \"mission\""
+       ]
+      },
+      "AUTO liv2": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.rvTab = \"mission\""
+       ]
+      },
+      "OFF liv2": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.rvTab = \"mission\""
+       ]
+      },
+      "STATUS ignoto liv2": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.rvTab = \"mission\""
+       ]
+      },
+      "NOT_DEFINED liv2": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.rvTab = \"mission\""
+       ]
+      }
+     }
+    },
+    {
+     "id": "button@click rvTab='claw'",
+     "etichetta": "Chele",
+     "evento": "click",
+     "handler": "rvTab='claw'",
+     "disabled": "",
+     "classe": "{ on: rvTab=='claw' }",
+     "esiti": {
+      "HOLD liv2": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.rvTab = \"claw\""
+       ]
+      },
+      "HOLD liv0": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.rvTab = \"claw\""
+       ]
+      },
+      "HOLD liv2 cassetto 8 fuori": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.rvTab = \"claw\""
+       ]
+      },
+      "AUTO liv2": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.rvTab = \"claw\""
+       ]
+      },
+      "OFF liv2": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.rvTab = \"claw\""
+       ]
+      },
+      "STATUS ignoto liv2": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.rvTab = \"claw\""
+       ]
+      },
+      "NOT_DEFINED liv2": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.rvTab = \"claw\""
+       ]
+      }
+     }
+    },
+    {
+     "id": "UiTile@click dataStored.cmdActive==1?sendMission('home',20):''",
+     "etichetta": "Posizione di home",
+     "evento": "click",
+     "handler": "dataStored.cmdActive==1?sendMission('home',20):''",
+     "disabled": "dataStored.cmdActive==0",
+     "classe": "{'btn-mission-running': missionRunning=='home'}",
+     "esiti": {
+      "HOLD liv2": {
+       "abilitato": true,
+       "effetti": [
+        "emit TO_PLANT/CMD/ROBOT 20"
+       ],
+       "stato": [
+        "vm.missionRunning = \"home\"",
+        "vm.missionPhase = \"armed\"",
+        "vm.missionArmTimer = 1",
+        "vm.missionMaxTimer = 2"
+       ]
+      },
+      "HOLD liv0": {
+       "abilitato": true,
+       "effetti": [
+        "emit TO_PLANT/CMD/ROBOT 20"
+       ],
+       "stato": [
+        "vm.missionRunning = \"home\"",
+        "vm.missionPhase = \"armed\"",
+        "vm.missionArmTimer = 1",
+        "vm.missionMaxTimer = 2"
+       ]
+      },
+      "HOLD liv2 cassetto 8 fuori": {
+       "abilitato": true,
+       "effetti": [
+        "emit TO_PLANT/CMD/ROBOT 20"
+       ],
+       "stato": [
+        "vm.missionRunning = \"home\"",
+        "vm.missionPhase = \"armed\"",
+        "vm.missionArmTimer = 1",
+        "vm.missionMaxTimer = 2"
+       ]
+      },
+      "AUTO liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "OFF liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "STATUS ignoto liv2": {
        "abilitato": false,
        "effetti": [],
        "stato": []
@@ -389,6 +703,218 @@
        "effetti": [],
        "stato": []
       }
+     }
+    },
+    {
+     "id": "UiTile@click dataStored.cmdActive==1?sendMission('maintenance',21):''",
+     "etichetta": "Posizione per la manutenzione",
+     "evento": "click",
+     "handler": "dataStored.cmdActive==1?sendMission('maintenance',21):''",
+     "disabled": "dataStored.cmdActive==0",
+     "classe": "{'btn-mission-running': missionRunning=='maintenance'}",
+     "esiti": {
+      "HOLD liv2": {
+       "abilitato": true,
+       "effetti": [
+        "emit TO_PLANT/CMD/ROBOT 21"
+       ],
+       "stato": [
+        "vm.missionRunning = \"maintenance\"",
+        "vm.missionPhase = \"armed\"",
+        "vm.missionArmTimer = 1",
+        "vm.missionMaxTimer = 2"
+       ]
+      },
+      "HOLD liv0": {
+       "abilitato": true,
+       "effetti": [
+        "emit TO_PLANT/CMD/ROBOT 21"
+       ],
+       "stato": [
+        "vm.missionRunning = \"maintenance\"",
+        "vm.missionPhase = \"armed\"",
+        "vm.missionArmTimer = 1",
+        "vm.missionMaxTimer = 2"
+       ]
+      },
+      "HOLD liv2 cassetto 8 fuori": {
+       "abilitato": true,
+       "effetti": [
+        "emit TO_PLANT/CMD/ROBOT 21"
+       ],
+       "stato": [
+        "vm.missionRunning = \"maintenance\"",
+        "vm.missionPhase = \"armed\"",
+        "vm.missionArmTimer = 1",
+        "vm.missionMaxTimer = 2"
+       ]
+      },
+      "AUTO liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "OFF liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "STATUS ignoto liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "NOT_DEFINED liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      }
+     }
+    },
+    {
+     "id": "UiTile@click dataStored.cmdActive==1?sendMission('dest-easybox','15;1'):''",
+     "etichetta": "{{$t('robot.goTo', { dest: $t('Easybox') })}}",
+     "evento": "click",
+     "handler": "dataStored.cmdActive==1?sendMission('dest-easybox','15;1'):''",
+     "disabled": "dataStored.cmdActive==0",
+     "classe": "{'btn-mission-running': missionRunning=='dest-easybox'}",
+     "esiti": {
+      "HOLD liv2": {
+       "abilitato": true,
+       "effetti": [
+        "emit TO_PLANT/CMD/ROBOT \"15;1\""
+       ],
+       "stato": [
+        "vm.missionRunning = \"dest-easybox\"",
+        "vm.missionPhase = \"armed\"",
+        "vm.missionArmTimer = 1",
+        "vm.missionMaxTimer = 2"
+       ]
+      },
+      "HOLD liv0": {
+       "abilitato": true,
+       "effetti": [
+        "emit TO_PLANT/CMD/ROBOT \"15;1\""
+       ],
+       "stato": [
+        "vm.missionRunning = \"dest-easybox\"",
+        "vm.missionPhase = \"armed\"",
+        "vm.missionArmTimer = 1",
+        "vm.missionMaxTimer = 2"
+       ]
+      },
+      "HOLD liv2 cassetto 8 fuori": {
+       "abilitato": true,
+       "effetti": [
+        "emit TO_PLANT/CMD/ROBOT \"15;1\""
+       ],
+       "stato": [
+        "vm.missionRunning = \"dest-easybox\"",
+        "vm.missionPhase = \"armed\"",
+        "vm.missionArmTimer = 1",
+        "vm.missionMaxTimer = 2"
+       ]
+      },
+      "AUTO liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "OFF liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "STATUS ignoto liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "NOT_DEFINED liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      }
+     }
+    },
+    {
+     "id": "UiTile@click dataStored.cmdActive==1?sendMission('dest-'+pos.mc.toLowerCase(),'15;'+(10+pos.n)):''",
+     "etichetta": "{{$t('robot.goTo', { dest: $t(pos.labelKey) })}}",
+     "evento": "click",
+     "handler": "dataStored.cmdActive==1?sendMission('dest-'+pos.mc.toLowerCase(),'15;'+(10+pos.n)):''",
+     "disabled": "dataStored.cmdActive==0",
+     "classe": "{'btn-mission-running': missionRunning=='dest-'+pos.mc.toLowerCase()}",
+     "esiti": {
+      "HOLD liv2": [
+       {
+        "abilitato": true,
+        "effetti": [
+         "emit TO_PLANT/CMD/ROBOT \"15;11\""
+        ],
+        "stato": [
+         "vm.missionRunning = \"dest-mc1\"",
+         "vm.missionPhase = \"armed\"",
+         "vm.missionArmTimer = 1",
+         "vm.missionMaxTimer = 2"
+        ]
+       }
+      ],
+      "HOLD liv0": [
+       {
+        "abilitato": true,
+        "effetti": [
+         "emit TO_PLANT/CMD/ROBOT \"15;11\""
+        ],
+        "stato": [
+         "vm.missionRunning = \"dest-mc1\"",
+         "vm.missionPhase = \"armed\"",
+         "vm.missionArmTimer = 1",
+         "vm.missionMaxTimer = 2"
+        ]
+       }
+      ],
+      "HOLD liv2 cassetto 8 fuori": [
+       {
+        "abilitato": true,
+        "effetti": [
+         "emit TO_PLANT/CMD/ROBOT \"15;11\""
+        ],
+        "stato": [
+         "vm.missionRunning = \"dest-mc1\"",
+         "vm.missionPhase = \"armed\"",
+         "vm.missionArmTimer = 1",
+         "vm.missionMaxTimer = 2"
+        ]
+       }
+      ],
+      "AUTO liv2": [
+       {
+        "abilitato": false,
+        "effetti": [],
+        "stato": []
+       }
+      ],
+      "OFF liv2": [
+       {
+        "abilitato": false,
+        "effetti": [],
+        "stato": []
+       }
+      ],
+      "STATUS ignoto liv2": [
+       {
+        "abilitato": false,
+        "effetti": [],
+        "stato": []
+       }
+      ],
+      "NOT_DEFINED liv2": [
+       {
+        "abilitato": false,
+        "effetti": [],
+        "stato": []
+       }
+      ]
      }
     },
     {
@@ -396,8 +922,8 @@
      "etichetta": "Apri chela",
      "evento": "click",
      "handler": "clawEnabled(side) ? openClawDialog(side) : ''",
-     "disabled": "",
-     "classe": "[clawEnabled(side) ? 'pure-button-micromission' : 'pure-button-disable', {'btn-mission-running': missionRunning=='claw-open-'+side}]",
+     "disabled": "!clawEnabled(side)",
+     "classe": "{ on: side==1 && gripperClosed1===0, 'btn-mission-running': missionRunning=='claw-open-'+side }",
      "esiti": {
       "HOLD liv2": [
        {
@@ -408,16 +934,16 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click confirmClawOpen()",
-          "etichetta": "Conferma",
+          "controllo": "UiConfirmDialog@confirm confirmClawOpen()",
+          "etichetta": "",
           "abilitato": true,
           "effetti": [
            "emit TO_PLANT/CMD/ROBOT \"240\""
           ]
          },
          {
-          "controllo": "button@click closeClawDialog()",
-          "etichetta": "Annulla",
+          "controllo": "UiConfirmDialog@cancel closeClawDialog()",
+          "etichetta": "",
           "abilitato": true,
           "effetti": []
          }
@@ -438,16 +964,16 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click confirmClawOpen()",
-          "etichetta": "Conferma",
+          "controllo": "UiConfirmDialog@confirm confirmClawOpen()",
+          "etichetta": "",
           "abilitato": true,
           "effetti": [
            "emit TO_PLANT/CMD/ROBOT \"240\""
           ]
          },
          {
-          "controllo": "button@click closeClawDialog()",
-          "etichetta": "Annulla",
+          "controllo": "UiConfirmDialog@cancel closeClawDialog()",
+          "etichetta": "",
           "abilitato": true,
           "effetti": []
          }
@@ -468,16 +994,16 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click confirmClawOpen()",
-          "etichetta": "Conferma",
+          "controllo": "UiConfirmDialog@confirm confirmClawOpen()",
+          "etichetta": "",
           "abilitato": true,
           "effetti": [
            "emit TO_PLANT/CMD/ROBOT \"240\""
           ]
          },
          {
-          "controllo": "button@click closeClawDialog()",
-          "etichetta": "Annulla",
+          "controllo": "UiConfirmDialog@cancel closeClawDialog()",
+          "etichetta": "",
           "abilitato": true,
           "effetti": []
          }
@@ -544,8 +1070,8 @@
      "etichetta": "Chiudi chela",
      "evento": "click",
      "handler": "clawEnabled(side) ? sendClaw(side, false) : ''",
-     "disabled": "",
-     "classe": "[clawEnabled(side) ? 'pure-button-micromission' : 'pure-button-disable', {'btn-mission-running': missionRunning=='claw-close-'+side}]",
+     "disabled": "!clawEnabled(side)",
+     "classe": "{ on: side==1 && gripperClosed1===1, 'btn-mission-running': missionRunning=='claw-close-'+side }",
      "esiti": {
       "HOLD liv2": [
        {
@@ -655,46 +1181,326 @@
      }
     },
     {
-     "id": "button@click confirmClawOpen()",
-     "etichetta": "Conferma",
+     "id": "UiTile@click gripperBranchEnabled?openGripperMission():''",
+     "etichetta": "Gestione pinza {{$t(gripperDisabledReason)}}",
      "evento": "click",
-     "handler": "confirmClawOpen()",
-     "disabled": "",
-     "classe": "",
+     "handler": "gripperBranchEnabled?openGripperMission():''",
+     "disabled": "!gripperBranchEnabled",
+     "classe": "{'btn-mission-running': missionRunning=='gripper'}",
      "esiti": {
-      "HOLD liv2": "nascosto",
-      "HOLD liv0": "nascosto",
-      "HOLD liv2 cassetto 8 fuori": "nascosto",
-      "AUTO liv2": "nascosto",
-      "OFF liv2": "nascosto",
-      "STATUS ignoto liv2": "nascosto",
-      "NOT_DEFINED liv2": "nascosto"
+      "HOLD liv2": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.unloadOpen = true"
+       ],
+       "conferme": [
+        {
+         "controllo": "button@click startSwapSelection()",
+         "etichetta": "Deposita e cambia",
+         "abilitato": true,
+         "effetti": []
+        },
+        {
+         "controllo": "button@click confirmUnload()",
+         "etichetta": "Conferma",
+         "abilitato": true,
+         "effetti": [
+          "emit TO_PLANT/CMD/ROBOT 12",
+          "fetch GET api/conf/gripper/show/all",
+          "fetch GET api/conf/pallet/show/all",
+          "fetch GET api/conf/tray/show/all"
+         ]
+        },
+        {
+         "controllo": "button@click unloadOpen=false",
+         "etichetta": "Annulla",
+         "abilitato": true,
+         "effetti": []
+        }
+       ]
+      },
+      "HOLD liv0": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.unloadOpen = true"
+       ],
+       "conferme": [
+        {
+         "controllo": "button@click startSwapSelection()",
+         "etichetta": "Deposita e cambia",
+         "abilitato": true,
+         "effetti": []
+        },
+        {
+         "controllo": "button@click confirmUnload()",
+         "etichetta": "Conferma",
+         "abilitato": true,
+         "effetti": [
+          "emit TO_PLANT/CMD/ROBOT 12",
+          "fetch GET api/conf/gripper/show/all",
+          "fetch GET api/conf/pallet/show/all",
+          "fetch GET api/conf/tray/show/all"
+         ]
+        },
+        {
+         "controllo": "button@click unloadOpen=false",
+         "etichetta": "Annulla",
+         "abilitato": true,
+         "effetti": []
+        }
+       ]
+      },
+      "HOLD liv2 cassetto 8 fuori": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.unloadOpen = true"
+       ],
+       "conferme": [
+        {
+         "controllo": "button@click startSwapSelection()",
+         "etichetta": "Deposita e cambia",
+         "abilitato": true,
+         "effetti": []
+        },
+        {
+         "controllo": "button@click confirmUnload()",
+         "etichetta": "Conferma",
+         "abilitato": true,
+         "effetti": [
+          "emit TO_PLANT/CMD/ROBOT 12",
+          "fetch GET api/conf/gripper/show/all",
+          "fetch GET api/conf/pallet/show/all",
+          "fetch GET api/conf/tray/show/all"
+         ]
+        },
+        {
+         "controllo": "button@click unloadOpen=false",
+         "etichetta": "Annulla",
+         "abilitato": true,
+         "effetti": []
+        }
+       ]
+      },
+      "AUTO liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "OFF liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "STATUS ignoto liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "NOT_DEFINED liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      }
      }
     },
     {
-     "id": "button@click closeClawDialog()",
-     "etichetta": "Annulla",
+     "id": "UiTile@click palletBranchEnabled?openPalletMission():''",
+     "etichetta": "Gestione pallet {{$t(palletDisabledReason)}}",
      "evento": "click",
-     "handler": "closeClawDialog()",
-     "disabled": "",
-     "classe": "",
+     "handler": "palletBranchEnabled?openPalletMission():''",
+     "disabled": "!palletBranchEnabled",
+     "classe": "{'btn-mission-running': missionRunning=='pallet'}",
      "esiti": {
-      "HOLD liv2": "nascosto",
-      "HOLD liv0": "nascosto",
-      "HOLD liv2 cassetto 8 fuori": "nascosto",
-      "AUTO liv2": "nascosto",
-      "OFF liv2": "nascosto",
-      "STATUS ignoto liv2": "nascosto",
-      "NOT_DEFINED liv2": "nascosto"
+      "HOLD liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "HOLD liv0": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "HOLD liv2 cassetto 8 fuori": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "AUTO liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "OFF liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "STATUS ignoto liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "NOT_DEFINED liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      }
      }
     },
     {
-     "id": "button@click testTrayEnabled?openTestDialog('pickTray'):''",
-     "etichetta": "Preleva pezzo da cassetto",
+     "id": "UiTile@click trayBranchEnabled?openTrayMission():''",
+     "etichetta": "Gestione cassetto {{$t(trayDisabledReason)}}",
+     "evento": "click",
+     "handler": "trayBranchEnabled?openTrayMission():''",
+     "disabled": "!trayBranchEnabled",
+     "classe": "{'btn-mission-running': missionRunning=='tray'}",
+     "esiti": {
+      "HOLD liv2": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.dialog.type = \"tray\""
+       ],
+       "conferme": [
+        {
+         "controllo": "button@click dialogConfirmEnabled?confirmDialog():''",
+         "etichetta": "Conferma",
+         "abilitato": false,
+         "effetti": []
+        },
+        {
+         "controllo": "button@click closeDialog()",
+         "etichetta": "Annulla",
+         "abilitato": true,
+         "effetti": []
+        }
+       ]
+      },
+      "HOLD liv0": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.dialog.type = \"tray\""
+       ],
+       "conferme": [
+        {
+         "controllo": "button@click dialogConfirmEnabled?confirmDialog():''",
+         "etichetta": "Conferma",
+         "abilitato": false,
+         "effetti": []
+        },
+        {
+         "controllo": "button@click closeDialog()",
+         "etichetta": "Annulla",
+         "abilitato": true,
+         "effetti": []
+        }
+       ]
+      },
+      "HOLD liv2 cassetto 8 fuori": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.dialog.type = \"trayRelease\""
+       ],
+       "conferme": [
+        {
+         "controllo": "button@click dialogConfirmEnabled?confirmDialog():''",
+         "etichetta": "Conferma",
+         "abilitato": true,
+         "effetti": [
+          "emit TO_PLANT/CMD/ROBOT \"26;8\"",
+          "fetch GET api/conf/gripper/show/all",
+          "fetch GET api/conf/pallet/show/all",
+          "fetch GET api/conf/tray/show/all"
+         ]
+        },
+        {
+         "controllo": "button@click closeDialog()",
+         "etichetta": "Annulla",
+         "abilitato": true,
+         "effetti": []
+        }
+       ]
+      },
+      "AUTO liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "OFF liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "STATUS ignoto liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "NOT_DEFINED liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      }
+     }
+    },
+    {
+     "id": "UiTile@click pickPlaceEnabled() ? openPickPlaceDialog() : ''",
+     "etichetta": "Preleva finito e deposita grezzo {{$t(pickPlaceDisabledReason())}}",
+     "evento": "click",
+     "handler": "pickPlaceEnabled() ? openPickPlaceDialog() : ''",
+     "disabled": "!pickPlaceEnabled()",
+     "classe": "{'btn-mission-running': missionRunning=='pickplace-mc1'}",
+     "esiti": {
+      "HOLD liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "HOLD liv0": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "HOLD liv2 cassetto 8 fuori": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "AUTO liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "OFF liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "STATUS ignoto liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "NOT_DEFINED liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      }
+     }
+    },
+    {
+     "id": "UiTile@click testTrayEnabled?openTestDialog('pickTray'):''",
+     "etichetta": "Preleva pezzo da cassetto {{$t(testTrayDisabledReason)}}",
      "evento": "click",
      "handler": "testTrayEnabled?openTestDialog('pickTray'):''",
-     "disabled": "",
-     "classe": "[testTrayEnabled? 'pure-button-mission' : 'pure-button-disable', {'btn-mission-running': missionRunning=='test-pickTray'}]",
+     "disabled": "!testTrayEnabled",
+     "classe": "{'btn-mission-running': missionRunning=='test-pickTray'}",
      "esiti": {
       "HOLD liv2": {
        "abilitato": false,
@@ -768,12 +1574,12 @@
      }
     },
     {
-     "id": "button@click testTrayEnabled?openTestDialog('placeTray'):''",
-     "etichetta": "Deposita pezzo in cassetto",
+     "id": "UiTile@click testTrayEnabled?openTestDialog('placeTray'):''",
+     "etichetta": "Deposita pezzo in cassetto {{$t(testTrayDisabledReason)}}",
      "evento": "click",
      "handler": "testTrayEnabled?openTestDialog('placeTray'):''",
-     "disabled": "",
-     "classe": "[testTrayEnabled? 'pure-button-mission' : 'pure-button-disable', {'btn-mission-running': missionRunning=='test-placeTray'}]",
+     "disabled": "!testTrayEnabled",
+     "classe": "{'btn-mission-running': missionRunning=='test-placeTray'}",
      "esiti": {
       "HOLD liv2": {
        "abilitato": false,
@@ -842,12 +1648,12 @@
      }
     },
     {
-     "id": "button@click testBaseEnabled?openTestDialog('pickMC'):''",
+     "id": "UiTile@click testBaseEnabled?openTestDialog('pickMC'):''",
      "etichetta": "Preleva pezzo da MC1",
      "evento": "click",
      "handler": "testBaseEnabled?openTestDialog('pickMC'):''",
-     "disabled": "",
-     "classe": "[testBaseEnabled? 'pure-button-mission' : 'pure-button-disable', {'btn-mission-running': missionRunning=='test-pickMC'}]",
+     "disabled": "!testBaseEnabled",
+     "classe": "{'btn-mission-running': missionRunning=='test-pickMC'}",
      "esiti": {
       "HOLD liv2": {
        "abilitato": true,
@@ -971,12 +1777,12 @@
      }
     },
     {
-     "id": "button@click testBaseEnabled?openTestDialog('placeMC'):''",
+     "id": "UiTile@click testBaseEnabled?openTestDialog('placeMC'):''",
      "etichetta": "Deposita pezzo su MC1",
      "evento": "click",
      "handler": "testBaseEnabled?openTestDialog('placeMC'):''",
-     "disabled": "",
-     "classe": "[testBaseEnabled? 'pure-button-mission' : 'pure-button-disable', {'btn-mission-running': missionRunning=='test-placeMC'}]",
+     "disabled": "!testBaseEnabled",
+     "classe": "{'btn-mission-running': missionRunning=='test-placeMC'}",
      "esiti": {
       "HOLD liv2": {
        "abilitato": true,
@@ -1082,12 +1888,12 @@
      }
     },
     {
-     "id": "button@click testBaseEnabled?openDialog('palletPickMC'):''",
+     "id": "UiTile@click testBaseEnabled?openDialog('palletPickMC'):''",
      "etichetta": "Preleva pallet da MC1",
      "evento": "click",
      "handler": "testBaseEnabled?openDialog('palletPickMC'):''",
-     "disabled": "",
-     "classe": "[testBaseEnabled? 'pure-button-mission' : 'pure-button-disable', {'btn-mission-running': missionRunning=='test-palletPickMC'}]",
+     "disabled": "!testBaseEnabled",
+     "classe": "{'btn-mission-running': missionRunning=='test-palletPickMC'}",
      "esiti": {
       "HOLD liv2": {
        "abilitato": true,
@@ -1175,12 +1981,12 @@
      }
     },
     {
-     "id": "button@click testBaseEnabled?openDialog('palletPlaceMC'):''",
+     "id": "UiTile@click testBaseEnabled?openDialog('palletPlaceMC'):''",
      "etichetta": "Deposita pallet su MC1",
      "evento": "click",
      "handler": "testBaseEnabled?openDialog('palletPlaceMC'):''",
-     "disabled": "",
-     "classe": "[testBaseEnabled? 'pure-button-mission' : 'pure-button-disable', {'btn-mission-running': missionRunning=='test-palletPlaceMC'}]",
+     "disabled": "!testBaseEnabled",
+     "classe": "{'btn-mission-running': missionRunning=='test-palletPlaceMC'}",
      "esiti": {
       "HOLD liv2": {
        "abilitato": true,
@@ -1265,6 +2071,344 @@
        "effetti": [],
        "stato": []
       }
+     }
+    },
+    {
+     "id": "UiButton@click criticalEnabled('reset') ? askCritical('reset') : ''",
+     "etichetta": "Reset allarmi",
+     "evento": "click",
+     "handler": "criticalEnabled('reset') ? askCritical('reset') : ''",
+     "disabled": "",
+     "classe": "",
+     "esiti": {
+      "HOLD liv2": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.criticalDialog.type = \"reset\""
+       ],
+       "conferme": [
+        {
+         "controllo": "UiConfirmDialog@confirm confirmCritical()",
+         "etichetta": "{{$t('robot.critical.' + criticalDialog.type + 'NotThis')}}",
+         "abilitato": true,
+         "effetti": [
+          "emit TO_PLANT/CMD/ROBOT 99"
+         ]
+        },
+        {
+         "controllo": "UiConfirmDialog@cancel closeCriticalDialog()",
+         "etichetta": "{{$t('robot.critical.' + criticalDialog.type + 'NotThis')}}",
+         "abilitato": true,
+         "effetti": []
+        }
+       ]
+      },
+      "HOLD liv0": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.criticalDialog.type = \"reset\""
+       ],
+       "conferme": [
+        {
+         "controllo": "UiConfirmDialog@confirm confirmCritical()",
+         "etichetta": "{{$t('robot.critical.' + criticalDialog.type + 'NotThis')}}",
+         "abilitato": true,
+         "effetti": [
+          "emit TO_PLANT/CMD/ROBOT 99"
+         ]
+        },
+        {
+         "controllo": "UiConfirmDialog@cancel closeCriticalDialog()",
+         "etichetta": "{{$t('robot.critical.' + criticalDialog.type + 'NotThis')}}",
+         "abilitato": true,
+         "effetti": []
+        }
+       ]
+      },
+      "HOLD liv2 cassetto 8 fuori": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.criticalDialog.type = \"reset\""
+       ],
+       "conferme": [
+        {
+         "controllo": "UiConfirmDialog@confirm confirmCritical()",
+         "etichetta": "{{$t('robot.critical.' + criticalDialog.type + 'NotThis')}}",
+         "abilitato": true,
+         "effetti": [
+          "emit TO_PLANT/CMD/ROBOT 99"
+         ]
+        },
+        {
+         "controllo": "UiConfirmDialog@cancel closeCriticalDialog()",
+         "etichetta": "{{$t('robot.critical.' + criticalDialog.type + 'NotThis')}}",
+         "abilitato": true,
+         "effetti": []
+        }
+       ]
+      },
+      "AUTO liv2": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.criticalDialog.type = \"reset\""
+       ],
+       "conferme": [
+        {
+         "controllo": "UiConfirmDialog@confirm confirmCritical()",
+         "etichetta": "{{$t('robot.critical.' + criticalDialog.type + 'NotThis')}}",
+         "abilitato": true,
+         "effetti": [
+          "emit TO_PLANT/CMD/ROBOT 99"
+         ]
+        },
+        {
+         "controllo": "UiConfirmDialog@cancel closeCriticalDialog()",
+         "etichetta": "{{$t('robot.critical.' + criticalDialog.type + 'NotThis')}}",
+         "abilitato": true,
+         "effetti": []
+        }
+       ]
+      },
+      "OFF liv2": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.criticalDialog.type = \"reset\""
+       ],
+       "conferme": [
+        {
+         "controllo": "UiConfirmDialog@confirm confirmCritical()",
+         "etichetta": "{{$t('robot.critical.' + criticalDialog.type + 'NotThis')}}",
+         "abilitato": true,
+         "effetti": [
+          "emit TO_PLANT/CMD/ROBOT 99"
+         ]
+        },
+        {
+         "controllo": "UiConfirmDialog@cancel closeCriticalDialog()",
+         "etichetta": "{{$t('robot.critical.' + criticalDialog.type + 'NotThis')}}",
+         "abilitato": true,
+         "effetti": []
+        }
+       ]
+      },
+      "STATUS ignoto liv2": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.criticalDialog.type = \"reset\""
+       ],
+       "conferme": [
+        {
+         "controllo": "UiConfirmDialog@confirm confirmCritical()",
+         "etichetta": "{{$t('robot.critical.' + criticalDialog.type + 'NotThis')}}",
+         "abilitato": true,
+         "effetti": [
+          "emit TO_PLANT/CMD/ROBOT 99"
+         ]
+        },
+        {
+         "controllo": "UiConfirmDialog@cancel closeCriticalDialog()",
+         "etichetta": "{{$t('robot.critical.' + criticalDialog.type + 'NotThis')}}",
+         "abilitato": true,
+         "effetti": []
+        }
+       ]
+      },
+      "NOT_DEFINED liv2": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.criticalDialog.type = \"reset\""
+       ],
+       "conferme": [
+        {
+         "controllo": "UiConfirmDialog@confirm confirmCritical()",
+         "etichetta": "{{$t('robot.critical.' + criticalDialog.type + 'NotThis')}}",
+         "abilitato": true,
+         "effetti": [
+          "emit TO_PLANT/CMD/ROBOT 99"
+         ]
+        },
+        {
+         "controllo": "UiConfirmDialog@cancel closeCriticalDialog()",
+         "etichetta": "{{$t('robot.critical.' + criticalDialog.type + 'NotThis')}}",
+         "abilitato": true,
+         "effetti": []
+        }
+       ]
+      }
+     }
+    },
+    {
+     "id": "UiButton@click criticalEnabled('restart') ? askCritical('restart') : ''",
+     "etichetta": "Riavvia programma robot",
+     "evento": "click",
+     "handler": "criticalEnabled('restart') ? askCritical('restart') : ''",
+     "disabled": "!criticalEnabled('restart')",
+     "classe": "",
+     "esiti": {
+      "HOLD liv2": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.criticalDialog.type = \"restart\""
+       ],
+       "conferme": [
+        {
+         "controllo": "UiConfirmDialog@confirm confirmCritical()",
+         "etichetta": "{{$t('robot.critical.' + criticalDialog.type + 'NotThis')}}",
+         "abilitato": true,
+         "effetti": [
+          "emit TO_PLANT/CMD/ROBOT 18"
+         ]
+        },
+        {
+         "controllo": "UiConfirmDialog@cancel closeCriticalDialog()",
+         "etichetta": "{{$t('robot.critical.' + criticalDialog.type + 'NotThis')}}",
+         "abilitato": true,
+         "effetti": []
+        }
+       ]
+      },
+      "HOLD liv0": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.criticalDialog.type = \"restart\""
+       ],
+       "conferme": [
+        {
+         "controllo": "UiConfirmDialog@confirm confirmCritical()",
+         "etichetta": "{{$t('robot.critical.' + criticalDialog.type + 'NotThis')}}",
+         "abilitato": true,
+         "effetti": [
+          "emit TO_PLANT/CMD/ROBOT 18"
+         ]
+        },
+        {
+         "controllo": "UiConfirmDialog@cancel closeCriticalDialog()",
+         "etichetta": "{{$t('robot.critical.' + criticalDialog.type + 'NotThis')}}",
+         "abilitato": true,
+         "effetti": []
+        }
+       ]
+      },
+      "HOLD liv2 cassetto 8 fuori": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.criticalDialog.type = \"restart\""
+       ],
+       "conferme": [
+        {
+         "controllo": "UiConfirmDialog@confirm confirmCritical()",
+         "etichetta": "{{$t('robot.critical.' + criticalDialog.type + 'NotThis')}}",
+         "abilitato": true,
+         "effetti": [
+          "emit TO_PLANT/CMD/ROBOT 18"
+         ]
+        },
+        {
+         "controllo": "UiConfirmDialog@cancel closeCriticalDialog()",
+         "etichetta": "{{$t('robot.critical.' + criticalDialog.type + 'NotThis')}}",
+         "abilitato": true,
+         "effetti": []
+        }
+       ]
+      },
+      "AUTO liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "OFF liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "STATUS ignoto liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "NOT_DEFINED liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      }
+     }
+    },
+    {
+     "id": "UiConfirmDialog@confirm confirmClawOpen()",
+     "etichetta": "",
+     "evento": "confirm",
+     "handler": "confirmClawOpen()",
+     "disabled": "",
+     "classe": "",
+     "esiti": {
+      "HOLD liv2": "nascosto",
+      "HOLD liv0": "nascosto",
+      "HOLD liv2 cassetto 8 fuori": "nascosto",
+      "AUTO liv2": "nascosto",
+      "OFF liv2": "nascosto",
+      "STATUS ignoto liv2": "nascosto",
+      "NOT_DEFINED liv2": "nascosto"
+     }
+    },
+    {
+     "id": "UiConfirmDialog@cancel closeClawDialog()",
+     "etichetta": "",
+     "evento": "cancel",
+     "handler": "closeClawDialog()",
+     "disabled": "",
+     "classe": "",
+     "esiti": {
+      "HOLD liv2": "nascosto",
+      "HOLD liv0": "nascosto",
+      "HOLD liv2 cassetto 8 fuori": "nascosto",
+      "AUTO liv2": "nascosto",
+      "OFF liv2": "nascosto",
+      "STATUS ignoto liv2": "nascosto",
+      "NOT_DEFINED liv2": "nascosto"
+     }
+    },
+    {
+     "id": "UiConfirmDialog@confirm confirmCritical()",
+     "etichetta": "{{$t('robot.critical.' + criticalDialog.type + 'NotThis')}}",
+     "evento": "confirm",
+     "handler": "confirmCritical()",
+     "disabled": "",
+     "classe": "",
+     "esiti": {
+      "HOLD liv2": "nascosto",
+      "HOLD liv0": "nascosto",
+      "HOLD liv2 cassetto 8 fuori": "nascosto",
+      "AUTO liv2": "nascosto",
+      "OFF liv2": "nascosto",
+      "STATUS ignoto liv2": "nascosto",
+      "NOT_DEFINED liv2": "nascosto"
+     }
+    },
+    {
+     "id": "UiConfirmDialog@cancel closeCriticalDialog()",
+     "etichetta": "{{$t('robot.critical.' + criticalDialog.type + 'NotThis')}}",
+     "evento": "cancel",
+     "handler": "closeCriticalDialog()",
+     "disabled": "",
+     "classe": "",
+     "esiti": {
+      "HOLD liv2": "nascosto",
+      "HOLD liv0": "nascosto",
+      "HOLD liv2 cassetto 8 fuori": "nascosto",
+      "AUTO liv2": "nascosto",
+      "OFF liv2": "nascosto",
+      "STATUS ignoto liv2": "nascosto",
+      "NOT_DEFINED liv2": "nascosto"
      }
     },
     {
@@ -1582,1083 +2726,6 @@
       "OFF liv2": "nascosto",
       "STATUS ignoto liv2": "nascosto",
       "NOT_DEFINED liv2": "nascosto"
-     }
-    },
-    {
-     "id": "button@click retryPlcRefresh",
-     "etichetta": "Riprova",
-     "evento": "click",
-     "handler": "retryPlcRefresh",
-     "disabled": "",
-     "classe": "",
-     "esiti": {
-      "HOLD liv2": "nascosto",
-      "HOLD liv0": "nascosto",
-      "HOLD liv2 cassetto 8 fuori": "nascosto",
-      "AUTO liv2": "nascosto",
-      "OFF liv2": "nascosto",
-      "STATUS ignoto liv2": "nascosto",
-      "NOT_DEFINED liv2": "nascosto"
-     }
-    },
-    {
-     "id": "button@click sendToRobot(17)",
-     "etichetta": "— HOLD HOLD => CONTINUA ESECUZIONE",
-     "evento": "click",
-     "handler": "sendToRobot(17)",
-     "disabled": "holdIgnoto",
-     "classe": "{'button-hold':dataRobot.STATUS==dataStored.status_hold}",
-     "esiti": {
-      "HOLD liv2": {
-       "abilitato": true,
-       "effetti": [
-        "emit TO_PLANT/CMD/ROBOT 17"
-       ],
-       "stato": []
-      },
-      "HOLD liv0": {
-       "abilitato": true,
-       "effetti": [
-        "emit TO_PLANT/CMD/ROBOT 17"
-       ],
-       "stato": []
-      },
-      "HOLD liv2 cassetto 8 fuori": {
-       "abilitato": true,
-       "effetti": [
-        "emit TO_PLANT/CMD/ROBOT 17"
-       ],
-       "stato": []
-      },
-      "AUTO liv2": {
-       "abilitato": true,
-       "effetti": [
-        "emit TO_PLANT/CMD/ROBOT 17"
-       ],
-       "stato": []
-      },
-      "OFF liv2": "nascosto",
-      "STATUS ignoto liv2": {
-       "abilitato": false,
-       "effetti": [
-        "emit TO_PLANT/CMD/ROBOT 17"
-       ],
-       "stato": []
-      },
-      "NOT_DEFINED liv2": {
-       "abilitato": false,
-       "effetti": [
-        "emit TO_PLANT/CMD/ROBOT 17"
-       ],
-       "stato": []
-      }
-     }
-    },
-    {
-     "id": "button@click sendToRobot(17) #2",
-     "etichetta": "START",
-     "evento": "click",
-     "handler": "sendToRobot(17)",
-     "disabled": "",
-     "classe": "{'button-hold':dataRobot.STATUS==dataStored.status_hold}",
-     "esiti": {
-      "HOLD liv2": "nascosto",
-      "HOLD liv0": "nascosto",
-      "HOLD liv2 cassetto 8 fuori": "nascosto",
-      "AUTO liv2": "nascosto",
-      "OFF liv2": {
-       "abilitato": true,
-       "effetti": [
-        "emit TO_PLANT/CMD/ROBOT 17"
-       ],
-       "stato": []
-      },
-      "STATUS ignoto liv2": "nascosto",
-      "NOT_DEFINED liv2": "nascosto"
-     }
-    },
-    {
-     "id": "button@click criticalEnabled('reset') ? askCritical('reset') : ''",
-     "etichetta": "RESET",
-     "evento": "click",
-     "handler": "criticalEnabled('reset') ? askCritical('reset') : ''",
-     "disabled": "",
-     "classe": "",
-     "esiti": {
-      "HOLD liv2": {
-       "abilitato": true,
-       "effetti": [],
-       "stato": [
-        "vm.criticalDialog.type = \"reset\""
-       ],
-       "conferme": [
-        {
-         "controllo": "button@click confirmCritical()",
-         "etichetta": "Conferma",
-         "abilitato": true,
-         "effetti": [
-          "emit TO_PLANT/CMD/ROBOT 99"
-         ]
-        },
-        {
-         "controllo": "button@click closeCriticalDialog()",
-         "etichetta": "Annulla",
-         "abilitato": true,
-         "effetti": []
-        }
-       ]
-      },
-      "HOLD liv0": {
-       "abilitato": true,
-       "effetti": [],
-       "stato": [
-        "vm.criticalDialog.type = \"reset\""
-       ],
-       "conferme": [
-        {
-         "controllo": "button@click confirmCritical()",
-         "etichetta": "Conferma",
-         "abilitato": true,
-         "effetti": [
-          "emit TO_PLANT/CMD/ROBOT 99"
-         ]
-        },
-        {
-         "controllo": "button@click closeCriticalDialog()",
-         "etichetta": "Annulla",
-         "abilitato": true,
-         "effetti": []
-        }
-       ]
-      },
-      "HOLD liv2 cassetto 8 fuori": {
-       "abilitato": true,
-       "effetti": [],
-       "stato": [
-        "vm.criticalDialog.type = \"reset\""
-       ],
-       "conferme": [
-        {
-         "controllo": "button@click confirmCritical()",
-         "etichetta": "Conferma",
-         "abilitato": true,
-         "effetti": [
-          "emit TO_PLANT/CMD/ROBOT 99"
-         ]
-        },
-        {
-         "controllo": "button@click closeCriticalDialog()",
-         "etichetta": "Annulla",
-         "abilitato": true,
-         "effetti": []
-        }
-       ]
-      },
-      "AUTO liv2": {
-       "abilitato": true,
-       "effetti": [],
-       "stato": [
-        "vm.criticalDialog.type = \"reset\""
-       ],
-       "conferme": [
-        {
-         "controllo": "button@click confirmCritical()",
-         "etichetta": "Conferma",
-         "abilitato": true,
-         "effetti": [
-          "emit TO_PLANT/CMD/ROBOT 99"
-         ]
-        },
-        {
-         "controllo": "button@click closeCriticalDialog()",
-         "etichetta": "Annulla",
-         "abilitato": true,
-         "effetti": []
-        }
-       ]
-      },
-      "OFF liv2": {
-       "abilitato": true,
-       "effetti": [],
-       "stato": [
-        "vm.criticalDialog.type = \"reset\""
-       ],
-       "conferme": [
-        {
-         "controllo": "button@click confirmCritical()",
-         "etichetta": "Conferma",
-         "abilitato": true,
-         "effetti": [
-          "emit TO_PLANT/CMD/ROBOT 99"
-         ]
-        },
-        {
-         "controllo": "button@click closeCriticalDialog()",
-         "etichetta": "Annulla",
-         "abilitato": true,
-         "effetti": []
-        }
-       ]
-      },
-      "STATUS ignoto liv2": {
-       "abilitato": true,
-       "effetti": [],
-       "stato": [
-        "vm.criticalDialog.type = \"reset\""
-       ],
-       "conferme": [
-        {
-         "controllo": "button@click confirmCritical()",
-         "etichetta": "Conferma",
-         "abilitato": true,
-         "effetti": [
-          "emit TO_PLANT/CMD/ROBOT 99"
-         ]
-        },
-        {
-         "controllo": "button@click closeCriticalDialog()",
-         "etichetta": "Annulla",
-         "abilitato": true,
-         "effetti": []
-        }
-       ]
-      },
-      "NOT_DEFINED liv2": {
-       "abilitato": true,
-       "effetti": [],
-       "stato": [
-        "vm.criticalDialog.type = \"reset\""
-       ],
-       "conferme": [
-        {
-         "controllo": "button@click confirmCritical()",
-         "etichetta": "Conferma",
-         "abilitato": true,
-         "effetti": [
-          "emit TO_PLANT/CMD/ROBOT 99"
-         ]
-        },
-        {
-         "controllo": "button@click closeCriticalDialog()",
-         "etichetta": "Annulla",
-         "abilitato": true,
-         "effetti": []
-        }
-       ]
-      }
-     }
-    },
-    {
-     "id": "button@click criticalEnabled('restart') ? askCritical('restart') : ''",
-     "etichetta": "RESTART MAIN PROGRAM",
-     "evento": "click",
-     "handler": "criticalEnabled('restart') ? askCritical('restart') : ''",
-     "disabled": "!criticalEnabled('restart')",
-     "classe": "[!criticalEnabled('restart') ? 'pure-button-disable' : 'pure-button-micromission']",
-     "esiti": {
-      "HOLD liv2": {
-       "abilitato": true,
-       "effetti": [],
-       "stato": [
-        "vm.criticalDialog.type = \"restart\""
-       ],
-       "conferme": [
-        {
-         "controllo": "button@click confirmCritical()",
-         "etichetta": "Conferma",
-         "abilitato": true,
-         "effetti": [
-          "emit TO_PLANT/CMD/ROBOT 18"
-         ]
-        },
-        {
-         "controllo": "button@click closeCriticalDialog()",
-         "etichetta": "Annulla",
-         "abilitato": true,
-         "effetti": []
-        }
-       ]
-      },
-      "HOLD liv0": {
-       "abilitato": true,
-       "effetti": [],
-       "stato": [
-        "vm.criticalDialog.type = \"restart\""
-       ],
-       "conferme": [
-        {
-         "controllo": "button@click confirmCritical()",
-         "etichetta": "Conferma",
-         "abilitato": true,
-         "effetti": [
-          "emit TO_PLANT/CMD/ROBOT 18"
-         ]
-        },
-        {
-         "controllo": "button@click closeCriticalDialog()",
-         "etichetta": "Annulla",
-         "abilitato": true,
-         "effetti": []
-        }
-       ]
-      },
-      "HOLD liv2 cassetto 8 fuori": {
-       "abilitato": true,
-       "effetti": [],
-       "stato": [
-        "vm.criticalDialog.type = \"restart\""
-       ],
-       "conferme": [
-        {
-         "controllo": "button@click confirmCritical()",
-         "etichetta": "Conferma",
-         "abilitato": true,
-         "effetti": [
-          "emit TO_PLANT/CMD/ROBOT 18"
-         ]
-        },
-        {
-         "controllo": "button@click closeCriticalDialog()",
-         "etichetta": "Annulla",
-         "abilitato": true,
-         "effetti": []
-        }
-       ]
-      },
-      "AUTO liv2": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": []
-      },
-      "OFF liv2": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": []
-      },
-      "STATUS ignoto liv2": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": []
-      },
-      "NOT_DEFINED liv2": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": []
-      }
-     }
-    },
-    {
-     "id": "button@click confirmCritical()",
-     "etichetta": "Conferma",
-     "evento": "click",
-     "handler": "confirmCritical()",
-     "disabled": "",
-     "classe": "",
-     "esiti": {
-      "HOLD liv2": "nascosto",
-      "HOLD liv0": "nascosto",
-      "HOLD liv2 cassetto 8 fuori": "nascosto",
-      "AUTO liv2": "nascosto",
-      "OFF liv2": "nascosto",
-      "STATUS ignoto liv2": "nascosto",
-      "NOT_DEFINED liv2": "nascosto"
-     }
-    },
-    {
-     "id": "button@click closeCriticalDialog()",
-     "etichetta": "Annulla",
-     "evento": "click",
-     "handler": "closeCriticalDialog()",
-     "disabled": "",
-     "classe": "",
-     "esiti": {
-      "HOLD liv2": "nascosto",
-      "HOLD liv0": "nascosto",
-      "HOLD liv2 cassetto 8 fuori": "nascosto",
-      "AUTO liv2": "nascosto",
-      "OFF liv2": "nascosto",
-      "STATUS ignoto liv2": "nascosto",
-      "NOT_DEFINED liv2": "nascosto"
-     }
-    },
-    {
-     "id": "button@click dataStored.cmdActive==1?sendMission('home',20):''",
-     "etichetta": "Posizione di home",
-     "evento": "click",
-     "handler": "dataStored.cmdActive==1?sendMission('home',20):''",
-     "disabled": "",
-     "classe": "[dataStored.cmdActive==0? 'pure-button-disable' : 'pure-button-micromission', {'btn-mission-running': missionRunning=='home'}]",
-     "esiti": {
-      "HOLD liv2": {
-       "abilitato": true,
-       "effetti": [
-        "emit TO_PLANT/CMD/ROBOT 20"
-       ],
-       "stato": [
-        "vm.missionRunning = \"home\"",
-        "vm.missionPhase = \"armed\"",
-        "vm.missionArmTimer = 1",
-        "vm.missionMaxTimer = 2"
-       ]
-      },
-      "HOLD liv0": {
-       "abilitato": true,
-       "effetti": [
-        "emit TO_PLANT/CMD/ROBOT 20"
-       ],
-       "stato": [
-        "vm.missionRunning = \"home\"",
-        "vm.missionPhase = \"armed\"",
-        "vm.missionArmTimer = 1",
-        "vm.missionMaxTimer = 2"
-       ]
-      },
-      "HOLD liv2 cassetto 8 fuori": {
-       "abilitato": true,
-       "effetti": [
-        "emit TO_PLANT/CMD/ROBOT 20"
-       ],
-       "stato": [
-        "vm.missionRunning = \"home\"",
-        "vm.missionPhase = \"armed\"",
-        "vm.missionArmTimer = 1",
-        "vm.missionMaxTimer = 2"
-       ]
-      },
-      "AUTO liv2": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": []
-      },
-      "OFF liv2": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": []
-      },
-      "STATUS ignoto liv2": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": []
-      },
-      "NOT_DEFINED liv2": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": []
-      }
-     }
-    },
-    {
-     "id": "button@click dataStored.cmdActive==1?sendMission('maintenance',21):''",
-     "etichetta": "Posizione per la manutenzione",
-     "evento": "click",
-     "handler": "dataStored.cmdActive==1?sendMission('maintenance',21):''",
-     "disabled": "",
-     "classe": "[dataStored.cmdActive==0? 'pure-button-disable' : 'pure-button-micromission', {'btn-mission-running': missionRunning=='maintenance'}]",
-     "esiti": {
-      "HOLD liv2": {
-       "abilitato": true,
-       "effetti": [
-        "emit TO_PLANT/CMD/ROBOT 21"
-       ],
-       "stato": [
-        "vm.missionRunning = \"maintenance\"",
-        "vm.missionPhase = \"armed\"",
-        "vm.missionArmTimer = 1",
-        "vm.missionMaxTimer = 2"
-       ]
-      },
-      "HOLD liv0": {
-       "abilitato": true,
-       "effetti": [
-        "emit TO_PLANT/CMD/ROBOT 21"
-       ],
-       "stato": [
-        "vm.missionRunning = \"maintenance\"",
-        "vm.missionPhase = \"armed\"",
-        "vm.missionArmTimer = 1",
-        "vm.missionMaxTimer = 2"
-       ]
-      },
-      "HOLD liv2 cassetto 8 fuori": {
-       "abilitato": true,
-       "effetti": [
-        "emit TO_PLANT/CMD/ROBOT 21"
-       ],
-       "stato": [
-        "vm.missionRunning = \"maintenance\"",
-        "vm.missionPhase = \"armed\"",
-        "vm.missionArmTimer = 1",
-        "vm.missionMaxTimer = 2"
-       ]
-      },
-      "AUTO liv2": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": []
-      },
-      "OFF liv2": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": []
-      },
-      "STATUS ignoto liv2": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": []
-      },
-      "NOT_DEFINED liv2": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": []
-      }
-     }
-    },
-    {
-     "id": "button@click dataStored.cmdActive==1?openDeclDialog():''",
-     "etichetta": "Reimposta stato cella",
-     "evento": "click",
-     "handler": "dataStored.cmdActive==1?openDeclDialog():''",
-     "disabled": "",
-     "classe": "[dataStored.cmdActive==0? 'pure-button-disable' : 'pure-button-micromission']",
-     "esiti": {
-      "HOLD liv2": {
-       "abilitato": true,
-       "effetti": [
-        "fetch GET api/conf/piece/show/all",
-        "fetch GET api/conf/gripper/show/all"
-       ],
-       "stato": [
-        "vm.declDialog.open = true",
-        "vm.declErr.trayType = undefined"
-       ],
-       "conferme": [
-        {
-         "controllo": "button@click closeDeclDialog()",
-         "etichetta": "Annulla",
-         "abilitato": true,
-         "effetti": []
-        }
-       ]
-      },
-      "HOLD liv0": {
-       "abilitato": true,
-       "effetti": [
-        "fetch GET api/conf/piece/show/all",
-        "fetch GET api/conf/gripper/show/all"
-       ],
-       "stato": [
-        "vm.declDialog.open = true",
-        "vm.declErr.trayType = undefined"
-       ],
-       "conferme": [
-        {
-         "controllo": "button@click closeDeclDialog()",
-         "etichetta": "Annulla",
-         "abilitato": true,
-         "effetti": []
-        }
-       ]
-      },
-      "HOLD liv2 cassetto 8 fuori": {
-       "abilitato": true,
-       "effetti": [
-        "fetch GET api/conf/piece/show/all",
-        "fetch GET api/conf/gripper/show/all"
-       ],
-       "stato": [
-        "vm.declDialog.open = true",
-        "vm.declDialog.boxSel = 8",
-        "vm.declErr.trayType = undefined"
-       ],
-       "conferme": [
-        {
-         "controllo": "button@click closeDeclDialog()",
-         "etichetta": "Annulla",
-         "abilitato": true,
-         "effetti": []
-        }
-       ]
-      },
-      "AUTO liv2": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": []
-      },
-      "OFF liv2": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": []
-      },
-      "STATUS ignoto liv2": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": []
-      },
-      "NOT_DEFINED liv2": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": []
-      }
-     }
-    },
-    {
-     "id": "button@click dataStored.cmdActive==1?sendMission('dest-easybox','15;1'):''",
-     "etichetta": "EasyBox",
-     "evento": "click",
-     "handler": "dataStored.cmdActive==1?sendMission('dest-easybox','15;1'):''",
-     "disabled": "",
-     "classe": "[dataStored.cmdActive==0? 'pure-button-disable' : 'pure-button-micromission', {'btn-mission-running': missionRunning=='dest-easybox'}]",
-     "esiti": {
-      "HOLD liv2": {
-       "abilitato": true,
-       "effetti": [
-        "emit TO_PLANT/CMD/ROBOT \"15;1\""
-       ],
-       "stato": [
-        "vm.missionRunning = \"dest-easybox\"",
-        "vm.missionPhase = \"armed\"",
-        "vm.missionArmTimer = 1",
-        "vm.missionMaxTimer = 2"
-       ]
-      },
-      "HOLD liv0": {
-       "abilitato": true,
-       "effetti": [
-        "emit TO_PLANT/CMD/ROBOT \"15;1\""
-       ],
-       "stato": [
-        "vm.missionRunning = \"dest-easybox\"",
-        "vm.missionPhase = \"armed\"",
-        "vm.missionArmTimer = 1",
-        "vm.missionMaxTimer = 2"
-       ]
-      },
-      "HOLD liv2 cassetto 8 fuori": {
-       "abilitato": true,
-       "effetti": [
-        "emit TO_PLANT/CMD/ROBOT \"15;1\""
-       ],
-       "stato": [
-        "vm.missionRunning = \"dest-easybox\"",
-        "vm.missionPhase = \"armed\"",
-        "vm.missionArmTimer = 1",
-        "vm.missionMaxTimer = 2"
-       ]
-      },
-      "AUTO liv2": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": []
-      },
-      "OFF liv2": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": []
-      },
-      "STATUS ignoto liv2": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": []
-      },
-      "NOT_DEFINED liv2": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": []
-      }
-     }
-    },
-    {
-     "id": "button@click dataStored.cmdActive==1?sendMission('dest-'+pos.mc.toLowerCase(),'15;'+(10+pos.n)):''",
-     "etichetta": "{{$t(pos.labelKey)}}",
-     "evento": "click",
-     "handler": "dataStored.cmdActive==1?sendMission('dest-'+pos.mc.toLowerCase(),'15;'+(10+pos.n)):''",
-     "disabled": "",
-     "classe": "[dataStored.cmdActive==0? 'pure-button-disable' : 'pure-button-micromission', {'btn-mission-running': missionRunning=='dest-'+pos.mc.toLowerCase()}]",
-     "esiti": {
-      "HOLD liv2": [
-       {
-        "abilitato": true,
-        "effetti": [
-         "emit TO_PLANT/CMD/ROBOT \"15;11\""
-        ],
-        "stato": [
-         "vm.missionRunning = \"dest-mc1\"",
-         "vm.missionPhase = \"armed\"",
-         "vm.missionArmTimer = 1",
-         "vm.missionMaxTimer = 2"
-        ]
-       }
-      ],
-      "HOLD liv0": [
-       {
-        "abilitato": true,
-        "effetti": [
-         "emit TO_PLANT/CMD/ROBOT \"15;11\""
-        ],
-        "stato": [
-         "vm.missionRunning = \"dest-mc1\"",
-         "vm.missionPhase = \"armed\"",
-         "vm.missionArmTimer = 1",
-         "vm.missionMaxTimer = 2"
-        ]
-       }
-      ],
-      "HOLD liv2 cassetto 8 fuori": [
-       {
-        "abilitato": true,
-        "effetti": [
-         "emit TO_PLANT/CMD/ROBOT \"15;11\""
-        ],
-        "stato": [
-         "vm.missionRunning = \"dest-mc1\"",
-         "vm.missionPhase = \"armed\"",
-         "vm.missionArmTimer = 1",
-         "vm.missionMaxTimer = 2"
-        ]
-       }
-      ],
-      "AUTO liv2": [
-       {
-        "abilitato": false,
-        "effetti": [],
-        "stato": []
-       }
-      ],
-      "OFF liv2": [
-       {
-        "abilitato": false,
-        "effetti": [],
-        "stato": []
-       }
-      ],
-      "STATUS ignoto liv2": [
-       {
-        "abilitato": false,
-        "effetti": [],
-        "stato": []
-       }
-      ],
-      "NOT_DEFINED liv2": [
-       {
-        "abilitato": false,
-        "effetti": [],
-        "stato": []
-       }
-      ]
-     }
-    },
-    {
-     "id": "button@click gripperBranchEnabled?openGripperMission():''",
-     "etichetta": "Gestione pinza",
-     "evento": "click",
-     "handler": "gripperBranchEnabled?openGripperMission():''",
-     "disabled": "",
-     "classe": "[gripperBranchEnabled? 'pure-button-mission' : 'pure-button-disable', {'btn-mission-running': missionRunning=='gripper'}]",
-     "esiti": {
-      "HOLD liv2": {
-       "abilitato": true,
-       "effetti": [],
-       "stato": [
-        "vm.unloadOpen = true"
-       ],
-       "conferme": [
-        {
-         "controllo": "button@click startSwapSelection()",
-         "etichetta": "Deposita e cambia",
-         "abilitato": true,
-         "effetti": []
-        },
-        {
-         "controllo": "button@click confirmUnload()",
-         "etichetta": "Conferma",
-         "abilitato": true,
-         "effetti": [
-          "emit TO_PLANT/CMD/ROBOT 12",
-          "fetch GET api/conf/gripper/show/all",
-          "fetch GET api/conf/pallet/show/all",
-          "fetch GET api/conf/tray/show/all"
-         ]
-        },
-        {
-         "controllo": "button@click unloadOpen=false",
-         "etichetta": "Annulla",
-         "abilitato": true,
-         "effetti": []
-        }
-       ]
-      },
-      "HOLD liv0": {
-       "abilitato": true,
-       "effetti": [],
-       "stato": [
-        "vm.unloadOpen = true"
-       ],
-       "conferme": [
-        {
-         "controllo": "button@click startSwapSelection()",
-         "etichetta": "Deposita e cambia",
-         "abilitato": true,
-         "effetti": []
-        },
-        {
-         "controllo": "button@click confirmUnload()",
-         "etichetta": "Conferma",
-         "abilitato": true,
-         "effetti": [
-          "emit TO_PLANT/CMD/ROBOT 12",
-          "fetch GET api/conf/gripper/show/all",
-          "fetch GET api/conf/pallet/show/all",
-          "fetch GET api/conf/tray/show/all"
-         ]
-        },
-        {
-         "controllo": "button@click unloadOpen=false",
-         "etichetta": "Annulla",
-         "abilitato": true,
-         "effetti": []
-        }
-       ]
-      },
-      "HOLD liv2 cassetto 8 fuori": {
-       "abilitato": true,
-       "effetti": [],
-       "stato": [
-        "vm.unloadOpen = true"
-       ],
-       "conferme": [
-        {
-         "controllo": "button@click startSwapSelection()",
-         "etichetta": "Deposita e cambia",
-         "abilitato": true,
-         "effetti": []
-        },
-        {
-         "controllo": "button@click confirmUnload()",
-         "etichetta": "Conferma",
-         "abilitato": true,
-         "effetti": [
-          "emit TO_PLANT/CMD/ROBOT 12",
-          "fetch GET api/conf/gripper/show/all",
-          "fetch GET api/conf/pallet/show/all",
-          "fetch GET api/conf/tray/show/all"
-         ]
-        },
-        {
-         "controllo": "button@click unloadOpen=false",
-         "etichetta": "Annulla",
-         "abilitato": true,
-         "effetti": []
-        }
-       ]
-      },
-      "AUTO liv2": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": []
-      },
-      "OFF liv2": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": []
-      },
-      "STATUS ignoto liv2": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": []
-      },
-      "NOT_DEFINED liv2": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": []
-      }
-     }
-    },
-    {
-     "id": "button@click palletBranchEnabled?openPalletMission():''",
-     "etichetta": "Gestione pallet",
-     "evento": "click",
-     "handler": "palletBranchEnabled?openPalletMission():''",
-     "disabled": "",
-     "classe": "[palletBranchEnabled? 'pure-button-mission' : 'pure-button-disable', {'btn-mission-running': missionRunning=='pallet'}]",
-     "esiti": {
-      "HOLD liv2": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": []
-      },
-      "HOLD liv0": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": []
-      },
-      "HOLD liv2 cassetto 8 fuori": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": []
-      },
-      "AUTO liv2": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": []
-      },
-      "OFF liv2": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": []
-      },
-      "STATUS ignoto liv2": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": []
-      },
-      "NOT_DEFINED liv2": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": []
-      }
-     }
-    },
-    {
-     "id": "button@click trayBranchEnabled?openTrayMission():''",
-     "etichetta": "Gestione cassetto",
-     "evento": "click",
-     "handler": "trayBranchEnabled?openTrayMission():''",
-     "disabled": "",
-     "classe": "[trayBranchEnabled? 'pure-button-mission' : 'pure-button-disable', {'btn-mission-running': missionRunning=='tray'}]",
-     "esiti": {
-      "HOLD liv2": {
-       "abilitato": true,
-       "effetti": [],
-       "stato": [
-        "vm.dialog.type = \"tray\""
-       ],
-       "conferme": [
-        {
-         "controllo": "button@click dialogConfirmEnabled?confirmDialog():''",
-         "etichetta": "Conferma",
-         "abilitato": false,
-         "effetti": []
-        },
-        {
-         "controllo": "button@click closeDialog()",
-         "etichetta": "Annulla",
-         "abilitato": true,
-         "effetti": []
-        }
-       ]
-      },
-      "HOLD liv0": {
-       "abilitato": true,
-       "effetti": [],
-       "stato": [
-        "vm.dialog.type = \"tray\""
-       ],
-       "conferme": [
-        {
-         "controllo": "button@click dialogConfirmEnabled?confirmDialog():''",
-         "etichetta": "Conferma",
-         "abilitato": false,
-         "effetti": []
-        },
-        {
-         "controllo": "button@click closeDialog()",
-         "etichetta": "Annulla",
-         "abilitato": true,
-         "effetti": []
-        }
-       ]
-      },
-      "HOLD liv2 cassetto 8 fuori": {
-       "abilitato": true,
-       "effetti": [],
-       "stato": [
-        "vm.dialog.type = \"trayRelease\""
-       ],
-       "conferme": [
-        {
-         "controllo": "button@click dialogConfirmEnabled?confirmDialog():''",
-         "etichetta": "Conferma",
-         "abilitato": true,
-         "effetti": [
-          "emit TO_PLANT/CMD/ROBOT \"26;8\"",
-          "fetch GET api/conf/gripper/show/all",
-          "fetch GET api/conf/pallet/show/all",
-          "fetch GET api/conf/tray/show/all"
-         ]
-        },
-        {
-         "controllo": "button@click closeDialog()",
-         "etichetta": "Annulla",
-         "abilitato": true,
-         "effetti": []
-        }
-       ]
-      },
-      "AUTO liv2": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": []
-      },
-      "OFF liv2": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": []
-      },
-      "STATUS ignoto liv2": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": []
-      },
-      "NOT_DEFINED liv2": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": []
-      }
-     }
-    },
-    {
-     "id": "button@click pickPlaceEnabled() ? openPickPlaceDialog() : ''",
-     "etichetta": "Preleva finito e deposita grezzo",
-     "evento": "click",
-     "handler": "pickPlaceEnabled() ? openPickPlaceDialog() : ''",
-     "disabled": "",
-     "classe": "[pickPlaceEnabled() ? 'pure-button-mission' : 'pure-button-disable', {'btn-mission-running': missionRunning=='pickplace-mc1'}]",
-     "esiti": {
-      "HOLD liv2": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": []
-      },
-      "HOLD liv0": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": []
-      },
-      "HOLD liv2 cassetto 8 fuori": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": []
-      },
-      "AUTO liv2": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": []
-      },
-      "OFF liv2": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": []
-      },
-      "STATUS ignoto liv2": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": []
-      },
-      "NOT_DEFINED liv2": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": []
-      }
      }
     },
     {

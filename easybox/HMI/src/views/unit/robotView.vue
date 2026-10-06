@@ -20,218 +20,365 @@
   // (pallet MC 16/9) stessa regola di posizione della pagina Pallet: MAG_POS
   // grezzo mandava un numero NEGATIVO al PLC per il pallet fuori magazzino
   import { palletPickPosition } from '../../util/warehouseGrid'
+  // (v3 fase B) stato col nome e il tono della striscia; componenti e icone
+  import { statusKey, statusTone } from '../../util/unitStatus.js'
+  import UiCard from '../../components/ui/UiCard.vue'
+  import UiTile from '../../components/ui/UiTile.vue'
+  import UiButton from '../../components/ui/UiButton.vue'
+  import UiStepper from '../../components/ui/UiStepper.vue'
+  import UiConfirmDialog from '../../components/ui/UiConfirmDialog.vue'
+  import { House, Wrench, Server, Microwave, Grab, RectangleHorizontal, Archive, ArrowUp, ArrowDown, ArrowDownUp, RotateCcw, Power, Check, TriangleAlert } from 'lucide-vue-next'
 </script>
 
 <template>
-  <div class="pure-u-1 unit-columns">
-    <div class="pure-u-10-24">
-      <h1 class="view-title">{{ $t('Stato') }} Robot </h1>
-      <div class="status-card pure-u-1" :class="getColorFromStatus()">
-        <h5>
-          <span v-if="dataRobot.DESCR>0">
-            {{dataRobot.DESCR}}: 
-          </span>
-          {{ $t( getStatus(dataRobot.STATUS) ) }}
-        </h5>
-      </div>
+  <!-- (v3 fase B) Controlli · Robot, tavole Robot e Robot43.
+       A sinistra lo stato: Stato (con "Reimposta stato cella"), Pinza a
+       bordo, Velocita'. A destra i comandi: Movimenti, Chele, Missioni (con
+       il collaudo), Ripristino. In compatto Movimenti / Missioni / Chele
+       diventano schede (solo CSS: in largo si vedono tutte).
+       I comandi sono quelli di prima, con gli stessi handler e la stessa
+       abilitazione (tests/test_golden_equivalenza.mjs). HOLD / Riprendi /
+       START sta solo nella striscia di stato.
+       "Modalita' robot" della tavola non c'e': lo STATUS del robot e' un
+       codice solo (HOLD, AUTO, manuale...), non esiste un dato separato
+       AUTO / T1 / T2. Idem "programma principale attivo". -->
+  <div class="rv">
+    <div class="rv__col rv__col--state">
 
-      <div class="status-card pure-u-1 link" @click="$router.push('../../conf/grippers')">
-
-        <span v-if="dataGripper.length>0">
-          <h5 v-if="dataGripper[0].ID > 0">{{ dataGripper[0].FAMILY }} - {{ dataGripper[0].DESCR }}</h5>
-          <h5 v-if="dataGripper[0].ID > 0">
-            {{$t('position.SHELF')}} {{$t('position.position')}} : {{ dataGripper[0].POS_MAG }}
-          </h5>
-          <div class="pure-u-1">
-            <div :class="[dataGripper.length>1?'pure-u-1-2':'pure-u-1']">
-              <h5 v-if="dataGripper[0].ID > 0">
-                {{$t('Stato')}} {{$t('GRIPPER')}} 1: {{ getStatusGripper(dataGripper[0].STATUS) }}
-              </h5>
+      <!-- STATO: lo STATUS del robot con lo stesso nome della striscia
+           (util/unitStatus.js); sotto, l'allarme o la missione se ci sono.
+           "Reimposta stato cella" apre lo stesso dialog di prima
+           (dichiarazione 35): cambia solo il punto da cui si apre. Gate =
+           cmdActive (HOLD), come gli altri comandi manuali. -->
+      <UiCard :label="$t('Stato')" class="rv-state">
+        <div class="rv-state__row">
+          <div class="rv-state__main">
+            <div class="rv-state__title" :class="'rv-tone--' + statusTone(dataRobot.STATUS)">
+              <i class="rv-dot" aria-hidden="true"></i><span>{{ $t(statusKey(dataRobot.STATUS)) }}</span>
             </div>
+            <div class="rv-state__sub" v-if="statoDettaglio">{{ statoDettaglio }}</div>
+          </div>
+          <button type="button" class="rv-outline"
+            :disabled="dataStored.cmdActive==0"
+            @click="dataStored.cmdActive==1?openDeclDialog():''">
+            {{ $t('robot.decl.button') }}
+          </button>
+        </div>
 
-            <div class="pure-u-1-2" v-if="dataGripper.length>1 > 0">
-              <h5 v-if="dataGripper[1].ID > 0">
-                {{$t('Stato')}} {{$t('GRIPPER')}} 2: {{ getStatusGripper(dataGripper[1].STATUS) }}
-              </h5>
+        <!-- (AN 1-bis) precondizione ausiliari: banner SOLO con AUX=0
+             (con 1 o n/d niente — mai allarmi su dato mancante) -->
+        <div class="aux-banner rv-banner" v-if="dataStored.safetyAux === 0">
+          {{ $t('robot.auxBanner') }}
+        </div>
+        <!-- PLC muto: SNAPSHOT/MISS su STATUS/ROBOT e nessun ROBOT/STATUS entro
+             il timeout. I comandi restano gated da CMD_enabled(): qui si spiega
+             solo il perche'. Riprova = nuovo refresh 90 tramite backend. -->
+        <div class="aux-banner rv-banner plc-silent-banner" v-if="plcSilent">
+          <span>{{ $t('robot.plcSilent') }}</span>
+          <button class="btn-ghost" @click="retryPlcRefresh">
+            {{ $t('common.retry') }}
+          </button>
+        </div>
+      </UiCard>
+
+      <!-- PINZA A BORDO: dataGripper (GRIPPERS con POS_PLANT=1000), un lato
+           per riga, contenuto dallo STATUS della riga. La card resta un
+           collegamento alla pagina Pinze, come prima; il riquadro di
+           coerenza no (@click.stop). -->
+      <UiCard class="rv-gripper link" @click="$router.push('../../conf/grippers')">
+        <template #label>{{ $t('robot.gripperOnBoard') }}</template>
+        <template #actions v-if="dataGripper.length>0 && dataGripper[0].ID > 0">
+          <span class="rv-gripper__name" :title="(dataGripper[0].FAMILY || '').trim()">{{ (dataGripper[0].FAMILY || '').trim() }}</span>
+        </template>
+        <template v-if="dataGripper.length>0 && dataGripper[0].ID > 0">
+          <div class="rv-sides">
+            <div class="rv-side">
+              <span class="rv-side__k">{{ $t('robot.claw.side', { side: 1 }) }}</span>
+              <span class="rv-side__v">{{ $t(gripperContentKey(dataGripper[0].STATUS)) }}</span>
+            </div>
+            <div class="rv-side" v-if="dataGripper.length>1 && dataGripper[1].ID > 0">
+              <span class="rv-side__k">{{ $t('robot.claw.side', { side: 2 }) }}</span>
+              <span class="rv-side__v">{{ $t(gripperContentKey(dataGripper[1].STATUS)) }}</span>
             </div>
           </div>
-        </span>
-        <h5 v-else> {{ $t('robot.noGripper') }} </h5>
+          <div class="rv-gripper__pos">
+            <span v-if="(dataGripper[0].DESCR || '').trim()">{{ dataGripper[0].DESCR.trim() }} · </span>{{ $t('position.SHELF') }} {{ $t('position.position') }} {{ dataGripper[0].POS_MAG }}
+          </div>
+        </template>
+        <div v-else class="rv-gripper__none">{{ $t('robot.noGripper') }}</div>
 
         <!-- (AN) coerenza pinza: tre fonti a confronto — sensore (FB8),
-             sistema (registro PLC), magazzino (DB). Verde quando le fonti
-             DISPONIBILI concordano; messaggio operatore esplicito quando no.
-             Finche' il PLC non pubblica SENSOR/CODE la riga mostra "non
-             disponibile" (muted, non warning). @click.stop: la card resta
-             un link a /conf/grippers, l'indicatore no. -->
-        <div class="coherence" @click.stop>
-          <div class="coherence-head">
-            <span>{{ $t('robot.coherence.title') }}</span>
-            <span v-if="gripperCoherence.state=='ok'" class="badge badge-type">{{ $t('robot.coherence.ok') }}</span>
-            <span v-else class="badge badge-anomaly">{{ $t('robot.coherence.mismatch') }}</span>
+             sistema (registro PLC), magazzino (DB). Riga verde quando le
+             fonti DISPONIBILI concordano; con un disaccordo si vedono le tre
+             fonti e il messaggio per l'operatore. Finche' il PLC non pubblica
+             SENSOR/CODE il sensore e' "non disponibile" (muted, non warning). -->
+        <div class="rv-coh" @click.stop>
+          <div class="rv-coh__head" :class="gripperCoherence.state=='ok' ? 'rv-coh--ok' : 'rv-coh--bad'">
+            <Check v-if="gripperCoherence.state=='ok'" :stroke-width="2.5" aria-hidden="true" />
+            <TriangleAlert v-else :stroke-width="2.2" aria-hidden="true" />
+            <b>{{ gripperCoherence.state=='ok' ? $t('robot.coherence.ok') : $t('robot.coherence.mismatch') }}</b>
+            <span class="rv-coh__na" v-if="gripperSensor===null">· {{ $t('robot.coherence.sensor') }} {{ $t('robot.coherence.na') }}</span>
           </div>
-          <div class="coherence-row">
-            <span class="coh-label">{{ $t('robot.coherence.sensor') }}</span>
-            <span v-if="gripperSensor===null" class="coh-na">{{ $t('robot.coherence.na') }}</span>
-            <span v-else>{{ gripperSensor==1 ? $t('robot.coherence.mounted') : $t('robot.coherence.absent') }}</span>
-          </div>
-          <div class="coherence-row">
-            <span class="coh-label">{{ $t('robot.coherence.system') }}</span>
-            <span v-if="systemGripperId===null" class="coh-na">{{ $t('robot.coherence.na') }}</span>
-            <span v-else>{{ systemGripperId>0 ? ($t('robot.coherence.mounted')+' (ID '+systemGripperId+')') : $t('robot.coherence.absent') }}</span>
-          </div>
-          <div class="coherence-row">
-            <span class="coh-label">{{ $t('robot.coherence.warehouse') }}</span>
-            <span>{{ gripperOnBoardNow() ? ($t('robot.coherence.mounted')+' (ID '+dataGripper[0].ID+')') : $t('robot.coherence.absent') }}</span>
-          </div>
-          <div v-if="gripperCoherence.state=='mismatch'" class="coherence-msg">
-            {{ $t(gripperCoherence.msgKey) }}
-          </div>
+          <template v-if="gripperCoherence.state=='mismatch'">
+            <div class="coherence-row">
+              <span class="coh-label">{{ $t('robot.coherence.sensor') }}</span>
+              <span v-if="gripperSensor===null" class="coh-na">{{ $t('robot.coherence.na') }}</span>
+              <span v-else>{{ gripperSensor==1 ? $t('robot.coherence.mounted') : $t('robot.coherence.absent') }}</span>
+            </div>
+            <div class="coherence-row">
+              <span class="coh-label">{{ $t('robot.coherence.system') }}</span>
+              <span v-if="systemGripperId===null" class="coh-na">{{ $t('robot.coherence.na') }}</span>
+              <span v-else>{{ systemGripperId>0 ? ($t('robot.coherence.mounted')+' (ID '+systemGripperId+')') : $t('robot.coherence.absent') }}</span>
+            </div>
+            <div class="coherence-row">
+              <span class="coh-label">{{ $t('robot.coherence.warehouse') }}</span>
+              <span>{{ gripperOnBoardNow() ? ($t('robot.coherence.mounted')+' (ID '+dataGripper[0].ID+')') : $t('robot.coherence.absent') }}</span>
+            </div>
+            <div class="coherence-msg">{{ $t(gripperCoherence.msgKey) }}</div>
+          </template>
         </div>
+      </UiCard>
+
+      <!-- VELOCITA': il comando resta "100;<val>" (updateSpeed). Il numero
+           grande e la barra sono l'ECO del PLC (ROBOT/CHANGESPEED, 1..100).
+           I passi partono dall'eco, o dall'ultimo valore inviato se l'eco
+           non e' ancora arrivata, e mandano UN solo comando dopo 400 ms
+           senza tocchi (niente raffiche); i valori fissi inviano subito.
+           "→ N %" = inviato, in attesa dell'eco. Gate = speedEnabled
+           (stato robot noto), come cursore e campo di prima. -->
+      <UiCard class="rv-speed">
+        <template #label>{{ $t('robot.speedTitle') }}</template>
+        <template #actions>
+          <span class="rv-speed__target" v-if="speedTarget !== null" :title="$t('robot.speedPending')">→ {{ speedTarget }} %</span>
+          <span class="rv-speed__val">{{ speedKnown ? displaySpeed : '—' }}<small v-if="speedKnown">%</small></span>
+        </template>
+        <UiStepper :disabled="!speedEnabled" @step="stepSpeed($event)">
+          <div class="rv-speed__bar"><i :style="{ width: (speedKnown ? displaySpeed : 0) + '%' }"></i></div>
+        </UiStepper>
+        <div class="rv-presets">
+          <button v-for="p in speedPresets" :key="p" type="button" class="rv-preset"
+            :class="{ on: speedKnown && displaySpeed == p }"
+            :disabled="!speedEnabled"
+            @click="setSpeedPreset(p)">
+            {{ p }}%
+          </button>
+        </div>
+      </UiCard>
+    </div>
+
+    <div class="rv__col rv__col--cmd">
+      <!-- (compatto) schede Movimenti / Missioni / Chele; in largo nascoste,
+           le tre card si vedono tutte. Solo CSS: i comandi restano nel DOM. -->
+      <div class="rv-tabs" role="tablist">
+        <button type="button" class="rv-tabs__opt" :class="{ on: rvTab=='movement' }" @click="rvTab='movement'">{{ $t('robot.section.movement') }}</button>
+        <button type="button" class="rv-tabs__opt" :class="{ on: rvTab=='mission' }" @click="rvTab='mission'">{{ $t('robot.section.mission') }}</button>
+        <button type="button" class="rv-tabs__opt" :class="{ on: rvTab=='claw' }" @click="rvTab='claw'">{{ $t('robot.section.claws') }}</button>
       </div>
 
-      
-      <div class="pure-control-group speed-group">
-        <label class="section-label" for="aligned-foo">{{ $t('robot.speedLabel') }} </label>
-        <!--numericField 
-            name="speed" 
-            unitMeasure="%" 
-            step="5" 
-            integerVal="true"
-            min="0"
-            max="100"
-            :model-value="robotSpeed"
-            @update="newVal => updateSpeed(newVal)">
-        </numericField-->
-        <!-- R2: slider 10..100 step 10 — il comando (updateSpeed, identico
-             ai vecchi segmenti: "100;<val>", nessun gating come prima)
-             parte SOLO al rilascio (change, mai input: niente flood).
-             Il valore mostrato e' l'eco del PLC (ROBOT/CHANGESPEED). -->
-        <!-- R2-2: display e input UNIFICATI, tutto su una riga: slider +
-             input numerico (fuori editing mostra l'eco PLC, mai 0; al focus
-             si edita, Enter/blur -> clamp 1..100 -> invio -> eco) + %. -->
-        <div class="speed-control">
-          <input type="range" class="speed-slider"
-            min="10" max="100" step="10"
-            :value="sliderSpeed"
-            :disabled="!speedEnabled"
-            @change="onSliderChange($event)" />
-          <input type="number" class="speed-manual" inputmode="numeric"
-            min="1" max="100" step="1"
-            :value="speedEditing ? speedManual : displaySpeed"
-            :disabled="!speedEnabled"
-            @focus="startSpeedEdit"
-            @input="speedManual = $event.target.value"
-            @keyup.enter="$event.target.blur()"
-            @blur="applyManualSpeed" />
-          <span class="speed-unit">%</span>
+      <!-- i comandi manuali partono solo in HOLD (CMD_enabled -> cmdActive):
+           il motivo una volta qui, invece che sotto ogni tile -->
+      <p class="rv-gate" v-if="dataStored.cmdActive==0">{{ $t('robot.hint.notHold') }}</p>
+
+      <!-- ===== CARD 2: Movimenti (HOME/MAINT + Punti destinazione) =====
+           S: {'btn-mission-running': ...} = feedback missione in corso sulla
+           SOLA tile che l'ha inviata; gating e comandi INVARIATI (sendMission
+           marca la chiave e delega a sendToRobot). -->
+      <UiCard :label="$t('robot.section.movement')" class="rv-panel rv-panel--move" :class="{ 'rv-panel--off': rvTab!='movement' }">
+        <div class="rv-grid rv-grid--move">
+          <UiTile :icon="House" :disabled="dataStored.cmdActive==0"
+            :class="{'btn-mission-running': missionRunning=='home'}"
+            @click="dataStored.cmdActive==1?sendMission('home',20):''">
+            {{ $t('HOME') }}
+          </UiTile>
+          <UiTile :icon="Wrench" :disabled="dataStored.cmdActive==0"
+            :class="{'btn-mission-running': missionRunning=='maintenance'}"
+            @click="dataStored.cmdActive==1?sendMission('maintenance',21):''">
+            {{ $t('MAINTENANCE') }}
+          </UiTile>
+          <UiTile :icon="Server" :disabled="dataStored.cmdActive==0"
+            :class="{'btn-mission-running': missionRunning=='dest-easybox'}"
+            @click="dataStored.cmdActive==1?sendMission('dest-easybox','15;1'):''">
+            {{ $t('robot.goTo', { dest: $t('Easybox') }) }}
+          </UiTile>
+          <!-- (machines-gating) destinazioni macchina DINAMICHE dalla
+               configurazione (contratto 15;(10+n)): con una sola macchina
+               resta la sola MC1, mai tile per macchine fantasma -->
+          <UiTile v-for="pos in MACHINE_POSITIONS" :key="pos.mc" :icon="Microwave" :disabled="dataStored.cmdActive==0"
+            :class="{'btn-mission-running': missionRunning=='dest-'+pos.mc.toLowerCase()}"
+            @click="dataStored.cmdActive==1?sendMission('dest-'+pos.mc.toLowerCase(),'15;'+(10+pos.n)):''">
+            {{ $t('robot.goTo', { dest: $t(pos.labelKey) }) }}
+          </UiTile>
         </div>
-      </div>
+      </UiCard>
 
-
-      <!-- ===== CARD 5: Comandi pinza (chele lato 1/2: 240..243) =====
+      <!-- ===== CARD 5: Chele (lato 1/2: 240..243) =====
            Missioni PLC senza parametri, stesso gate dei comandi manuali
-           (dataStored.cmdActive, CMD_enabled invariata) e stesso feedback
-           sendMission. APERTURA = dialog di conferma (con un pezzo in presa
-           cade); CHIUSURA diretta. Lato 2: gate su dataGripper[1] (seconda
-           riga GRIPPERS con POS_PLANT=1000, stessa fonte del riquadro
-           "Stato GRIPPER 2"): senza lato 2 il PLC rifiuterebbe con 944. -->
-      <section class="command-section">
-        <h3 class="section-label">{{ $t('robot.section.claw') }}</h3>
-        <div class="pure-g claw-grid">
-          <div class="pure-u-1-2 claw-side" v-for="side in [1, 2]" :key="side">
-            <h4 class="section-label">{{ $t('robot.claw.side', { side: side }) }}</h4>
-            <button class="pure-u-1 button_pressed"
-              :class="[clawEnabled(side) ? 'pure-button-micromission' : 'pure-button-disable', {'btn-mission-running': missionRunning=='claw-open-'+side}]"
+           (clawEnabled -> dataStored.cmdActive, CMD_enabled invariata) e
+           stesso feedback sendMission. APERTURA = dialog di conferma (con un
+           pezzo in presa cade); CHIUSURA diretta. Lato 2: gate su
+           dataGripper[1] (seconda riga GRIPPERS con POS_PLANT=1000): senza
+           lato 2 il PLC rifiuterebbe con 944.
+           Stato LETTO solo per il lato 1 (FROM_PLANT/GRIPPER/CLOSED1): la
+           posizione accesa e' quella letta, non quella comandata. Il lato 2
+           non ha sensore: due comandi, nessuno stato. -->
+      <UiCard :label="$t('robot.section.claws')" class="rv-panel rv-panel--claw" :class="{ 'rv-panel--off': rvTab!='claw' }">
+        <div class="rv-claws">
+        <div class="rv-claw" v-for="side in [1, 2]" :key="side">
+          <span class="rv-claw__side">
+            {{ $t('robot.claw.side', { side: side }) }}
+            <small v-if="side==1" class="rv-claw__state">{{ gripperClosed1===1 ? $t('robot.claw.stateClosed') : gripperClosed1===0 ? $t('robot.claw.stateOpen') : '—' }}</small>
+          </span>
+          <div class="rv-seg">
+            <button type="button" class="rv-seg__opt"
+              :class="{ on: side==1 && gripperClosed1===0, 'btn-mission-running': missionRunning=='claw-open-'+side }"
+              :disabled="!clawEnabled(side)"
               @click="clawEnabled(side) ? openClawDialog(side) : ''">
               {{ $t('robot.claw.open') }}
             </button>
-            <button class="pure-u-1 button_pressed"
-              :class="[clawEnabled(side) ? 'pure-button-micromission' : 'pure-button-disable', {'btn-mission-running': missionRunning=='claw-close-'+side}]"
+            <button type="button" class="rv-seg__opt"
+              :class="{ on: side==1 && gripperClosed1===1, 'btn-mission-running': missionRunning=='claw-close-'+side }"
+              :disabled="!clawEnabled(side)"
               @click="clawEnabled(side) ? sendClaw(side, false) : ''">
               {{ $t('robot.claw.close') }}
             </button>
-            <small class="cmd-hint" v-if="side==2 && dataStored.cmdActive==1 && !clawSide2Available">{{ $t('robot.claw.noSide2') }}</small>
           </div>
+          <small class="rv-claw__why" v-if="side==2 && dataStored.cmdActive==1 && !clawSide2Available">{{ $t('robot.claw.noSide2') }}</small>
         </div>
-
-        <!-- dialog conferma APERTURA chela (240/242): la chiusura non passa
-             di qui. Entra nell'invariante "un solo overlay". -->
-        <div v-if="clawDialog.side" class="mission-dialog-overlay">
-          <div class="mission-dialog mission-dialog--danger">
-            <h3 class="command-section-title">{{ $t('robot.claw.confirmOpen', { side: clawDialog.side }) }}</h3>
-            <small class="cmd-hint">{{ $t('robot.claw.confirmOpenWarn') }}</small>
-            <div class="pure-g">
-              <div class="pure-u-1-2">
-                <button style="width:100%" class="button_pressed pure-button-mission" @click="confirmClawOpen()">
-                  {{ $t('robot.dialog.confirm') }}
-                </button>
-              </div>
-              <div class="pure-u-1-2">
-                <button style="width:100%" class="btn-ghost" @click="closeClawDialog()">
-                  {{ $t('robot.dialog.cancel') }}
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
-      </section>
+      </UiCard>
 
-      <!-- ===== CARD 4: Collaudo missioni singole (comandi manuali PLC) =====
-           Stesso pattern della CARD 3: bottone a label FISSA che NON invia mai
-           direttamente (apre un dialog di conferma), gate = computed unica
-           fonte per classe e click, hint del motivo quando disabilitato.
-           Contratto comandi: stringhe "CMD;p1;p2" su TO_PLANT/CMD/ROBOT. -->
-      <section class="command-section">
-        <h3 class="section-label">{{ $t('robot.section.test') }}</h3>
-
-        <!-- (UI 5/10) a coppie preleva | deposita sulla stessa riga: meta'
-             altezza, e il motivo del blocco compare UNA volta per gruppo
-             (prima era ripetuto identico sotto ogni bottone). Gate, click e
-             comandi invariati. -->
-        <div class="test-pairs">
-          <!-- 31;subpos;gripperID — richiede cassetto estratto (PLC: 20001) -->
-          <button class="pure-u-1 button_pressed"
-            :class="[testTrayEnabled? 'pure-button-mission' : 'pure-button-disable', {'btn-mission-running': missionRunning=='test-pickTray'}]"
+      <!-- ===== CARD 3: Missioni (con il collaudo, che era la CARD 4) =====
+           Tile a label FISSA che NON inviano mai direttamente: aprono il
+           dialog del ramo valido (pinza 11/12, pallet 13/14, cassetto 25/26,
+           244, collaudo 31..34 e 13/14 su MC1). Gate = la computed di sempre,
+           unica fonte per :disabled e @click. (AN) mai tile mute: il motivo
+           sta dentro la tile, tranne "non in HOLD" e "ausiliari" che sono
+           scritti una volta sola (sopra e nella card Stato). -->
+      <UiCard :label="$t('robot.section.mission')" class="rv-panel rv-panel--mission" :class="{ 'rv-panel--off': rvTab!='mission' }">
+        <div class="rv-grid rv-grid--mission">
+          <UiTile :icon="Grab" :disabled="!gripperBranchEnabled"
+            :class="{'btn-mission-running': missionRunning=='gripper'}"
+            @click="gripperBranchEnabled?openGripperMission():''">
+            <span>{{ $t('robot.mission.gripper') }}</span>
+            <small class="rv-why" v-if="!gripperBranchEnabled && tileWhy(gripperDisabledReason)" :title="$t(gripperDisabledReason)">{{ $t(gripperDisabledReason) }}</small>
+          </UiTile>
+          <UiTile :icon="RectangleHorizontal" :disabled="!palletBranchEnabled"
+            :class="{'btn-mission-running': missionRunning=='pallet'}"
+            @click="palletBranchEnabled?openPalletMission():''">
+            <span>{{ $t('robot.mission.pallet') }}</span>
+            <small class="rv-why" v-if="!palletBranchEnabled && tileWhy(palletDisabledReason)" :title="$t(palletDisabledReason)">{{ $t(palletDisabledReason) }}</small>
+          </UiTile>
+          <UiTile :icon="Archive" :disabled="!trayBranchEnabled"
+            :class="{'btn-mission-running': missionRunning=='tray'}"
+            @click="trayBranchEnabled?openTrayMission():''">
+            <span>{{ $t('robot.mission.tray') }}</span>
+            <small class="rv-why" v-if="!trayBranchEnabled && tileWhy(trayDisabledReason)" :title="$t(trayDisabledReason)">{{ $t(trayDisabledReason) }}</small>
+          </UiTile>
+          <!-- (244) Preleva finito e deposita grezzo in UN solo ingresso in MC1
+               (PLC: MISSION_PickPlacePart_MC 135, master 1400). Gate =
+               cmdActive + GREZZO sul lato 1 (chele 1 non aperte) + lato 2
+               LIBERO. Il PLC usa le quote dell'ULTIMO ordine registrato. -->
+          <UiTile :icon="ArrowDownUp" :disabled="!pickPlaceEnabled()"
+            :class="{'btn-mission-running': missionRunning=='pickplace-mc1'}"
+            @click="pickPlaceEnabled() ? openPickPlaceDialog() : ''">
+            <span>{{ $t('robot.pickPlace.button') }}</span>
+            <small class="rv-why" v-if="dataStored.cmdActive==1 && pickPlaceDisabledReason()" :title="$t(pickPlaceDisabledReason())">{{ $t(pickPlaceDisabledReason()) }}</small>
+          </UiTile>
+          <!-- collaudo, contratto "CMD;p1;p2" su TO_PLANT/CMD/ROBOT:
+               31;subpos;gripperID e 32;subpos richiedono il cassetto
+               estratto (PLC: 20001) -->
+          <UiTile :icon="ArrowUp" :disabled="!testTrayEnabled"
+            :class="{'btn-mission-running': missionRunning=='test-pickTray'}"
             @click="testTrayEnabled?openTestDialog('pickTray'):''">
-            {{ $t('robot.test.pickTray') }}
-          </button>
-          <!-- 32;subpos (0 = prima posizione vuota) — richiede cassetto estratto -->
-          <button class="pure-u-1 button_pressed"
-            :class="[testTrayEnabled? 'pure-button-mission' : 'pure-button-disable', {'btn-mission-running': missionRunning=='test-placeTray'}]"
+            <span>{{ $t('robot.test.pickTray') }}</span>
+            <small class="rv-why" v-if="!testTrayEnabled && tileWhy(testTrayDisabledReason)" :title="$t(testTrayDisabledReason)">{{ $t(testTrayDisabledReason) }}</small>
+          </UiTile>
+          <UiTile :icon="ArrowDown" :disabled="!testTrayEnabled"
+            :class="{'btn-mission-running': missionRunning=='test-placeTray'}"
             @click="testTrayEnabled?openTestDialog('placeTray'):''">
-            {{ $t('robot.test.placeTray') }}
-          </button>
-        </div>
-        <small class="cmd-hint" v-if="!testTrayEnabled && testTrayDisabledReason">{{ $t(testTrayDisabledReason) }}</small>
-
-        <div class="test-pairs">
-          <!-- 33;gripperID -->
-          <button class="pure-u-1 button_pressed"
-            :class="[testBaseEnabled? 'pure-button-mission' : 'pure-button-disable', {'btn-mission-running': missionRunning=='test-pickMC'}]"
+            <span>{{ $t('robot.test.placeTray') }}</span>
+            <small class="rv-why" v-if="!testTrayEnabled && tileWhy(testTrayDisabledReason)" :title="$t(testTrayDisabledReason)">{{ $t(testTrayDisabledReason) }}</small>
+          </UiTile>
+          <!-- 33;gripperID e 34 (conferma semplice) -->
+          <UiTile :icon="ArrowUp" :disabled="!testBaseEnabled"
+            :class="{'btn-mission-running': missionRunning=='test-pickMC'}"
             @click="testBaseEnabled?openTestDialog('pickMC'):''">
             {{ $t('robot.test.pickMC') }}
-          </button>
-          <!-- 34 — conferma semplice -->
-          <button class="pure-u-1 button_pressed"
-            :class="[testBaseEnabled? 'pure-button-mission' : 'pure-button-disable', {'btn-mission-running': missionRunning=='test-placeMC'}]"
+          </UiTile>
+          <UiTile :icon="ArrowDown" :disabled="!testBaseEnabled"
+            :class="{'btn-mission-running': missionRunning=='test-placeMC'}"
             @click="testBaseEnabled?openTestDialog('placeMC'):''">
             {{ $t('robot.test.placeMC') }}
-          </button>
-          <!-- 13;3;palletID;0 / 14;3;palletID;0 — riusano il dialog generico
-               (scelta pallet dalla lista esistente), posizione fissa 0 = MC1 -->
-          <button class="pure-u-1 button_pressed"
-            :class="[testBaseEnabled? 'pure-button-mission' : 'pure-button-disable', {'btn-mission-running': missionRunning=='test-palletPickMC'}]"
+          </UiTile>
+          <!-- 13;3;palletID;0 / 14;3;palletID;0 — dialog generico (scelta
+               pallet dalla lista esistente), posizione fissa 0 = MC1 -->
+          <UiTile :icon="ArrowUp" :disabled="!testBaseEnabled"
+            :class="{'btn-mission-running': missionRunning=='test-palletPickMC'}"
             @click="testBaseEnabled?openDialog('palletPickMC'):''">
             {{ $t('robot.test.palletPickMC') }}
-          </button>
-          <button class="pure-u-1 button_pressed"
-            :class="[testBaseEnabled? 'pure-button-mission' : 'pure-button-disable', {'btn-mission-running': missionRunning=='test-palletPlaceMC'}]"
+          </UiTile>
+          <UiTile :icon="ArrowDown" :disabled="!testBaseEnabled"
+            :class="{'btn-mission-running': missionRunning=='test-palletPlaceMC'}"
             @click="testBaseEnabled?openDialog('palletPlaceMC'):''">
             {{ $t('robot.test.palletPlaceMC') }}
-          </button>
+          </UiTile>
         </div>
-        <small class="cmd-hint" v-if="!testBaseEnabled && testBaseDisabledReason">{{ $t(testBaseDisabledReason) }}</small>
+      </UiCard>
+
+      <!-- ===== CARD 1: Ripristino =====
+           (usabilita' 15/9) RESET e RESTART chiedono conferma dicendo cosa
+           fanno e cosa NON fanno; il pulsante che RIPRENDE non e' piu' qui
+           (e' nella striscia, in alto a destra), quindi nessun rischio di
+           premere un rosso al posto suo. RESET resta disponibile in ogni
+           stato, RESTART solo da fermo in HOLD (criticalEnabled). -->
+      <section class="rv-restore">
+        <span class="rv-restore__label">{{ $t('robot.section.restore') }}</span>
+        <span class="rv-restore__hint">{{ $t('robot.section.restoreHint') }}</span>
+        <UiButton variant="secondary" :icon="RotateCcw"
+          @click="criticalEnabled('reset') ? askCritical('reset') : ''">
+          {{ $t('robot.restore.reset') }}
+        </UiButton>
+        <UiButton variant="danger" :icon="Power"
+          :disabled="!criticalEnabled('restart')"
+          @click="criticalEnabled('restart') ? askCritical('restart') : ''">
+          {{ $t('robot.restore.restart') }}
+        </UiButton>
+      </section>
+    </div>
+
+    <!-- ===================== DIALOG =====================
+         Fuori dalle card: in compatto le schede nascoste sono display:none,
+         e un dialog dentro una scheda nascosta non si vedrebbe. Un solo
+         overlay alla volta, come prima (ogni open* chiude gli altri). -->
+
+    <!-- conferma APERTURA chela (240/242): la chiusura non passa di qui -->
+    <template v-if="clawDialog.side">
+      <UiConfirmDialog open tone="danger"
+        :title="$t('robot.claw.confirmOpen', { side: clawDialog.side })"
+        :text="$t('robot.claw.confirmOpenWarn')"
+        :confirm-label="$t('robot.claw.open')"
+        :cancel-label="$t('robot.dialog.cancel')"
+        @confirm="confirmClawOpen()"
+        @cancel="closeClawDialog()" />
+    </template>
+
+    <!-- conferma dei due comandi di ripristino: dice cosa fa e, soprattutto,
+         cosa NON fa, perche' l'errore che si vuole evitare e' proprio
+         premerli credendo di riprendere il ciclo. Precondizioni: solo quelle
+         che il pannello verifica davvero (RESTART: robot in HOLD). -->
+    <template v-if="criticalDialog.type!=''">
+      <UiConfirmDialog open tone="danger"
+        :title="$t('robot.critical.' + criticalDialog.type + 'Title')"
+        :text="$t('robot.critical.' + criticalDialog.type + 'What')"
+        :checks="criticalChecks"
+        :confirm-label="$t('robot.restore.' + criticalDialog.type)"
+        :confirm-icon="criticalDialog.type=='restart' ? Power : RotateCcw"
+        :cancel-label="$t('robot.dialog.cancel')"
+        @confirm="confirmCritical()"
+        @cancel="closeCriticalDialog()">
+        <p class="rv-notthis">{{ $t('robot.critical.' + criticalDialog.type + 'NotThis') }}</p>
+      </UiConfirmDialog>
+    </template>
 
         <!-- Dialog di collaudo (pezzo cassetto/MC1): subpos e/o scelta pinza.
              TERZO overlay: entra nell'invariante "un solo overlay" (fix
@@ -544,211 +691,6 @@
             <small class="cmd-hint" v-if="declDialog.waiting">{{ $t('robot.decl.waiting') }}</small>
           </div>
         </div>
-      </section>
-    </div>
-    <div class="pure-u-10-24">
-      <h1 class="view-title">{{ $t('Comandi') }}</h1>
-
-      <!-- (AN 1-bis) precondizione ausiliari: banner SOLO con AUX=0
-           (con 1 o n/d niente — mai allarmi su dato mancante) -->
-      <div class="aux-banner" v-if="dataStored.safetyAux === 0">
-        {{ $t('robot.auxBanner') }}
-      </div>
-
-      <!-- PLC muto: SNAPSHOT/MISS su STATUS/ROBOT e nessun ROBOT/STATUS entro
-           il timeout. I comandi restano gated da CMD_enabled(): qui si spiega
-           solo il perche'. Riprova = nuovo refresh 90 tramite backend. -->
-      <div class="aux-banner plc-silent-banner" v-if="plcSilent">
-        <span>{{ $t('robot.plcSilent') }}</span>
-        <button class="btn-ghost" @click="retryPlcRefresh">
-          {{ $t('common.retry') }}
-        </button>
-      </div>
-
-      <!-- ===== CARD 1: Comandi critici =====
-           DISPOSIZIONE CAMBIATA il 15/9 dopo la verifica di usabilita': RESET,
-           CONTINUA ESECUZIONE e RESTART stavano in fila a 8 px, con il
-           pulsante che serve a RIPRENDERE in mezzo ai due rossi che non
-           riprendono niente. Con i guanti, sbagliare di 8 px voleva dire
-           resettare il robot invece di farlo ripartire.
-           Adesso: sopra c'e' la CONDUZIONE (fermare e riprendere), sotto e
-           staccato il RIPRISTINO, e i due comandi di ripristino chiedono
-           conferma dicendo cosa fanno e cosa NON fanno. -->
-      <section class="command-section">
-        <h3 class="section-label">{{ $t('robot.section.critical') }}</h3>
-
-        <!-- (v3) STATUS ignoto o NOT_DEFINED: il 17 e' un toggle nel PLC e
-             "HOLD" potrebbe togliere l'hold. Visibile ma disabilitato, "—". -->
-        <button class="pure-button-micromission pure-u-1 specialCMD button_pressed" :class="{'button-hold':dataRobot.STATUS==dataStored.status_hold}"
-          v-if="dataRobot.STATUS!=dataStored.status_off"
-          :disabled="holdIgnoto" :title="holdIgnoto ? $t('cmd.holdUnknown') : null"
-          @click="sendToRobot(17)">
-          <span v-if="holdIgnoto">—</span>
-          <template v-else>
-          <span v-if="dataRobot.STATUS!=dataStored.status_hold && dataRobot.STATUS!=dataStored.status_off">
-            <span style="font-size: 16px;">{{ $t('cmd.hold') }}</span>
-          </span>
-          <span v-if="dataRobot.STATUS==dataStored.status_hold">
-            <small>{{ $t('cmd.hold') }}</small> => <span style="font-size: 16px;">{{$t("CONTINUE")}}</span>
-          </span>
-          </template>
-        </button>
-
-        <button class="pure-button-micromission pure-u-1 specialCMD button_pressed" :class="{'button-hold':dataRobot.STATUS==dataStored.status_hold}"
-          style="animation: blinker 1s linear infinite;border:3px solid black;"
-          @click="sendToRobot(17)"
-          v-if="dataRobot.STATUS==dataStored.status_off">
-          <span>
-            <span style="font-size: 16px;">{{ $t('cmd.start') }}</span>
-          </span>
-        </button>
-
-        <!-- RIPRISTINO: gruppo separato, non in fila col pulsante che si usa
-             per riprendere. Il distacco e' visivo (riga + spazio) e non solo
-             di spaziatura, cosi' si vede che sono un'altra famiglia. -->
-        <h4 class="command-subsection-title restore-title">{{ $t('robot.section.restore') }}</h4>
-        <small class="cmd-hint">{{ $t('robot.section.restoreHint') }}</small>
-
-        <button class="pure-button-micromission pure-u-1 specialCMD button_pressed restore-btn"
-          @click="criticalEnabled('reset') ? askCritical('reset') : ''">
-          {{ $t('cmd.reset') }}
-        </button>
-
-        <button class="pure-button-micromission pure-u-1 specialCMD button_pressed restore-btn" :disabled="!criticalEnabled('restart')"
-          :class="[!criticalEnabled('restart') ? 'pure-button-disable' : 'pure-button-micromission']"
-          :style="[!criticalEnabled('restart') ? 'background-color:lightgray;color:gray': '']"
-          @click="criticalEnabled('restart') ? askCritical('restart') : ''">
-          {{ $t('cmd.restartMain') }}
-        </button>
-
-        <!-- Conferma dei due comandi di ripristino: dice cosa fa e, soprattutto,
-             cosa NON fa, perche' l'errore che si vuole evitare e' proprio
-             premerli credendo di riprendere il ciclo. -->
-        <div v-if="criticalDialog.type!=''" class="mission-dialog-overlay">
-          <div class="mission-dialog mission-dialog--danger">
-            <h3 class="command-section-title">{{ $t('robot.critical.confirmTitle') }}</h3>
-            <p class="critical-what">{{ $t('robot.critical.' + criticalDialog.type + 'What') }}</p>
-            <small class="cmd-hint">{{ $t('robot.critical.' + criticalDialog.type + 'NotThis') }}</small>
-            <div class="pure-g">
-              <div class="pure-u-1-2">
-                <button style="width:100%" class="pure-button-mission button_pressed" @click="confirmCritical()">
-                  {{ $t('robot.dialog.confirm') }}
-                </button>
-              </div>
-              <div class="pure-u-1-2">
-                <button style="width:100%" class="btn-ghost" @click="closeCriticalDialog()">
-                  {{ $t('robot.dialog.cancel') }}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- ===== CARD 2: Movimenti (HOME/MAINT + Punti destinazione) ===== -->
-      <section class="command-section">
-        <h3 class="section-label">{{ $t('robot.section.movement') }}</h3>
-
-        <!-- S: {'btn-mission-running': ...} = feedback missione in corso sul
-             SOLO bottone che l'ha inviata; gating e comandi INVARIATI
-             (sendMission marca la chiave e delega a sendToRobot). -->
-        <button class="pure-u-1 button_pressed"
-          :class="[dataStored.cmdActive==0? 'pure-button-disable' : 'pure-button-micromission', {'btn-mission-running': missionRunning=='home'}]"
-          @click="dataStored.cmdActive==1?sendMission('home',20):''">
-          {{ $t('HOME') }}
-        </button>
-
-        <button class="pure-u-1 button_pressed"
-          :class="[dataStored.cmdActive==0? 'pure-button-disable' : 'pure-button-micromission', {'btn-mission-running': missionRunning=='maintenance'}]"
-          @click="dataStored.cmdActive==1?sendMission('maintenance',21):''">
-          {{ $t('MAINTENANCE') }}
-        </button>
-
-        <!-- (fase B) Reimposta stato cella: dichiarazione manuale 35 dopo
-             un'emergenza, a homing completato. Gate = idle (HOLD) come gli
-             altri comandi manuali della card. -->
-        <button class="pure-u-1 button_pressed"
-          :class="[dataStored.cmdActive==0? 'pure-button-disable' : 'pure-button-micromission']"
-          @click="dataStored.cmdActive==1?openDeclDialog():''">
-          {{ $t('robot.decl.button') }}
-        </button>
-
-        <h4 class="section-label">{{ $t('robot.section.destination') }}</h4>
-        <div class="pure-g dest-grid">
-          <div class="pure-u-1-3">
-            <button style="width:100%" class="button_pressed"
-              :class="[dataStored.cmdActive==0? 'pure-button-disable' : 'pure-button-micromission', {'btn-mission-running': missionRunning=='dest-easybox'}]"
-              @click="dataStored.cmdActive==1?sendMission('dest-easybox','15;1'):''">
-              {{ $t('Easybox') }}
-            </button>
-          </div>
-          <!-- (machines-gating) destinazioni macchina DINAMICHE dalla
-               configurazione (contratto 15;(10+n)): con una sola macchina
-               resta il solo bottone MC1, mai bottoni per macchine fantasma -->
-          <div class="pure-u-1-3" v-for="pos in MACHINE_POSITIONS" :key="pos.mc">
-            <button style="width:100%" class="button_pressed"
-              :class="[dataStored.cmdActive==0? 'pure-button-disable' : 'pure-button-micromission', {'btn-mission-running': missionRunning=='dest-'+pos.mc.toLowerCase()}]"
-              @click="dataStored.cmdActive==1?sendMission('dest-'+pos.mc.toLowerCase(),'15;'+(10+pos.n)):''">
-              {{ $t(pos.labelKey) }}
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <!-- ===== CARD 3: Missioni (SCARICA/CARICA PINZA + CARICA/SCARICA PALLET) ===== -->
-      <section class="command-section">
-        <h3 class="section-label">{{ $t('robot.section.mission') }}</h3>
-
-        <!-- M: bottone unico a label FISSA (pattern anti-race: bottone neutro
-             + dialog esplicito). NON invia mai direttamente: apre il dialog
-             del ramo valido — carico (11) se nessuna pinza a bordo, conferma
-             scarico (12) se pinza a bordo. Gate = gripperBranchEnabled
-             (computed, unica fonte di verita' per classe e click). -->
-        <button class="pure-u-1 button_pressed"
-          :class="[gripperBranchEnabled? 'pure-button-mission' : 'pure-button-disable', {'btn-mission-running': missionRunning=='gripper'}]"
-          @click="gripperBranchEnabled?openGripperMission():''">
-          {{ $t('robot.mission.gripper') }}
-        </button>
-        <!-- (AN) mai bottoni muti: motivo visibile quando disabilitato -->
-        <small class="cmd-hint" v-if="!gripperBranchEnabled && gripperDisabledReason">{{ $t(gripperDisabledReason) }}</small>
-
-        <!-- M-PALLET(B): bottone unico a label FISSA. NON invia mai
-             direttamente: apre palletLoad (13) se la pinza pallet e' VUOTA
-             (STATUS==status_empty, stessa discriminazione di PalletsView) o
-             palletUnload (14) se c'e' un oggetto in pinza.
-             Gate = palletBranchEnabled (unica fonte per classe e click). -->
-        <button class="pure-u-1 button_pressed"
-          :class="[palletBranchEnabled? 'pure-button-mission' : 'pure-button-disable', {'btn-mission-running': missionRunning=='pallet'}]"
-          @click="palletBranchEnabled?openPalletMission():''">
-          {{ $t('robot.mission.pallet') }}
-        </button>
-        <small class="cmd-hint" v-if="!palletBranchEnabled && palletDisabledReason">{{ $t(palletDisabledReason) }}</small>
-
-        <!-- M2: bottone unico a label FISSA per i cassetti. NON invia mai
-             direttamente: apre il dialog del ramo corrente — estrazione (25)
-             se nessun cassetto estratto, rilascio (26) se EXTRACT==1.
-             Gate = trayBranchEnabled (unica fonte per classe e click);
-             manovra in corso (EXTRACT 1000/2000) => disabilitato. -->
-        <button class="pure-u-1 button_pressed"
-          :class="[trayBranchEnabled? 'pure-button-mission' : 'pure-button-disable', {'btn-mission-running': missionRunning=='tray'}]"
-          @click="trayBranchEnabled?openTrayMission():''">
-          {{ $t('robot.mission.tray') }}
-        </button>
-        <small class="cmd-hint" v-if="!trayBranchEnabled && trayDisabledReason">{{ $t(trayDisabledReason) }}</small>
-
-        <!-- (244) Preleva finito e deposita grezzo in UN solo ingresso in MC1
-             (PLC: MISSION_PickPlacePart_MC 135, master 1400) — MISSIONE con
-             movimento in macchina: sta qui con le altre, non tra i comandi
-             elementari delle chele. Gate = cmdActive + GREZZO sul lato 1
-             (STATUS RAW, chele 1 non aperte) + lato 2 LIBERO. NESSUN vincolo
-             sull'ordine: il PLC usa le quote dell'ULTIMO ordine registrato
-             (funziona anche a tabella produzione vuota). -->
-        <button class="pure-u-1 button_pressed"
-          :class="[pickPlaceEnabled() ? 'pure-button-mission' : 'pure-button-disable', {'btn-mission-running': missionRunning=='pickplace-mc1'}]"
-          @click="pickPlaceEnabled() ? openPickPlaceDialog() : ''">
-          {{ $t('robot.pickPlace.button') }}
-        </button>
-        <small class="cmd-hint" v-if="dataStored.cmdActive==1 && pickPlaceDisabledReason()">{{ $t(pickPlaceDisabledReason()) }}</small>
 
         <!-- dialog conferma missione 244: nota sulle quote dell'ultimo
              ordine registrato al posto della verifica ordine. Un solo overlay. -->
@@ -901,10 +843,6 @@
             </div>
           </div>
         </div>
-      </section>
-
-    </div>
-
   </div>
 </template>
 
@@ -917,6 +855,10 @@ const CLAW_CMD = {
 };
 // (244) missione preleva-finito + deposita-grezzo in un solo ingresso in MC1
 const PICKPLACE_CMD = '244';
+// (v3 fase B) velocita' a passi: i tocchi ravvicinati si sommano e parte
+// UN solo comando dopo 400 ms senza tocchi; i valori fissi partono subito
+const SPEED_DEBOUNCE_MS = 400;
+const SPEED_PRESETS = [10, 25, 50, 100];
 
 // (plc-silent-retry 18/9) PLC MUTO: attese del banner e del ritentativo.
 // PLC_SILENT_MS: quanto si aspetta un ROBOT/STATUS dopo un SNAPSHOT/MISS prima
@@ -1018,11 +960,14 @@ export default {
       declPieceInVice: 0,
       gripperMounted: null,    // FROM_PLANT/GRIPPER/MOUNTED (0/1, null = mai visto)
       gripperClosed1: null,    // FROM_PLANT/GRIPPER/CLOSED1
-      // R2-2: editing dell'input velocita' — col flag attivo l'eco PLC non
-      // sovrascrive mentre si digita, e l'Enter (che fa blur) non produce
-      // un secondo invio.
-      speedManual: '',
-      speedEditing: false,
+      // (v3 fase B) velocita' a passi: valore in attesa d'invio (passi entro
+      // 400 ms) e ultimo valore inviato, finche' non arriva l'eco del PLC
+      speedPending: null,
+      speedLastSent: null,
+      speedTimer: null,
+      speedPresets: SPEED_PRESETS,
+      // (v3 fase B) scheda dei comandi in compatto: movement|mission|claw
+      rvTab: 'movement',
       // S: feedback "missione in corso" — chiave del bottone che ha inviato
       // la missione (una sola alla volta) + macchinetta a 3 fasi:
       // 'armed' all'invio (STATUS ancora HOLD) -> 'active' quando STATUS
@@ -1239,31 +1184,56 @@ export default {
       //dataStored.robotSpeed = val;
       this.sendToRobot("100;"+val)
     },
-    // R2-2: slider con snap-back — la posizione e' SEMPRE l'eco PLC: il
-    // DOM viene riportato subito a sliderSpeed, se il comando produce eco
-    // (CHANGESPEED) lo slider si sposta, altrimenti resta dov'era.
-    onSliderChange(e){
-      const v = parseInt(e.target.value);
-      e.target.value = this.sliderSpeed;
+    // (v3 fase B) passo di velocita': parte dal valore in attesa (passi
+    // ravvicinati), poi dall'ultimo inviato se l'eco non e' ancora arrivata,
+    // altrimenti dall'eco. Clamp 1..100, UN invio dopo 400 ms senza tocchi.
+    stepSpeed(d){
+      if (!this.speedEnabled) return;
+      const base = this.speedPending ?? this.speedLastSent ?? this.displaySpeed;
+      this.speedPending = Math.min(100, Math.max(1, base + Number(d)));
+      clearTimeout(this.speedTimer);
+      this.speedTimer = setTimeout(() => this.flushSpeed(), SPEED_DEBOUNCE_MS);
+    },
+    flushSpeed(){
+      clearTimeout(this.speedTimer);
+      this.speedTimer = null;
+      const v = this.speedPending;
+      this.speedPending = null;
+      if (v === null) return;
+      // invariato rispetto a quello che il PLC ha (o ha appena ricevuto):
+      // niente comando, come il campo numerico di prima (+10 a 100 tace)
+      if (v == (this.speedLastSent ?? this.displaySpeed)) return;
+      this.speedLastSent = v;
       this.updateSpeed(v);
     },
-    // R2-2: entra in editing precompilando col valore corrente.
-    startSpeedEdit(){
-      this.speedEditing = true;
-      this.speedManual = String(this.displaySpeed);
+    // valori fissi: inviano subito e annullano i passi in attesa
+    setSpeedPreset(v){
+      if (!this.speedEnabled) return;
+      clearTimeout(this.speedTimer);
+      this.speedTimer = null;
+      this.speedPending = null;
+      this.speedLastSent = v;
+      this.updateSpeed(v);
     },
-    // R2-2: unico punto di invio (l'Enter fa blur -> passa da qui una
-    // volta sola). Clamp intero 1..100; invio solo se diverso dall'eco
-    // corrente (un focus+blur accidentale non rimanda il comando).
-    applyManualSpeed(){
-      if (!this.speedEditing) return;
-      this.speedEditing = false;
-      const v = parseInt(this.speedManual);
-      this.speedManual = '';
-      if (isNaN(v)) return;
-      const clamped = Math.min(100, Math.max(1, v));
-      if (clamped == this.displaySpeed) return;
-      this.updateSpeed(clamped);
+    // eco del PLC: e' il valore mostrato; da qui i passi ripartono dall'eco
+    onSpeedEcho(payload){
+      dataStored.robotSpeed = payload;
+      this.speedLastSent = null;
+    },
+    // contenuto di un lato pinza (STATUS della riga GRIPPERS) -> testo
+    gripperContentKey(status){
+      switch (Number(status)) {
+        case dataStored.status_empty: return 'status.empty';
+        case dataStored.status_raw: return 'status.raw';
+        case dataStored.status_finished: return 'status.finished';
+        case dataStored.status_aborted: return 'status.aborted';
+      }
+      return 'status.notDef';
+    },
+    // motivo dentro la tile: "non in HOLD" e "ausiliari" sono gia' scritti
+    // una volta per tutta la pagina, qui non si ripetono
+    tileWhy(reason){
+      return reason && reason !== 'robot.hint.notHold' && reason !== 'robot.hint.auxNotReset' ? reason : '';
     },
     // Snapshot dalle cache backend: il PLC pubblica STATUS/pinza solo
     // on-change, senza questa richiesta una view montata dopo l'ultimo
@@ -2386,13 +2356,6 @@ export default {
       if (!this.palletGripperEmptyNow() && this.palletDestCount === 0) return false;
       return true;
     },
-    // R2: posizione slider = eco PLC agganciato alla scala 10..100 dello
-    // slider (l'1% fine impostato da input manuale mostra il numero esatto
-    // nell'input, lo slider si ferma al minimo della sua scala).
-    sliderSpeed() {
-      const v = parseInt(dataStored.robotSpeed) || 10;
-      return Math.min(100, Math.max(10, v));
-    },
     // R2-2: valore mostrato dall'input fuori editing — eco PLC clampato a
     // minimo 1 (MAI 0%: a freddo mostra 1).
     displaySpeed() {
@@ -2403,6 +2366,36 @@ export default {
     // determinabile dal materiale: backend passthrough, segmenti storici
     // senza gating) -> fallback ratificato: modificabile solo con stato
     // robot NOTO (STATUS definito e non "Sconosciuto").
+    // l'eco del PLC e' arrivata? Senza eco (robotSpeed 0 all'avvio) il
+    // numero grande e' "—": nessun valore che il PLC non ha detto. I passi
+    // partono comunque da displaySpeed (1), come il campo di prima.
+    speedKnown() {
+      return parseInt(dataStored.robotSpeed) > 0;
+    },
+    // "→ N %": valore in attesa d'invio, o inviato e non ancora confermato
+    // dall'eco; null quando il numero grande e' gia' quello giusto
+    speedTarget() {
+      const v = this.speedPending ?? this.speedLastSent;
+      return v === null || v == this.displaySpeed ? null : v;
+    },
+    // (v3 fase B) sotto il titolo della card Stato: l'allarme (testo e
+    // codice) o la missione in corso; per gli altri stati il codice DESCR
+    // se c'e', come la riga "DESCR: stato" di prima
+    statoDettaglio() {
+      const st = this.dataRobot.STATUS;
+      const d = String(this.dataRobot.DESCR == null ? '' : this.dataRobot.DESCR).trim();
+      const n = parseInt(d, 10);
+      if (st == dataStored.status_alarm && n > 0) return this.$t('robot.alarm_' + n) + ' · ' + this.$t('robot.stateCode', { n });
+      if (st == dataStored.status_working && d !== '' && d !== '0') return this.$t('robot.stateMission', { n: d });
+      if (n > 0) return this.$t('robot.stateCode', { n });
+      return '';
+    },
+    // precondizioni che il dialog di ripristino elenca: solo quelle che il
+    // pannello verifica davvero (RESTART = robot in HOLD, criticalEnabled)
+    criticalChecks() {
+      if (this.criticalDialog.type === 'restart' && this.criticalEnabled('restart')) return [this.$t('robot.critical.checkHold')];
+      return [];
+    },
     speedEnabled() {
       const s = this.dataRobot.STATUS;
       return s != undefined && s != dataStored.status_notDef;
@@ -2483,9 +2476,7 @@ export default {
     dataStored.WS.socket.on('ROBOT/UPDATEGRIPPER', () =>{
       this.getRobotData();
     });
-    dataStored.WS.socket.on('ROBOT/CHANGESPEED', payload => {
-      dataStored.robotSpeed = payload;
-    })
+    dataStored.WS.socket.on('ROBOT/CHANGESPEED', this.onSpeedEcho);
     // M2: campanello estrazione cassetti — il backend emette BOX/STATUS a
     // ogni FROM_PLANT/TRAY/BOX/EXTRACT|RELEASE del PLC (pattern e4ab4e5:
     // handler nominato, off specifico in unmounted).
@@ -2539,6 +2530,10 @@ export default {
     dataStored.WS.socket.off('ROBOT/STATUS', this.statusHandler);
     dataStored.WS.socket.off('SNAPSHOT/MISS', this.snapshotMissHandler);
     clearTimeout(this.plcSilentTimer);
+    // velocita': i passi in attesa partono adesso (il tocco era voluto),
+    // poi si stacca l'eco
+    if (this.speedPending !== null) this.flushSpeed();
+    dataStored.WS.socket.off('ROBOT/CHANGESPEED', this.onSpeedEcho);
     // il ritentativo non ha una fine sua: se non lo si spegne qui resta a
     // chiedere il refresh 90 per una view che non c'e' piu'
     clearTimeout(this.plcRetryTimer);
@@ -2582,27 +2577,118 @@ export default {
   text-align: center;
 }
 
-/* (AN) indicatore coerenza pinza: righe fonte + badge (grammatica badge di
-   AttrezzaggiView/selectRig) */
-.coherence {
-  margin-top: var(--space-4);
-  padding-top: var(--space-2);
-  border-top: 1px solid var(--border-subtle);
-  text-align: left;
-  cursor: default;
+/* ================= (v3 fase B) Controlli · Robot =================
+   Due colonne: stato e comandi. Niente scroll di pagina a 1920x1080 ne' a
+   1024x768 (rilievo di fase). In compatto Movimenti / Missioni / Chele
+   diventano schede: .rv-panel--off si nasconde solo sotto i 1600 px. */
+.rv {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.6fr) minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+.rv__col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
 }
 
-.coherence-head {
+/* --- Stato --- */
+.rv-state__row {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-secondary);
-  margin-bottom: var(--space-2);
+  justify-content: space-between;
+  gap: var(--space-4);
 }
+.rv-state__main { min-width: 0; }
+.rv-state__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--font-size-state);
+  font-weight: var(--font-weight-extrabold);
+  line-height: var(--line-height-tight);
+}
+.rv-state__title span { display: inline-block; }
+.rv-state__title span::first-letter { text-transform: uppercase; }
+.rv-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  flex: none;
+}
+.rv-tone--warning .rv-dot { background: var(--color-warning); }
+.rv-tone--danger .rv-dot { background: var(--color-danger); }
+.rv-tone--success .rv-dot { background: var(--color-success); }
+.rv-tone--accent .rv-dot { background: var(--accent); }
+.rv-tone--info .rv-dot { background: var(--color-info); }
+.rv-state__sub {
+  margin-top: var(--space-2);
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+.rv-outline {
+  flex: none;
+  min-height: var(--touch-target-min);
+  padding: 0 var(--space-4);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-btn);
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+}
+.rv-outline:hover:not(:disabled) { background: var(--bg-surface-2); }
+.rv-outline:disabled { color: var(--text-muted); border-color: var(--border-subtle); cursor: not-allowed; }
+.rv-banner { margin: var(--space-3) 0 0; }
+
+/* --- Pinza a bordo --- */
+.rv-gripper { cursor: pointer; }
+.rv-gripper :deep(.ui-card__label) { white-space: nowrap; }
+.rv-gripper :deep(.ui-card__actions) { min-width: 0; }
+.rv-gripper__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-extrabold);
+  color: var(--text-primary);
+}
+.rv-sides {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+.rv-side {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-btn);
+  background: var(--bg-surface-2);
+}
+.rv-side__k { font-size: var(--font-size-xs); color: var(--text-muted); }
+.rv-side__v { font-size: var(--font-size-md); font-weight: var(--font-weight-bold); }
+.rv-gripper__pos { margin-top: var(--space-2); font-size: var(--font-size-xs); color: var(--text-muted); }
+.rv-gripper__none { font-weight: var(--font-weight-bold); color: var(--text-secondary); }
+
+/* (AN) coerenza pinza: una riga quando le fonti concordano, le tre fonti
+   e il messaggio quando no */
+.rv-coh { margin-top: var(--space-3); cursor: default; }
+.rv-coh__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+}
+.rv-coh__head svg { width: 18px; height: 18px; flex: none; }
+.rv-coh--ok b, .rv-coh--ok svg { color: var(--color-success); }
+.rv-coh--bad b, .rv-coh--bad svg { color: var(--color-danger); }
+.rv-coh__na { color: var(--text-muted); }
 
 .coherence-row {
   display: flex;
@@ -2629,24 +2715,6 @@ export default {
   font-size: var(--font-size-sm);
 }
 
-.badge {
-  display: inline-block;
-  padding: var(--space-1) var(--space-3); /* micro-aggiustamento ottico badge */
-  border-radius: var(--radius-lg);
-  font-size: var(--font-size-xs);
-  white-space: nowrap;
-}
-
-.badge-type {
-  background-color: var(--color-success-bg);
-  color: var(--color-success);
-}
-
-.badge-anomaly {
-  background-color: var(--color-danger-bg);
-  color: var(--color-danger);
-  font-weight: var(--font-weight-semibold);
-}
 small {
   font-size: 0.8em;
 }
@@ -2655,139 +2723,151 @@ h6 {
   margin-bottom: 3px;
 }
 
-/* (usabilita' 15/9) il gruppo RIPRISTINO si stacca da quello di conduzione:
-   riga di separazione e spazio, cosi' fra "continua esecuzione" e il primo
-   rosso ci sono 24 px e un confine visibile, non 8 px e basta. */
-.restore-title {
-  margin-top: var(--space-5);
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--border-subtle);
-}
-
-.restore-btn {
-  margin-top: var(--space-2);
-}
-
-.critical-what {
-  margin: 0;
-  font-size: var(--font-size-md);
-  line-height: var(--line-height-normal);
+/* --- Velocita' --- */
+.rv-speed__val {
+  font-size: var(--font-size-display);
+  font-weight: var(--font-weight-extrabold);
+  line-height: 1;
   color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
 }
-
-/* Override .specialCMD (rosso) quando robot e' in stato HOLD: bg blu vivido
-   + border accent + animazione blinker (definita in unit-views.css) per
-   richiamare attenzione sul bottone CONTINUE. */
-.button-hold {
-  background: var(--color-info);
-  border: 4px solid var(--accent);
-  animation: blinker 1s linear infinite;
+.rv-speed__val small { font-size: 0.45em; margin-left: 2px; color: var(--text-secondary); }
+.rv-speed__bar {
+  height: 10px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-input);
+  overflow: hidden;
 }
-
-/* Punti di destinazione (K-FIX): pure-g e' flex ma le colonne pure-u-1-3
-   a 33.33% con un gap andrebbero in overflow -> flex:1 con width auto,
-   larghezze uguali tra loro come prima, gap allineato al gap 8 della card. */
-.dest-grid {
-  gap: var(--space-2);
+.rv-speed__bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
 }
-
-/* (UI 5/10) Collaudo: preleva | deposita affiancati. Griglia a 2 colonne
-   uguali; stretch: se un testo va a capo la coppia cresce insieme. */
-.test-pairs {
+.rv-speed__target {
+  align-self: center;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--accent);
+}
+/* contenitore dei segmenti: come UiSegmented (--bg-chip, 14 / 11 px) */
+.rv-presets,
+.rv-seg,
+.rv-tabs {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-2);
+  gap: var(--space-1);
+  padding: var(--space-1);
+  border-radius: 14px;
+  background: var(--bg-chip);
 }
-.test-pairs button {
-  width: 100%;
-  min-height: 52px;
-}
-
-/* (chele) due colonne lato 1 / lato 2, bottoni impilati per colonna */
-.claw-grid {
-  gap: var(--space-2);
-}
-.claw-grid .claw-side {
-  flex: 1;
-  width: auto;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-/* R1: colonne flex + bottoni che riempiono la riga -> i tre bottoni hanno
-   SEMPRE la stessa altezza (se un testo va a capo, crescono tutti insieme)
-   col testo centrato verticalmente. */
-.dest-grid > div {
-  flex: 1;
-  width: auto;
-  display: flex;
-}
-
-.dest-grid button {
-  flex: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 52px;
-}
-
-/* R1: la label ROBOT SPEED staccata dalla card di stato sopra con lo
-   stesso passo del resto della colonna. */
-.speed-group {
-  margin-top: var(--space-4);
-}
-
-/* R2: speed = slider (comando al rilascio) + input manuale fine + eco %.
-   I vecchi 5 segmenti .speed-button sono stati rimossi. */
-.speed-control {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin-top: var(--space-2);
-}
-
-.speed-slider {
-  flex: 1;
-  min-height: 44px;              /* area touch generosa */
-  accent-color: var(--accent);   /* track/thumb su accent (nativo) */
+.rv-presets { grid-template-columns: repeat(4, 1fr); margin-top: var(--space-3); }
+.rv-seg { grid-template-columns: 1fr 1fr; }
+.rv-preset,
+.rv-seg__opt,
+.rv-tabs__opt {
+  min-height: var(--touch-target-min);
+  border: 0;
+  border-radius: 11px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-weight: var(--font-weight-bold);
   cursor: pointer;
 }
+.rv-preset.on,
+.rv-seg__opt.on,
+.rv-tabs__opt.on { background: var(--bg-segment-on); color: var(--text-primary); }
+.rv-preset:hover:not(:disabled):not(.on),
+.rv-seg__opt:hover:not(:disabled):not(.on),
+.rv-tabs__opt:hover:not(.on) { background: var(--bg-surface-2); }
+.rv-preset:disabled,
+.rv-seg__opt:disabled { color: var(--text-muted); cursor: not-allowed; }
+/* lo stato letto resta leggibile anche a comandi spenti */
+.rv-seg__opt.on:disabled { color: var(--text-secondary); }
 
-/* thumb generoso per il touch (Chrome kiosk) */
-.speed-slider::-webkit-slider-thumb {
-  width: 28px;
-  height: 28px;
+/* --- Comandi --- */
+.rv-tabs { display: none; }
+.rv-gate {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-warning-text);
+}
+.rv-grid { display: grid; gap: var(--space-3); }
+.rv-grid--move { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.rv-grid--mission { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.rv-grid .ui-tile { min-height: 112px; }
+.rv-why {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-top: var(--space-1);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-normal);
+  line-height: 1.3;
+  color: var(--text-muted);
 }
 
-/* R2-2: unita' statica accanto all'input unificato */
-.speed-unit {
-  color: var(--text-secondary);
-  font-size: var(--font-size-md);
+.rv-claws {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3) var(--space-6);
 }
-
-/* R2-2: disabled a canone ("subdued ma leggibile", come buttons.css) */
-.speed-slider:disabled,
-.speed-manual:disabled {
-  opacity: 0.8;
-  cursor: not-allowed;
+.rv-claw {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
 }
+.rv-claw__side { display: flex; flex-direction: column; font-weight: var(--font-weight-bold); }
+.rv-claw__state { font-size: var(--font-size-xs); font-weight: var(--font-weight-normal); color: var(--text-muted); }
+.rv-claw__why { grid-column: 2; font-size: var(--font-size-xs); color: var(--text-muted); }
 
-.speed-slider:disabled {
-  accent-color: var(--text-muted);
+/* --- Ripristino: card a riga, fuori dalle schede --- */
+.rv-restore {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--card-padding);
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface);
 }
+.rv-restore__label {
+  flex: none;
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-extrabold);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.rv-restore__hint { flex: 1; min-width: 0; font-size: var(--font-size-sm); color: var(--text-secondary); }
+.rv-restore .ui-btn { flex: none; }
+.rv-notthis { margin: var(--space-3) 0 0; font-size: var(--font-size-sm); color: var(--text-secondary); }
 
-/* input manuale canonico dark (regola F10: --border-strong su bg-input) */
-.speed-manual {
-  width: 55px;
-  min-height: 44px;
-  padding: var(--space-2);
-  background: var(--bg-input);
-  color: var(--text-primary);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-sm);
-  font-size: var(--font-size-base);
-  text-align: right;
+@media (max-width: 1599px) {
+  .rv { grid-template-columns: minmax(0, 0.62fr) minmax(0, 1fr); gap: var(--space-3); }
+  .rv__col { gap: var(--space-3); }
+  .rv-tabs { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--bg-surface); border-radius: var(--radius-lg); }
+  .rv-panel--off { display: none; }
+  .rv-panel :deep(.ui-card__head) { display: none; }
+  .rv-grid--move,
+  .rv-grid--mission { grid-template-columns: 1fr 1fr; gap: var(--space-2); }
+  .rv-grid .ui-tile {
+    min-height: 64px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--font-size-sm);
+  }
+  .rv-grid :deep(.ui-tile__icon) { width: var(--icon-size-md); height: var(--icon-size-md); }
+  .rv-claws { grid-template-columns: 1fr; }
+  .rv-restore { padding: var(--space-2); }
+  .rv-restore__label,
+  .rv-restore__hint { display: none; }
+  .rv-restore .ui-btn { flex: 1; }
+  .rv-speed__val { font-size: 40px; }
+  .rv-side { padding: var(--space-2) var(--space-3); }
 }
 
 /* Dialog scelta pinza/pallet per missioni (CARD 3). Overlay a schermo pieno

@@ -646,6 +646,16 @@
   "robot": {
     "noGripper": "NO GRIPPER MOUNTED!",
     "speedLabel": "ROBOT SPEED:",
+    "speedTitle": "Velocit\u00e0 robot",
+    "speedPending": "Inviato, in attesa della conferma del PLC",
+    "gripperOnBoard": "Pinza a bordo",
+    "goTo": "Vai a {dest}",
+    "stateMission": "Missione {n}",
+    "stateCode": "codice {n}",
+    "restore": {
+      "reset": "Reset allarmi",
+      "restart": "Riavvia programma robot"
+    },
     "dialog": {
       "chooseGripper": "Quale pinza caricare?",
       "choosePalletLoad": "Quale pallet caricare?",
@@ -844,14 +854,18 @@
     "alarm_900011": "EMERGENZA PREMUTA SU PULPITO",
     "critical": {
       "confirmTitle": "Confermi il comando di ripristino?",
+      "resetTitle": "Mandare il reset al robot?",
+      "restartTitle": "Riavviare il programma robot?",
+      "checkHold": "Robot in HOLD",
       "resetWhat": "Stai per mandare RESET al robot.",
-      "resetNotThis": "Non serve a riprendere un ciclo fermo: per quello c'\u00e8 CONTINUA ESECUZIONE. Usa RESET dopo un allarme o un blocco.",
+      "resetNotThis": "Non serve a riprendere un ciclo fermo: per quello c'\u00e8 Riprendi, in alto a destra. Usa il reset dopo un allarme o un blocco.",
       "restartWhat": "Stai per far ripartire il programma principale del robot.",
-      "restartNotThis": "Non riprende la missione dal punto in cui si \u00e8 fermata: per quello c'\u00e8 CONTINUA ESECUZIONE."
+      "restartNotThis": "Non riprende la missione dal punto in cui si \u00e8 fermata: per quello c'\u00e8 Riprendi, in alto a destra."
     },
     "section": {
       "critical": "Comandi critici",
       "restore": "Ripristino",
+      "claws": "Chele",
       "restoreHint": "Da usare dopo un allarme o un blocco, non per riprendere un ciclo fermo.",
       "movement": "Movimenti",
       "destination": "Punti di destinazione",
@@ -878,7 +892,9 @@
       "close": "Chiudi chela",
       "noSide2": "La pinza a bordo non ha un lato 2",
       "confirmOpen": "Aprire la chela del lato {side}?",
-      "confirmOpenWarn": "Con un pezzo in presa, aprendo la chela il pezzo cade."
+      "confirmOpenWarn": "Con un pezzo in presa, aprendo la chela il pezzo cade.",
+      "stateOpen": "aperta",
+      "stateClosed": "chiusa"
     },
     "test": {
       "pickTray": "Preleva pezzo da cassetto",

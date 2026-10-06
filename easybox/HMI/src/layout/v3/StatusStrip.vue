@@ -77,6 +77,7 @@ import { configuredMachineNumbers } from '@/util/machineBrands';
 import { useCompact } from '@/util/breakpoints';
 import { plant } from '@/stores/plantStatus.js';
 import { robotStatoIgnoto } from '@/util/holdState.js';
+import { statusName, statusKey, statusTone } from '@/util/unitStatus.js';
 import { useLingua } from '@/util/lingua.js';
 import UiChip from '@/components/ui/UiChip.vue';
 
@@ -88,27 +89,11 @@ const compact = useCompact();
 const livello = computed(() => Number(dataStored.userLevel) || 0);
 const ignoto = computed(() => robotStatoIgnoto(plant.robot));
 
-// codice di [UNIT].STATUS -> testo e pallino (costanti in data.js)
-function nome(code) {
-	const S = dataStored;
-	if (code === null || code === undefined) return 'unknown';
-	switch (Number(code)) {
-		case S.status_hold: return 'hold';
-		case S.status_alarm: return 'alarm';
-		case S.status_off: return 'off';
-		case S.status_working: return 'working';
-		case S.status_auto: return 'auto';
-		case S.status_remote: return 'remote';
-		case S.status_local: return 'local';
-		case S.status_manual: return 'manual';
-		case S.status_notDef: return 'notDef';
-		default: return 'other';
-	}
-}
-// codici senza nome (es. MC1 = 2): "normale", come le tile della Dashboard
-// (units.vue getStatusDesc -> "normal")
-const testo = code => t('strip.st.' + (nome(code) === 'other' ? 'normal' : nome(code)));
-const punto = code => ({ hold: 'warning', alarm: 'danger', working: 'accent', auto: 'success', remote: 'success', local: 'success', manual: 'info' }[nome(code)] || 'muted');
+// codice di [UNIT].STATUS -> testo e pallino: util/unitStatus.js, la stessa
+// mappatura delle card Stato e delle tile della Home
+const nome = statusName;
+const testo = code => t(statusKey(code));
+const punto = statusTone;
 
 // chip dello stato cella: dal robot, che e' chi va in HOLD
 const cella = computed(() => {

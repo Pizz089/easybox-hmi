@@ -209,6 +209,8 @@ function esegui(vm, loopVars, exp, $event) {
 function eventoFinto(nome) {
 	if (nome === 'pick') return { index: 0, subPos: 1, status: 4, orderID: 0 };
 	if (nome === 'update') return 5;
+	// UiStepper: il passo (+1), come lo emette il componente
+	if (nome === 'step') return 1;
 	if (nome === 'click_obj') return undefined;
 	return { target: { value: '1', checked: true, blur: noop, focus: noop, select: noop }, key: 'Enter', stopPropagation: noop, preventDefault: noop };
 }

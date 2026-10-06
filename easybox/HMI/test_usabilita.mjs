@@ -39,14 +39,19 @@ const iCont = robot.indexOf("sendToRobot(17)");
 const iReset = robot.indexOf('askCritical(\'reset\')');
 const iRestart = robot.indexOf('askCritical(\'restart\')');
 check(iReset > 0 && iRestart > 0, 'RESET e RESTART passano da una conferma, non partono al primo tocco');
-check(iCont < iReset && iCont < iRestart, 'il pulsante che RIPRENDE viene prima: non e\' piu\' in mezzo ai due rossi');
-check(/restore-title[\s\S]{0,200}border-top/.test(robot), 'il gruppo di ripristino e\' staccato da una riga, non solo da spazio');
-check(/\.restore-title[\s\S]{0,160}margin-top: var\(--space-5\)/.test(robot), 'e da 24 px di stacco');
+// (v3 fase B) il pulsante che RIPRENDE (17) non sta piu' nella pagina: e'
+// nella striscia di stato, in alto a destra, lontano dai due rossi
+const striscia = leggi('src/layout/v3/StatusStrip.vue');
+check(iCont === -1 && striscia.includes('sendToRobot(17)'), 'il pulsante che RIPRENDE non e\' piu\' vicino ai due rossi: sta nella striscia');
+check(/<section class="rv-restore">/.test(robot) && /\.rv-restore \{[\s\S]{0,300}border-radius: var\(--radius-lg\)/.test(robot), 'il gruppo di ripristino e\' una card a se\', staccata dalle altre');
+check(/\.rv__col \{[\s\S]{0,120}gap: var\(--space-4\)/.test(robot), 'e da 16 px di stacco dalla card sopra');
 check(!/@click="sendToRobot\(99\)"/.test(robot), 'nessuna strada diretta al RESET senza conferma');
 for (const k of ['confirmTitle', 'resetWhat', 'resetNotThis', 'restartWhat', 'restartNotThis'])
 	check(!!it.robot.critical[k] && !!en.robot.critical[k], 'testo presente: robot.critical.' + k);
-check(/CONTINUA ESECUZIONE/.test(it.robot.critical.resetNotThis), 'la conferma di RESET dice qual e\' il comando giusto per riprendere');
-check(/CONTINUA ESECUZIONE/.test(it.robot.critical.restartNotThis), 'idem per RESTART');
+// il comando giusto per riprendere e' il pulsante della striscia: la
+// conferma lo chiama col nome che ha a video (strip.resume)
+check(it.robot.critical.resetNotThis.includes(it.strip.resume) && en.robot.critical.resetNotThis.includes(en.strip.resume), 'la conferma di RESET dice qual e\' il comando giusto per riprendere, col suo nome');
+check(it.robot.critical.restartNotThis.includes(it.strip.resume) && en.robot.critical.restartNotThis.includes(en.strip.resume), 'idem per RESTART');
 
 console.log('\n1b) dal tocco alla PUBLISH: i comandi di ripristino escono davvero');
 // Questo blocco nasce da un guasto in campo: con eaa7e44 in cella, lo sniffer

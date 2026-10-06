@@ -30,6 +30,12 @@ function contenitore(file, handler) {
 		const d = /(^|\s)mission-dialog(\s|$)/.test(c) ? c : dlg;
 		const on = (n.props || []).find(p => p.type === 7 && p.name === 'on');
 		if (n.tag === 'button' && on && on.exp && on.exp.content.includes(handler)) trovato = d;
+		// (v3 fase B) UiConfirmDialog: rosso se tone="danger" (il default)
+		const conf = (n.props || []).find(p => p.type === 7 && p.name === 'on' && p.arg && p.arg.content === 'confirm');
+		if (n.tag === 'UiConfirmDialog' && conf && conf.exp && conf.exp.content.includes(handler)) {
+			const tone = ((n.props || []).find(p => p.type === 6 && p.name === 'tone') || { value: { content: 'danger' } }).value.content;
+			trovato = 'mission-dialog' + (tone === 'danger' ? ' mission-dialog--danger' : '');
+		}
 		(n.children || []).forEach(ch => walk(ch, d));
 	};
 	walk(descriptor.template.ast, null);

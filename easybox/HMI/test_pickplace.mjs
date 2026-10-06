@@ -130,9 +130,12 @@ const card = n => {
 };
 const missionCard = card(3);
 const clawCard = card(5);
-check(missionCard.includes("robot.pickPlace.button") && missionCard.includes('pickPlaceDialog.open'), 'bottone e dialog 244 dentro la CARD 3 Missioni');
+// (v3 fase B) i dialog stanno tutti in fondo, fuori dalle card: in compatto
+// le schede nascoste sono display:none e un dialog li' dentro non si vedrebbe
+check(missionCard.includes("robot.pickPlace.button"), 'bottone 244 dentro la CARD 3 Missioni');
+check(tpl.indexOf('pickPlaceDialog.open') > tpl.indexOf('<!-- ===================== DIALOG'), 'e il suo dialog nel blocco dei dialog, fuori dalle schede');
 check(!clawCard.includes('pickPlace'), 'nessuna traccia del 244 nella CARD 5 Comandi pinza');
-check((clawCard.match(/clawEnabled\(side\) \?/g) || []).length === 4, 'i 4 bottoni chela restano al loro posto, invariati');
+check((clawCard.match(/clawEnabled\(side\)/g) || []).length === 4, 'i 4 bottoni chela restano al loro posto, gated come prima');
 
 await server.close();
 console.log('\n' + (failed ? failed + ' CHECK FALLITI' : 'TUTTI I CHECK PASSATI'));

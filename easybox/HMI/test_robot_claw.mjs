@@ -40,7 +40,8 @@ const card = src.slice(src.indexOf('CARD 5'), src.lastIndexOf('</template>'));
 const btnOpen = (card.match(/openClawDialog\(side\)/g) || []).length;
 const btnClose = (card.match(/sendClaw\(side, false\)/g) || []).length;
 check(btnOpen === 1 && btnClose === 1 && card.includes('v-for="side in [1, 2]"'), 'apri/chiudi x lato 1 e 2 (v-for sui due lati)');
-check((card.match(/clawEnabled\(side\) \?/g) || []).length === 4, ':class e @click di entrambi i bottoni passano da clawEnabled');
+// (v3 fase B) :disabled e @click di entrambi i bottoni passano da clawEnabled
+check((card.match(/:disabled="!clawEnabled\(side\)"/g) || []).length === 2 && (card.match(/@click="clawEnabled\(side\) \?/g) || []).length === 2, ':disabled e @click di entrambi i bottoni passano da clawEnabled');
 check(/clawEnabled\(side\)\s*\{[\s\S]*?dataStored\.cmdActive != 1\) return false/.test(src), 'clawEnabled usa dataStored.cmdActive');
 check(!/CMD_enabled\(\)\s*\{\s*dataStored\.cmdActive = \(this\.dataRobot\.STATUS == dataStored\.status_hold\);[\s\S]{0,40}claw/i.test(src), 'CMD_enabled() non toccata');
 check(card.includes('confirmClawOpen()') && !card.includes('sendClaw(side, true)'), 'nel template l\'apertura passa SOLO dal dialog');

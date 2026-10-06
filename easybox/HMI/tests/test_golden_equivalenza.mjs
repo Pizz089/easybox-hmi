@@ -34,6 +34,11 @@ const COMANDO = /^(emit|fetch) /;
 //       'cambiato' (stesso comando, nuovo modo di darlo: vedi motivo),
 //       'nuovo'    (comando che prima su questa pagina non c'era).
 export const AMMESSE = [
+	// ---- fase B
+	{ pagina: 'robotView', tipo: 'spostato', firma: /^emit TO_PLANT\/CMD\/ROBOT 17$/,
+		motivo: 'HOLD / Riprendi / START esce dalla pagina Robot e resta solo nella striscia di stato (stessa logica a tre stati, stesso 17: test_shell_v3 lo confronta col riferimento)' },
+	{ pagina: 'robotView', tipo: 'cambiato', firma: /^emit TO_PLANT\/CMD\/ROBOT "100;\d+"$/,
+		motivo: 'velocita\': stesso comando "100;<val>" (1..100, eco CHANGESPEED), dato con passi -10/-1/+1/+10 (un invio dopo 400 ms senza tocchi) e valori fissi 10/25/50/100 al posto di cursore e campo numerico; il valore nel payload dipende dal controllo premuto' },
 ];
 const ammessa = (pagina, firma) => AMMESSE.find(a => (!a.pagina || a.pagina === pagina) && a.firma.test(firma));
 
@@ -87,6 +92,26 @@ for (const [nome, rp] of Object.entries(RIF.pagine)) {
 	}
 	const mancanti = rp.scenari.filter(s => !op.scenari.includes(s));
 	check(diff.length === 0 && mancanti.length === 0, nome + ' (' + comuni.length + ' scenari)' + (mancanti.length ? ' scenari spariti: ' + mancanti.join(', ') : '') + (diff.length ? ':\n       ' + diff.join('\n       ') : ''));
+}
+
+// le differenze ammesse non devono diventare un buco: la velocita' (fase B)
+// cambia controllo, non abilitazione. Passi e valori fissi si accendono
+// esattamente dove si accendeva il cursore del riferimento.
+console.log('\n2b) velocita\': passi e valori fissi abilitati dove lo era il cursore');
+{
+	const VEL = /^emit TO_PLANT\/CMD\/ROBOT "100;\d+"$/;
+	const rp = RIF.pagine.robotView, op = ORA.pagine.robotView;
+	const mr = mappa(rp), mo = mappa(op);
+	const diff = [];
+	for (const s of rp.scenari.filter(x => op.scenari.includes(x))) {
+		const prima = [...mr[s]].filter(([f]) => VEL.test(f)), dopo = [...mo[s]].filter(([f]) => VEL.test(f));
+		const abPrima = prima.some(([, ab]) => ab);
+		// nessuna firma = i controlli ci sono ma non mandano niente (spenti e
+		// con la guardia nel metodo): va bene solo se anche il cursore era spento
+		if (!dopo.length) { if (abPrima) diff.push(s + ': nessun comando velocita\', il cursore era acceso'); continue; }
+		for (const [f, ab] of dopo) if (ab !== abPrima) diff.push(s + ': ' + f + ' ' + (ab ? 'acceso' : 'spento') + ', il cursore era ' + (abPrima ? 'acceso' : 'spento'));
+	}
+	check(diff.length === 0, 'robotView: stessa abilitazione in tutti gli scenari' + (diff.length ? ':\n       ' + diff.join('\n       ') : ''));
 }
 
 console.log('\n3) navigazione (informativa)');

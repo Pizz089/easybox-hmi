@@ -646,6 +646,16 @@
   "robot": {
     "noGripper": "NO GRIPPER MOUNTED!",
     "speedLabel": "ROBOT SPEED:",
+    "speedTitle": "Robot speed",
+    "speedPending": "Sent, waiting for the PLC echo",
+    "gripperOnBoard": "Gripper on board",
+    "goTo": "Go to {dest}",
+    "stateMission": "Mission {n}",
+    "stateCode": "code {n}",
+    "restore": {
+      "reset": "Reset alarms",
+      "restart": "Restart robot program"
+    },
     "dialog": {
       "chooseGripper": "Which gripper to load?",
       "choosePalletLoad": "Which pallet to load?",
@@ -844,14 +854,18 @@
     "alarm_900011": "EMERGENCY BUTTON PRESSED ON HMI",
     "critical": {
       "confirmTitle": "Confirm the recovery command?",
+      "resetTitle": "Send reset to the robot?",
+      "restartTitle": "Restart the robot program?",
+      "checkHold": "Robot in HOLD",
       "resetWhat": "You are about to send RESET to the robot.",
-      "resetNotThis": "It does not resume a stopped cycle: for that there is CONTINUE. Use RESET after an alarm or a block.",
+      "resetNotThis": "It does not resume a stopped cycle: for that there is Resume, top right. Use the reset after an alarm or a block.",
       "restartWhat": "You are about to restart the robot main program.",
-      "restartNotThis": "It does not resume the mission from where it stopped: for that there is CONTINUE."
+      "restartNotThis": "It does not resume the mission from where it stopped: for that there is Resume, top right."
     },
     "section": {
       "critical": "Critical commands",
       "restore": "Recovery",
+      "claws": "Claws",
       "restoreHint": "Use after an alarm or a block, not to resume a stopped cycle.",
       "movement": "Movements",
       "destination": "Destinations",
@@ -878,7 +892,9 @@
       "close": "Close claw",
       "noSide2": "The on-board gripper has no side 2",
       "confirmOpen": "Open the claw on side {side}?",
-      "confirmOpenWarn": "With a part gripped, opening the claw drops it."
+      "confirmOpenWarn": "With a part gripped, opening the claw drops it.",
+      "stateOpen": "open",
+      "stateClosed": "closed"
     },
     "test": {
       "pickTray": "Pick piece from tray",
