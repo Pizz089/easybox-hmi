@@ -551,6 +551,9 @@
     "noOrderYet": "No order yet"
   },
   "normal": "Normal",
+  "cmd": {
+    "holdUnknown": "Robot state unknown"
+  },
   "robot": {
     "dialog": {
       "chooseGripper": "Which gripper to load?",

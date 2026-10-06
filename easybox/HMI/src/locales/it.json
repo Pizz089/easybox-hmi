@@ -551,6 +551,9 @@
     "noOrderYet": "Nessun ordine al momento"
   },
   "normal": "Normale",
+  "cmd": {
+    "holdUnknown": "Stato del robot non noto"
+  },
   "robot": {
     "dialog": {
       "chooseGripper": "Quale pinza caricare?",

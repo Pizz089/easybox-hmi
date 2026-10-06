@@ -1,5 +1,7 @@
 <script setup>
   import { dataStored } from '../../data.js'
+  // HOLD a stato ignoto: il 17 e' un toggle nel PLC (util/holdState.js)
+  import { robotStatoIgnoto } from '../../util/holdState.js'
   // (stato cella 16/9) la griglia delle tasche e' quella della pagina layout,
   // estratta in componente: il dialog di dichiarazione fa cliccare la casella
   // che si vede, invece di far digitare un numero di tasca
@@ -575,15 +577,25 @@
       <section class="command-section">
         <h3 class="section-label">{{ $t('robot.section.critical') }}</h3>
 
+        <!-- STATUS ignoto o NOT_DEFINED (0): il 17 e' un toggle nel PLC
+             (FB_Robot, CMD_HOLD: IF NOT #holdButton THEN #HOLD := NOT #HOLD)
+             e "HOLD" potrebbe togliere l'hold invece di metterlo. Visibile ma
+             disabilitato, "—", finche' lo stato non si sa. Lo spento e' lo
+             stesso grigio di RESTART MAIN PROGRAM. -->
         <button class="pure-button-micromission pure-u-1 specialCMD button_pressed" :class="{'button-hold':dataRobot.STATUS==dataStored.status_hold}"
           v-if="dataRobot.STATUS!=dataStored.status_off"
+          :disabled="holdIgnoto" :title="holdIgnoto ? $t('cmd.holdUnknown') : null"
+          :style="[holdIgnoto ? 'background-color:lightgray;color:gray' : '']"
           @click="sendToRobot(17)">
+          <span v-if="holdIgnoto">—</span>
+          <template v-else>
           <span v-if="dataRobot.STATUS!=dataStored.status_hold && dataRobot.STATUS!=dataStored.status_off">
             <span style="font-size: 16px;">HOLD</span>
           </span>
           <span v-if="dataRobot.STATUS==dataStored.status_hold">
             <small>HOLD</small> => <span style="font-size: 16px;">{{$t("CONTINUE")}}</span>
           </span>
+          </template>
         </button>
 
         <button class="pure-button-micromission pure-u-1 specialCMD button_pressed" :class="{'button-hold':dataRobot.STATUS==dataStored.status_hold}"
@@ -2156,6 +2168,10 @@ export default {
     'dataRobot.STATUS'() { this.checkMissionPhase(); }
   },
   computed: {
+    // STATUS del robot non noto (assente o NOT_DEFINED): il HOLD si spegne
+    holdIgnoto() {
+      return robotStatoIgnoto(this.dataRobot.STATUS);
+    },
     // (chele) lato 2 disponibile = seconda riga di dataGripper: onRobot
     // ritorna le righe GRIPPERS con POS_PLANT=1000 ordinate per sub_pos e la
     // pinza doppia e' modellata come due righe (es. ID 26 + ID 37 "lato 2").
