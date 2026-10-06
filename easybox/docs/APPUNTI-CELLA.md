@@ -20,6 +20,8 @@ Nessuno dei due si riavvia da solo. **Le due finestre non si chiudono senza rila
 
 Nel working tree di cella ci sono file non tracciati che il `.gitignore` non esclude: i due `.bat` e la cartella `easybox/serverDati_BACKUP_2026-06-03/`. Sono normali: `pannello.ps1` conta come modifiche locali solo i file tracciati.
 
+**Attenzione: nel clone parziale `git pull` e `git switch` non si fermano** su un file non tracciato che il ramo in arrivo porta allo stesso percorso. Lo sovrascrivono, con il solo warning «already present and thus not updated despite sparse patterns», e finiscono con codice 0. Provato il 6/10 con git 2.52 su un clone parziale come quello di cella; in un clone completo git invece si ferma. Quindi nel repo nessun file ai percorsi dove la cella ha file suoi (i due `.bat`, `easybox/serverDati_BACKUP_2026-06-03/`). `pannello.ps1` lo controlla da sé prima di cambiare ramo o aggiornare; un `git pull` a mano no.
+
 **Procedura di aggiornamento:**
 1. Cella in HOLD.
 2. `cd D:\Prog`, poi `git pull`; oppure lo script, che fa fetch, cambio di ramo, pull solo in avanti e `npm install` se serve:
@@ -41,7 +43,8 @@ Dopo il pull del 6/10 `tools/pannello.ps1` non è comparso in cella. Causa verif
 
 Risolto:
 - lo script sta in `easybox/tools/pannello.ps1` (commit a73e412). Nuovo comando in cella: `powershell -ExecutionPolicy Bypass -File D:\Prog\easybox\tools\pannello.ps1 -Versione stato`;
-- contano solo i file tracciati (`git status --porcelain --untracked-files=no`); il messaggio finale non dice più che il backend si riavvia da solo, ma cosa riavviare e i quattro controlli; in testa al cambio di versione ricorda la cella in HOLD (commit 58231d1).
+- contano solo i file tracciati (`git status --porcelain --untracked-files=no`); il messaggio finale non dice più che il backend si riavvia da solo, ma cosa riavviare e i quattro controlli; in testa al cambio di versione ricorda la cella in HOLD (commit 58231d1);
+- prima di cambiare ramo o aggiornare controlla i file non tracciati d'intralcio, che nel clone parziale git sovrascriverebbe senza fermarsi (voce «Avvio e aggiornamento della cella»).
 
 ## [ ] 2026-10-06 — work object per cassetto: vista 4Robot **v4**, quote relative al cassetto
 
