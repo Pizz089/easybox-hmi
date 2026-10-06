@@ -174,3 +174,16 @@
     background: var(--accent) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230A1220' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'/></svg>") center / 26px no-repeat;
 }
 .shell .conf-v3 .push-row input[type="checkbox"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ---- (fase D) dettaglio di Attrezzaggio: Attrezzaggio, Pallet, Morsa,
+   Attrezzatura, Attrezzatura su pallet, Pinza. Stessa classe .conf-v3 della
+   scheda del cassetto. L'unita' accanto al campo era testo libero ("mm",
+   "0.001mm", "°"): ora in .unit, staccata dal campo e col colore delle
+   etichette. Il testo dell'unita' non cambia. */
+.shell .conf-v3 .unit {
+    margin-left: var(--space-2);
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-secondary);
+    white-space: nowrap;
+}

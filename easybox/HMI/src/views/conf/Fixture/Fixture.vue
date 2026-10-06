@@ -8,7 +8,10 @@
 </script>
 
 <template>   
-      <div class="view-shell conf-card">
+      <!-- (v3 fase D) conf-v3 (assets/css/catalog-v3.css): campi, unita' e
+           pulsanti a 48 px, titolo e card v3, come la scheda del cassetto.
+           Solo aspetto: campi, validazioni e chiamate non cambiano. -->
+      <div class="view-shell conf-card conf-v3">
         <h2 v-if="!createNew" class="view-title">{{ $t('fixture.data')}} : {{ fixture.ID }}</h2>
         <h2 v-if="createNew" class="view-title"> {{ $t('fixture.create')}} </h2>
 
@@ -26,15 +29,15 @@
                 </div>
                 <div class="pure-control-group">
                     <label for="aligned-foo">{{$t('fixture.bodyX')}}</label>
-                    <input type="number" step="0.02" id="aligned-foo" name="X_BODY" v-model="fixture.X" placeholder="0"/> mm
+                    <input type="number" step="0.02" id="aligned-foo" name="X_BODY" v-model="fixture.X" placeholder="0"/> <span class="unit">mm</span>
                 </div>
                 <div class="pure-control-group">
                     <label for="aligned-foo">{{$t('fixture.bodyY')}}</label>
-                    <input type="number" step="0.02" id="aligned-foo" name="Y_BODY" v-model="fixture.Y" placeholder="0"/> mm
+                    <input type="number" step="0.02" id="aligned-foo" name="Y_BODY" v-model="fixture.Y" placeholder="0"/> <span class="unit">mm</span>
                 </div>
                 <div class="pure-control-group">
                     <label for="aligned-foo">{{$t('fixture.bodyZ')}}</label>
-                    <input type="number" step="0.02" id="aligned-foo" name="Z_BODY" v-model="fixture.Z" placeholder="0"/> mm
+                    <input type="number" step="0.02" id="aligned-foo" name="Z_BODY" v-model="fixture.Z" placeholder="0"/> <span class="unit">mm</span>
                 </div>
 
                 <!-- ===== (composizione 16/9) DI COSA E' FATTA QUESTA QUOTA =====
@@ -100,11 +103,11 @@
                 </div>
                 <div class="pure-control-group">
                     <label for="aligned-foo">{{$t('fixture.chelaZ')}}</label>
-                    <input type="number" step="0.02" id="aligned-foo" name="Z_CHELE" v-model="fixture.Z_CLAW" placeholder="0"/> mm
+                    <input type="number" step="0.02" id="aligned-foo" name="Z_CHELE" v-model="fixture.Z_CLAW" placeholder="0"/> <span class="unit">mm</span>
                 </div>
                 <div class="pure-control-group">
                     <label for="aligned-foo">{{$t('fixture.scassoChelaZ')}}</label>
-                    <input type="number" step="0.02" id="aligned-foo" name="Z_SCASSO_CHELE" v-model="fixture.Z_SINK_CLAW" placeholder="0"/> mm
+                    <input type="number" step="0.02" id="aligned-foo" name="Z_SCASSO_CHELE" v-model="fixture.Z_SINK_CLAW" placeholder="0"/> <span class="unit">mm</span>
                 </div>
                 <!--div class="pure-control-group">
                     <label for="aligned-foo">{{$t('fixture.stato')}}</label>

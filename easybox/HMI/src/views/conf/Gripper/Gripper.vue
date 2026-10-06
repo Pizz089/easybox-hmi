@@ -1,11 +1,14 @@
 <template>
   <div class="pure-u-1-24">&nbsp;</div>
 
-  <div class="pure-u-22-24">
-    <h2 v-if="!create && gripper">
+  <!-- (v3 fase D) conf-v3 (assets/css/catalog-v3.css): campi, unita' e
+       pulsanti a 48 px, titolo e card v3, come la scheda del cassetto.
+       Solo aspetto: campi, validazioni e chiamate non cambiano. -->
+  <div class="pure-u-22-24 conf-v3">
+    <h2 class="view-title" v-if="!create && gripper">
       {{ $t("gripper.data") }} : {{ gripper.ID }}
     </h2>
-    <h2 v-else>{{ $t("gripper.create") }}</h2>
+    <h2 class="view-title" v-else>{{ $t("gripper.create") }}</h2>
 
     <div class="gripper-layout">
       <div class="gripper-form">
@@ -767,6 +770,10 @@ export default {
 </script>
 
 <style scoped>
+/* (v3 fase D) colori della pagina portati sui token v3 (design-tokens.css):
+   prima una palette blu scura scritta a mano, fuori dal sistema. Solo i
+   colori: misure e struttura della pagina non cambiano. */
+
 
 
 
@@ -778,15 +785,15 @@ export default {
 .pure-u-22-24 {
   width: 100% !important;
   padding: 32px 40px !important;
-  background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%) !important;
+  background: transparent !important;
   min-height: calc(100vh - 80px) !important;
 }
 
 /* === TITOLO === */
+/* (v3 fase D) titolo come le altre pagine di dettaglio (.conf-v3 .view-title,
+   32 px, 26 in compatto): qui restano solo colore e spazio sotto */
 h2 {
-  color: #f1f5f9 !important;
-  font-size: var(--font-size-lg) !important;
-  font-weight: 600 !important;
+  color: var(--text-primary) !important;
   margin-bottom: 28px !important;
   letter-spacing: -0.01em !important;
   text-transform: none !important;
@@ -803,12 +810,12 @@ h2 {
 
 /* === FORM CARD === */
 .gripper-form {
-  background: rgba(30, 41, 59, 0.6) !important;
+  background: var(--bg-surface) !important;
   backdrop-filter: blur(10px) !important;
   border-radius: 16px !important;
   padding: 28px 32px !important;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3) !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: none !important;
+  border: 0 !important;
 }
 
 /* === FORM CONTROLS === */
@@ -826,7 +833,7 @@ h2 {
   min-width: 150px !important;
   margin-right: 20px !important;
   text-align: right !important;
-  color: #94a3b8 !important;
+  color: var(--text-secondary) !important;
   font-size: var(--font-size-sm) !important;
   font-weight: 500 !important;
 }
@@ -838,21 +845,21 @@ h2 {
 .gripper-form input[type="number"] {
   width: 260px !important;
   padding: 11px 14px !important;
-  background: rgba(15, 23, 42, 0.8) !important;
-  border: 1px solid rgba(71, 85, 105, 0.5) !important;
+  background: var(--bg-input) !important;
+  border: 1px solid var(--border-strong) !important;
   border-radius: 8px !important;
-  color: #f1f5f9 !important;
+  color: var(--text-primary) !important;
   font-size: var(--font-size-sm) !important;
   transition: all 0.2s ease !important;
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+  box-shadow: none !important;
 }
 
 .gripper-form .aligned-foo:hover,
 .gripper-form select:hover,
 .gripper-form input[type="text"]:hover,
 .gripper-form input[type="number"]:hover {
-  border-color: rgba(71, 85, 105, 0.8) !important;
-  background: rgba(30, 41, 59, 0.8) !important;
+  border-color: var(--border-strong) !important;
+  background: var(--bg-input) !important;
 }
 
 .gripper-form .aligned-foo:focus,
@@ -860,11 +867,11 @@ h2 {
 .gripper-form input[type="text"]:focus,
 .gripper-form input[type="number"]:focus {
   outline: none !important;
-  border-color: #3b82f6 !important;
+  border-color: var(--accent) !important;
   box-shadow:
     0 0 0 3px rgba(59, 130, 246, 0.15),
-    inset 0 1px 2px rgba(0, 0, 0, 0.2) !important;
-  background: rgba(30, 41, 59, 0.9) !important;
+    0 0 0 0 transparent !important;
+  background: var(--bg-input) !important;
 }
 
 .gripper-form select {
@@ -879,15 +886,15 @@ h2 {
 }
 
 .gripper-form select option {
-  background: #1e293b !important;
-  color: #f1f5f9 !important;
+  background: var(--bg-raised) !important;
+  color: var(--text-primary) !important;
   padding: 10px !important;
 }
 
 /* === UNIT LABEL === */
 .gripper-form .unit {
   margin-left: 12px !important;
-  color: #64748b !important;
+  color: var(--text-muted) !important;
   font-size: var(--font-size-xs) !important;
   font-weight: 500 !important;
   min-width: 30px !important;
@@ -905,10 +912,10 @@ h2 {
 .gripper-form .shelfPos {
   height: 44px !important;
   width: 48px !important;
-  border: 1px solid rgba(71, 85, 105, 0.5) !important;
+  border: 1px solid var(--border-strong) !important;
   border-radius: 6px !important;
-  background: rgba(15, 23, 42, 0.8) !important;
-  color: #94a3b8 !important;
+  background: var(--bg-input) !important;
+  color: var(--text-secondary) !important;
   font-weight: 600 !important;
   font-size: var(--font-size-sm) !important;
   cursor: pointer !important;
@@ -917,9 +924,9 @@ h2 {
 }
 
 .gripper-form .shelfPos:hover:not(:disabled) {
-  border-color: #3b82f6 !important;
+  border-color: var(--accent) !important;
   background: rgba(59, 130, 246, 0.1) !important;
-  color: #f1f5f9 !important;
+  color: var(--text-primary) !important;
 }
 
 .gripper-form .shelfPos:disabled {
@@ -938,7 +945,7 @@ h2 {
 .gripper-form .pure-controls {
   margin-top: 24px !important;
   padding-top: 20px !important;
-  border-top: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-top: 1px solid var(--border-subtle) !important;
 }
 
 /* Save: variante Primary canonica (buttons.css), override gradient rimosso
@@ -946,12 +953,12 @@ h2 {
 
 /* === 3D PREVIEW CARD === */
 .gripper-preview {
-  background: rgba(30, 41, 59, 0.6) !important;
+  background: var(--bg-surface) !important;
   backdrop-filter: blur(10px) !important;
   border-radius: 16px !important;
   padding: 14px !important;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3) !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: none !important;
+  border: 0 !important;
   position: sticky !important;
   top: 20px !important;
 }
@@ -960,7 +967,7 @@ h2 {
 .bjs-canvas {
   width: 100% !important;
   height: 390px !important;
-  background: linear-gradient(180deg, #0c1222 0%, #0a0f1a 100%) !important;
+  background: var(--bg-well) !important;
   border-radius: 10px !important;
   display: block !important;
   touch-action: none !important;

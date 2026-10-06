@@ -7,7 +7,10 @@
 </script>
 
 <template>   
-      <div class="view-shell conf-card">
+      <!-- (v3 fase D) conf-v3 (assets/css/catalog-v3.css): campi, unita' e
+           pulsanti a 48 px, titolo e card v3, come la scheda del cassetto.
+           Solo aspetto: campi, validazioni e chiamate non cambiano. -->
+      <div class="view-shell conf-card conf-v3">
         <h2 v-if="!createNew" class="view-title">{{ $t('fixture.data')}} : {{ fixture.ID }}</h2>
         <h2 v-if="createNew" class="view-title"> {{ $t('fixture.create')}} </h2>
 

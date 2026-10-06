@@ -8,7 +8,10 @@
 </script>
 
 <template>   
-      <div class="view-shell conf-card">
+      <!-- (v3 fase D) conf-v3 (assets/css/catalog-v3.css): campi, unita' e
+           pulsanti a 48 px, titolo e card v3, come la scheda del cassetto.
+           Solo aspetto: campi, validazioni e chiamate non cambiano. -->
+      <div class="view-shell conf-card conf-v3">
         <h2 v-if="!createNew" class="view-title">{{ $t('pallet.data')}} : {{ pallet.ID }}</h2>
         <h2 v-if="createNew" class="view-title"> {{ $t('pallet.createNew')}} </h2>
 
@@ -26,11 +29,11 @@
                 </div>
                 <div class="pure-control-group">
                     <label for="aligned-foo">{{$t('pallet.lunghezza')}}</label>
-                    <input type="number" id="aligned-foo" name="LUNGHEZZA" v-model="pallet.Y" placeholder="0" :readonly="dataStored.userLevel==0" /> mm
+                    <input type="number" id="aligned-foo" name="LUNGHEZZA" v-model="pallet.Y" placeholder="0" :readonly="dataStored.userLevel==0" /> <span class="unit">mm</span>
                 </div>
                 <div class="pure-control-group">
                     <label for="aligned-foo">{{$t('pallet.larghezza')}}</label>
-                    <input type="number" id="aligned-foo" name="LARGHEZZA" v-model="pallet.X" placeholder="0" :readonly="dataStored.userLevel==0" /> mm
+                    <input type="number" id="aligned-foo" name="LARGHEZZA" v-model="pallet.X" placeholder="0" :readonly="dataStored.userLevel==0" /> <span class="unit">mm</span>
                 </div>
                 <div class="pure-control-group">
                     <label for="aligned-foo">{{$t('pallet.altezza')}}</label>
@@ -38,15 +41,15 @@
                 </div>
                 <div class="pure-control-group">
                     <label for="aligned-foo">{{$t('pallet.X_Corr')}}</label>
-                    <input type="number" id="aligned-foo" name="X_CORR" v-model="pallet.X_CORR" placeholder="0" :readonly="dataStored.userLevel==0"/> 0.001mm
+                    <input type="number" id="aligned-foo" name="X_CORR" v-model="pallet.X_CORR" placeholder="0" :readonly="dataStored.userLevel==0"/> <span class="unit">0.001mm</span>
                 </div>
                 <div class="pure-control-group">
                     <label for="aligned-foo">{{$t('pallet.Y_Corr')}}</label>
-                    <input type="number" id="aligned-foo" name="Y_CORR" v-model="pallet.Y_CORR" placeholder="0" :readonly="dataStored.userLevel==0"/> 0.001mm
+                    <input type="number" id="aligned-foo" name="Y_CORR" v-model="pallet.Y_CORR" placeholder="0" :readonly="dataStored.userLevel==0"/> <span class="unit">0.001mm</span>
                 </div>
                 <div class="pure-control-group">
                     <label for="aligned-foo">{{$t('pallet.Z_Corr')}}</label>
-                    <input type="number" id="aligned-foo" name="Z_CORR" v-model="pallet.Z_CORR" placeholder="0" :readonly="dataStored.userLevel==0"/> 0.001mm
+                    <input type="number" id="aligned-foo" name="Z_CORR" v-model="pallet.Z_CORR" placeholder="0" :readonly="dataStored.userLevel==0"/> <span class="unit">0.001mm</span>
                 </div>
                 <!-- AE: la posizione a magazzino NON si edita piu' da qui —
                      blocco informativo in SOLA LETTURA (decodifica condivisa

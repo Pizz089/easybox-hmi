@@ -14,7 +14,10 @@
 </script>
 
 <template>
-      <div class="view-shell conf-card">
+      <!-- (v3 fase D) conf-v3 (assets/css/catalog-v3.css): campi, unita' e
+           pulsanti a 48 px, titolo e card v3, come la scheda del cassetto.
+           Solo aspetto: campi, validazioni e chiamate non cambiano. -->
+      <div class="view-shell conf-card conf-v3">
         <h2 class="view-title">{{ editMode ? ($t('attrezzaggi.editTitle') + ' — #' + editPalletId) : $t('attrezzaggi.create') }}</h2>
 
         <div class="pure-form pure-form-aligned">
@@ -134,27 +137,27 @@
                     <h5 class="section-label">{{ $t('attrezzaggi.offsets') }}</h5>
                     <div class="pure-control-group">
                         <label for="att-posx">X</label>
-                        <input type="number" step="0.02" id="att-posx" v-model="pos.POS_X" placeholder="0"/> mm
+                        <input type="number" step="0.02" id="att-posx" v-model="pos.POS_X" placeholder="0"/> <span class="unit">mm</span>
                     </div>
                     <div class="pure-control-group">
                         <label for="att-posy">Y</label>
-                        <input type="number" step="0.02" id="att-posy" v-model="pos.POS_Y" placeholder="0"/> mm
+                        <input type="number" step="0.02" id="att-posy" v-model="pos.POS_Y" placeholder="0"/> <span class="unit">mm</span>
                     </div>
                     <div class="pure-control-group">
                         <label for="att-posz">Z</label>
-                        <input type="number" step="0.02" id="att-posz" v-model="pos.POS_Z" placeholder="0"/> mm
+                        <input type="number" step="0.02" id="att-posz" v-model="pos.POS_Z" placeholder="0"/> <span class="unit">mm</span>
                     </div>
                     <div class="pure-control-group group-spaced">
                         <label for="att-rotx">X_ROT</label>
-                        <input type="number" step="0.02" id="att-rotx" v-model="pos.POS_X_ROT" placeholder="0"/> °
+                        <input type="number" step="0.02" id="att-rotx" v-model="pos.POS_X_ROT" placeholder="0"/> <span class="unit">°</span>
                     </div>
                     <div class="pure-control-group">
                         <label for="att-roty">Y_ROT</label>
-                        <input type="number" step="0.02" id="att-roty" v-model="pos.POS_Y_ROT" placeholder="0"/> °
+                        <input type="number" step="0.02" id="att-roty" v-model="pos.POS_Y_ROT" placeholder="0"/> <span class="unit">°</span>
                     </div>
                     <div class="pure-control-group">
                         <label for="att-rotz">Z_ROT</label>
-                        <input type="number" step="0.02" id="att-rotz" v-model="pos.POS_Z_ROT" placeholder="0"/> °
+                        <input type="number" step="0.02" id="att-rotz" v-model="pos.POS_Z_ROT" placeholder="0"/> <span class="unit">°</span>
                     </div>
                 </span>
 
