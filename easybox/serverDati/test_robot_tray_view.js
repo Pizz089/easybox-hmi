@@ -83,9 +83,16 @@ check(colV4.join(',') === colV3.join(','), 'stesse colonne della v3, stessi nomi
 const PLC = ['X_PICK', 'Y_PICK', 'Z_PICK', 'X_ROT', 'Y_ROT', 'Z_ROT', 'APPROACH_TYPE', 'APPROACH_X', 'APPROACH_Y', 'APPROACH_Z', 'TRAY', 'SUB_POS', 'STATUS', 'PARTTYPE'];
 check(PLC.every(c => colV4.includes(c)), 'tutte le colonne che il PLC legge o filtra: ' + PLC.join(', '));
 check(nV4.includes("inner join tray t on concat('TRAY_', t.FLOOR_MAG) = trim(pos.PARENT)") && nV4.includes("where pos.parent like 'TRAY%' and pos.pos > 0"), 'join su tray e filtro invariati (vista limitata ai piani configurati)');
-// fuori dalle quote la v4 e' la v3 parola per parola
-const senzaQuote = n => n.replace(/\(.*?\) as [XYZ]_(PICK|PLACE|ROT),?/gi, '');
-check(senzaQuote(nV4) === senzaQuote(norm(corpoV3)), 'il resto della select e\' identico alla v3');
+// (6/10, decisione di Dario) TRAY a prova di cast: NULL sulle righe che non
+// sono tasche di cassetto (EXTRACT_TRAY_n dava 'CT', e il cast del PLC
+// poteva andare in errore 245). Seconda colonna, stesso nome.
+const TRAY_V4 = "CASE WHEN pos.PARENT LIKE 'TRAY[_]%' THEN SUBSTRING(pos.PARENT,6,2) END AS TRAY";
+const TRAY_V3 = 'SUBSTRING(pos.PARENT,6,2) As TRAY';
+check(nV4.includes('select pt.id as partType, ' + TRAY_V4 + ', pos.POS as MAG,'), 'TRAY e\' esattamente ' + TRAY_V4 + ' (seconda colonna)');
+check(!nV4.includes(TRAY_V3) && norm(corpoV3).includes(TRAY_V3), 'nessun SUBSTRING nudo per TRAY nella v4 (la v3 lo aveva)');
+// fuori da quote (formule e ISNULL) e TRAY la v4 e' la v3 parola per parola
+const senzaQuote = n => n.replace(TRAY_V4, TRAY_V3).replace(/\(.*?\) as [XYZ]_(PICK|PLACE|ROT),?/gi, '');
+check(senzaQuote(nV4) === senzaQuote(norm(corpoV3)), 'il resto della select e\' identico alla v3 (salvo formule delle quote, ISNULL e TRAY)');
 check(!/WITH\s+ENCRYPTION/i.test(v4code), 'nessun WITH ENCRYPTION: la vista resta in chiaro');
 
 console.log('\n2) guardia');
