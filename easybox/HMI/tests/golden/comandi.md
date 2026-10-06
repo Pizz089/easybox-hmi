@@ -249,8 +249,10 @@ Scenari: una tasca
 
 | Etichetta | Handler | Abilitazione | Abilitato per scenario | Effetto | Conferma |
 |---|---|---|---|---|---|
-| {{p.SUB_POS != null ? p.SUB_POS : index+1}} | `pick(index)` |  | una tasca: sì | evento pick [{"index":0,"subPos":1,"status":4,"orderID":0}] | no |
+| (click) | `tap($event)` |  | una tasca: sì | – | no |
+| {{p.SUB_POS != null ? p.SUB_POS : index+1}} | `pick(index)` |  | una tasca: sì | evento pick [{"index":0,"subPos":1,"status":4,"orderID":0,"w":50,"h":65}] | no |
 | {{p.SUB_POS != null ? p.SUB_POS : index+1}} | `pick(index)` |  | una tasca: – |  | no |
+| (click) | `pick(index)` |  | una tasca: sì | evento pick [{"index":0,"subPos":1,"status":4,"orderID":0,"w":50,"h":65}] | no |
 
 ## StatusStrip (`src/layout/v3/StatusStrip.vue`)
 

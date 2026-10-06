@@ -662,7 +662,7 @@
                   :pockets="pockets.rows"
                   :dimX="pockets.dimX" :dimY="pockets.dimY" :radius="pockets.radius"
                   :selected="pockets.sel"
-                  width="420" height="315"
+                  :trayX="pockets.trayX / 1000" :trayY="pockets.trayY / 1000"
                   @pick="pickPocket($event)" />
               </div>
               <p class="cmd-hint">{{ $t(pockets.sel === null ? 'robot.decl.pocketsPick' : 'robot.decl.pocketsChoose', { sub: pockets.sel }) }}</p>
@@ -2940,6 +2940,9 @@ h6 {
   justify-content: center;
   margin: var(--space-3) 0;
 }
+/* (v3 fase C) TrayPockets in scala prende la larghezza del contenitore:
+   nel dialog resta della misura di prima (era 420 x 315 fissi) */
+.pockets-wrap > svg { width: 100%; max-width: 420px; }
 
 .pockets-wrap svg {
   max-width: 100%;

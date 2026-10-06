@@ -64,11 +64,16 @@
              TrayPockets.vue: la stessa griglia serve al dialog "Reimposta
              stato cella" per far cliccare la tasca da correggere (comando
              39). Qui restano i dati e le regole di modifica. -->
-        <TrayPockets
-            :pockets="listPz"
-            :dimX="dim_x" :dimY="dim_y" :radius="radius"
-            :robotSide="robotSide"
-            @pick="clickPiece($event.index)" />
+        <!-- (v3 fase C, regola 4) in scala: contorno da TRAY.X x TRAY.Y,
+             il disegno riempie il riquadro senza deformarsi -->
+        <div class="layout-draw">
+            <TrayPockets fill
+                :pockets="listPz"
+                :dimX="dim_x" :dimY="dim_y" :radius="radius"
+                :trayX="trayX / 1000" :trayY="trayY / 1000"
+                :robotSide="robotSide"
+                @pick="clickPiece($event.index)" />
+        </div>
     </div>
 
     <div class="pure-u-1">
@@ -192,6 +197,9 @@
                 dim_x:0,
                 dim_y:0,
                 radius:0,
+                // misure del cassetto (TRAY.X / TRAY.Y, micron): contorno in scala
+                trayX:0,
+                trayY:0,
                 robotSide:false,   //visualizzazione del layout da parte del robot o dell'operatore
                 avanzamento:0,
                 trayReset: { open: false, busy: false },  // dialog AZZERA STATO CASSETTO
@@ -245,6 +253,8 @@
                         this.dim_x = d.dimX;
                         this.dim_y = d.dimY;
                         this.radius = d.radius;
+                        this.trayX = d.trayX;
+                        this.trayY = d.trayY;
                         this.avanzamento = 0;
                         this.loadedSig = pocketsSignature(this.listPz);
                     });
@@ -530,6 +540,12 @@
 
 
 <style scoped>
+    /* (v3 fase C) riquadro del disegno: altezza data, il cassetto ci sta
+       dentro in scala (TrayPockets fill, meet) */
+    .layout-draw {
+        width: 100%;
+        height: clamp(280px, 52vh, 640px);
+    }
     /* (UI v2 fase 1.5) legenda stati tasca */
     .pocket-legend {
         display: flex;

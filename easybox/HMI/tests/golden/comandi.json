@@ -5840,6 +5840,21 @@
    ],
    "controlli": [
     {
+     "id": "rect@click tap($event)",
+     "etichetta": "",
+     "evento": "click",
+     "handler": "tap($event)",
+     "disabled": "",
+     "classe": "",
+     "esiti": {
+      "una tasca": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": []
+      }
+     }
+    },
+    {
      "id": "prisma@click_obj pick(index)",
      "etichetta": "{{p.SUB_POS != null ? p.SUB_POS : index+1}}",
      "evento": "click_obj",
@@ -5851,7 +5866,7 @@
        {
         "abilitato": true,
         "effetti": [
-         "evento pick [{\"index\":0,\"subPos\":1,\"status\":4,\"orderID\":0}]"
+         "evento pick [{\"index\":0,\"subPos\":1,\"status\":4,\"orderID\":0,\"w\":50,\"h\":65}]"
         ],
         "stato": []
        }
@@ -5868,6 +5883,25 @@
      "esiti": {
       "una tasca": [
        "nascosto"
+      ]
+     }
+    },
+    {
+     "id": "rect@click pick(index)",
+     "etichetta": "",
+     "evento": "click",
+     "handler": "pick(index)",
+     "disabled": "",
+     "classe": "",
+     "esiti": {
+      "una tasca": [
+       {
+        "abilitato": true,
+        "effetti": [
+         "evento pick [{\"index\":0,\"subPos\":1,\"status\":4,\"orderID\":0,\"w\":50,\"h\":65}]"
+        ],
+        "stato": []
+       }
       ]
      }
     }
