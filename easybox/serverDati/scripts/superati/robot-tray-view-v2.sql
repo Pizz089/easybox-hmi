@@ -1,13 +1,14 @@
 -- ===========================================================================
--- *** SUPERATO DALLA v3 (../robot-tray-view-v3.sql) — NON ESEGUIRE ***
+-- *** SUPERATO (v3 il 14/9, v4 il 6/10: ../robot-tray-view-v4.sql) — NON ESEGUIRE ***
 -- (P8 5/10) Questo ALTER VIEW non aveva guardia: lanciato per errore
 -- riportava la vista COORDINATES_PIECES_TRAYS_4Robot alla v2, cioe' alla
 -- vecchia Z di prelievo (PIECE.Z - PIECE.Z_PICK invece della quota dal fondo
 -- del cassetto). Resta qui solo come storia e per un rollback voluto.
 --
--- GUARDIA: se la vista attuale e' gia' la v3 (stesso marcatore della guardia
--- di robot-tray-view-v3.sql: "t.Z_CORR+pt.Z_PICK)" presente e "-pt.Z_PICK"
--- assente) lo script si ferma senza toccare niente:
+-- GUARDIA (6/10): INERTE SEMPRE, qualunque sia la vista in cella. Prima si
+-- fermava solo se trovava la v3: con la v4 in cella quel marcatore non c'e'
+-- piu' e lo script avrebbe riportato la vista alla v2 (Z sbagliata E quote
+-- assolute con gli offset di piano). Ora si ferma in ogni caso:
 --   - con sqlcmd: ":on error exit" + RAISERROR -> esce prima dell'ALTER;
 --   - in SSMS senza modalita' SQLCMD la riga ":on error exit" e' solo un
 --     errore di sintassi nel suo batch, quindi la guardia mette anche
@@ -20,12 +21,8 @@
 :on error exit
 GO
 SET NOCOUNT ON;
-DECLARE @def nvarchar(max) = OBJECT_DEFINITION(OBJECT_ID('COORDINATES_PIECES_TRAYS_4Robot'));
-IF @def IS NOT NULL AND @def LIKE '%t.Z_CORR+pt.Z_PICK)%' AND @def NOT LIKE '%-pt.Z_PICK%'
-BEGIN
-	RAISERROR('robot-tray-view-v2.sql e'' SUPERATO: la vista e'' gia'' v3. Tornare alla v2 sbaglierebbe la Z di prelievo. Fermo, nessuna modifica.', 16, 1);
-	SET NOEXEC ON;
-END
+RAISERROR('robot-tray-view-v2.sql e'' SUPERATO (v3, poi v4): tornare alla v2 sbaglierebbe la Z di prelievo e rimetterebbe gli offset di piano. Fermo, nessuna modifica.', 16, 1);
+SET NOEXEC ON;
 GO
 
 -- ===========================================================================
