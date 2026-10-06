@@ -5,6 +5,50 @@
 > stato corretto sul momento. Gli interventi manuali da fare in impianto
 > stanno invece in `APPUNTI-CELLA.md`.
 
+## [ ] Nuova attrezzatura dal pannello: l'inserimento non puo' riuscire
+
+**Cosa.** «Nuova attrezzatura» (FixturesView, livello 2) apre `Fixture.vue`
+in creazione; il salvataggio chiama `GET /api/conf/fixture/insertFixture`,
+che scrive `INSERT INTO FIXTURE (ID, ...) VALUES(${req.query.ID}, ...)`.
+`FIXTURE.ID` e' IDENTITY. Provato il 6/10 sul clone, in una transazione
+chiusa con ROLLBACK (0 righe in piu', identity ferma):
+- dal form in creazione l'ID non c'e': `VALUES(undefined, ...)`, errore 207
+  (colonna `undefined`), risposta 500, la pagina mostra «errore»;
+- con un ID esplicito: errore 544 (IDENTITY_INSERT e' OFF).
+
+In piu' il backend risponde "OK" e non l'ID creato, e dopo l'inserimento
+`Fixture.vue` (riga 264) andrebbe a `/conf/Fixtureonpallet?fixtureID=` con
+l'ID del form, cioe' `undefined`.
+
+**Perche' non e' stato corretto.** Va cambiato il backend: inserire senza
+ID (la colonna e' IDENTITY) e restituire l'ID creato (`OUTPUT inserted.ID`
+o `SCOPE_IDENTITY()`); solo allora la pagina puo' usarlo. Nel lavoro del
+6/10 sera il backend era fuori perimetro, e l'ID non si inventa nel
+pannello.
+
+**Come si chiude.** Rotta che inserisce senza ID e risponde con l'ID nuovo
+(400/500/200 come le altre), `Fixture.vue` che naviga con quello, test con
+i mock e prova sul clone.
+
+**Trovato il** 2026-10-06, punto 4 dei difetti del pannello stabile.
+
+## [ ] DELETE /api/conf/position/:ID: rotta morta e senza controlli
+
+**Cosa.** `CONF/Position.js` ha `router.delete('/:ID')` ("TODO: da
+testare"): `DELETE FROM POSITION WHERE ID=${req.params.ID}` con l'ID
+interpolato senza controllo, e nessuna risposta al chiamante (la richiesta
+resta appesa). Nel pannello non la chiama nessuno: il solo pulsante che
+puntava a una cancellazione (la conferma DELETE/EXIT di PositionView, che
+chiamava un metodo `deleteposition` mai esistito) e' stato tolto il 6/10.
+
+**Perche' conta.** Le posizioni sono quote tarate: una cancellazione per
+errore toglie al PLC un punto di prelievo o deposito.
+
+**Da decidere (Dario).** Togliere la rotta, o lasciarla con ID intero
+controllato, risposta e audit. Il backend non e' stato toccato.
+
+**Trovato il** 2026-10-06, punto 3 dei difetti del pannello stabile.
+
 ## [ ] COORDINATES_Z_MC: quote del pezzo e dell'attrezzatura senza ISNULL
 
 **Cosa.** Nella vista `COORDINATES_Z_MC` (versionata il 6/10 in
