@@ -23,9 +23,11 @@
 #   1. se ci sono modifiche locali ai file TRACCIATI le elenca e si ferma,
 #      senza toccare niente. I file non tracciati non contano: in cella ce ne
 #      sono sempre (i due .bat di avvio, la cartella di backup di serverDati)
-#      e fermerebbero lo script ogni volta. Se uno di loro e' d'intralcio al
-#      cambio di ramo, e' git switch a dirlo, e lo script si ferma al passo 3;
-#   2. git fetch origin;
+#      e fermerebbero lo script ogni volta;
+#   2. git fetch origin, poi controlla che il ramo di arrivo non porti file
+#      dove sul disco ce n'e' gia' uno non tracciato (con un contenuto
+#      diverso): nel clone parziale di cella git switch e git pull lo
+#      sovrascriverebbero senza fermarsi. Se ce ne sono li elenca e si ferma;
 #   3. git switch sul ramo;
 #   4. git pull --ff-only (se non e' un avanzamento semplice si ferma);
 #   5. npm install in easybox\HMI se package-lock.json e' cambiato (o se
@@ -97,7 +99,7 @@ function Stato {
 }
 # solo i file tracciati: i non tracciati della cella (i .bat di avvio, il
 # backup di serverDati) ci sono sempre e fermerebbero lo script ogni volta.
-# Se uno di loro e' d'intralcio al cambio di ramo, lo dice git switch.
+# Se uno di loro e' d'intralcio al cambio di ramo, lo trova il passo 2b.
 function ModificheLocali { return @((G @('status', '--porcelain', '--untracked-files=no')).Uscita | Where-Object { $_ -and $_.Trim() }) }
 
 # ---------------------------------------------------------------- stato
@@ -132,6 +134,36 @@ $f = G @('fetch', 'origin')
 if ($f.Codice -ne 0) {
 	$f.Uscita | ForEach-Object { Scrivi ('  ' + $_) }
 	Fermati 'git fetch non riuscito.' 'controllare la rete del PC e l''accesso a GitHub, poi rilanciare. Se il problema resta, chiamare Dario.'
+}
+
+# 2b. file non tracciati d'intralcio. Nel clone parziale di cella git switch
+#     e git pull NON si fermano se il ramo di arrivo porta un file dove sul
+#     disco ce n'e' gia' uno non tracciato: lo sovrascrivono, con il solo
+#     warning "already present and thus not updated despite sparse patterns"
+#     e codice 0 (provato il 6/10 con git 2.52 su un clone parziale come
+#     quello di cella; in un clone completo invece git si ferma). Il
+#     controllo lo fa lo script, prima di toccare qualcosa: i file che il
+#     ramo di arrivo aggiunge rispetto a HEAD e che sul disco ci sono gia'
+#     con un contenuto diverso. Uguale contenuto = nessuna perdita, si passa.
+$arrivi = @()
+foreach ($ref in @(('refs/remotes/origin/' + $ramo), ('refs/heads/' + $ramo))) {
+	if ((G @('rev-parse', '--verify', '--quiet', $ref)).Codice -eq 0) { $arrivi += $ref }
+}
+$intralcio = @()
+foreach ($ref in $arrivi) {
+	$nuovi = (G @('diff', '--name-only', '--no-renames', '--diff-filter=A', 'HEAD', $ref)).Uscita | Where-Object { $_ -and $_.Trim() }
+	foreach ($f in $nuovi) {
+		if (-not (Test-Path -LiteralPath (Join-Path $script:Radice $f) -PathType Leaf)) { continue }
+		$suDisco = ((G @('hash-object', '--', $f)).Uscita -join '').Trim()
+		$inArrivo = ((G @('rev-parse', ($ref + ':' + $f))).Uscita -join '').Trim()
+		if ($suDisco -ne $inArrivo -and $intralcio -notcontains $f) { $intralcio += $f }
+	}
+}
+if ($intralcio.Count -gt 0) {
+	Scrivi ''
+	Scrivi ('File non tracciati che il ramo ' + $ramo + ' sovrascriverebbe:') 'Yellow'
+	$intralcio | ForEach-Object { Scrivi ('  ' + $_) 'Yellow' }
+	Fermati 'nel clone parziale di cella git li sovrascriverebbe senza fermarsi.' 'non cancellarli e non spostarli a mano: chiama Dario, che decide dove salvarli. Poi rilancia lo script.'
 }
 
 # commit e lock di prima (per sapere se serve npm install e se il pannello
