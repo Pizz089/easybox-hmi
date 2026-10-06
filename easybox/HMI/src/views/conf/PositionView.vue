@@ -153,22 +153,12 @@
                             
                         </td>
                     </tr>
-                    <tr v-if="_showPopUp(dt.ID)">
-                        <td class="popUpOnLine" colspan="20" >
-                            <div class="center">
-                                <h3>{{ $t('position.sure') }}</h3>
-                                <!--h4>{{ $t('position.delete') }}</h4-->
-                                <span class="pure-g">
-                                    <button class="pure-button-micromission specialCMD pure-u-1" @click="deleteposition(dt.ID)">
-                                        DELETE
-                                    </button>
-                                    <button class="btn-ghost pure-u-1" @click="showPopUp=0">
-                                        EXIT
-                                    </button>
-                                </span>
-                            </div>
-                        </td>
-                    </tr>
+                    <!-- (6/10) tolta la riga di conferma DELETE/EXIT: dal primo
+                         commit chiamava deleteposition, metodo mai esistito, e
+                         non poteva comparire (showPopUp non prendeva mai l'ID di
+                         una riga: CMDlist qui non ha il comando di cancellazione).
+                         Le posizioni sono quote tarate: niente cancellazione dal
+                         pannello. -->
                 </template>
                 </template>
             </tbody>
@@ -183,7 +173,6 @@ export default {
         return {
             datiTab:[],
             datiTabFiltred:[],
-            showPopUp:0,
             polling:false,
             editID:0,
             datiInEdit:{},
@@ -356,11 +345,6 @@ export default {
             else
                 return (data/1000).toFixed(3);
         },
-        _showPopUp(i){
-            if (this.showPopUp==i)
-                return true
-            return false
-        }
     },
     watch:{
         // N-2: senza tab "Tutte" il default e' la prima categoria disponibile.
@@ -487,25 +471,6 @@ export default {
        Promozione globale a tutte le liste: annotata in P3, post A/B. */
     .table-scroll tr.pure-table-odd td:not(.locked4OP){
         background: var(--bg-input) !important;
-    }
-
-    .popUpOnLine{
-        background-image: url(/src/assets/up_red.png);
-        background-repeat: no-repeat;
-        background-position-x: 34%;
-    }
-
-    .popUpOnLine .btn-ghost {
-        margin-top: var(--space-2);
-    }
-
-    /* 2px (non 1px --border-card): il popup di conferma delete deve
-       staccare piu' di un bordo card. */
-    .center {
-        margin: auto;
-        width: 20%;
-        border: 2px solid var(--color-critical);
-        padding: var(--space-6);
     }
 
     .locked4OP{
