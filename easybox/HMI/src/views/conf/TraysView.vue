@@ -108,7 +108,7 @@
               <TrayPockets fill
                 :pockets="tasche.rows"
                 :dimX="tasche.dimX" :dimY="tasche.dimY" :radius="tasche.radius"
-                :trayX="tasche.trayX / 1000" :trayY="tasche.trayY / 1000"
+                :trayX="trayDisegno.noto ? trayDisegno.trayW : 0" :trayY="trayDisegno.noto ? trayDisegno.trayH : 0"
                 :zone="zona" :showOrigin="false" :showCenters="false" :showOrders="false"
                 :selected="tascaScelta ? tascaScelta.subPos : null"
                 @pick="toccaTasca($event)" @tap="toccaVassoio($event)" @scale="scala($event)" />
@@ -732,9 +732,14 @@ export default {
             const r = this.tasche.rows || [];
             return { pitchW: pitchOf(r.map(p => p.y)), pitchH: pitchOf(r.map(p => p.x)), dimX: this.tasche.dimX };
         },
+        // misure del cassetto (micron -> mm): quelle lette con le tasche; un
+        // cassetto senza tasche non le porta, e allora valgono quelle della
+        // sua riga in api/conf/tray/show/all (stesse colonne TRAY.X / TRAY.Y)
         trayDisegno(){
-            const k = this.tasche.trayX > 0 && this.tasche.trayY > 0;
-            return { trayW: k ? this.tasche.trayX / 1000 : TRAY_FALLBACK.w, trayH: k ? this.tasche.trayY / 1000 : TRAY_FALLBACK.h, noto: k };
+            let x = Number(this.tasche.trayX) || 0, y = Number(this.tasche.trayY) || 0;
+            if (!(x > 0 && y > 0) && this.sel) { x = Number(this.sel.X) || 0; y = Number(this.sel.Y) || 0; }
+            const k = x > 0 && y > 0;
+            return { trayW: k ? x / 1000 : TRAY_FALLBACK.w, trayH: k ? y / 1000 : TRAY_FALLBACK.h, noto: k };
         },
         zoomServe(){
             return needsZoom(this.geoTasche, this.scalaPiena);
