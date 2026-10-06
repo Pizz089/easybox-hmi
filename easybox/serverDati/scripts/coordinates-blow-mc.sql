@@ -19,7 +19,10 @@
 --   %QW638  X_Support_mm        = CLAW_LENGTH/2 + STOP_BEYOND_CLAW
 --   %QW640  Part_Length_mm      = PART_WIDTH   (PIECE.Y)   (6/10: era PART_LENGTH)
 --   %QW642  Part_Height_mm      = PART_HEIGHT  (PIECE.Z)
---   libere da %QW644 a %QW666 (dal 6/10 %QW644 e' N_Cassetto).
+--   %QW644  N_Cassetto (6/10)
+--   %QW646  Z_Push_LOW, %QW648 Z_Push_HIGH (6/10, quota Z della spinta,
+--           consegna 31, ex spare_7/spare_8: COORDINATES_PUSH_MC.Z_PUSH_DROP)
+--   libere da %QW650 a %QW666.
 -- Il 6/10 Dario ha scambiato X e Y NEL PLC (per il robot erano invertite;
 -- la Z non e' mai stata toccata): la vista resta questa, quindi i nomi delle
 -- colonne qui e quelli delle variabili PROFINET non coincidono piu'.
