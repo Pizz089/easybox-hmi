@@ -1313,5 +1313,31 @@
       "NO_COMP": "The compensation is {comp} mm but the travel is {travel} mm: the part would stop behind the starting point and the robot would push the opposite way against the part in the vice. The push will not run: reduce the compensation.",
       "NO_ROOM": "The part overhangs {over} mm per side, but the rest point is declared {stop} mm from the end of the jaw: the part would be past the stop before being pushed at all."
     }
+  },
+  "home": {
+    "orderNow": "Running order",
+    "cellHold": "Paused: cell in HOLD",
+    "working": "Working",
+    "machine": "Machine",
+    "program": "program {pp}",
+    "gripper": "Gripper",
+    "rig": "Rig",
+    "rigValue": "Pallet #{pallet} · vice #{vice}",
+    "pieces": "parts",
+    "stop": "Stop order",
+    "queue": "Order queue",
+    "noOrder": "No running order",
+    "loadingOrders": "Reading the orders…",
+    "inQueue": "Queued",
+    "nOrders": "{n} orders",
+    "seeAll": "See all",
+    "queueEmpty": "No queued orders",
+    "speed": "speed {v} %",
+    "mcOrder": "Order #{id}",
+    "alarms": "Active alarms",
+    "openAlarms": "Open alarms",
+    "noAlarms": "No active alarms",
+    "unitAlarm": "{unit} in alarm",
+    "moreAlarms": "+{n} alarms"
   }
 }

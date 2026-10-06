@@ -1313,5 +1313,31 @@
       "NO_COMP": "La compensazione e' {comp} mm ma la corsa e' {travel} mm: il pezzo dovrebbe fermarsi dietro il punto di partenza e il robot spingerebbe nel verso opposto contro il pezzo in morsa. La spinta non viene eseguita: ridurre la compensazione.",
       "NO_ROOM": "Il pezzo sporge {over} mm per lato, ma l'appoggio \u00e8 dichiarato a {stop} mm dalla fine della ganascia: il pezzo sarebbe oltre la battuta prima ancora di essere spinto."
     }
+  },
+  "home": {
+    "orderNow": "Ordine in corso",
+    "cellHold": "In pausa: cella in HOLD",
+    "working": "In lavorazione",
+    "machine": "Macchina",
+    "program": "programma {pp}",
+    "gripper": "Pinza",
+    "rig": "Attrezzaggio",
+    "rigValue": "Pallet #{pallet} · morsa #{vice}",
+    "pieces": "pezzi",
+    "stop": "Ferma ordine",
+    "queue": "Coda ordini",
+    "noOrder": "Nessun ordine in corso",
+    "loadingOrders": "Lettura degli ordini…",
+    "inQueue": "In coda",
+    "nOrders": "{n} ordini",
+    "seeAll": "Vedi tutti",
+    "queueEmpty": "Nessun ordine in coda",
+    "speed": "velocit\u00e0 {v} %",
+    "mcOrder": "Ordine #{id}",
+    "alarms": "Allarmi attivi",
+    "openAlarms": "Apri allarmi",
+    "noAlarms": "Nessun allarme attivo",
+    "unitAlarm": "{unit} in allarme",
+    "moreAlarms": "+{n} allarmi"
   }
 }

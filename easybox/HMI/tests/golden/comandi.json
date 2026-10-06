@@ -3386,9 +3386,285 @@
   "DashboardView": {
    "file": "src/views/DashboardView.vue",
    "scenari": [
-    "base"
+    "base",
+    "tre ordini, 102 in lavoro",
+    "nessun ordine in corso"
    ],
-   "controlli": []
+   "controlli": [
+    {
+     "id": "button@click modifyOrderStatus(ordineInCorso.ID,dataStored.status_raw,ordineInCorso.PIECE_ID)",
+     "etichetta": "Ferma ordine",
+     "evento": "click",
+     "handler": "modifyOrderStatus(ordineInCorso.ID,dataStored.status_raw,ordineInCorso.PIECE_ID)",
+     "disabled": "",
+     "classe": "",
+     "esiti": {
+      "base": "nascosto",
+      "tre ordini, 102 in lavoro": {
+       "abilitato": true,
+       "effetti": [
+        "emit TO_PLANT/CMD/ORDER {\"id\":102,\"status\":4,\"pieceID\":2}"
+       ],
+       "stato": []
+      },
+      "nessun ordine in corso": "nascosto"
+     }
+    },
+    {
+     "id": "button@click $router.push('/production')",
+     "etichetta": "Coda ordini",
+     "evento": "click",
+     "handler": "$router.push('/production')",
+     "disabled": "",
+     "classe": "",
+     "esiti": {
+      "base": "nascosto",
+      "tre ordini, 102 in lavoro": {
+       "abilitato": true,
+       "effetti": [
+        "router \"/production\""
+       ],
+       "stato": []
+      },
+      "nessun ordine in corso": "nascosto"
+     }
+    },
+    {
+     "id": "button@click $router.push('/production') #2",
+     "etichetta": "Coda ordini",
+     "evento": "click",
+     "handler": "$router.push('/production')",
+     "disabled": "",
+     "classe": "",
+     "esiti": {
+      "base": {
+       "abilitato": true,
+       "effetti": [
+        "router \"/production\""
+       ],
+       "stato": []
+      },
+      "tre ordini, 102 in lavoro": "nascosto",
+      "nessun ordine in corso": {
+       "abilitato": true,
+       "effetti": [
+        "router \"/production\""
+       ],
+       "stato": []
+      }
+     }
+    },
+    {
+     "id": "button@click $router.push('/production') #3",
+     "etichetta": "Vedi tutti",
+     "evento": "click",
+     "handler": "$router.push('/production')",
+     "disabled": "",
+     "classe": "",
+     "esiti": {
+      "base": {
+       "abilitato": true,
+       "effetti": [
+        "router \"/production\""
+       ],
+       "stato": []
+      },
+      "tre ordini, 102 in lavoro": {
+       "abilitato": true,
+       "effetti": [
+        "router \"/production\""
+       ],
+       "stato": []
+      },
+      "nessun ordine in corso": {
+       "abilitato": true,
+       "effetti": [
+        "router \"/production\""
+       ],
+       "stato": []
+      }
+     }
+    },
+    {
+     "id": "button@click $router.push('/production') #4",
+     "etichetta": "# {{o.ID}} {{o.PIECE}} {{(o.PIECE_DESC || '').trim()}} {{o.PRODUCTED}} / {{o.QUANTITY}} MC {{o.MACHINE_ID}}",
+     "evento": "click",
+     "handler": "$router.push('/production')",
+     "disabled": "",
+     "classe": "",
+     "esiti": {
+      "base": [],
+      "tre ordini, 102 in lavoro": [
+       {
+        "abilitato": true,
+        "effetti": [
+         "router \"/production\""
+        ],
+        "stato": []
+       }
+      ],
+      "nessun ordine in corso": [
+       {
+        "abilitato": true,
+        "effetti": [
+         "router \"/production\""
+        ],
+        "stato": []
+       }
+      ]
+     }
+    },
+    {
+     "id": "button@click $router.push('/unit/robot');",
+     "etichetta": "Robot {{$t(statusKey(plant.robot))}} {{$t('robot.alarm_' + parseInt(plant.robotAlarm))}} {{$t('home.speed', { v: velocit",
+     "evento": "click",
+     "handler": "$router.push('/unit/robot');",
+     "disabled": "",
+     "classe": "",
+     "esiti": {
+      "base": {
+       "abilitato": true,
+       "effetti": [
+        "router \"/unit/robot\""
+       ],
+       "stato": []
+      },
+      "tre ordini, 102 in lavoro": {
+       "abilitato": true,
+       "effetti": [
+        "router \"/unit/robot\""
+       ],
+       "stato": []
+      },
+      "nessun ordine in corso": {
+       "abilitato": true,
+       "effetti": [
+        "router \"/unit/robot\""
+       ],
+       "stato": []
+      }
+     }
+    },
+    {
+     "id": "button@click $router.push('/unit/cnc1');",
+     "etichetta": "Macchina MC1 {{$t(statusKey(plant.mc1))}} {{$t('home.mcOrder', { id: ordineSu(1).ID })}}",
+     "evento": "click",
+     "handler": "$router.push('/unit/cnc1');",
+     "disabled": "",
+     "classe": "",
+     "esiti": {
+      "base": {
+       "abilitato": true,
+       "effetti": [
+        "router \"/unit/cnc1\""
+       ],
+       "stato": []
+      },
+      "tre ordini, 102 in lavoro": {
+       "abilitato": true,
+       "effetti": [
+        "router \"/unit/cnc1\""
+       ],
+       "stato": []
+      },
+      "nessun ordine in corso": {
+       "abilitato": true,
+       "effetti": [
+        "router \"/unit/cnc1\""
+       ],
+       "stato": []
+      }
+     }
+    },
+    {
+     "id": "button@click $router.push('/unit/cnc2');",
+     "etichetta": "Macchina MC2 {{$t(statusKey(plant.mc2))}} {{$t('home.mcOrder', { id: ordineSu(2).ID })}}",
+     "evento": "click",
+     "handler": "$router.push('/unit/cnc2');",
+     "disabled": "",
+     "classe": "",
+     "esiti": {
+      "base": "nascosto",
+      "tre ordini, 102 in lavoro": "nascosto",
+      "nessun ordine in corso": "nascosto"
+     }
+    },
+    {
+     "id": "button@click $router.push('/unit/smallbox');",
+     "etichetta": "EasyBox {{$t('strip.trayOut', { n: plant.trayOut })}} {{$t(statusKey(plant.box))}} {{$t(statusKey(plant.box))}}",
+     "evento": "click",
+     "handler": "$router.push('/unit/smallbox');",
+     "disabled": "",
+     "classe": "",
+     "esiti": {
+      "base": {
+       "abilitato": true,
+       "effetti": [
+        "router \"/unit/smallbox\""
+       ],
+       "stato": []
+      },
+      "tre ordini, 102 in lavoro": {
+       "abilitato": true,
+       "effetti": [
+        "router \"/unit/smallbox\""
+       ],
+       "stato": []
+      },
+      "nessun ordine in corso": {
+       "abilitato": true,
+       "effetti": [
+        "router \"/unit/smallbox\""
+       ],
+       "stato": []
+      }
+     }
+    },
+    {
+     "id": "button@click $router.push('/alarms')",
+     "etichetta": "Apri allarmi",
+     "evento": "click",
+     "handler": "$router.push('/alarms')",
+     "disabled": "",
+     "classe": "",
+     "esiti": {
+      "base": {
+       "abilitato": true,
+       "effetti": [
+        "router \"/alarms\""
+       ],
+       "stato": []
+      },
+      "tre ordini, 102 in lavoro": {
+       "abilitato": true,
+       "effetti": [
+        "router \"/alarms\""
+       ],
+       "stato": []
+      },
+      "nessun ordine in corso": {
+       "abilitato": true,
+       "effetti": [
+        "router \"/alarms\""
+       ],
+       "stato": []
+      }
+     }
+    },
+    {
+     "id": "button@click $router.push('/alarms') #2",
+     "etichetta": "{{allarmi[0].testo}} {{$t('home.moreAlarms', { n: allarmi.length - 1 })}}",
+     "evento": "click",
+     "handler": "$router.push('/alarms')",
+     "disabled": "",
+     "classe": "",
+     "esiti": {
+      "base": "nascosto",
+      "tre ordini, 102 in lavoro": "nascosto",
+      "nessun ordine in corso": "nascosto"
+     }
+    }
+   ]
   },
   "units": {
    "file": "src/components/units.vue",

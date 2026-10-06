@@ -11,6 +11,7 @@
 //   - replay della cache del backend con UNIT/STATUS/REQUEST, come fa
 //     units.vue al mount e a ogni riconnessione (non arriva al PLC: il
 //     refresh verso il PLC resta quello globale di plantGlobals.js).
+//   - ROBOT/CHANGESPEED: eco della velocita' in dataStored.robotSpeed.
 // Niente comandi, niente valori stimati: quello che non ha fonte (ciclo
 // MC1 in %, stato del PLC) qui non c'e' e la striscia non lo mostra.
 //
@@ -37,6 +38,10 @@ const H = {
 	'BOX/STATUS': p => { plant.box = num(p); },
 	'ROBOT/DESCR': p => { plant.robotAlarm = String(p == null ? '' : p).trim(); },
 	'TRAY/EXTRACT': p => { const n = num(p); if (n !== null) plant.trayOut = n; },
+	// (fase B) eco della velocita' robot: tiene vivo dataStored.robotSpeed per
+	// tutta la sessione (pagina Robot e tile della Home). Prima lo faceva per
+	// caso il listener di robotView, che non si staccava mai.
+	'ROBOT/CHANGESPEED': p => { dataStored.robotSpeed = p; },
 };
 const requestSnapshots = () => {
 	for (const u of ['ROBOT', 'MC1', 'MC2', 'BOX'])

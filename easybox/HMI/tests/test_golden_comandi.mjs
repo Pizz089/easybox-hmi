@@ -324,7 +324,12 @@ const PAGINE = [
 		'remoto, cassetto 8 fuori': (vm, ds) => { ds.RobotInLocalMode = false; vm.data = JSON.parse(JSON.stringify(cassetti)); },
 		'locale, nessun cassetto fuori': (vm, ds) => { ds.RobotInLocalMode = true; vm.data = JSON.parse(JSON.stringify(cassetti)).map(t => Object.assign(t, { EXTRACT: 0 })); },
 	} },
-	{ nome: 'DashboardView', file: 'src/views/DashboardView.vue', scenari: { 'base': () => {} } },
+	{ nome: 'DashboardView', file: 'src/views/DashboardView.vue', scenari: {
+		'base': () => {},
+		// (fase B) Home v3: gli stessi ordini della tabella ordini, 102 in lavoro
+		'tre ordini, 102 in lavoro': (vm) => { vm.orders = JSON.parse(JSON.stringify(ordini)); vm.statoOrdini = 'ok'; },
+		'nessun ordine in corso': (vm) => { vm.orders = JSON.parse(JSON.stringify(ordini)).filter(o => o.STATUS !== 3); vm.statoOrdini = 'ok'; },
+	} },
 	{ nome: 'units', file: 'src/components/units.vue', scenari: { 'base': () => {} } },
 	{ nome: 'productionView', file: 'src/views/productionView.vue', scenari: {
 		'liv2': (vm, ds) => { ds.userLevel = 2; },

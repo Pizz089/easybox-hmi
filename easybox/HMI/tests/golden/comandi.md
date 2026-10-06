@@ -103,9 +103,21 @@ Scenari: locale, cassetto 8 fuori · remoto, cassetto 8 fuori · locale, nessun 
 
 ## DashboardView (`src/views/DashboardView.vue`)
 
-Scenari: base
+Scenari: base · tre ordini, 102 in lavoro · nessun ordine in corso
 
-Nessun controllo con handler.
+| Etichetta | Handler | Abilitazione | Abilitato per scenario | Effetto | Conferma |
+|---|---|---|---|---|---|
+| Ferma ordine | `modifyOrderStatus(ordineInCorso.ID,dataStored.status_raw,ordineInCorso.PIECE_ID)` |  | base: –<br>tre ordini, 102 in lavoro: sì<br>nessun ordine in corso: – | emit TO_PLANT/CMD/ORDER {"id":102,"status":4,"pieceID":2} | no |
+| Coda ordini | `$router.push('/production')` |  | base: –<br>tre ordini, 102 in lavoro: sì<br>nessun ordine in corso: – | router "/production" | no |
+| Coda ordini | `$router.push('/production')` |  | base: sì<br>tre ordini, 102 in lavoro: –<br>nessun ordine in corso: sì | router "/production" | no |
+| Vedi tutti | `$router.push('/production')` |  | base: sì<br>tre ordini, 102 in lavoro: sì<br>nessun ordine in corso: sì | router "/production" | no |
+| # {{o.ID}} {{o.PIECE}} {{(o.PIECE_DESC \|\| '').trim()}} {{o.PRODUCTED}} / {{o.QUANTITY}} MC {{o.MACHINE_ID}} | `$router.push('/production')` |  | base: –<br>tre ordini, 102 in lavoro: sì<br>nessun ordine in corso: sì | router "/production" | no |
+| Robot {{$t(statusKey(plant.robot))}} {{$t('robot.alarm_' + parseInt(plant.robotAlarm))}} {{$t('home.speed', { v: velocit | `$router.push('/unit/robot');` |  | base: sì<br>tre ordini, 102 in lavoro: sì<br>nessun ordine in corso: sì | router "/unit/robot" | no |
+| Macchina MC1 {{$t(statusKey(plant.mc1))}} {{$t('home.mcOrder', { id: ordineSu(1).ID })}} | `$router.push('/unit/cnc1');` |  | base: sì<br>tre ordini, 102 in lavoro: sì<br>nessun ordine in corso: sì | router "/unit/cnc1" | no |
+| Macchina MC2 {{$t(statusKey(plant.mc2))}} {{$t('home.mcOrder', { id: ordineSu(2).ID })}} | `$router.push('/unit/cnc2');` |  | base: –<br>tre ordini, 102 in lavoro: –<br>nessun ordine in corso: – |  | no |
+| EasyBox {{$t('strip.trayOut', { n: plant.trayOut })}} {{$t(statusKey(plant.box))}} {{$t(statusKey(plant.box))}} | `$router.push('/unit/smallbox');` |  | base: sì<br>tre ordini, 102 in lavoro: sì<br>nessun ordine in corso: sì | router "/unit/smallbox" | no |
+| Apri allarmi | `$router.push('/alarms')` |  | base: sì<br>tre ordini, 102 in lavoro: sì<br>nessun ordine in corso: sì | router "/alarms" | no |
+| {{allarmi[0].testo}} {{$t('home.moreAlarms', { n: allarmi.length - 1 })}} | `$router.push('/alarms')` |  | base: –<br>tre ordini, 102 in lavoro: –<br>nessun ordine in corso: – |  | no |
 
 ## units (`src/components/units.vue`)
 
