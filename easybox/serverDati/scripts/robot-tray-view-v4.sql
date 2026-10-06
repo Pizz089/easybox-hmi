@@ -49,8 +49,9 @@
 -- default della colonna. Il default NON e' scritto in nessun file del repo e
 -- il DB non si interroga da qui: la prima SELECT di questo script lo legge dai
 -- metadati (sys.columns / sys.default_constraints) e lo lascia nel file di
--- backup. Che oggi le tasche generate abbiano quote (la v3 somma pos.X_CORR
--- senza ISNULL) fa pensare a un default 0, ma va letto li'.
+-- backup. Letto sul clone del DB di cella (6/10): default 0, e le colonne
+-- ACCETTANO NULL. Gli ISNULL quindi servono: un NULL scritto da qualunque
+-- altra strada arriverebbe al PLC come valore casuale.
 --
 -- QUANDO: lo lancia Dario in cella INSIEME al cambio del programma robot
 -- (work object per cassetto), non prima. Da PowerShell, con il backup della
@@ -225,9 +226,14 @@ GO
 -- (tasca 1: X_PICK 101500, Y_PICK 61500). Dopo la rigenerazione con le
 -- distanze 19/25 (piastra misurata il 6/10): tasca 1 circa 100150 / 55500.
 PRINT 'VERIFICA: cassetto 8, tasche 1/13/40/52, quote della vista COM''E'' ADESSO (dopo un FERMO e'' ancora quella di prima).';
+-- TRAY = '8' come stringa, come le query del PLC (FB_Robot.scl: where
+-- TRAY = '...'). Con cast(TRAY as int) = 8 la prova sul clone del DB di cella
+-- (6/10) e' andata in errore 245: l'ottimizzatore calcola il cast anche sulle
+-- righe EXTRACT_TRAY_n prima di scartarle, e SUBSTRING('EXTRACT_TRAY_1',6,2)
+-- vale 'CT'. Nessun cast o convert su TRAY nelle WHERE.
 SELECT TRAY, SUB_POS, X_PICK, Y_PICK, Z_PICK, X_PLACE, Y_PLACE, Z_PLACE, X_ROT, Y_ROT, Z_ROT
   FROM COORDINATES_PIECES_TRAYS_4Robot
- WHERE cast(TRAY as int) = 8 AND SUB_POS IN (1, 13, 40, 52)
+ WHERE TRAY = '8' AND SUB_POS IN (1, 13, 40, 52)
  ORDER BY SUB_POS;
 GO
 
