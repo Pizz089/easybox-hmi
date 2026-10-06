@@ -3813,39 +3813,29 @@ BEGIN
 	                    #Dispatcher["_Part_MC_to_Robot"] := "_Part_MC_to_Robot" * 100 + 99;
 	                END_IF;
 	                
-	            37:  // SOFFIAGGIO: lunghezza chele morsa, larghezza pezzo e quota di
-	                // appoggio verso il robot (19/9). Il robotista le legge prima di
-	                // soffiare, in deposito e in prelievo.
-	                // Query SEPARATA dalle quote: quelle sono critiche e passano da
-	                // viste collaudate, queste servono a un soffiaggio e non devono
-	                // appesantirle.
-	                // VISTA DEDICATA (COORDINATES_BLOW_MC): la query coi join scritti
-	                // a mano faceva 298 caratteri e queryTemp ne regge 254 — sarebbe
-	                // arrivata troncata, come il 13599 del 15/9. Con la vista sono 96.
-	                // Le tre variabili PROFINET NON si azzerano mai: restano quelle
-	                // dell'ultimo pezzo finche' un nuovo giro non le sovrascrive. Se
-	                // la query fallisce si prosegue coi valori vecchi — fermare la
-	                // cella per una misura di soffiaggio sarebbe sproporzionato.
+	            37:  // SOFFIAGGIO: vedi nota estesa al 37 di Part_Robot_to_MC.
+	                // NB: qui X_Pick-Place e' la quota di PRELIEVO, che include
+	                // xPushOffsetMC se il pezzo e' stato spinto. L'appoggio va
+	                // calcolato sulla quota di DEPOSITO, quindi si sottrae l'offset
+	                // per tornare alla nominale.
 	                IF "SqlCommands".sqlCommands[0] = '' THEN
 	                    IF "DB_MC1".order.ID > 0 THEN
 	                        #queryTemp := CONCAT(IN1 := 'select CLAW_LENGTH,PART_WIDTH,STOP_BEYOND_CLAW,PART_LENGTH,PART_HEIGHT from COORDINATES_BLOW_MC where ORDER_ID=',
 	                                             IN2 := "INT_TO_STRING_WITHOUT_SIGN"(DINT_TO_INT("DB_MC1".order.ID)));
 	                        #queryStartExecution := TRUE;
-	                        #Dispatcher["_Part_Robot_to_MC"] := 38;
+	                        #Dispatcher["_Part_MC_to_Robot"] := 38;
 	                    ELSE
-	                        // MANUALE senza ordine avviato (6/10): dati del pezzo dall'ordine in
-	                        // attesa del pezzo prelevato, lo stesso delle quote di deposito (vista
-	                        // MAN_ORDER_MC1, controllato all'11-12). 179 caratteri contro 254.
-	                        // Prima qui non si leggeva niente e il robot riceveva i valori
-	                        // dell'ultimo giro, anche di un altro pezzo.
-	                        #queryTemp := CONCAT(IN1 := 'select CLAW_LENGTH,PART_WIDTH,STOP_BEYOND_CLAW,PART_LENGTH,PART_HEIGHT from COORDINATES_BLOW_MC where ORDER_ID=',
-	                                             IN2 := '(select ORDER_ID from MAN_ORDER_MC1 where TRAY=$'',
-	                                             IN3 := "INT_TO_STRING_WITHOUT_SIGN"(#Tray_ID),
-	                                             IN4 := '$' and SUB_POS=',
-	                                             IN5 := "INT_TO_STRING_WITHOUT_SIGN"(#PartSubPos),
-	                                             IN6 := ')');
+	                        // MANUALE, nessun ordine attivo (6/10, richiesta di Dario): i dati del
+	                        // pezzo arrivano dallo STESSO ordine da cui il 10 ha preso le quote di
+	                        // prelievo (COORDINATES_Z_MC, MC=1, ORDER_ID decrescente),
+	                        // cioe' l'ordine piu' recente: la produzione possibile, anche se non
+	                        // e' avviata. Prima qui non si leggeva niente e il robot riceveva i
+	                        // valori dell'ultimo giro, anche di un altro pezzo.
+	                        // La sottoquery ripete la regola del 10, cosi' quote e dati del pezzo
+	                        // vengono sempre dallo stesso ordine. 190 caratteri, queryTemp ne regge 254.
+	                        #queryTemp := 'select CLAW_LENGTH,PART_WIDTH,STOP_BEYOND_CLAW,PART_LENGTH,PART_HEIGHT from COORDINATES_BLOW_MC where ORDER_ID=(select top 1 ORDER_ID from COORDINATES_Z_MC where MC=1 order by ORDER_ID desc)';
 	                        #queryStartExecution := TRUE;
-	                        #Dispatcher["_Part_Robot_to_MC"] := 38;
+	                        #Dispatcher["_Part_MC_to_Robot"] := 38;
 	                    END_IF;
 	                END_IF;
 	                
