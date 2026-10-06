@@ -98,6 +98,9 @@ export default {
         robotSide: { type: Boolean, default: false },
         showOrigin: { type: Boolean, default: true },
         showCenters: { type: Boolean, default: true },
+        // alone delle tasche legate a un ordine (la pagina layout lo usa; la
+        // vista d'insieme del Magazzino no: l'ordine e' nel dettaglio tasca)
+        showOrders: { type: Boolean, default: true },
         // SUB_POS evidenziato (null = nessuno)
         selected: { type: Number, default: null }
     },
@@ -130,11 +133,11 @@ export default {
         // numeri delle tasche: proporzionati alla tasca, leggibili
         labelSize() {
             const lato = this.drawPz.length && !this.drawPz[0].prisma ? 2 * this.radius : Math.min(this.dimX, this.dimY);
-            return Math.max(4, Math.min(34, Math.round((lato || 40) * 0.42)));
+            return Math.max(4, Math.min(34, Math.round((lato || 40) * 0.5)));
         },
-        // sotto gli 8 px sullo schermo i numeri sono solo rumore: si
+        // sotto i 7 px sullo schermo i numeri sono solo rumore: si
         // nascondono (nella zona ingrandita tornano)
-        showLabels() { return !(this.pxPerMm > 0) || this.labelSize * this.pxPerMm >= 8; },
+        showLabels() { return !(this.pxPerMm > 0) || this.labelSize * this.pxPerMm >= 7; },
         originIcon() { return centro; }
     },
     watch: {
@@ -167,7 +170,7 @@ export default {
         // riproduce checkIfOrderChanged del layout: alone solo dove c'e' un
         // ordine associato (order_ID 0 -> niente alone)
         orderChanged(i) {
-            return !!(this.pockets[i] && this.pockets[i].order_ID != 0);
+            return this.showOrders && !!(this.pockets[i] && this.pockets[i].order_ID != 0);
         },
         isSelected(p, index) {
             if (this.selected === null || this.selected === undefined) return false;

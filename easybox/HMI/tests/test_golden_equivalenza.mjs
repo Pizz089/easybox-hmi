@@ -44,6 +44,15 @@ export const AMMESSE = [
 	{ pagina: 'TraysView', tipo: 'tolto', firma: /^fetch GET api\/conf\/position\/show\/all \| fetch GET api\/conf\/tray\/extractCoords \| fetch GET api\/conf\/piece\/show\/all$/,
 		motivo: '"0 CASSETTIERA" eliminato (decisione di Dario, work object per cassetto): via il pulsante che apriva il dialog del teaching (queste tre letture) e con lui la scrittura teachTrays, che ora risponde 410 KO_WORKOBJECT. Le rotazioni si impostano dalla scheda del cassetto' },
 	// ---- fase C (risposte di Dario alla fase B, 6/10)
+	// Cassetti: estrai/rilascia, associa/sostituisci/rigenera/dissocia si
+	// danno dal cassetto SCELTO invece che dalla riga. Nello scenario di base
+	// si vede solo il cassetto fuori: il controllo 2c sceglie un cassetto alla
+	// volta e vuole, riunite, esattamente le firme e le abilitazioni della
+	// tabella di prima. La deroga qui vale solo per gli scenari di base.
+	{ pagina: 'TraysView', tipo: 'spostato', firma: /^emit TO_PLANT\/CMD\/BOX "2[56];\d+"$/,
+		motivo: 'estrai (25) / rilascia (26) dal pannello del cassetto scelto (tavola Magazzino), stessa catena di prima (EasyBox e robot in locale, poi sendToBox): verificato dal controllo 2c' },
+	{ pagina: 'TraysView', tipo: 'spostato', firma: /^fetch GET api\/conf\/grating\/show\/all \| fetch GET api\/conf\/position\/show\/all \| fetch GET api\/conf\/piece\/show\/all/,
+		motivo: 'associa / sostituisci / rigenera / dissocia il grigliato dal pannello del cassetto scelto, stesso dialog e stesse guardie (assocAllowed): verificato dal controllo 2c' },
 	{ pagina: 'smallboxView', tipo: 'tolto', firma: /^emit TO_PLANT\/CMD\/ROBOT 26$/,
 		motivo: '"Inserisci cassetto" tolto dai Controlli EasyBox (decisione di Dario): era sempre spento, perche\' la sua condizione RobotInLocalMode non la scrive nessuno (le assegnazioni in robotView sono commentate). Il cassetto si rilascia da Robot -> Gestione cassetto' },
 ];
@@ -131,6 +140,44 @@ console.log('\n2b) velocita\': passi e valori fissi abilitati dove lo era il cur
 		for (const [f, ab] of dopo) if (ab !== abPrima) diff.push(s + ': ' + f + ' ' + (ab ? 'acceso' : 'spento') + ', il cursore era ' + (abPrima ? 'acceso' : 'spento'));
 	}
 	check(diff.length === 0, 'robotView: stessa abilitazione in tutti gli scenari' + (diff.length ? ':\n       ' + diff.join('\n       ') : ''));
+}
+
+// (v3 fase C) Cassetti: i comandi della tabella di prima stavano su ogni
+// riga; ora si danno dal cassetto scelto. Per ogni scenario del riferimento,
+// l'UNIONE degli scenari "un cassetto scelto alla volta" deve dare
+// esattamente le sue firme, con le stesse abilitazioni. Il riferimento non
+// leggeva le guardie dentro ComandsRows (moveDisable, modalita' locale): gli
+// scenari di scelta le mettono nello stato in cui il comando partiva, e due
+// scenari a parte controllano che con le missioni spente il rilascio sia
+// spento e che senza modalita' locale non parta nessun comando.
+console.log('\n2c) Cassetti: i comandi della riga di prima, dal cassetto scelto');
+{
+	const rp = RIF.pagine.TraysView, op = ORA.pagine.TraysView;
+	const mr = mappa(rp), mo = mappa(op);
+	const GRUPPI = {
+		'due cassetti liv2': ['due cassetti liv2, scelto 7', 'due cassetti liv2, scelto 8', 'tutti dentro liv2, scelto 7'],
+		'due cassetti liv0': ['due cassetti liv0, scelto 7', 'due cassetti liv0, scelto 8', 'tutti dentro liv0, scelto 7'],
+	};
+	for (const [base, da] of Object.entries(GRUPPI)) {
+		const diff = [];
+		const unione = new Map();
+		for (const s of da) {
+			if (!mo[s]) { diff.push('scenario mancante: ' + s); continue; }
+			for (const [f, ab] of mo[s]) unione.set(f, (unione.get(f) || false) || ab);
+		}
+		// le firme tolte per decisione (es. "0 CASSETTIERA") non si cercano
+		const atteso = new Map([...mr[base]].filter(([f]) => !AMMESSE.some(a => a.pagina === 'TraysView' && a.tipo === 'tolto' && a.firma.test(f))));
+		for (const [f, ab] of atteso) {
+			if (!unione.has(f)) diff.push('manca: ' + f);
+			else if (unione.get(f) !== ab) diff.push((ab ? 'era acceso, ora spento: ' : 'era spento, ora acceso: ') + f);
+		}
+		for (const f of unione.keys()) if (!atteso.has(f)) diff.push('in piu\': ' + f);
+		check(diff.length === 0, base + ' = unione di ' + da.length + ' scenari (' + atteso.size + ' firme)' + (diff.length ? ':\n       ' + diff.join('\n       ') : ''));
+	}
+	const RIL = 'emit TO_PLANT/CMD/BOX "26;8"';
+	const spente = mo['due cassetti liv2, scelto 8, missioni spente'], locale = mo['due cassetti liv2, scelto 8, robot non in locale'];
+	check(!!spente && spente.has(RIL) && spente.get(RIL) === false, 'missioni spente: rilascia visibile e spento (stessa condizione di prima, !cmdActiveMission)');
+	check(!!locale && ![...locale.keys()].some(f => /^emit TO_PLANT\/CMD\/BOX/.test(f)), 'robot non in locale: nessun comando alla cassettiera (avviso, come ComandsRows.extract)');
 }
 
 console.log('\n3) navigazione (informativa)');

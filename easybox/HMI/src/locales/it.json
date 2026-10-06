@@ -1328,6 +1328,58 @@
   },
   "trays": {
     "wholeTray": "Tutto il cassetto",
-    "zoomHint": "Tasche piccole: il primo tocco ingrandisce la zona, il secondo agisce sulla tasca."
+    "zoomHint": "Tasche piccole: il primo tocco ingrandisce la zona, il secondo agisce sulla tasca.",
+    "rack": "Cassettiera",
+    "floors": "{n} piani",
+    "where": {
+      "in": "Dentro",
+      "out": "Fuori",
+      "extracting": "In uscita",
+      "inserting": "In rientro",
+      "none": "–"
+    },
+    "noGrating": "senza grigliato",
+    "noPocketsShort": "nessuna tasca",
+    "allEmpty": "vuoto",
+    "count": {
+      "raw": "{n} grezzi",
+      "working": "{n} in lavoro",
+      "finished": "{n} finiti",
+      "locked": "{n} bloccati",
+      "abort": "{n} abortiti",
+      "undef": "{n} non definiti"
+    },
+    "sub": {
+      "grating": "Grigliato {name}",
+      "grid": "{rows} righe × {cols} colonne",
+      "pockets": "{n} tasche",
+      "piece": "pezzo {code}",
+      "noPiece": "nessun codice pezzo dichiarato",
+      "noGrating": "Nessun grigliato associato: si associa qui sotto, dal livello tecnico."
+    },
+    "scale": {
+      "lead": "In scala:",
+      "tray": "cassetto {w} × {h} mm",
+      "trayUnknown": "misure del cassetto non note, contorno di 820 × 615 mm",
+      "pocket": "tasca {w} × {h} mm",
+      "round": "tasca Ø {d} mm",
+      "pitch": "passo {w} × {h} mm"
+    },
+    "noPockets": "Nessuna tasca in questo cassetto.",
+    "release": "Rilascia cassetto",
+    "extract": "Estrai cassetto",
+    "editPockets": "Modifica tasche",
+    "viewPockets": "Vedi tasche",
+    "card": "Scheda cassetto",
+    "tapHint": "Tocca una tasca per vederne il contenuto.",
+    "pocket": {
+      "title": "Tasca {n}",
+      "status": "Stato",
+      "piece": "Pezzo",
+      "order": "Ordine",
+      "noOrder": "nessuno",
+      "noPiece": "nessun codice",
+      "close": "Chiudi"
+    }
   }
 }

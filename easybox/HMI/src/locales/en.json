@@ -1328,6 +1328,58 @@
   },
   "trays": {
     "wholeTray": "Whole tray",
-    "zoomHint": "Small pockets: the first tap zooms into the area, the second acts on the pocket."
+    "zoomHint": "Small pockets: the first tap zooms into the area, the second acts on the pocket.",
+    "rack": "Tray rack",
+    "floors": "{n} floors",
+    "where": {
+      "in": "In",
+      "out": "Out",
+      "extracting": "Going out",
+      "inserting": "Going in",
+      "none": "–"
+    },
+    "noGrating": "no grating",
+    "noPocketsShort": "no pockets",
+    "allEmpty": "empty",
+    "count": {
+      "raw": "{n} raw",
+      "working": "{n} in progress",
+      "finished": "{n} finished",
+      "locked": "{n} locked",
+      "abort": "{n} aborted",
+      "undef": "{n} undefined"
+    },
+    "sub": {
+      "grating": "Grating {name}",
+      "grid": "{rows} rows × {cols} columns",
+      "pockets": "{n} pockets",
+      "piece": "part {code}",
+      "noPiece": "no part code declared",
+      "noGrating": "No grating associated: associate it below, from technician level."
+    },
+    "scale": {
+      "lead": "To scale:",
+      "tray": "tray {w} × {h} mm",
+      "trayUnknown": "tray size unknown, outline 820 × 615 mm",
+      "pocket": "pocket {w} × {h} mm",
+      "round": "pocket Ø {d} mm",
+      "pitch": "pitch {w} × {h} mm"
+    },
+    "noPockets": "No pockets in this tray.",
+    "release": "Release tray",
+    "extract": "Extract tray",
+    "editPockets": "Edit pockets",
+    "viewPockets": "View pockets",
+    "card": "Tray card",
+    "tapHint": "Tap a pocket to see what it holds.",
+    "pocket": {
+      "title": "Pocket {n}",
+      "status": "Status",
+      "piece": "Part",
+      "order": "Order",
+      "noOrder": "none",
+      "noPiece": "no code",
+      "close": "Close"
+    }
   }
 }
