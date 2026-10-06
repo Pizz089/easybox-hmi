@@ -1281,6 +1281,13 @@ export default {
   font-size: var(--font-size-sm);
 }
 
+/* .btn-ghost non ha uno stato disabilitato: fuori campo il Salva non si
+   preme, e deve anche vedersi (il motivo e' scritto sotto il campo) */
+.sim-save:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 /* Avvisi: stessa coppia colore/fondo dei badge di stato delle altre view. */
 .sim-warn,
 .sim-diverged {

@@ -373,6 +373,8 @@ check(vm.zPushPlaceholder === 'pushSim.zPushEmpty mm=10', 'il segnaposto dice il
 	const tpl = readFileSync(new URL('./src/views/sim/PushSim.vue', import.meta.url), 'utf8');
 	check(/<span v-if="canEdit" class="sim-unit">mm<\/span>/.test(tpl) && /zPushPlaceholder \+ " mm" : mmText\(sim\[f\.key\]\)/.test(tpl),
 		"   in sola lettura l'unita' una volta sola (mmText la scrive gia': prima \"0.3 mm mm\")");
+	check(/:disabled="saving \|\| \(f\.key === 'zPush' && !!zPushError\)"/.test(tpl) && /\.sim-save:disabled \{[^}]*opacity/.test(tpl),
+		"   fuori campo il Salva e' disabilitato e si vede (.btn-ghost non ha uno stato disabilitato)");
 }
 check(vm.zPushPreview && vm.zPushPreview.fromMm === 10 && vm.zPushPreview.dropMm === 0, 'riscontro col campo vuoto: 10 mm dal fondo, alla quota del deposito');
 vm.sim.zPush = 4;
