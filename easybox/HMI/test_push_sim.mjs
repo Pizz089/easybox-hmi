@@ -51,7 +51,7 @@ function vmOf(comp, extra) {
 // d'asse si vedrebbe). Pezzo che ECCEDE: 180 lungo la spinta su ganascia 150,
 // sporge 15 per lato. Misure costruite ma nella scala dei pezzi reali.
 const PIECES = [
-	{ ID: 1029, FAMILY: 'P1029', DESCR: '', X: 40000, Y: 120000, PUSH_TO_STOP: 1 },
+	{ ID: 1029, FAMILY: 'P1029', DESCR: '', X: 40000, Y: 120000, PUSH_TO_STOP: 1, Z_PICK: 10000 },
 	{ ID: 1099, FAMILY: 'LUNGO', DESCR: '', X: 60000, Y: 180000, PUSH_TO_STOP: 1 },
 ];
 const VICES = [
@@ -358,6 +358,74 @@ check(!/path: "\/sim\/push"[\s\S]{0,200}requiresLevel/.test(router), 'nessun gat
 const nav = readFileSync('src/layout/navConfig.js', 'utf8');
 const rigaNav = nav.split('\n').find(l => /'\/sim\/push'/.test(l)) || '';
 check(/label: 'menu\.pushSim'/.test(rigaNav) && !/level:/.test(rigaNav), 'scheda di Attrezzaggio senza livello minimo: il livello 0 la vede');
+
+console.log('\n9) quota Z della spinta (6/10)');
+// altezza della chela dal fondo del pezzo: da 0 alla quota di presa (1029:
+// 10 mm), vuoto = alla quota di presa = come il deposito
+const rigaZ = { PIECE_ID: 1029, STOP_BEYOND_CLAW: 0, COMP_PUSH: null, Z_PUSH: null };
+vm = await page({ level: 2, pieceID: 1029, stopRow: rigaZ });
+const kz = vm.fields.map(f => f.key);
+check(kz.indexOf('zPush') === kz.indexOf('compPush') + 1, 'campo "altezza di spinta" accanto alla compensazione');
+check(vm.real.zPush === null && vm.sim.zPush === null, 'Z_PUSH vuota a DB: il campo resta vuoto (non "0")');
+check(vm.zPushPlaceholder === 'pushSim.zPushEmpty mm=10', 'il segnaposto dice il valore del vuoto: 10 mm, come il deposito');
+check(vm.zPushPreview && vm.zPushPreview.fromMm === 10 && vm.zPushPreview.dropMm === 0, 'riscontro col campo vuoto: 10 mm dal fondo, alla quota del deposito');
+vm.sim.zPush = 4;
+check(vm.zPushError === '' && vm.zPushPreview.fromMm === 4 && vm.zPushPreview.dropMm === 6, '4 mm: la chela spinge a 4 mm dal fondo, 6 mm sotto il deposito (zPushDrop, come la vista)');
+vm.sim.zPush = 10.1;
+check(/pushSim\.zPushRange max=10/.test(vm.zPushError) && vm.zPushPreview === null, 'oltre la quota di presa: il motivo si legge, niente riscontro');
+vm.askSave('zPush');
+check(vm.confirm === null, '   e non si arriva alla conferma');
+check(/:disabled="saving \|\| \(f\.key === 'zPush' && !!zPushError\)"/.test(src), '   il pulsante Salva non si abilita fuori campo');
+vm.sim.zPush = -1;
+check(/pushSim\.zPushRange/.test(vm.zPushError), 'negativo: fuori campo');
+calls.length = 0;
+vm.sim.zPush = 4;
+vm.askSave('zPush');
+check(vm.confirm && /pushSim\.confirmZPush /.test(vm.confirm.text) && /obj=M #1/.test(vm.confirm.text) && /piece=P1029 #1029/.test(vm.confirm.text) && /to=4 mm/.test(vm.confirm.text),
+	'la conferma nomina morsa e pezzo e dice da quanto a quanto');
+rigaZ.Z_PUSH = 4000;   // quello che il database ha dopo la scrittura
+vm.doSave(); await tick(); await tick(); await tick();
+const wz = calls.filter(u => /setZPush/.test(u));
+check(wz.length === 1 && /VICE_ID=1&PIECE_ID=1029&Z_PUSH=4000/.test(wz[0]), 'scrive su setZPush, in micron');
+check(vm.real.zPush === 4 && vm.sim.zPush === 4 && !vm.fieldChanged('zPush'), 'dopo il salvataggio il campo torna dal database e il Salva sparisce');
+vm.sim.zPush = '';
+vm.askSave('zPush');
+check(vm.confirm && /pushSim\.confirmZPushClear/.test(vm.confirm.text), 'svuotare: conferma che dice "alla quota di presa"');
+vm.doSave(); await tick(); await tick();
+check(calls.filter(u => /setZPush/.test(u)).some(u => /Z_PUSH=$/.test(u)), '   e manda il campo vuoto (NULL a DB)');
+// (6/10) lo stesso per la compensazione: prima il campo tornava al valore
+// vecchio dopo il salvataggio (si sincronizzava solo l'appoggio)
+rigaZ.Z_PUSH = null;
+vm = await page({ level: 2, pieceID: 1029, stopRow: rigaZ });
+vm.sim.compPush = 0.3;
+vm.askSave('compPush');
+rigaZ.COMP_PUSH = 300;
+vm.doSave(); await tick(); await tick(); await tick();
+check(vm.real.compPush === 0.3 && vm.sim.compPush === 0.3 && !vm.fieldChanged('compPush'), 'compensazione: dopo il salvataggio il campo resta al valore salvato (prima tornava al vecchio)');
+rigaZ.COMP_PUSH = null;
+// senza riga PIECE_ON_VICE: si dice prima, non parte nessuna richiesta
+vm = await page({ level: 2, pieceID: 1029, stopRow: null });
+dataStored.alert.desc = '';
+calls.length = 0;
+vm.sim.zPush = 4;
+vm.askSave('zPush');
+check(vm.compNeedsRow && vm.confirm === null && /pushSim\.zPushNoRow/.test(dataStored.alert.desc) && !calls.some(u => /setZPush/.test(u)),
+	'senza riga: l\'avviso di compNeedsRow, e nessuna richiesta');
+// il server rilegge la quota di presa: se rifiuta, lo si dice
+vm = await page({ level: 2, pieceID: 1029, stopRow: rigaZ });
+const fetchPrima = globalThis.fetch;
+globalThis.fetch = async (url) => /setZPush/.test(String(url)) ? { ok: true, text: async () => 'KO_Z_PUSH_RANGE', json: async () => [] } : fetchPrima(url);
+dataStored.alert.desc = '';
+vm.sim.zPush = 4;
+vm.askSave('zPush');
+vm.doSave(); await tick(); await tick();
+check(/pushSim\.zPushRangeServer/.test(dataStored.alert.desc), 'KO_Z_PUSH_RANGE dal server: il motivo si legge');
+globalThis.fetch = fetchPrima;
+// la riga letta dalla vista porta la discesa che il PLC sottrae
+check(/viewRow\.Z_PUSH_DROP != null/.test(src) && /pushSim\.qZDrop/.test(src), 'la riga letta dalla vista mostra anche la discesa della chela');
+const last = readFileSync('src/views/workOrder/lastData.vue', 'utf8');
+check(/zPushDrop\(\{ zPush: this\.pieceZPush, zPick: this\.pieceZPick \}\)/.test(last) && /row\.Z_PUSH/.test(last) && /wizard\.lastData\.pushZ/.test(last),
+	'lastData: accanto alla corsa, dove spinge la chela e quanto sotto il deposito');
 
 await server.close();
 console.log('\n' + (failed ? failed + ' CHECK FALLITI' : 'TUTTI I CHECK PASSATI'));

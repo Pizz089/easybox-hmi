@@ -122,7 +122,7 @@ La vista v3 sommava le correzioni del cassetto (`TRAY.X_CORR`, `Y_CORR`, `Z_CORR
 - valorizzato in **tutte** le missioni sul cassetto: prelievo/deposito pezzo → il cassetto estratto; estrazione → il cassetto chiesto (`Tray_ID`, perché `ExtractedTray` vale ancora 0); rilascio → il cassetto estratto;
 - 0 in tutte le altre missioni (pinze sullo scaffale, pallet, macchina);
 - a riposo può restare il numero dell'ultimo cassetto usato, e un "Vai a EasyBox" dopo una missione sul cassetto porta N_Cassetto diverso da 0 (il posizionamento scrive Unit_code ma non Object_Type);
-- da qui le uscite libere verso il robot partono da %QW646.
+- da qui le uscite libere verso il robot partono da %QW646; dal 6/10 (consegna 31) %QW646 e %QW648 sono `Z_Push_LOW` e `Z_Push_HIGH` (quota Z della spinta, voce sulla spinta), libere da %QW650 a %QW666.
 
 **Correzione su 6cabcc4.** Il commit riporta l'export TIA alle 09:34, che è l'ora UTC letta dalla macchina di appoggio. L'export è delle 11:34 ora italiana, dopo l'ultima modifica del progetto delle 11:21.
 
@@ -178,7 +178,7 @@ cd D:\Prog\easybox\serverDati\scripts; sqlcmd -S .\SQLEXPRESS -E -d ADMG -W -v R
 
 ### 5/10 sera — dati pezzo al robot e larghezza corretta
 - **6/10, circa le 17 — X e Y scambiate nel PLC** (decisione di Dario: per il robot X e Y erano invertite; la Z non è mai stata toccata). Nei tre stati che leggono l'esito (1418 dello scambio, 39 di Part_Robot_to_MC e di Part_MC_to_Robot): %QW636 `Part_Width_mm` = PIECE.X (col[3], `PART_LENGTH` della vista), %QW640 `Part_Length_mm` = PIECE.Y (col[1], `PART_WIDTH`), %QW642 `Part_Height_mm` = PIECE.Z (col[4]). La vista `COORDINATES_BLOW_MC` non cambia: lo scambio sta nel PLC, quindi i nomi delle colonne della vista e quelli delle variabili PROFINET non coincidono più. Riscontro col pezzo 1035 (X 40, Y 109, Z 15): Width 40, Length 109, Height 15. %QW636 torna a portare PIECE.X, come dal 18/9 al 5/10. Il commento in FB_Robot («lo decide la vista, non il PLC») non vale più: da correggere in TIA alla prossima modifica. La mappa e la semantica qui sotto sono quelle del 5/10.
-- Su richiesta del robotista il PLC passa le tre misure del pezzo dell'ordine in mm interi, troncati: %QW636 `Part_Width_mm` = PIECE.Y, %QW640 `Part_Length_mm` = PIECE.X, %QW642 `Part_Height_mm` = PIECE.Z, accanto a %QW634 `Vice_ClawLength_mm` e %QW638 `X_Support_mm`. Libere da %QW644 a %QW666 (dal 6/10 %QW644 è `N_Cassetto`: vedi sopra).
+- Su richiesta del robotista il PLC passa le tre misure del pezzo dell'ordine in mm interi, troncati: %QW636 `Part_Width_mm` = PIECE.Y, %QW640 `Part_Length_mm` = PIECE.X, %QW642 `Part_Height_mm` = PIECE.Z, accanto a %QW634 `Vice_ClawLength_mm` e %QW638 `X_Support_mm`. Libere da %QW650 a %QW666: dal 6/10 %QW644 è `N_Cassetto` (vedi sopra) e %QW646/%QW648 sono `Z_Push_LOW`/`Z_Push_HIGH` (quota Z della spinta, voce sulla spinta).
 - **Superata dalla nota del 6/10 qui sopra** (vale per l'anagrafica e la pagina Pezzo, non per il robot). Semantica (Dario e robotista, 5/10): X lunghezza, Y larghezza, Z altezza, come L/W/H nella pagina Pezzo.
 - Dal 18/9 al 5/10 %QW636 portava PIECE.X, cioè la lunghezza. Corretto in cella il 5/10 alle 19:17 con un ALTER VIEW guardato; il backup della definizione è su `D:\Backup` del PC di cella. Lezione: un nome di colonna o di tag non prova il significato, si confronta col pezzo.
 - Limiti: si aggiornano solo nelle missioni in macchina con un ordine attivo e non si azzerano mai. Al primo prelievo dal cassetto di un ordine nuovo il robot vede ancora le misure dell'ordine precedente.
@@ -336,6 +336,33 @@ non rischiare di sovrascrivere la vista buona della cella.
 
 ## [ ] 2026-09-15 — ciclo SPINTA IN BATTUTA: cinque script, poi le misure
 
+### [ ] 6/10 — quota Z della spinta: da mettere in servizio
+
+Decisione di Dario (6/10, 18:24):
+- si imposta l'**altezza della chela dal fondo del pezzo** durante la spinta, da 0 alla quota di presa del grezzo (`PIECE.Z_PICK`); **vuoto = alla quota di presa = come oggi**;
+- si salva per la coppia morsa + pezzo in `PIECE_ON_VICE.Z_PUSH` (int NULL, micron, `CHECK (Z_PUSH >= 0)`), accanto a `COMP_PUSH`. Si imposta dalla pagina «Spinta in battuta» (rotta `/setZPush`, solo UPDATE: la riga nasce dichiarando l'appoggio; il limite superiore lo rilegge il backend dal pezzo, oltre risponde `KO_Z_PUSH_RANGE`);
+- arriva al robot su una variabile PROFINET nuova, scritta dal PLC prima della missione: %QW646 `Z_Push_LOW`, %QW648 `Z_Push_HIGH` (ex spare_7 e spare_8);
+- robotista: il TCP è in punta alla chela; a 0 dal fondo la chela non sfonda l'appoggio.
+
+**Formula:** `Z_Push = Z deposito − Z_PUSH_DROP`. `Z_PUSH_DROP` è una colonna della vista `COORDINATES_PUSH_MC`: vale `Z_PICK − Z_PUSH`, oppure 0 se `Z_PUSH` è vuota, se il pezzo non ha quota di presa o se `Z_PUSH` la supera (pezzo cambiato dopo). Non è mai NULL. La Z di deposito è `COORDINATES_Z_MC.Z_PLACE_MC`, dove il pezzo entra proprio con `Z_PICK` (verificato sulla definizione il 6/10; la vista ora è versionata in `coordinates-z-mc.sql`).
+
+**Finché `Z_PUSH` è vuota non cambia niente:** `Z_PUSH_DROP` vale 0 e la chela spinge alla Z del deposito, come oggi.
+
+**Ordine di messa in servizio**, a cella ferma:
+1. script SQL:
+   ```
+   cd D:\Prog\easybox\serverDati\scripts
+   sqlcmd -S .\SQLEXPRESS -E -d ADMG -W -i coordinates-z-mc.sql
+   sqlcmd -S .\SQLEXPRESS -E -d ADMG -W -i piece-on-vice-z-push.sql
+   sqlcmd -S .\SQLEXPRESS -E -d ADMG -W -f 65001 -i coordinates-push-mc.sql
+   ```
+   Esiti attesi: «conforme» (la vista della Z di deposito non cambia); colonna e vincolo aggiunti; «variante completa della compensazione … aggiungo Z_PUSH, Z_PUSH_REF e Z_PUSH_DROP». Rilanciati, dicono «già presente» e «conforme». `-f 65001` sulla vista della spinta: il file è UTF-8, senza i trattini lunghi dei commenti diventano «â€”» (solo estetica, ma la vista in cella della Z di deposito è già così);
+2. servizi: backend e pannello aggiornati (`servizi-cella.ps1 -Azione riavvia` o `pannello.ps1`). Il backend legge `Z_PUSH` e `Z_PUSH_DROP`: per questo gli script vanno prima;
+3. PLC: consegna 31 (Dario), poi tia-export;
+4. programma robot: `Z_Push` su %QW646/%QW648.
+
+Provato il 6/10 sul clone del portatile: due esecuzioni di ogni script (la seconda «già presente» / «conforme»), verifiche vuote, e il caso costruito sulla riga morsa 1 / pezzo 1035 in una transazione chiusa con ROLLBACK (`Z_PUSH` 10000 → 0, 0 → 10000, 10001 → 0, 4000 → 6000, −1 rifiutato dal vincolo).
+
 Ordine obbligato, **a cella ferma**, i primi quattro prima del deploy del
 backend (insert/update nominano le colonne e la tabella nuove), la vista per
 ultima perche' le nomina tutte:
@@ -416,7 +443,9 @@ SELECT [DATA], RTRIM(DESCR) AS modifica, RTRIM(UNIT_B) AS oggetto
 ```
 
 **Asse della battuta:** la spinta e' sulla **X del robot** (quella che il PLC
-manda come X_Pick-Place). Y e Z restano quelle del deposito. Del pezzo entra
+manda come X_Pick-Place). Y resta quella del deposito; la Z dal 6/10 scende di
+`Z_PUSH_DROP` (quota Z della spinta, sopra), e finche' `Z_PUSH` e' vuota resta
+quella del deposito. Del pezzo entra
 `PIECE.Y`, perche' e' la dimensione che corre lungo la X del robot: e' la
 stessa convenzione del passo delle tasche nel cassetto.
 

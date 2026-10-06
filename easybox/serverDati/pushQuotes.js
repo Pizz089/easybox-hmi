@@ -12,7 +12,9 @@
 //
 // CONVENZIONI: tutto in MICRON. L'asse di battuta e' la X del ROBOT (quella
 // che il PLC manda come X_Pick-Place, non l'asse della macchina utensile).
-// Durante la spinta Y e Z restano quelle del deposito: si muove solo la X.
+// Durante la spinta la Y resta quella del deposito. La Z (6/10) scende di
+// zPushDrop() sotto la Z di deposito: la chela spinge a PIECE_ON_VICE.Z_PUSH
+// dal fondo del pezzo; con Z_PUSH vuota la Z resta quella del deposito.
 // Le divisioni per due TRONCANO VERSO LO ZERO come la divisione intera di SQL
 // Server, anche quando la differenza e' negativa (pezzo oltre la ganascia).
 //
@@ -144,6 +146,20 @@ exports.pushQuotes = function ({ enabled, hasVice, xPlace, pieceY, viceClawLengt
 
 // Bit 1 di WORKORDER.OPTION2 = istantanea di PIECE.PUSH_TO_STOP (il bit 0
 // resta al gripper doppio). La vista legge (OPTION2 & 2) <> 0.
+// (6/10) QUOTA Z DELLA SPINTA: di quanto scende la chela sotto la Z di
+// deposito. IDENTICA a COORDINATES_PUSH_MC.Z_PUSH_DROP (test di parita' in
+// test_push_to_stop.js): mai null; vuota, pezzo senza quota di presa o valore
+// oltre la quota di presa (pezzo cambiato dopo) -> 0, come prima; altrimenti
+// Z_PICK - Z_PUSH. In micron. Il TCP e' in punta alla chela: a Z_PUSH = 0 la
+// chela sta sul fondo del pezzo e non sfonda l'appoggio.
+exports.zPushDrop = function ({ zPush, zPick }) {
+	if (zPush === null || zPush === undefined || zPush === '') return 0;
+	const ref = Number(zPick) || 0;        // ISNULL(pz.Z_PICK, 0)
+	if (ref <= 0) return 0;
+	const z = Number(zPush);
+	if (z > ref) return 0;
+	return ref - z;
+};
 exports.PUSH_BIT = 2;
 exports.isPushEnabled = function (option2) {
 	return ((Number(option2) || 0) & exports.PUSH_BIT) !== 0;

@@ -518,9 +518,11 @@ router.get('/pushQuotes/:orderID', (req, res) => {
 			res.status(500).send("KO");
 			return;
 		}
+		// (6/10) piu' la quota Z della spinta: Z_PUSH_DROP e' quello che il PLC
+		// sottrae alla Z di deposito
 		let query = `select ORDER_ID, MC, X_PLACE, Y_PLACE, Z_PLACE,
 							X_PUSH, X_STOP, CLEARANCE, STOP_REF, STOP_BEYOND_CLAW, COMP_PUSH,
-							PUSH_ENABLED, PUSH_STATUS
+							PUSH_ENABLED, PUSH_STATUS, Z_PUSH, Z_PUSH_REF, Z_PUSH_DROP
 					 from COORDINATES_PUSH_MC where ORDER_ID = ${orderID};`;
 		var request = new sql.Request();
 		log.info('query ' + query);

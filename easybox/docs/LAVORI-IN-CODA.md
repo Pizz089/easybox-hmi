@@ -5,6 +5,52 @@
 > stato corretto sul momento. Gli interventi manuali da fare in impianto
 > stanno invece in `APPUNTI-CELLA.md`.
 
+## [ ] COORDINATES_Z_MC: quote del pezzo e dell'attrezzatura senza ISNULL
+
+**Cosa.** Nella vista `COORDINATES_Z_MC` (versionata il 6/10 in
+`serverDati/scripts/coordinates-z-mc.sql`) entrano senza `ISNULL` tre colonne
+che nello schema ammettono NULL:
+- `PIECE.Z_PICK`, in `Z_PLACE_MC` (deposito del grezzo);
+- `PIECE.Z_PLACE`, in `Z_PICK_MC` (prelievo del finito);
+- `FIXTURE.Z`, in tutte e due.
+
+Le altre componenti: `POSITION.Z` e' NOT NULL; `VICE.Z_CLAW` e
+`VICE.Z_SINK_CLAW` hanno gia' `ISNULL`. Le chiavi dell'ordine
+(`WORKORDER.PIECE_ID`, `FIXTURE_ID`, `MACHINE_ID`) se NULL tolgono la riga,
+perche' i join sono interni; `WORKORDER.PALLET_ID` NULL invece non trova la
+morsa e le chele entrano come 0.
+
+**Perche' conta.** Il ponte SQL non converte NULL in zero: un NULL arriva al
+PLC come numero casuale sulla Z di deposito o di prelievo, e al 30 non c'e'
+nessun controllo di plausibilita' sulla Z.
+
+**Da valutare.** Escludere la riga quando una di quelle colonne e' NULL (il
+PLC riceve zero righe e da' l'allarme 799/899) invece di `ISNULL` a 0, che
+darebbe una Z sbagliata ma credibile.
+
+**Prima di decidere**, in cella, la query che conta pezzi e ordini con quelle
+colonne NULL (sola lettura):
+
+```
+-- pezzi con quota di presa o di rilascio NULL
+SELECT ID, FAMILY, Z_PICK, Z_PLACE FROM PIECE WHERE Z_PICK IS NULL OR Z_PLACE IS NULL;
+-- attrezzature con Z NULL
+SELECT ID, FAMILY, Z FROM FIXTURE WHERE Z IS NULL;
+-- ordini che la vista legge con una quota NULL, per stato
+SELECT w.STATUS, COUNT(*) AS ordini
+  FROM COORDINATES_Z_MC z JOIN WORKORDER w ON w.ID = z.ORDER_ID
+ WHERE z.Z_PLACE_MC IS NULL OR z.Z_PICK_MC IS NULL
+ GROUP BY w.STATUS;
+-- ordini senza pallet (la morsa non si trova, chele a 0)
+SELECT ID, STATUS FROM WORKORDER WHERE PALLET_ID IS NULL;
+```
+
+Sul clone del portatile (backup della cella del 6/10, 17:47): 0 pezzi, 0
+attrezzature, 0 ordini senza pallet, 0 righe della vista con una quota NULL
+(7 pezzi e un solo ordine in tutto).
+
+**Trovato il** 2026-10-06, versionando la vista per la quota Z della spinta.
+
 ## [ ] FB_Robot: il commento "lo decide la vista, non il PLC" non vale piu'
 
 **Cosa.** Negli stati 1418 (scambio), 39 di Part_Robot_to_MC e 39 di

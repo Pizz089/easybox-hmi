@@ -112,6 +112,8 @@
           <!-- campo, unita' e pulsante sono UN blocco: nella colonna stretta
                vanno a capo insieme, non si separa il "mm" dal numero -->
           <span class="sim-control">
+            <!-- (6/10) altezza di spinta: vuoto = alla quota di presa, il
+                 segnaposto dice quanto; massimo = quota di presa del pezzo -->
             <input
               v-if="canEdit"
               :id="'sim-' + f.key"
@@ -119,11 +121,13 @@
               type="number"
               step="0.1"
               min="0"
+              :max="f.key === 'zPush' && pieceZPick > 0 ? pieceZPick / 1000 : null"
+              :placeholder="f.key === 'zPush' ? zPushPlaceholder : null"
               inputmode="decimal"
               autocomplete="off"
               v-model="sim[f.key]"
             />
-            <span v-else class="sim-readonly">{{ mmText(sim[f.key]) }}</span>
+            <span v-else class="sim-readonly">{{ f.key === 'zPush' && toMicron(sim[f.key]) === null && zPushPlaceholder ? zPushPlaceholder : mmText(sim[f.key]) }}</span>
             <span class="sim-unit">mm</span>
             <!-- il pulsante compare SOLO sul campo che e' stato cambiato: e'
                  anche il modo piu' semplice per vedere cosa si sta per salvare -->
@@ -131,7 +135,7 @@
               v-if="canEdit && fieldChanged(f.key)"
               type="button"
               class="btn-ghost sim-save"
-              :disabled="saving"
+              :disabled="saving || (f.key === 'zPush' && !!zPushError)"
               @click="askSave(f.key)"
             >
               {{ t("pushSim.save") }}
@@ -153,7 +157,17 @@
              lo si dice PRIMA di far compilare il campo, non dopo il salvataggio.
              La riga nasce dichiarando l'appoggio: e' quello l'ordine giusto. -->
         <p v-if="compNeedsRow" class="sim-warn">
-          {{ t("pushSim.compNoRow") }}
+          {{ t("pushSim.compNoRow") }} {{ t("pushSim.zPushNoRow") }}
+        </p>
+
+        <!-- (6/10) quota Z della spinta: fuori campo il pulsante non si
+             abilita e il motivo si legge qui; dentro il campo, il riscontro
+             (a quanto dal fondo spinge la chela e quanto sotto il deposito) -->
+        <p v-if="zPushError" class="sim-warn">{{ zPushError }}</p>
+        <p v-else-if="zPushPreview" class="sim-hint">
+          {{ zPushPreview.dropMm > 0
+             ? t("pushSim.zPushPreview", { from: zPushPreview.fromMm, drop: zPushPreview.dropMm })
+             : t("pushSim.zPushPreviewSame", { from: zPushPreview.fromMm }) }}
         </p>
 
         <p v-if="stopDeclaredReal === null && exceeds" class="sim-warn">
@@ -420,6 +434,8 @@
             <div class="quote-row"><span>{{ t("pushSim.qOrder") }}</span><strong>{{ viewRow.ORDER_ID }}</strong></div>
             <div class="quote-row"><span>{{ t("pushSim.qPush") }}</span><strong>{{ mmText(viewRow.X_PUSH / 1000) }}</strong></div>
             <div class="quote-row"><span>{{ t("pushSim.qStop") }}</span><strong>{{ mmText(viewRow.X_STOP / 1000) }}</strong></div>
+            <!-- (6/10) quanto il PLC sottrae alla Z di deposito durante la spinta -->
+            <div v-if="viewRow.Z_PUSH_DROP != null" class="quote-row"><span>{{ t("pushSim.qZDrop") }}</span><strong>{{ mmText(viewRow.Z_PUSH_DROP / 1000) }}</strong></div>
             <div class="quote-row"><span>{{ t("pushSim.outcome") }}</span><strong>{{ viewRow.PUSH_STATUS }}</strong></div>
           </template>
         </div>
@@ -430,8 +446,8 @@
 
 <script>
 import { dataStored } from "../../data.js";
-import { pushQuotes, PUSH_STATUS, STOP_REF } from "../../util/pushQuotes.js";
-import { KO_NOT_FOUND } from "../../util/errorCodes.js";
+import { pushQuotes, PUSH_STATUS, STOP_REF, zPushDrop } from "../../util/pushQuotes.js";
+import { KO_NOT_FOUND, KO_Z_PUSH_RANGE } from "../../util/errorCodes.js";
 
 // millimetri -> micron e viceversa, con il vuoto che resta vuoto: lo ZERO e'
 // un valore, l'assenza e' un'altra cosa (vale per l'appoggio dichiarato)
@@ -451,9 +467,9 @@ export default {
       stops: [],
       sel: { pieceID: 0, viceID: 0, gripperID: 0, machineID: 1 },
       // valori SIMULATI, in millimetri (quelli che si toccano)
-      sim: { pieceLen: null, pieceWid: null, viceClaw: null, zClaw: null, zSink: null, toolClaw: null, stopBeyond: null, compPush: null },
+      sim: { pieceLen: null, pieceWid: null, viceClaw: null, zClaw: null, zSink: null, toolClaw: null, stopBeyond: null, compPush: null, zPush: null },
       // copia dei valori REALI letti dal database, in millimetri
-      real: { pieceLen: null, pieceWid: null, viceClaw: null, zClaw: null, zSink: null, toolClaw: null, stopBeyond: null, compPush: null },
+      real: { pieceLen: null, pieceWid: null, viceClaw: null, zClaw: null, zSink: null, toolClaw: null, stopBeyond: null, compPush: null, zPush: null },
       phase: 0,
       timers: [],
       viewRow: null,
@@ -480,6 +496,10 @@ export default {
         // pezzo si ferma prima della battuta. Stessa chiave e stesso
         // salvataggio dell'appoggio dichiarato: segue la morsa, non il pallet.
         { key: "compPush", label: "pushSim.fCompPush" },
+        // (6/10) QUOTA Z DELLA SPINTA: altezza della chela dal fondo del pezzo,
+        // da 0 alla quota di presa; vuoto = alla quota di presa = come prima.
+        // Stessa riga e stessa regola della compensazione (solo UPDATE).
+        { key: "zPush", label: "pushSim.fZPush" },
       ],
       phaseLabels: ["pushSim.phPlace", "pushSim.phPush", "pushSim.phStop"],
     };
@@ -502,6 +522,7 @@ export default {
         toolClaw: toMicron(this.sim.toolClaw) || 0,
         stopBeyond: toMicron(this.sim.stopBeyond),
         compPush: toMicron(this.sim.compPush),
+        zPush: toMicron(this.sim.zPush),
       };
     },
 
@@ -573,6 +594,39 @@ export default {
     // si passa da li'. stopRow e' la riga letta da /stops, non un calcolo.
     compNeedsRow() {
       return !!this.sel.viceID && !!this.sel.pieceID && !this.stopRow;
+    },
+
+    // (6/10) quota di presa del pezzo scelto, in micron: e' il riferimento
+    // della quota Z della spinta (la Z di deposito ce l'ha dentro) e il suo
+    // massimo. null se il pezzo non c'e' o non ce l'ha.
+    pieceZPick() {
+      const p = this.pieces.find((x) => x.ID == this.sel.pieceID);
+      return p && p.Z_PICK !== null && p.Z_PICK !== undefined ? Number(p.Z_PICK) : null;
+    },
+
+    zPushPlaceholder() {
+      return this.pieceZPick > 0 ? this.t("pushSim.zPushEmpty", { mm: this.pieceZPick / 1000 }) : "";
+    },
+
+    // fuori campo: il pulsante non si abilita e il motivo si legge. Vuoto e'
+    // sempre valido (alla quota di presa).
+    zPushError() {
+      const z = this.m.zPush;
+      if (z === null) return "";
+      if (!(this.pieceZPick > 0)) return this.t("pushSim.zPushNoPick");
+      if (!Number.isFinite(z) || z < 0 || z > this.pieceZPick) return this.t("pushSim.zPushRange", { max: this.pieceZPick / 1000 });
+      return "";
+    },
+
+    // il riscontro: a quanto dal fondo spinge la chela e quanto sotto il
+    // deposito. Stessa funzione della vista (Z_PUSH_DROP), non un calcolo a mano.
+    zPushPreview() {
+      if (!(this.pieceZPick > 0) || this.zPushError) return null;
+      const z = this.m.zPush;
+      return {
+        fromMm: (z === null ? this.pieceZPick : z) / 1000,
+        dropMm: zPushDrop({ zPush: z, zPick: this.pieceZPick }) / 1000,
+      };
     },
 
     ok() {
@@ -746,6 +800,12 @@ export default {
       if (q.orderID) this.loadViewRow(Number(q.orderID));
     },
 
+    // (6/10) per il template (il campo vuoto della quota Z si mostra col
+    // segnaposto anche in sola lettura)
+    toMicron(mm) {
+      return toMicron(mm);
+    },
+
     // quello che leggera' il PLC, letto dalla vista e non ricalcolato
     loadViewRow(orderID) {
       if (!Number.isInteger(orderID) || orderID < 1) return;
@@ -778,6 +838,7 @@ export default {
       this.recomputeReal();
       this.real.stopBeyond = null;
       this.real.compPush = null;
+      this.real.zPush = null;
       this.stopRow = null;
       this.copyRealToSim();
       this.phase = 0;
@@ -787,6 +848,10 @@ export default {
     // l'appoggio dichiarato vive nella coppia morsa+pezzo
     // syncSim=false serve dopo il salvataggio di un ALTRO campo: il valore
     // reale si aggiorna, ma quello che l'operatore stava provando resta.
+    // (6/10) syncSim puo' essere anche l'elenco dei campi appena salvati:
+    // tornano dal database solo quelli. Prima dopo il salvataggio della
+    // compensazione il campo restava al valore vecchio (sincronizzava solo
+    // l'appoggio) e il Salva ricompariva.
     loadStop(syncSim) {
       return this.get("api/conf/vice/stops/" + this.sel.viceID)
         .then((rows) => {
@@ -798,10 +863,13 @@ export default {
           // diventa zero — il campo deve restare vuoto, non mostrare "0"
           this.real.compPush = row && row.COMP_PUSH !== null && row.COMP_PUSH !== undefined
             ? Number(row.COMP_PUSH) / 1000 : null;
-          if (syncSim) {
-            this.sim.stopBeyond = this.real.stopBeyond;
-            this.sim.compPush = this.real.compPush;
-          }
+          // (6/10) Z_PUSH NULL = alla quota di presa: il campo resta vuoto
+          this.real.zPush = row && row.Z_PUSH !== null && row.Z_PUSH !== undefined
+            ? Number(row.Z_PUSH) / 1000 : null;
+          const tutti = syncSim === true;
+          const chiavi = Array.isArray(syncSim) ? syncSim : [];
+          for (const k of ["stopBeyond", "compPush", "zPush"])
+            if (tutti || chiavi.includes(k)) this.sim[k] = this.real[k];
         })
         .catch(console.info);
     },
@@ -908,6 +976,28 @@ export default {
             COMP_PUSH: now === null ? "" : now,
           }),
         };
+      } else if (key === "zPush") {
+        if (!this.sel.viceID || !this.sel.pieceID) return;
+        // stessa regola della compensazione: senza riga non c'e' dove scrivere
+        if (this.compNeedsRow) {
+          dataStored.alert.title = this.t("WARNING");
+          dataStored.alert.desc = this.t("pushSim.compNoRow") + " " + this.t("pushSim.zPushNoRow");
+          dataStored.alert.type = "warning";
+          return;
+        }
+        if (this.zPushError) return;
+        this.confirm = {
+          key,
+          text: this.t(now === null ? "pushSim.confirmZPushClear" : "pushSim.confirmZPush", {
+            ...args,
+            obj: this.objName(this.vices, this.sel.viceID, "pushSim.vice"),
+            piece: this.objName(this.pieces, this.sel.pieceID, "pushSim.piece"),
+          }),
+          run: () => this.send("api/conf/vice/setZPush", {
+            VICE_ID: this.sel.viceID, PIECE_ID: this.sel.pieceID,
+            Z_PUSH: now === null ? "" : now,
+          }),
+        };
       } else if (key === "stopBeyond") {
         if (!this.sel.viceID || !this.sel.pieceID) return;
         if (now === null) {
@@ -950,9 +1040,16 @@ export default {
             // la compensazione ha un motivo suo per non trovare la riga, e
             // soprattutto una via d'uscita precisa: dichiarare prima
             // l'appoggio. Dirlo genericamente lascerebbe l'operatore fermo.
-            dataStored.alert.desc = this.t(
-              c.key === "compPush" ? "pushSim.compNoRow" : "pushSim.saveNotFound"
-            );
+            dataStored.alert.desc = c.key === "zPush"
+              ? this.t("pushSim.compNoRow") + " " + this.t("pushSim.zPushNoRow")
+              : this.t(c.key === "compPush" ? "pushSim.compNoRow" : "pushSim.saveNotFound");
+            dataStored.alert.type = "warning";
+            return;
+          }
+          // (6/10) il server rilegge la quota di presa e rifiuta un valore oltre
+          if (String(body).trim() === KO_Z_PUSH_RANGE) {
+            dataStored.alert.title = this.t("WARNING");
+            dataStored.alert.desc = this.t("pushSim.zPushRangeServer");
             dataStored.alert.type = "warning";
             return;
           }
@@ -994,7 +1091,7 @@ export default {
           // stava provando sugli ALTRI campi resta dov'era.
           for (const f of this.fields)
             this.sim[f.key] = saved.includes(f.key) ? this.real[f.key] : keep[f.key];
-          if (this.sel.viceID) return this.loadStop(saved.includes("stopBeyond"));
+          if (this.sel.viceID) return this.loadStop(saved);
         })
         .catch(console.info);
     },

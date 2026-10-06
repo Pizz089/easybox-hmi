@@ -1217,6 +1217,8 @@
       "partProgramMissing": "The part has no part program: set it in the part master data before creating the order",
       "push": "Push to stop",
       "pushOn": "on, travel {mm} mm",
+      "pushZ": "finger at {from} mm from the bottom, {drop} mm below the load",
+      "pushZDefault": "finger at the pick height, as the load",
       "pushNoVice": "Push to stop is on for this part, but there is no vice on the pallet: the cycle cannot run.",
       "pushNoData": "Push to stop is on, but a measurement is missing: the vice jaw length or the gripper claw length. Complete the registry before creating the order.",
       "pushNoFit": "The part is {piece} mm long and the vice jaw is {claw} mm: the part overhangs, and nobody declared where it really rests. Declare it on the vice page.",
@@ -1329,7 +1331,18 @@
       "NO_FIT": "The part is {piece} mm long and the jaw is {claw} mm: it overhangs {over} mm per side, and nobody declared where it really rests. Declare it on the vice page.",
       "NO_COMP": "The compensation is {comp} mm but the travel is {travel} mm: the part would stop behind the starting point and the robot would push the opposite way against the part in the vice. The push will not run: reduce the compensation.",
       "NO_ROOM": "The part overhangs {over} mm per side, but the rest point is declared {stop} mm from the end of the jaw: the part would be past the stop before being pushed at all."
-    }
+    },
+    "fZPush": "Push height from the bottom of the part",
+    "zPushEmpty": "empty = {mm} mm, as the load",
+    "zPushRange": "Out of range: the height goes from 0 to the part's pick height, {max} mm.",
+    "zPushNoPick": "The part has no pick height: the push height cannot be set.",
+    "zPushNoRow": "The push height is written on that declaration too.",
+    "zPushPreview": "The finger pushes at {from} mm from the bottom of the part, {drop} mm below the load.",
+    "zPushPreviewSame": "The finger pushes at {from} mm from the bottom of the part, at the same height as the load.",
+    "confirmZPush": "Push height of {obj} for {piece}: from {from} to {to} from the bottom of the part.",
+    "confirmZPushClear": "Push height of {obj} for {piece}: from {from} to empty, that is at the pick height, as the load.",
+    "zPushRangeServer": "The server refused the push height: it is above the part's pick height. Reload the page and check the part.",
+    "qZDrop": "Finger drop during the push"
   },
   "home": {
     "orderNow": "Running order",
