@@ -1,30 +1,47 @@
 # Appunti cella — interventi manuali da eseguire in impianto
 
-## Aggiornare il pannello in cella
+## Avvio e aggiornamento della cella
 
+**Il clone di cella è parziale** (verificato il 6/10): sparse-checkout in modalità cone, `D:\Prog\.git\info\sparse-checkout` contiene
+
+```
+/*
+!/*/
+/easybox/
+```
+
+Sul disco vengono scritti solo i file della radice e la cartella `easybox/`: `tools/` e `plc/` in cella non ci sono. **Tutto quello che deve arrivare in cella sta sotto `easybox/`** (per questo `pannello.ps1` sta in `easybox/tools/`).
+
+**Avvio: nessun servizio, niente nssm.** Due `.bat` che non sono nel repo, ciascuno nella sua finestra:
+- backend: `D:\Prog\easybox\serverDati\start_server.bat` (`timeout /t 10`, `cd /d`, `mkdir log`, `node --max-old-space-size=1024 server.js`, `pause`);
+- pannello: `D:\Prog\easybox\HMI\start_hmi.bat` (`timeout /t 15`, `cd /d`, `npm run dev`).
+
+Nessuno dei due si riavvia da solo. **Le due finestre non si chiudono senza rilanciarle.** Il 6/10 la chiusura della finestra del backend ha fermato il ponte fra PLC e SQL per circa 13 minuti.
+
+Nel working tree di cella ci sono file non tracciati che il `.gitignore` non esclude: i due `.bat` e la cartella `easybox/serverDati_BACKUP_2026-06-03/`. Sono normali: `pannello.ps1` conta come modifiche locali solo i file tracciati.
+
+**Procedura di aggiornamento:**
 1. Cella in HOLD.
-2. `cd D:\Prog`, poi `git pull`.
-3. Backend: nella finestra di `start_server.bat` Ctrl+C, poi rilanciare `start_server.bat`.
-4. Pannello: rilanciare `start_hmi.bat` solo se il pull tocca `package.json`, `package-lock.json` o `vite.config.js`; altrimenti basta Ctrl+F5 sui client.
+2. `cd D:\Prog`, poi `git pull`; oppure lo script, che fa fetch, cambio di ramo, pull solo in avanti e `npm install` se serve:
+   ```
+   powershell -ExecutionPolicy Bypass -File D:\Prog\easybox\tools\pannello.ps1 -Versione stato
+   ```
+   `-Versione stato` dice su che versione si è, senza cambiare niente; `-Versione stabile` (ramo `ui-lifting`) o `-Versione v3` (ramo `ui-v3`) aggiorna o cambia versione.
+3. Backend: nella finestra di `start_server.bat` Ctrl+C, poi rilanciare il `.bat`.
+4. Pannello: rilanciare `start_hmi.bat` solo se sono cambiati `package.json`, `package-lock.json` o `vite.config.js`, altrimenti basta Ctrl+F5 sui client.
 5. Controlli:
    - porte 5173, 8080 e 3000 in ascolto;
    - `INIT` nuovo in `access.log`;
    - stato del robot che si aggiorna;
    - `DB_executeQuery.readyForNextQuery` TRUE.
 
-**Avvertenza: le due finestre non si chiudono senza rilanciarle.** Il 6/10 la chiusura della finestra del backend ha fermato il ponte fra PLC e SQL per circa 13 minuti.
+## [x] 2026-10-06 — `tools/pannello.ps1` non c'era in cella: clone parziale
 
-Da dove partono i due `.bat` e cosa fanno: voce del 18/9 (limite heap del backend).
+Dopo il pull del 6/10 `tools/pannello.ps1` non è comparso in cella. Causa verificata sul PC di cella: il clone è parziale (voce «Avvio e aggiornamento della cella»), git ha messo il file nell'elenco del pull ma non l'ha scritto sul disco. Defender non c'entra: lo storico delle minacce è vuoto.
 
-## [ ] 2026-10-06 — `tools/pannello.ps1` non c'è in cella: aperto
-
-Dopo il pull del 6/10 `tools/pannello.ps1` non c'è in cella: git l'ha creato, ma il file non risulta. La causa è ancora da capire: checkout parziale o antivirus.
-
-**Finché non è chiarito, nessuna modifica a `pannello.ps1`.** Se in cella risulta cancellato, una modifica in arrivo bloccherebbe il pull.
-
-Da correggere dopo:
-- il messaggio finale (riga 175): «il backend si riavvia da solo» è falso;
-- il controllo delle modifiche locali (riga 77, `ModificheLocali`): `git status --porcelain` conta anche i file non tracciati della cella e fermerebbe sempre lo script.
+Risolto:
+- lo script sta in `easybox/tools/pannello.ps1` (commit a73e412). Nuovo comando in cella: `powershell -ExecutionPolicy Bypass -File D:\Prog\easybox\tools\pannello.ps1 -Versione stato`;
+- contano solo i file tracciati (`git status --porcelain --untracked-files=no`); il messaggio finale non dice più che il backend si riavvia da solo, ma cosa riavviare e i quattro controlli; in testa al cambio di versione ricorda la cella in HOLD (commit 58231d1).
 
 ## [ ] 2026-10-06 — work object per cassetto: vista 4Robot **v4**, quote relative al cassetto
 
@@ -46,7 +63,7 @@ La vista v3 sommava le correzioni del cassetto (`TRAY.X_CORR`, `Y_CORR`, `Z_CORR
 - a riposo può restare il numero dell'ultimo cassetto usato, e un "Vai a EasyBox" dopo una missione sul cassetto porta N_Cassetto diverso da 0 (il posizionamento scrive Unit_code ma non Object_Type);
 - da qui le uscite libere verso il robot partono da %QW646.
 
-**Correzione su 6cabcc4.** Il commit riporta l'export TIA alle 09:34, che è l'ora UTC. L'export è delle 11:34 ora italiana, dopo l'ultima modifica del progetto delle 11:21.
+**Correzione su 6cabcc4.** Il commit riporta l'export TIA alle 09:34, che è l'ora UTC letta dalla macchina di appoggio. L'export è delle 11:34 ora italiana, dopo l'ultima modifica del progetto delle 11:21.
 
 **Vista v4** (`serverDati/scripts/robot-tray-view-v4.sql`): stesse colonne della v3, stessi nomi e stesso ordine; cambiano le quote e l'espressione di TRAY.
 - `X_PICK = pos.X + ISNULL(pos.X_CORR,0) + ISNULL(decentrato pick X,0)`, Y uguale;
@@ -134,7 +151,7 @@ $env:MQTT_BROKER_URL='mqtt://utente:password@host:porta'; node tools/haas-probe-
 # ricetta 3 invece di 1: aggiungere 3 dopo --live
 ```
 
-## [ ] 2026-09-18 — limite heap del backend: va in `start_server.bat`, NON sta nel repo
+## [x] 2026-09-18 — limite heap del backend: in `start_server.bat`, NON sta nel repo
 
 Dopo il crash `Fatal process out of memory: Zone` il backend gira con un tetto
 heap dichiarato. `serverDati/package.json` lo mette nello script di avvio:
@@ -143,22 +160,17 @@ heap dichiarato. `serverDati/package.json` lo mette nello script di avvio:
 "start": "node --max-old-space-size=1024 server.js"
 ```
 
-**Ma in cella `npm start` non si usa.** Corretto il 6/10: in cella non c'è
-nessun servizio nssm. I due programmi partono da due `.bat` che **non sono
-nel repo**:
-- backend: `D:\Prog\easybox\serverDati\start_server.bat` (timeout 10, cd,
-  mkdir log, `node server.js`, pause);
-- pannello: `D:\Prog\easybox\HMI\start_hmi.bat` (timeout 15, cd, `npm run dev`).
-
-Il tetto di memoria va nel `.bat` del backend, nella riga che lo avvia:
+**Ma in cella `npm start` non si usa**, e non c'è nessun servizio nssm (la
+prima versione di questa voce lo dava per scontato). Il backend parte da
+`start_server.bat`, che non è nel repo (voce «Avvio e aggiornamento della
+cella»): il tetto di memoria sta lì, nella riga che avvia il backend.
 
 ```
 node --max-old-space-size=1024 server.js
 ```
 
-Vale dal riavvio successivo: cella in HOLD, Ctrl+C nella finestra del
-backend, rilanciare `start_server.bat` (voce «Aggiornare il pannello in
-cella»: la finestra non si chiude senza rilanciarla).
+Applicato da Dario il 6/10; la copia del `.bat` di prima è in
+`D:\Backup\start_server.bat.20261006`.
 
 ### Come si CONTROLLA che sia arrivato
 
@@ -169,8 +181,8 @@ in `serverDati/log/access.log`, nella riga `INIT`:
 -------- INIT --------  ... heap limit: 1072 MB
 ```
 
-Con il flag il limite è **circa 1072 MB**, non 1024: è il limite che riporta
-V8. Se la riga dice **4144 MB**, è il default di node in cella: il flag NON è
+Con il flag il limite è **circa 1072 MB**: 1024 più l'area giovane di V8. Se
+la riga dice **4144 MB**, è il default di node in cella: il flag NON è
 arrivato al processo e si è cambiato qualcosa che non conta.
 
 ### La riga periodica
