@@ -68,6 +68,33 @@ Nel working tree di cella ci sono file non tracciati che il `.gitignore` non esc
    - stato del robot che si aggiorna;
    - `DB_executeQuery.readyForNextQuery` TRUE.
 
+## [ ] 2026-10-06 — deposito manuale in MC1: vista `MAN_ORDER_MC1` **prima** del download di FB_Robot
+
+Decisione di Dario in [DECISIONI.md](DECISIONI.md) («Deposito manuale in MC1»). La vista `MAN_ORDER_MC1` dà, per ogni tasca di cassetto, il pezzo (`Part_Type` della tasca) e l'ordine di MC1 in attesa per quel pezzo (STATUS 4 o 6, il più recente). FB_Robot la interroga (consegna 30, REGION Part_Robot_to_MC) quando in manuale, senza ordine avviato, si deposita in MC1.
+
+**Comando**, da PowerShell in cella:
+
+```
+cd D:\Prog\easybox\serverDati\scripts; sqlcmd -S .\SQLEXPRESS -E -d ADMG -W -i man-order-mc1.sql
+```
+
+Esiti: «vista creata»; «già presente e conforme» (nessuna modifica: si può rilanciare); «FERMO» (esiste una vista con lo stesso nome ma diversa: non tocca niente e stampa la definizione trovata). In coda una verifica in sola lettura: gli ordini di MC1 in attesa e le tasche del cassetto 8 che li trovano.
+
+**Ordine dei passi:**
+1. la vista (comando qui sopra);
+2. il download di FB_Robot (Dario: cella in HOLD, nessuna missione in corso);
+3. l'export con tia-export, da confrontare con la consegna 30.
+
+La vista va creata **prima** del download: senza la vista la ricerca fallisce e ogni deposito manuale in MC1 dà 970.
+
+**Allarmi:** 970 nessun ordine in attesa per il pezzo prelevato (l'ordine si crea in Produzione senza avviarlo, poi reset e di nuovo il comando); 971 provenienza del pezzo non nota.
+
+**Limite del riconoscimento:** il pezzo si riconosce dall'ultimo cassetto estratto e dall'ultima tasca di prelievo. Se fra prelievo e deposito si estrae un altro cassetto, il riconoscimento sbaglia.
+
+**Codici di stato degli ordini**, letti in cella da `_STATUS_TYPE` il 6/10: 3 WORKING, 4 RAW (in coda), 5 FINISHED, 6 PAUSED, 7 ABORTED.
+
+**Rollback:** `DROP VIEW dbo.MAN_ORDER_MC1;` solo dopo aver tolto la consegna 30 dal PLC.
+
 ## [x] 2026-10-06 — `tools/pannello.ps1` non c'era in cella: clone parziale
 
 Dopo il pull del 6/10 `tools/pannello.ps1` non è comparso in cella. Causa verificata sul PC di cella: il clone è parziale (voce «Avvio e aggiornamento della cella»), git ha messo il file nell'elenco del pull ma non l'ha scritto sul disco. Defender non c'entra: lo storico delle minacce è vuoto.
