@@ -15,152 +15,143 @@
     // (edit-remove-place) voci "In macchina" dalla configurazione (cantiere AS)
     import { MACHINE_POSITIONS } from '../../util/machineBrands';
     import StatoElenco from '../../components/StatoElenco.vue';
+    import UiButton from '../../components/ui/UiButton.vue';
+    import { Lock, Plus } from 'lucide-vue-next';
     import { caricaElenco, STATO } from '../../util/caricaElenco.js';
 </script>
 
 <template>
-      <div class="view-shell view-shell--fill conf-card">
-        <div class="view-header">
-          <h3 class="view-title">{{$t('attrezzaggi.welcome')}}</h3>
-          <button class="pure-button pure-button-primary" :class="{'pure-button-disabled':dataStored.userLevel<=1}" :id="locked" @click="$router.push('/conf/Attrezzaggio')">
+      <!-- (v3 fase D) Attrezzaggio · Attrezzaggi: un pallet per card, come i
+           cataloghi del Magazzino (assets/css/catalog-v3.css), invece della
+           tabella. Badge, comandi, guardie e conferme quelli di prima:
+           Posiziona, Modifica (anche sull'incompleto, mai su nudo e
+           anomalia), Smonta morsa / attrezzatura staccati dalle azioni
+           innocue, il motivo del blocco scritto sotto; le due conferme
+           (smonta, modifica a magazzino) dentro la card con gli stessi testi.
+           Il dialog "Posiziona" resta quello di prima.
+           tests/test_golden_equivalenza.mjs -->
+      <div class="view-shell view-shell--fill cat">
+        <div class="cat-head">
+          <h2 class="cat-head__title">{{$t('attrezzaggi.welcome')}}</h2>
+          <UiButton variant="primary" :icon="dataStored.userLevel<=1 ? Lock : Plus"
+                  :disabled="dataStored.userLevel<=1" @click="$router.push('/conf/Attrezzaggio')">
             {{$t('attrezzaggi.add')}}
-          </button>
+          </UiButton>
         </div>
-        <div class="table-scroll">
-        <table class="pure-table pure-table-horizontal">
-            <thead>
-                <tr>
-                    <th>{{$t('attrezzaggi.pallet')}}</th>
-                    <th>{{$t('attrezzaggi.position')}}</th>
-                    <th>{{$t('attrezzaggi.type')}}</th>
-                    <th>{{$t('attrezzaggi.vice')}}</th>
-                    <th style='width:25%'>{{$t('attrezzaggi.fixture')}}</th>
-                    <th>&nbsp;</th>
-                </tr>
-            </thead>
-            <tbody>
-                <template v-for="row in rows" :key="row.pallet.ID">
-                    <tr :class="{'pure-table-odd':(row.pallet.ID % 2==1)}">
-                        <td>#{{row.pallet.ID}} {{(row.pallet.FAMILY || '').trim()}} - {{(row.pallet.DESCR || '').trim()}}</td>
-                        <td>{{ getPosition(row.pallet) }}</td>
-
-                        <!-- Badge semantico: nudo (warning), Morsa/Attrezzatura
-                             = attrezzaggio COMPLETO (informativi), INCOMPLETO =
-                             morsa senza geometria, ANOMALIA = piu' attrezzature
-                             (dato sporco MOSTRATO, mai nascosto ne' sanato). -->
-                        <td>
-                            <span v-if="rowState(row)=='bare'" class="badge badge-missing">{{$t('attrezzaggi.bare')}}</span>
-                            <span v-else-if="rowState(row)=='vice'" class="badge badge-type">{{$t('attrezzaggi.vice')}}</span>
-                            <span v-else-if="rowState(row)=='fixture'" class="badge badge-type">{{$t('attrezzaggi.fixture')}}</span>
-                            <!-- (15/9) morsa senza geometria: il PLC non saprebbe
-                                 a che quota depositare. Si vede QUI, non come
-                                 errore 799 col robot in movimento. -->
-                            <span v-else-if="rowState(row)=='vice-incomplete'" class="badge badge-anomaly">{{$t('attrezzaggi.incomplete')}}</span>
-                            <span v-else class="badge badge-anomaly">{{$t('attrezzaggi.anomaly')}}</span>
-                            <div v-if="rowState(row)=='vice-incomplete'" class="incomplete-hint">{{$t('attrezzaggi.incompleteHint')}}</div>
-                        </td>
-
-                        <td>
-                            <span v-if="row.vice">{{(row.vice.FAMILY || '').trim()}} {{(row.vice.DESCR || '').trim()}}</span>
-                            <span v-else class="cell-empty">—</span>
-                        </td>
-
-                        <td>
-                            <span v-if="row.fixtures.length>0">
-                                <div v-for="f in row.fixtures" :key="f.FIXTURE_ID">
-                                    {{ fixtureName(f.FIXTURE_ID) }}
-                                </div>
-                            </span>
-                            <span v-else class="cell-empty">—</span>
-                        </td>
-
-                        <td>
-                            <!-- AC: posizione a magazzino del pallet -->
-                            <button class="btn-ghost action-btn"
-                                @click="openPlace(row.pallet)">
-                                {{$t('attrezzaggi.place')}}
-                            </button>
-                            <!-- (edit-remove-place) MODIFICA: solo montaggi SANI
-                                 (vice|fixture) — sull'anomalia l'unica azione e'
-                                 lo smonta (D5). Gating D1: bottone SEMPRE
-                                 visibile, disabilitato col motivo sotto. -->
-                            <!-- (15/9) la Modifica e' offerta anche sugli
-                                 INCOMPLETI: e' da li' che si aggiunge alla morsa
-                                 la geometria mancante. -->
-                            <button v-if="rowState(row)!='bare' && rowState(row)!='anomaly'"
-                                class="btn-ghost action-btn"
-                                :disabled="rowBlockReason(row)!=''"
-                                @click="askEdit(row)">
-                                {{$t('attrezzaggi.edit')}}
-                            </button>
-                            <!-- (usabilita' 15/9) gli SMONTA stavano a 4 px da
-                                 Modifica: disfano un montaggio, e a 4 px da
-                                 un'azione innocua si sbagliano col guanto.
-                                 Adesso sono staccati e su una riga loro. -->
-                            <button v-if="row.vice" class="btn-ghost action-btn action-destructive"
-                                :disabled="rowBlockReason(row)!=''"
-                                @click="askUnmount('vice', row.pallet.ID, row.vice.ID)">
-                                {{$t('attrezzaggi.unmountVice')}}
-                            </button>
-                            <button v-for="f in row.fixtures" :key="'u'+f.FIXTURE_ID" class="btn-ghost action-btn action-destructive"
-                                :disabled="rowBlockReason(row)!=''"
-                                @click="askUnmount('fixture', row.pallet.ID, f.FIXTURE_ID)">
-                                {{$t('attrezzaggi.unmountFixture')}} {{ row.fixtures.length>1 ? '#'+f.FIXTURE_ID : '' }}
-                            </button>
-                            <!-- D1: mai bottoni muti — il motivo del blocco -->
-                            <div class="action-hint" v-if="rowBlockReason(row)">{{ rowBlockReason(row) }}</div>
-                        </td>
-                    </tr>
-                    <!-- popup di conferma canonico (pattern popUpOnLine delle conf view).
-                         (edit-remove-place) arricchito col CONTENUTO REALE della
-                         riga + conferma RAFFORZATA se il pallet e' a magazzino -->
-                    <tr v-if="pending && pending.palletID==row.pallet.ID">
-                        <td class="popUpOnLine" colspan="20">
-                            <div class="center">
-                                <h3>{{ pending.type=='vice' ? $t('attrezzaggi.sureUnmountVice') : $t('attrezzaggi.sureUnmountFixture') }}</h3>
-                                <h4 class="unmount-detail">{{ pendingDetail(row) }}</h4>
-                                <h4 class="mag-warning" v-if="row.pallet.MAG_POS > 0">{{ $t('attrezzaggi.magWarning') }}</h4>
-                                <span class="pure-g">
-                                    <button class="pure-button-micromission specialCMD pure-u-1" @click="confirmUnmount()">
-                                        {{$t('attrezzaggi.unmount')}}
-                                    </button>
-                                    <button class="btn-ghost pure-u-1" @click="pending=null">
-                                        {{ $t('common.cancel') }}
-                                    </button>
-                                </span>
-                            </div>
-                        </td>
-                    </tr>
-                    <!-- (edit-remove-place, D1) conferma RAFFORZATA della
-                         Modifica quando il pallet e' A MAGAZZINO: l'attrezzaggio
-                         fisico si fa a banco -->
-                    <tr v-if="pendingEdit==row.pallet.ID">
-                        <td class="popUpOnLine" colspan="20">
-                            <div class="center">
-                                <h3>{{ $t('attrezzaggi.sureEdit') }}</h3>
-                                <h4 class="mag-warning">{{ $t('attrezzaggi.magWarning') }}</h4>
-                                <span class="pure-g">
-                                    <button class="pure-button-micromission specialCMD pure-u-1" @click="goEdit(row.pallet.ID)">
-                                        {{$t('attrezzaggi.edit')}}
-                                    </button>
-                                    <button class="btn-ghost pure-u-1" @click="pendingEdit=null">
-                                        {{ $t('common.cancel') }}
-                                    </button>
-                                </span>
-                            </div>
-                        </td>
-                    </tr>
-                </template>
-            </tbody>
-        </table>
+        <div class="cat-list">
+          <template v-for="row in rows" :key="row.pallet.ID">
+            <article class="cat-card">
+              <div class="cat-card__head">
+                <span class="cat-card__code">#{{row.pallet.ID}} {{(row.pallet.FAMILY || '').trim()}}</span>
+              </div>
+              <div class="attr-badge">
+                <!-- Badge semantico: nudo (warning), Morsa/Attrezzatura
+                     = attrezzaggio COMPLETO (informativi), INCOMPLETO =
+                     morsa senza geometria, ANOMALIA = piu' attrezzature
+                     (dato sporco MOSTRATO, mai nascosto ne' sanato). -->
+                <span v-if="rowState(row)=='bare'" class="badge badge-missing">{{$t('attrezzaggi.bare')}}</span>
+                <span v-else-if="rowState(row)=='vice'" class="badge badge-type">{{$t('attrezzaggi.vice')}}</span>
+                <span v-else-if="rowState(row)=='fixture'" class="badge badge-type">{{$t('attrezzaggi.fixture')}}</span>
+                <!-- (15/9) morsa senza geometria: il PLC non saprebbe
+                     a che quota depositare. Si vede QUI, non come
+                     errore 799 col robot in movimento. -->
+                <span v-else-if="rowState(row)=='vice-incomplete'" class="badge badge-anomaly">{{$t('attrezzaggi.incomplete')}}</span>
+                <span v-else class="badge badge-anomaly">{{$t('attrezzaggi.anomaly')}}</span>
+              </div>
+              <span class="cat-card__desc">{{(row.pallet.DESCR || '').trim()}}</span>
+              <div v-if="rowState(row)=='vice-incomplete'" class="incomplete-hint">{{$t('attrezzaggi.incompleteHint')}}</div>
+              <dl class="cat-card__facts">
+                <div><dt>{{$t('attrezzaggi.position')}}</dt><dd>{{ getPosition(row.pallet) }}</dd></div>
+                <div><dt>{{$t('attrezzaggi.vice')}}</dt>
+                  <dd>
+                    <span v-if="row.vice">{{(row.vice.FAMILY || '').trim()}} {{(row.vice.DESCR || '').trim()}}</span>
+                    <span v-else class="cell-empty">—</span>
+                  </dd>
+                </div>
+                <div class="cat-card__wide"><dt>{{$t('attrezzaggi.fixture')}}</dt>
+                  <dd>
+                    <span v-if="row.fixtures.length>0">
+                      <div v-for="f in row.fixtures" :key="f.FIXTURE_ID">
+                        {{ fixtureName(f.FIXTURE_ID) }}
+                      </div>
+                    </span>
+                    <span v-else class="cell-empty">—</span>
+                  </dd>
+                </div>
+              </dl>
+              <div class="cat-card__actions attr-actions">
+                <div class="attr-actions__row">
+                  <!-- AC: posizione a magazzino del pallet -->
+                  <UiButton variant="secondary" size="min"
+                      @click="openPlace(row.pallet)">
+                      {{$t('attrezzaggi.place')}}
+                  </UiButton>
+                  <!-- (edit-remove-place) MODIFICA: solo montaggi SANI
+                       (vice|fixture) e, dal 15/9, anche gli INCOMPLETI: e' da
+                       li' che si aggiunge la geometria mancante. Sull'anomalia
+                       l'unica azione e' lo smonta (D5). Gating D1: sempre
+                       visibile, disabilitato col motivo sotto. -->
+                  <UiButton v-if="rowState(row)!='bare' && rowState(row)!='anomaly'"
+                      variant="secondary" size="min"
+                      :disabled="rowBlockReason(row)!=''"
+                      @click="askEdit(row)">
+                      {{$t('attrezzaggi.edit')}}
+                  </UiButton>
+                </div>
+                <!-- (usabilita' 15/9) gli SMONTA disfano un montaggio: staccati
+                     dalle azioni innocue, ognuno su una riga sua. -->
+                <UiButton v-if="row.vice" class="action-destructive" variant="outline" size="min"
+                    :disabled="rowBlockReason(row)!=''"
+                    @click="askUnmount('vice', row.pallet.ID, row.vice.ID)">
+                    {{$t('attrezzaggi.unmountVice')}}
+                </UiButton>
+                <UiButton v-for="f in row.fixtures" :key="'u'+f.FIXTURE_ID" class="action-destructive" variant="outline" size="min"
+                    :disabled="rowBlockReason(row)!=''"
+                    @click="askUnmount('fixture', row.pallet.ID, f.FIXTURE_ID)">
+                    {{$t('attrezzaggi.unmountFixture')}} {{ row.fixtures.length>1 ? '#'+f.FIXTURE_ID : '' }}
+                </UiButton>
+                <!-- D1: mai bottoni muti — il motivo del blocco -->
+                <div class="action-hint" v-if="rowBlockReason(row)">{{ rowBlockReason(row) }}</div>
+              </div>
+              <!-- conferma dello smonta, col CONTENUTO REALE della card e
+                   conferma RAFFORZATA se il pallet e' a magazzino -->
+              <div v-if="pending && pending.palletID==row.pallet.ID" class="cat-card__confirm">
+                <div class="cat-card__sure">
+                  <b>{{ pending.type=='vice' ? $t('attrezzaggi.sureUnmountVice') : $t('attrezzaggi.sureUnmountFixture') }}</b>
+                  <span class="unmount-detail">{{ pendingDetail(row) }}</span>
+                  <span class="mag-warning" v-if="row.pallet.MAG_POS > 0">{{ $t('attrezzaggi.magWarning') }}</span>
+                </div>
+                <UiButton variant="danger" size="min" @click="confirmUnmount()">
+                  {{$t('attrezzaggi.unmount')}}
+                </UiButton>
+                <UiButton variant="outline" size="min" @click="pending=null">
+                  {{ $t('common.cancel') }}
+                </UiButton>
+              </div>
+              <!-- (edit-remove-place, D1) conferma RAFFORZATA della Modifica
+                   quando il pallet e' A MAGAZZINO: l'attrezzaggio fisico si
+                   fa a banco -->
+              <div v-if="pendingEdit==row.pallet.ID" class="cat-card__confirm">
+                <div class="cat-card__sure">
+                  <b>{{ $t('attrezzaggi.sureEdit') }}</b>
+                  <span class="mag-warning">{{ $t('attrezzaggi.magWarning') }}</span>
+                </div>
+                <UiButton variant="primary" size="min" @click="goEdit(row.pallet.ID)">
+                  {{$t('attrezzaggi.edit')}}
+                </UiButton>
+                <UiButton variant="outline" size="min" @click="pendingEdit=null">
+                  {{ $t('common.cancel') }}
+                </UiButton>
+              </div>
+            </article>
+          </template>
+        </div>
         <StatoElenco
           :stato="statoElenco"
           :vuoto="pallets.length === 0"
           :messaggio-vuoto="$t('attrezzaggi.nessuno')"
           @riprova="getDataTable()"
         />
-        </div>
-
         <!-- AC: dialog posizione a magazzino — overlay canonico (pattern
              mission-dialog delle unit view). Griglia dei 20 posti del
              magazzino pallet: occupati marcati e non selezionabili. -->
@@ -572,23 +563,6 @@ export default {
 </script>
 
 <style scoped>
-    .pure-table{
-        width: inherit;
-    }
-
-    .popUpOnLine .btn-ghost {
-        margin-top: var(--space-2);
-    }
-
-    /* 2px (non 1px --border-card): il popup di conferma deve staccare piu'
-       di un bordo card (pattern FixturesView). */
-    .center {
-        margin: auto;
-        width: 20%;
-        border: 2px solid var(--color-critical);
-        padding: var(--space-6);
-    }
-
     /* Badge semantici (grammatica badge status WORKING/EMPTY delle conf
        view: bg semantico + testo colore pieno + radius-lg).
        AB: warning = pallet nudo ("Da attrezzare"); info = tipo montato
@@ -622,18 +596,23 @@ export default {
         color: var(--text-muted);
     }
 
-    .action-btn {
-        min-height: 44px;              /* azione secondaria in cella: deroga 44 come sidebar/diag */
-        padding: var(--space-1) var(--space-3);
-        font-size: var(--font-size-sm);
-        margin: 2px var(--space-1);
+    /* (v3 fase D) badge su una riga sua: i testi lunghi (INCOMPLETO,
+       ANOMALIA) non tagliano il codice del pallet */
+    .attr-badge { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+    /* (v3 fase D) comandi della card: le innocue in fila, sotto gli smonta */
+    .attr-actions {
+        flex-direction: column;
+        align-items: flex-end;
+        gap: var(--space-2);
     }
+    .attr-actions__row { display: flex; gap: var(--space-2); flex-wrap: wrap; justify-content: flex-end; }
 
     /* (usabilita' 15/9) le azioni che DISFANO un montaggio vanno a capo e si
        staccano da quelle innocue: prima erano in fila a 4 px da Modifica. */
     .action-destructive {
-        display: block;
+        display: inline-flex;
         margin-top: var(--space-4);
+        color: var(--color-danger-fg);
     }
 
     /* AC: overlay canonico (stesso pattern scoped di robotView: overlay a
@@ -753,6 +732,7 @@ export default {
     }
 
     .mag-warning {
+        align-self: flex-start;
         background: var(--color-warning-bg);
         color: var(--color-warning);
         border-radius: var(--radius-md);

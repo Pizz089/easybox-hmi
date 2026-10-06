@@ -1,72 +1,60 @@
 <script setup>
     import { RouterLink, RouterView } from 'vue-router'
     import orderCMD from '../../components/Comands/ComandsRows.vue';
+    import UiButton from '../../components/ui/UiButton.vue';
+    import { Lock, Plus } from 'lucide-vue-next';
     
     import { ref, onMounted } from 'vue'
     import { dataStored } from '../../data';
     const el = ref()
 </script>
 
-<template>   
-      <div class="view-shell view-shell--fill conf-card">
-        <div class="view-header">
-          <h3 class="view-title">{{$t('vice.welcome')}}</h3>
-          <button class="pure-button pure-button-primary"  :class="{'pure-button-disabled':dataStored.userLevel<=1}" :id="locked" @click="createVice()">
+<template>
+      <!-- (v3 fase D) Attrezzaggio · Morse: card come i cataloghi del
+           Magazzino (assets/css/catalog-v3.css), invece della tabella.
+           Comandi, guardie e conferme quelli di prima: Modifica e Cancella dal
+           componente di sempre (ComandsRows, stesse props ed eventi),
+           la conferma di cancellazione nella card con gli stessi testi. Aggiungi spento sotto il livello 2, come prima
+           (pure-button-disabled). tests/test_golden_equivalenza.mjs -->
+      <div class="view-shell view-shell--fill cat">
+        <div class="cat-head">
+          <h2 class="cat-head__title">{{$t('vice.welcome')}}</h2>
+          <UiButton variant="primary" :icon="dataStored.userLevel<=1 ? Lock : Plus"
+                  :disabled="dataStored.userLevel<=1" @click="createVice()">
             {{$t('vice.add_Vice')}}
-          </button>
+          </UiButton>
         </div>
-        <div class="table-scroll">
-        <table class="pure-table pure-table-horizontal">
-            <thead>
-                <tr>
-                    <!--th>ID</th-->
-                    <th>{{$t('vice.name')}}</th>
-                    <th>{{$t('vice.stato')}}</th>
-                    <th>{{$t('vice.family')}}</th>
-                    <th>{{$t('vice.descr')}}</th>
-                    <!-- AF: colonna Posizione rimossa — la posizione vive
-                         SOLO in Attrezzaggi (+ vista Magazzini) -->
-                    <th>{{$t('vice.comands')}}</th>
-                </tr>
-            </thead>
-            <tbody>
-                <template v-for="dt in datiTab" :key="dt.ID" >
-                    <tr :class="{'pure-table-odd':(dt.ID % 2==1)}">
-                        <!--td>{{dt.ID}} </td-->
-                        <td v-if="dt.MAG>0">{{dt.MAG}}.{{dt.MAG_POS}} </td>
-                        <td v-else><strong>{{ $t('common.out') }}</strong></td>
-                            
-                        <td :class="dt.STATUS_DESC">{{ dt.STATUS_DESC.trim() }}</td>
-                        <td>{{dt.FAMILY}} </td>
-                    
-                        <td>{{dt.DESCR.trim()}}</td>
-                        <!-- AF: cella Posizione rimossa -->
-                        <td>
-                            <orderCMD  
-                                modify="true"   @cmdModify="updateVice(dt.ID)"
-                                del="true"      @cmdDel="sicurezza(dt.ID)"
-                            />
-                        </td>
-                    </tr>
-                    <tr v-if="_showPopUp(dt.ID)">
-                        <td class="popUpOnLine" colspan="20" >
-                            <div class="center">
-                                <h3>{{ $t('vice.sure') }}</h3>
-                                <h4>{{ $t('vice.delete') }}</h4>
-                                <span class="pure-g">
-                                    <button class="pure-button-micromission specialCMD pure-u-1" @click="deleteVice(dt.ID)">
-                                        {{ $t('rowCmd.delete') }}
-                                    </button>
-                                    <button class="btn-ghost pure-u-1" @click="showPopUp=0">
-                                        {{ $t('common.cancel') }}
-                                    </button>
-                                </span>
-                            </div>
-                        </td>
-                    </tr>
-                </template>
-            </tbody>
-        </table>
+        <div class="cat-list">
+          <template v-for="dt in datiTab" :key="dt.ID" >
+            <article class="cat-card">
+              <div class="cat-card__head">
+                <span class="cat-card__code">{{dt.FAMILY}}</span>
+              </div>
+              <span class="cat-card__desc">{{dt.DESCR.trim()}}</span>
+              <dl class="cat-card__facts">
+                <div><dt>{{$t('vice.name')}}</dt>
+                  <dd v-if="dt.MAG>0">{{dt.MAG}}.{{dt.MAG_POS}}</dd>
+                  <dd v-else>{{ $t('common.out') }}</dd>
+                </div>
+                <div><dt>{{$t('vice.stato')}}</dt><dd :class="dt.STATUS_DESC">{{ dt.STATUS_DESC.trim() }}</dd></div>
+              </dl>
+              <div class="cat-card__actions">
+                <orderCMD  
+                    modify="true"   @cmdModify="updateVice(dt.ID)"
+                    del="true"      @cmdDel="sicurezza(dt.ID)"
+                />
+              </div>
+              <div v-if="_showPopUp(dt.ID)" class="cat-card__confirm">
+                <div class="cat-card__sure"><b>{{ $t('vice.sure') }}</b><span>{{ $t('vice.delete') }}</span></div>
+                <UiButton variant="danger" size="min" @click="deleteVice(dt.ID)">
+                  {{ $t('rowCmd.delete') }}
+                </UiButton>
+                <UiButton variant="outline" size="min" @click="showPopUp=0">
+                  {{ $t('common.cancel') }}
+                </UiButton>
+              </div>
+            </article>
+          </template>
         </div>
       </div>
 </template>

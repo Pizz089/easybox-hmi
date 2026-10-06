@@ -75,7 +75,8 @@ gv.getDataTable(); await tick();
 check(gv.datiTab.length === 2 && gv.datiTab[1].ID === 26, 'datiTab = 2 righe, la doppia e\' la 26');
 const gvTpl = readFileSync('src/views/conf/GrippersView.vue', 'utf8').slice(0, readFileSync('src/views/conf/GrippersView.vue', 'utf8').lastIndexOf('</template>')).replace(/<!--[\s\S]*?-->/g, '');
 check(!/dt\.SUB_POS==0|dt\.SUB_POS==1|dt\.SUB_POS>1|cell-joined|dt\.SUB_POS<=1/.test(gvTpl), 'via celle unite e gate move su SUB_POS');
-check(/<td>\s*\{\{dt\.FAMILY\.trim\(\)\}\}/.test(gvTpl) && /isTwinGripper\(dt\)/.test(gvTpl) && /gripper\.twinBadge/.test(gvTpl), 'FAMILY sempre nella cella + badge twinBadge');
+// (v3 fase D) le righe sono card: il codice sta nella testata della card
+check(/(<td>|class="cat-card__code">)\s*\{\{dt\.FAMILY\.trim\(\)\}\}/.test(gvTpl) && /isTwinGripper\(dt\)/.test(gvTpl) && /gripper\.twinBadge/.test(gvTpl), 'FAMILY sempre visibile (testata della card) + badge twinBadge');
 check(String(gv.calculatePos(1)).includes('ROBOT'), 'calculatePos: ROBOT per la doppia a bordo');
 gv.datiTab = dedupeGrippers(inShelf);
 check(gv.calculatePos(1) === 3, 'a magazzino: posizione = POS_MAG 3 (non piu\' "3.3")');

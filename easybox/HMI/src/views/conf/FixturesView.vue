@@ -1,6 +1,8 @@
 <script setup>
     import { RouterLink, RouterView } from 'vue-router'
     import orderCMD from '../../components/Comands/ComandsRows.vue';
+    import UiButton from '../../components/ui/UiButton.vue';
+    import { Lock, Plus } from 'lucide-vue-next';
     
     import { ref, onMounted } from 'vue'
     import { dataStored } from '../../data';
@@ -8,101 +10,74 @@
     const el = ref()
 </script>
 
-<template>   
-      <div class="view-shell view-shell--fill conf-card">
-        <div class="view-header">
-          <h3 class="view-title">{{$t('fixture.welcome')}}</h3>
-          <button class="pure-button pure-button-primary" :class="{'pure-button-disabled':dataStored.userLevel<=1}" :id="locked" @click="createfixture()">
+<template>
+      <!-- (v3 fase D) Attrezzaggio · Attrezzature: card come i cataloghi del
+           Magazzino (assets/css/catalog-v3.css), invece della tabella.
+           Comandi, guardie e conferme quelli di prima: Modifica, Cancella e Posiziona dal
+           componente di sempre (ComandsRows, stesse props ed eventi),
+           la conferma di cancellazione nella card con lo stesso testo. Aggiungi spento sotto il livello 2, come prima
+           (pure-button-disabled). tests/test_golden_equivalenza.mjs -->
+      <div class="view-shell view-shell--fill cat">
+        <div class="cat-head">
+          <h2 class="cat-head__title">{{$t('fixture.welcome')}}</h2>
+          <UiButton variant="primary" :icon="dataStored.userLevel<=1 ? Lock : Plus"
+                  :disabled="dataStored.userLevel<=1" @click="createfixture()">
             {{$t('fixture.add_fixture')}}
-          </button>
-          <!--button class="pure-button pure-button-primary" @click="$router.push('/conf/fixtureOnPallet');">
-            {{$t('fixture.PosOnPallet')}}
-          </button-->
+          </UiButton>
         </div>
-        <div class="table-scroll">
-        <table class="pure-table pure-table-horizontal">
-            <thead>
-                <tr>
-                    <!--th>ID</th-->
-                    <th>{{$t('fixture.posizione')}}</th>
-                    <th>{{$t('fixture.stato')}}</th>
-                    <th>{{$t('fixture.family')}}</th>
-                    <th style='width:20%'>{{$t('fixture.descr')}}</th>
-                    <!-- (composizione 16/9) prima si vedeva un solo numero,
-                         FIXTURE.Z, senza sapere da dove venisse. Adesso si
-                         vede DI COSA e' fatta la quota. -->
-                    <th>{{$t('fixture.composition.column')}}</th>
-                    <!--th>{{$t('fixture.posizione')}}</th-->
-                    
-                    <!--th>{{$t('fixture.comands')}}</th-->
-                    <th>&nbsp;</th>
-                </tr>
-            </thead>
-            <tbody>
-                <template v-for="dt in datiTab" :key="dt.ID" >
-                    <tr :class="{'pure-table-odd':(dt.ID % 2==1)}">
-                        <!--td>{{dt.ID}} </td-->
-                        <!--td v-if="dt.MAG>0">{{dt.MAG}}.{{dt.MAG_POS}} </td>
-                        <td v-else><strong>OUT</strong></td-->
+        <div class="cat-list">
+          <template v-for="dt in datiTab" :key="dt.ID" >
+            <article class="cat-card">
+              <div class="cat-card__head">
+                <span class="cat-card__code">{{dt.FAMILY}}</span>
+              </div>
+              <span class="cat-card__desc">{{dt.DESCR.trim()}}</span>
+              <dl class="cat-card__facts">
+                <div><dt>{{$t('fixture.posizione')}}</dt><dd>{{dt.POS_PLANT<=0?'OUT':'PALLET '+dt.POS_PLANT}}</dd></div>
+                <div><dt>{{$t('fixture.stato')}}</dt><dd :class="dt.STATUS_DESC">{{ dt.STATUS_DESC.trim() }}</dd></div>
+                <!-- (composizione 16/9) DI COSA e' fatta la quota, non un
+                     numero solo -->
+                <div class="cat-card__wide comp-cell"><dt>{{$t('fixture.composition.column')}}</dt>
+                  <dd>
+                    <template v-if="stato(dt) === 'coerente'">
+                      <span class="comp-sum">{{ $t('fixture.composition.sum', quote(dt)) }}</span>
+                    </template>
 
-                        <td>{{dt.POS_PLANT<=0?'OUT':'PALLET '+dt.POS_PLANT}}</td>
-                            
-                        <td :class="dt.STATUS_DESC">{{ dt.STATUS_DESC.trim() }}</td>
-                        <td>{{dt.FAMILY}} </td>
-                    
-                        <td>{{dt.DESCR.trim()}}</td>
+                    <template v-else-if="stato(dt) === 'diverge'">
+                      <span class="badge badge-diverge">{{ $t('fixture.composition.divergeBadge') }}</span>
+                      <div class="comp-hint">{{ $t('fixture.composition.divergeWhy', quote(dt)) }}</div>
+                      <div class="comp-hint">{{ $t('fixture.composition.divergeWhat') }}</div>
+                    </template>
 
-                        <td class="comp-cell">
-                          <template v-if="stato(dt) === 'coerente'">
-                            <span class="comp-sum">{{ $t('fixture.composition.sum', quote(dt)) }}</span>
-                          </template>
+                    <!-- non e' un guasto: e' una composizione che nessuno
+                         ha ancora dichiarato. Tono neutro, apposta. -->
+                    <template v-else-if="stato(dt) === 'nonDichiarata'">
+                      <span class="badge badge-undeclared">{{ $t('fixture.composition.undeclaredBadge') }}</span>
+                      <div class="comp-hint">{{ $t('fixture.composition.undeclaredWhat') }}</div>
+                    </template>
 
-                          <template v-else-if="stato(dt) === 'diverge'">
-                            <span class="badge badge-diverge">{{ $t('fixture.composition.divergeBadge') }}</span>
-                            <div class="comp-hint">{{ $t('fixture.composition.divergeWhy', quote(dt)) }}</div>
-                            <div class="comp-hint">{{ $t('fixture.composition.divergeWhat') }}</div>
-                          </template>
-
-                          <!-- non e' un guasto: e' una composizione che nessuno
-                               ha ancora dichiarato. Tono neutro, apposta. -->
-                          <template v-else-if="stato(dt) === 'nonDichiarata'">
-                            <span class="badge badge-undeclared">{{ $t('fixture.composition.undeclaredBadge') }}</span>
-                            <div class="comp-hint">{{ $t('fixture.composition.undeclaredWhat') }}</div>
-                          </template>
-
-                          <span v-else class="cell-empty">&mdash;</span>
-                        </td>
-                        
-                        <td>
-                            <!-- U-FASE2 (punto 6): riattivato il bottone place
-                                 verso FixtureOnPallet — era commentato e
-                                 callPage puntava a un path inesistente. -->
-                            <orderCMD
-                                modify="true"   @cmdModify="updatefixture(dt.ID)"
-                                del="true"      @cmdDel="sicurezza(dt.ID)"
-                                place="true"    @cmdPlace="callPage(dt.ID)"
-                            />
-                        </td>
-                    </tr>
-                    <tr v-if="_showPopUp(dt.ID)">
-                        <td class="popUpOnLine" colspan="20" >
-                            <div class="center">
-                                <h3>{{ $t('fixture.sure') }}</h3>
-                                <!--h4>{{ $t('fixture.delete') }}</h4-->
-                                <span class="pure-g">
-                                    <button class="pure-button-micromission specialCMD pure-u-1" @click="deletefixture(dt.ID)">
-                                        {{ $t('rowCmd.delete') }}
-                                    </button>
-                                    <button class="btn-ghost pure-u-1" @click="showPopUp=0">
-                                        {{ $t('common.cancel') }}
-                                    </button>
-                                </span>
-                            </div>
-                        </td>
-                    </tr>
-                </template>
-            </tbody>
-        </table>
+                    <span v-else class="cell-empty">&mdash;</span>
+                  </dd>
+                </div>
+              </dl>
+              <div class="cat-card__actions">
+                <orderCMD
+                    modify="true"   @cmdModify="updatefixture(dt.ID)"
+                    del="true"      @cmdDel="sicurezza(dt.ID)"
+                    place="true"    @cmdPlace="callPage(dt.ID)"
+                />
+              </div>
+              <div v-if="_showPopUp(dt.ID)" class="cat-card__confirm">
+                <div class="cat-card__sure"><b>{{ $t('fixture.sure') }}</b></div>
+                <UiButton variant="danger" size="min" @click="deletefixture(dt.ID)">
+                  {{ $t('rowCmd.delete') }}
+                </UiButton>
+                <UiButton variant="outline" size="min" @click="showPopUp=0">
+                  {{ $t('common.cancel') }}
+                </UiButton>
+              </div>
+            </article>
+          </template>
         </div>
       </div>
 </template>

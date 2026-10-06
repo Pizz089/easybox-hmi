@@ -1,6 +1,8 @@
 <script setup>
     import { RouterLink, RouterView } from 'vue-router'
     import orderCMD from '../../components/Comands/ComandsRows.vue';
+    import UiButton from '../../components/ui/UiButton.vue';
+    import { Lock, Plus } from 'lucide-vue-next';
     
     import { ref, onMounted } from 'vue'
     import { dataStored } from '../../data';
@@ -11,89 +13,63 @@
     const el = ref()
 </script>
 
-<template>   
-      <div class="view-shell view-shell--fill conf-card">
-        <div class="view-header">
-          <h3 class="view-title">{{$t('pallet.welcome')}}</h3>
-          <button class="pure-button pure-button-primary" :class="{'pure-button-disabled':dataStored.userLevel<=1}" :id="locked" @click="createPallet()">
+<template>
+      <!-- (v3 fase D) Attrezzaggio · Pallet: card come i cataloghi del
+           Magazzino (assets/css/catalog-v3.css), invece della tabella.
+           Comandi, guardie e conferme quelli di prima: Modifica, Cancella e Muovi dal
+           componente di sempre (ComandsRows, stesse props ed eventi),
+           la conferma di cancellazione nella card con gli stessi testi. Aggiungi spento sotto il livello 2, come prima
+           (pure-button-disabled). tests/test_golden_equivalenza.mjs -->
+      <div class="view-shell view-shell--fill cat">
+        <div class="cat-head">
+          <h2 class="cat-head__title">{{$t('pallet.welcome')}}</h2>
+          <UiButton variant="primary" :icon="dataStored.userLevel<=1 ? Lock : Plus"
+                  :disabled="dataStored.userLevel<=1" @click="createPallet()">
             {{$t('pallet.add_Pallet')}}
-          </button>
+          </UiButton>
         </div>
-        <div class="table-scroll">
-        <table class="pure-table pure-table-horizontal">
-            <thead>
-                <tr>
-                    <!--th>ID</th-->
-                    <th>{{$t('pallet.name')}}</th>
-                    <!--th>{{$t('pallet.stato')}}</th-->
-                    <th style="width:20%">{{$t('pallet.family')}}</th>
-                    <th>{{$t('pallet.descr')}}</th>
-                    <!-- AF: colonna Posizione rimossa — la posizione vive
-                         SOLO in Attrezzaggi (+ vista Magazzini) -->
-                    <th>{{$t('pallet.comands')}}</th>
-                </tr>
-            </thead>
-            <tbody>
-                <template v-for="dt in datiTab" :key="dt.ID" >
-                    <tr :class="{'pure-table-odd':(dt.ID % 2==1)}">
-                        <!--td>{{dt.ID}} </td-->
-                        <td v-if="dt.MAG_POS>0">{{dt.MAG}}.{{dt.MAG_POS}} </td>
-                        <!-- (16/9) "OUT" non diceva DOVE: col pallet in macchina
-                             l'operatore non capiva perche' non poteva comandarlo -->
-                        <td v-else-if="inMachine(dt)"><strong>{{ $t('pallet.inMachine') }}</strong></td>
-                        <td v-else><strong>{{ $t('common.out') }}</strong></td>
-                            
-                        <!--td :class="dt.STATUS_DESC">{{ dt.STATUS_DESC.trim() }}</td-->
-                        <td>{{dt.FAMILY}} </td>
-                    
-                        <td>{{dt.DESCR.trim()}}</td>
-                        <!-- AF: cella Posizione rimossa (decodifica inline
-                             morta con la colonna) -->
-                        <td>
-                            <!-- (pallet MC 16/9) il gate del bottone chiedeva
-                                 MAG_POS >= 0: per il pallet FUORI magazzino, cioe'
-                                 proprio quello in macchina, non veniva nemmeno
-                                 renderizzato e l'operazione spariva dal pannello.
-                                 Adesso il gate e' "la posizione si sa comporre", e
-                                 per la macchina vale 0 come chiede FB7. -->
-                            <orderCMD  
-                                modify="true"   @cmdModify="updatePallet(dt.ID)"
-                                del="true"      @cmdDel="sicurezza(dt.ID)"
-												:move="movePos(dt) !== null && (palletID_OnRobot==0 || palletID_OnRobot==dt.ID)"     
-                                                @cmdMove="sendToRobot( (dataGripper.STATUS==2?'13;':'14;')+
-                                                    dataStored.Pallet+';'+
-                                                    dt.ID+';'+
-                                                    movePos(dt)
-                                                )"
-                                :moveDisable="!dataStored.cmdActiveMission"                                             
-                            />
-                            <!--h6>{{dataGripper.STATUS}}
-                                <br>{{dataGripper.STATUS==2?'13;':'14;'}}
-                                {{dataStored.Pallet+';'}}
-                                {{dt.ID+';'}}
-                                {{dt.MAG_POS}}
-                            </h6-->
-                        </td>
-                    </tr>
-                    <tr v-if="_showPopUp(dt.ID)">
-                        <td class="popUpOnLine" colspan="20" >
-                            <div class="center">
-                                <h3>{{ $t('pallet.sure') }}</h3>
-                                <h4>{{ $t('pallet.delete') }}</h4>
-                                <span class="pure-g">
-                                    <button class="pure-button-micromission specialCMD pure-u-1" @click="deletePallet(dt.ID)">
-                                        {{ $t('rowCmd.delete') }}
-                                    </button>
-                                    <button class="btn-ghost pure-u-1" @click="showPopUp=0">
-                                        {{ $t('common.cancel') }}
-                                    </button>
-                                </span>
-                            </div>
-                        </td>
-                    </tr>
-                </template>
-            </tbody>
-        </table>
+        <div class="cat-list">
+          <template v-for="dt in datiTab" :key="dt.ID" >
+            <article class="cat-card">
+              <div class="cat-card__head">
+                <span class="cat-card__code">{{dt.FAMILY}}</span>
+              </div>
+              <span class="cat-card__desc">{{dt.DESCR.trim()}}</span>
+              <dl class="cat-card__facts">
+                <!-- (16/9) "OUT" non diceva DOVE: col pallet in macchina
+                     l'operatore non capiva perche' non poteva comandarlo -->
+                <div><dt>{{$t('pallet.name')}}</dt>
+                  <dd v-if="dt.MAG_POS>0">{{dt.MAG}}.{{dt.MAG_POS}}</dd>
+                  <dd v-else-if="inMachine(dt)">{{ $t('pallet.inMachine') }}</dd>
+                  <dd v-else>{{ $t('common.out') }}</dd>
+                </div>
+              </dl>
+              <div class="cat-card__actions">
+                <!-- (pallet MC 16/9) il gate del Muovi e' "la posizione si sa
+                     comporre": per la macchina vale 0, come chiede FB7 -->
+                                <orderCMD  
+                                    modify="true"   @cmdModify="updatePallet(dt.ID)"
+                                    del="true"      @cmdDel="sicurezza(dt.ID)"
+                :move="movePos(dt) !== null && (palletID_OnRobot==0 || palletID_OnRobot==dt.ID)"     
+                                                    @cmdMove="sendToRobot( (dataGripper.STATUS==2?'13;':'14;')+
+                                                        dataStored.Pallet+';'+
+                                                        dt.ID+';'+
+                                                        movePos(dt)
+                                                    )"
+                                    :moveDisable="!dataStored.cmdActiveMission"                                             
+                                />
+              </div>
+              <div v-if="_showPopUp(dt.ID)" class="cat-card__confirm">
+                <div class="cat-card__sure"><b>{{ $t('pallet.sure') }}</b><span>{{ $t('pallet.delete') }}</span></div>
+                <UiButton variant="danger" size="min" @click="deletePallet(dt.ID)">
+                  {{ $t('rowCmd.delete') }}
+                </UiButton>
+                <UiButton variant="outline" size="min" @click="showPopUp=0">
+                  {{ $t('common.cancel') }}
+                </UiButton>
+              </div>
+            </article>
+          </template>
         </div>
       </div>
 </template>

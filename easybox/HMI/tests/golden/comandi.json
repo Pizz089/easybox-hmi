@@ -7673,12 +7673,12 @@
    ],
    "controlli": [
     {
-     "id": "button@click $router.push('/conf/Attrezzaggio')",
+     "id": "UiButton@click $router.push('/conf/Attrezzaggio')",
      "etichetta": "Nuovo attrezzaggio",
      "evento": "click",
      "handler": "$router.push('/conf/Attrezzaggio')",
-     "disabled": "",
-     "classe": "{'pure-button-disabled':dataStored.userLevel<=1}",
+     "disabled": "dataStored.userLevel<=1",
+     "classe": "",
      "esiti": {
       "tre pallet liv2": {
        "abilitato": true,
@@ -7774,7 +7774,7 @@
      }
     },
     {
-     "id": "button@click openPlace(row.pallet)",
+     "id": "UiButton@click openPlace(row.pallet)",
      "etichetta": "Posiziona",
      "evento": "click",
      "handler": "openPlace(row.pallet)",
@@ -9067,7 +9067,7 @@
      }
     },
     {
-     "id": "button@click askEdit(row)",
+     "id": "UiButton@click askEdit(row)",
      "etichetta": "Modifica",
      "evento": "click",
      "handler": "askEdit(row)",
@@ -9083,7 +9083,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click goEdit(row.pallet.ID)",
+          "controllo": "UiButton@click goEdit(row.pallet.ID)",
           "etichetta": "Modifica",
           "abilitato": true,
           "effetti": [
@@ -9091,7 +9091,7 @@
           ]
          },
          {
-          "controllo": "button@click pendingEdit=null",
+          "controllo": "UiButton@click pendingEdit=null",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -9120,7 +9120,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click goEdit(row.pallet.ID)",
+          "controllo": "UiButton@click goEdit(row.pallet.ID)",
           "etichetta": "Modifica",
           "abilitato": true,
           "effetti": [
@@ -9128,7 +9128,7 @@
           ]
          },
          {
-          "controllo": "button@click pendingEdit=null",
+          "controllo": "UiButton@click pendingEdit=null",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -9157,7 +9157,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click goEdit(row.pallet.ID)",
+          "controllo": "UiButton@click goEdit(row.pallet.ID)",
           "etichetta": "Modifica",
           "abilitato": true,
           "effetti": [
@@ -9165,7 +9165,7 @@
           ]
          },
          {
-          "controllo": "button@click pendingEdit=null",
+          "controllo": "UiButton@click pendingEdit=null",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -9217,7 +9217,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click goEdit(row.pallet.ID)",
+          "controllo": "UiButton@click goEdit(row.pallet.ID)",
           "etichetta": "Modifica",
           "abilitato": true,
           "effetti": [
@@ -9225,7 +9225,7 @@
           ]
          },
          {
-          "controllo": "button@click pendingEdit=null",
+          "controllo": "UiButton@click pendingEdit=null",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -9279,7 +9279,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click goEdit(row.pallet.ID)",
+          "controllo": "UiButton@click goEdit(row.pallet.ID)",
           "etichetta": "Modifica",
           "abilitato": true,
           "effetti": [
@@ -9287,7 +9287,7 @@
           ]
          },
          {
-          "controllo": "button@click pendingEdit=null",
+          "controllo": "UiButton@click pendingEdit=null",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -9316,7 +9316,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click goEdit(row.pallet.ID)",
+          "controllo": "UiButton@click goEdit(row.pallet.ID)",
           "etichetta": "Modifica",
           "abilitato": true,
           "effetti": [
@@ -9324,7 +9324,7 @@
           ]
          },
          {
-          "controllo": "button@click pendingEdit=null",
+          "controllo": "UiButton@click pendingEdit=null",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -9353,7 +9353,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click goEdit(row.pallet.ID)",
+          "controllo": "UiButton@click goEdit(row.pallet.ID)",
           "etichetta": "Modifica",
           "abilitato": true,
           "effetti": [
@@ -9361,7 +9361,7 @@
           ]
          },
          {
-          "controllo": "button@click pendingEdit=null",
+          "controllo": "UiButton@click pendingEdit=null",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -9390,7 +9390,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click goEdit(row.pallet.ID)",
+          "controllo": "UiButton@click goEdit(row.pallet.ID)",
           "etichetta": "Modifica",
           "abilitato": true,
           "effetti": [
@@ -9398,7 +9398,7 @@
           ]
          },
          {
-          "controllo": "button@click pendingEdit=null",
+          "controllo": "UiButton@click pendingEdit=null",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -9427,7 +9427,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click goEdit(row.pallet.ID)",
+          "controllo": "UiButton@click goEdit(row.pallet.ID)",
           "etichetta": "Modifica",
           "abilitato": true,
           "effetti": [
@@ -9435,7 +9435,7 @@
           ]
          },
          {
-          "controllo": "button@click pendingEdit=null",
+          "controllo": "UiButton@click pendingEdit=null",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -9450,7 +9450,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click goEdit(row.pallet.ID)",
+          "controllo": "UiButton@click goEdit(row.pallet.ID)",
           "etichetta": "Modifica",
           "abilitato": true,
           "effetti": [
@@ -9458,7 +9458,7 @@
           ]
          },
          {
-          "controllo": "button@click pendingEdit=null",
+          "controllo": "UiButton@click pendingEdit=null",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -9476,7 +9476,7 @@
      }
     },
     {
-     "id": "button@click askUnmount('vice', row.pallet.ID, row.vice.ID)",
+     "id": "UiButton@click askUnmount('vice', row.pallet.ID, row.vice.ID)",
      "etichetta": "Smonta morsa",
      "evento": "click",
      "handler": "askUnmount('vice', row.pallet.ID, row.vice.ID)",
@@ -9492,7 +9492,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click confirmUnmount()",
+          "controllo": "UiButton@click confirmUnmount()",
           "etichetta": "SMONTA",
           "abilitato": true,
           "effetti": [
@@ -9506,7 +9506,7 @@
           ]
          },
          {
-          "controllo": "button@click pending=null",
+          "controllo": "UiButton@click pending=null",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -9522,7 +9522,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click confirmUnmount()",
+          "controllo": "UiButton@click confirmUnmount()",
           "etichetta": "SMONTA",
           "abilitato": true,
           "effetti": [
@@ -9536,7 +9536,7 @@
           ]
          },
          {
-          "controllo": "button@click pending=null",
+          "controllo": "UiButton@click pending=null",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -9553,7 +9553,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click confirmUnmount()",
+          "controllo": "UiButton@click confirmUnmount()",
           "etichetta": "SMONTA",
           "abilitato": true,
           "effetti": [
@@ -9567,7 +9567,7 @@
           ]
          },
          {
-          "controllo": "button@click pending=null",
+          "controllo": "UiButton@click pending=null",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -9583,7 +9583,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click confirmUnmount()",
+          "controllo": "UiButton@click confirmUnmount()",
           "etichetta": "SMONTA",
           "abilitato": true,
           "effetti": [
@@ -9597,7 +9597,7 @@
           ]
          },
          {
-          "controllo": "button@click pending=null",
+          "controllo": "UiButton@click pending=null",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -9614,7 +9614,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click confirmUnmount()",
+          "controllo": "UiButton@click confirmUnmount()",
           "etichetta": "SMONTA",
           "abilitato": true,
           "effetti": [
@@ -9628,7 +9628,7 @@
           ]
          },
          {
-          "controllo": "button@click pending=null",
+          "controllo": "UiButton@click pending=null",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -9644,7 +9644,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click confirmUnmount()",
+          "controllo": "UiButton@click confirmUnmount()",
           "etichetta": "SMONTA",
           "abilitato": true,
           "effetti": [
@@ -9658,7 +9658,7 @@
           ]
          },
          {
-          "controllo": "button@click pending=null",
+          "controllo": "UiButton@click pending=null",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -9681,7 +9681,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click confirmUnmount()",
+          "controllo": "UiButton@click confirmUnmount()",
           "etichetta": "SMONTA",
           "abilitato": true,
           "effetti": [
@@ -9695,7 +9695,7 @@
           ]
          },
          {
-          "controllo": "button@click pending=null",
+          "controllo": "UiButton@click pending=null",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -9723,7 +9723,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click confirmUnmount()",
+          "controllo": "UiButton@click confirmUnmount()",
           "etichetta": "SMONTA",
           "abilitato": true,
           "effetti": [
@@ -9737,7 +9737,7 @@
           ]
          },
          {
-          "controllo": "button@click pending=null",
+          "controllo": "UiButton@click pending=null",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -9758,7 +9758,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click confirmUnmount()",
+          "controllo": "UiButton@click confirmUnmount()",
           "etichetta": "SMONTA",
           "abilitato": true,
           "effetti": [
@@ -9772,7 +9772,7 @@
           ]
          },
          {
-          "controllo": "button@click pending=null",
+          "controllo": "UiButton@click pending=null",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -9788,7 +9788,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click confirmUnmount()",
+          "controllo": "UiButton@click confirmUnmount()",
           "etichetta": "SMONTA",
           "abilitato": true,
           "effetti": [
@@ -9802,7 +9802,7 @@
           ]
          },
          {
-          "controllo": "button@click pending=null",
+          "controllo": "UiButton@click pending=null",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -9819,7 +9819,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click confirmUnmount()",
+          "controllo": "UiButton@click confirmUnmount()",
           "etichetta": "SMONTA",
           "abilitato": true,
           "effetti": [
@@ -9833,7 +9833,7 @@
           ]
          },
          {
-          "controllo": "button@click pending=null",
+          "controllo": "UiButton@click pending=null",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -9849,7 +9849,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click confirmUnmount()",
+          "controllo": "UiButton@click confirmUnmount()",
           "etichetta": "SMONTA",
           "abilitato": true,
           "effetti": [
@@ -9863,7 +9863,7 @@
           ]
          },
          {
-          "controllo": "button@click pending=null",
+          "controllo": "UiButton@click pending=null",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -9880,7 +9880,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click confirmUnmount()",
+          "controllo": "UiButton@click confirmUnmount()",
           "etichetta": "SMONTA",
           "abilitato": true,
           "effetti": [
@@ -9894,7 +9894,7 @@
           ]
          },
          {
-          "controllo": "button@click pending=null",
+          "controllo": "UiButton@click pending=null",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -9910,7 +9910,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click confirmUnmount()",
+          "controllo": "UiButton@click confirmUnmount()",
           "etichetta": "SMONTA",
           "abilitato": true,
           "effetti": [
@@ -9924,7 +9924,7 @@
           ]
          },
          {
-          "controllo": "button@click pending=null",
+          "controllo": "UiButton@click pending=null",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -9941,7 +9941,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click confirmUnmount()",
+          "controllo": "UiButton@click confirmUnmount()",
           "etichetta": "SMONTA",
           "abilitato": true,
           "effetti": [
@@ -9955,7 +9955,7 @@
           ]
          },
          {
-          "controllo": "button@click pending=null",
+          "controllo": "UiButton@click pending=null",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -9971,7 +9971,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click confirmUnmount()",
+          "controllo": "UiButton@click confirmUnmount()",
           "etichetta": "SMONTA",
           "abilitato": true,
           "effetti": [
@@ -9985,7 +9985,7 @@
           ]
          },
          {
-          "controllo": "button@click pending=null",
+          "controllo": "UiButton@click pending=null",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -10002,7 +10002,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click confirmUnmount()",
+          "controllo": "UiButton@click confirmUnmount()",
           "etichetta": "SMONTA",
           "abilitato": true,
           "effetti": [
@@ -10016,7 +10016,7 @@
           ]
          },
          {
-          "controllo": "button@click pending=null",
+          "controllo": "UiButton@click pending=null",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -10032,7 +10032,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click confirmUnmount()",
+          "controllo": "UiButton@click confirmUnmount()",
           "etichetta": "SMONTA",
           "abilitato": true,
           "effetti": [
@@ -10046,7 +10046,7 @@
           ]
          },
          {
-          "controllo": "button@click pending=null",
+          "controllo": "UiButton@click pending=null",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -10063,7 +10063,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click confirmUnmount()",
+          "controllo": "UiButton@click confirmUnmount()",
           "etichetta": "SMONTA",
           "abilitato": true,
           "effetti": [
@@ -10077,7 +10077,7 @@
           ]
          },
          {
-          "controllo": "button@click pending=null",
+          "controllo": "UiButton@click pending=null",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -10093,7 +10093,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click confirmUnmount()",
+          "controllo": "UiButton@click confirmUnmount()",
           "etichetta": "SMONTA",
           "abilitato": true,
           "effetti": [
@@ -10107,7 +10107,7 @@
           ]
          },
          {
-          "controllo": "button@click pending=null",
+          "controllo": "UiButton@click pending=null",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -10118,7 +10118,7 @@
      }
     },
     {
-     "id": "button@click askUnmount('fixture', row.pallet.ID, f.FIXTURE_ID)",
+     "id": "UiButton@click askUnmount('fixture', row.pallet.ID, f.FIXTURE_ID)",
      "etichetta": "Smonta attrezzatura {{row.fixtures.length>1 ? '#'+f.FIXTURE_ID : ''}}",
      "evento": "click",
      "handler": "askUnmount('fixture', row.pallet.ID, f.FIXTURE_ID)",
@@ -10134,7 +10134,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click confirmUnmount()",
+          "controllo": "UiButton@click confirmUnmount()",
           "etichetta": "SMONTA",
           "abilitato": true,
           "effetti": [
@@ -10148,7 +10148,7 @@
           ]
          },
          {
-          "controllo": "button@click pending=null",
+          "controllo": "UiButton@click pending=null",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -10170,7 +10170,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click confirmUnmount()",
+          "controllo": "UiButton@click confirmUnmount()",
           "etichetta": "SMONTA",
           "abilitato": true,
           "effetti": [
@@ -10184,7 +10184,7 @@
           ]
          },
          {
-          "controllo": "button@click pending=null",
+          "controllo": "UiButton@click pending=null",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -10206,7 +10206,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click confirmUnmount()",
+          "controllo": "UiButton@click confirmUnmount()",
           "etichetta": "SMONTA",
           "abilitato": true,
           "effetti": [
@@ -10220,7 +10220,7 @@
           ]
          },
          {
-          "controllo": "button@click pending=null",
+          "controllo": "UiButton@click pending=null",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -10254,7 +10254,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click confirmUnmount()",
+          "controllo": "UiButton@click confirmUnmount()",
           "etichetta": "SMONTA",
           "abilitato": true,
           "effetti": [
@@ -10268,7 +10268,7 @@
           ]
          },
          {
-          "controllo": "button@click pending=null",
+          "controllo": "UiButton@click pending=null",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -10283,7 +10283,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click confirmUnmount()",
+          "controllo": "UiButton@click confirmUnmount()",
           "etichetta": "SMONTA",
           "abilitato": true,
           "effetti": [
@@ -10297,7 +10297,7 @@
           ]
          },
          {
-          "controllo": "button@click pending=null",
+          "controllo": "UiButton@click pending=null",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -10343,7 +10343,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click confirmUnmount()",
+          "controllo": "UiButton@click confirmUnmount()",
           "etichetta": "SMONTA",
           "abilitato": true,
           "effetti": [
@@ -10357,7 +10357,7 @@
           ]
          },
          {
-          "controllo": "button@click pending=null",
+          "controllo": "UiButton@click pending=null",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -10379,7 +10379,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click confirmUnmount()",
+          "controllo": "UiButton@click confirmUnmount()",
           "etichetta": "SMONTA",
           "abilitato": true,
           "effetti": [
@@ -10393,7 +10393,7 @@
           ]
          },
          {
-          "controllo": "button@click pending=null",
+          "controllo": "UiButton@click pending=null",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -10415,7 +10415,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click confirmUnmount()",
+          "controllo": "UiButton@click confirmUnmount()",
           "etichetta": "SMONTA",
           "abilitato": true,
           "effetti": [
@@ -10429,7 +10429,7 @@
           ]
          },
          {
-          "controllo": "button@click pending=null",
+          "controllo": "UiButton@click pending=null",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -10451,7 +10451,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click confirmUnmount()",
+          "controllo": "UiButton@click confirmUnmount()",
           "etichetta": "SMONTA",
           "abilitato": true,
           "effetti": [
@@ -10465,7 +10465,7 @@
           ]
          },
          {
-          "controllo": "button@click pending=null",
+          "controllo": "UiButton@click pending=null",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -10487,7 +10487,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click confirmUnmount()",
+          "controllo": "UiButton@click confirmUnmount()",
           "etichetta": "SMONTA",
           "abilitato": true,
           "effetti": [
@@ -10501,7 +10501,7 @@
           ]
          },
          {
-          "controllo": "button@click pending=null",
+          "controllo": "UiButton@click pending=null",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -10523,7 +10523,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click confirmUnmount()",
+          "controllo": "UiButton@click confirmUnmount()",
           "etichetta": "SMONTA",
           "abilitato": true,
           "effetti": [
@@ -10537,7 +10537,7 @@
           ]
          },
          {
-          "controllo": "button@click pending=null",
+          "controllo": "UiButton@click pending=null",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -10552,7 +10552,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click confirmUnmount()",
+          "controllo": "UiButton@click confirmUnmount()",
           "etichetta": "SMONTA",
           "abilitato": true,
           "effetti": [
@@ -10566,7 +10566,7 @@
           ]
          },
          {
-          "controllo": "button@click pending=null",
+          "controllo": "UiButton@click pending=null",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -10577,7 +10577,7 @@
      }
     },
     {
-     "id": "button@click confirmUnmount()",
+     "id": "UiButton@click confirmUnmount()",
      "etichetta": "SMONTA",
      "evento": "click",
      "handler": "confirmUnmount()",
@@ -10685,7 +10685,7 @@
      }
     },
     {
-     "id": "button@click pending=null",
+     "id": "UiButton@click pending=null",
      "etichetta": "Annulla",
      "evento": "click",
      "handler": "pending=null",
@@ -10770,7 +10770,7 @@
      }
     },
     {
-     "id": "button@click goEdit(row.pallet.ID)",
+     "id": "UiButton@click goEdit(row.pallet.ID)",
      "etichetta": "Modifica",
      "evento": "click",
      "handler": "goEdit(row.pallet.ID)",
@@ -10851,7 +10851,7 @@
      }
     },
     {
-     "id": "button@click pendingEdit=null",
+     "id": "UiButton@click pendingEdit=null",
      "etichetta": "Annulla",
      "evento": "click",
      "handler": "pendingEdit=null",
@@ -12276,12 +12276,12 @@
    ],
    "controlli": [
     {
-     "id": "button@click createPallet()",
+     "id": "UiButton@click createPallet()",
      "etichetta": "Aggiungi tipo pallet",
      "evento": "click",
      "handler": "createPallet()",
-     "disabled": "",
-     "classe": "{'pure-button-disabled':dataStored.userLevel<=1}",
+     "disabled": "dataStored.userLevel<=1",
+     "classe": "",
      "esiti": {
       "prelievo liv2": {
        "abilitato": true,
@@ -12420,7 +12420,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click deletePallet(dt.ID)",
+          "controllo": "UiButton@click deletePallet(dt.ID)",
           "etichetta": "Cancella",
           "abilitato": true,
           "effetti": [
@@ -12428,7 +12428,7 @@
           ]
          },
          {
-          "controllo": "button@click showPopUp=0",
+          "controllo": "UiButton@click showPopUp=0",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -12443,7 +12443,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click deletePallet(dt.ID)",
+          "controllo": "UiButton@click deletePallet(dt.ID)",
           "etichetta": "Cancella",
           "abilitato": true,
           "effetti": [
@@ -12451,7 +12451,7 @@
           ]
          },
          {
-          "controllo": "button@click showPopUp=0",
+          "controllo": "UiButton@click showPopUp=0",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -12468,7 +12468,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click deletePallet(dt.ID)",
+          "controllo": "UiButton@click deletePallet(dt.ID)",
           "etichetta": "Cancella",
           "abilitato": true,
           "effetti": [
@@ -12476,7 +12476,7 @@
           ]
          },
          {
-          "controllo": "button@click showPopUp=0",
+          "controllo": "UiButton@click showPopUp=0",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -12491,7 +12491,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click deletePallet(dt.ID)",
+          "controllo": "UiButton@click deletePallet(dt.ID)",
           "etichetta": "Cancella",
           "abilitato": true,
           "effetti": [
@@ -12499,7 +12499,7 @@
           ]
          },
          {
-          "controllo": "button@click showPopUp=0",
+          "controllo": "UiButton@click showPopUp=0",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -12516,7 +12516,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click deletePallet(dt.ID)",
+          "controllo": "UiButton@click deletePallet(dt.ID)",
           "etichetta": "Cancella",
           "abilitato": true,
           "effetti": [
@@ -12524,7 +12524,7 @@
           ]
          },
          {
-          "controllo": "button@click showPopUp=0",
+          "controllo": "UiButton@click showPopUp=0",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -12539,7 +12539,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click deletePallet(dt.ID)",
+          "controllo": "UiButton@click deletePallet(dt.ID)",
           "etichetta": "Cancella",
           "abilitato": true,
           "effetti": [
@@ -12547,7 +12547,7 @@
           ]
          },
          {
-          "controllo": "button@click showPopUp=0",
+          "controllo": "UiButton@click showPopUp=0",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -12564,7 +12564,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click deletePallet(dt.ID)",
+          "controllo": "UiButton@click deletePallet(dt.ID)",
           "etichetta": "Cancella",
           "abilitato": true,
           "effetti": [
@@ -12572,7 +12572,7 @@
           ]
          },
          {
-          "controllo": "button@click showPopUp=0",
+          "controllo": "UiButton@click showPopUp=0",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -12589,7 +12589,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click deletePallet(dt.ID)",
+          "controllo": "UiButton@click deletePallet(dt.ID)",
           "etichetta": "Cancella",
           "abilitato": true,
           "effetti": [
@@ -12597,7 +12597,7 @@
           ]
          },
          {
-          "controllo": "button@click showPopUp=0",
+          "controllo": "UiButton@click showPopUp=0",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -12696,7 +12696,7 @@
      }
     },
     {
-     "id": "button@click deletePallet(dt.ID)",
+     "id": "UiButton@click deletePallet(dt.ID)",
      "etichetta": "Cancella",
      "evento": "click",
      "handler": "deletePallet(dt.ID)",
@@ -12733,7 +12733,7 @@
      }
     },
     {
-     "id": "button@click showPopUp=0",
+     "id": "UiButton@click showPopUp=0",
      "etichetta": "Annulla",
      "evento": "click",
      "handler": "showPopUp=0",
@@ -12843,12 +12843,12 @@
    ],
    "controlli": [
     {
-     "id": "button@click createVice()",
+     "id": "UiButton@click createVice()",
      "etichetta": "Aggiungi tipo morsa",
      "evento": "click",
      "handler": "createVice()",
-     "disabled": "",
-     "classe": "{'pure-button-disabled':dataStored.userLevel<=1}",
+     "disabled": "dataStored.userLevel<=1",
+     "classe": "",
      "esiti": {
       "tre morse liv2": {
        "abilitato": true,
@@ -12999,7 +12999,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click deleteVice(dt.ID)",
+          "controllo": "UiButton@click deleteVice(dt.ID)",
           "etichetta": "Cancella",
           "abilitato": true,
           "effetti": [
@@ -13007,7 +13007,7 @@
           ]
          },
          {
-          "controllo": "button@click showPopUp=0",
+          "controllo": "UiButton@click showPopUp=0",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -13022,7 +13022,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click deleteVice(dt.ID)",
+          "controllo": "UiButton@click deleteVice(dt.ID)",
           "etichetta": "Cancella",
           "abilitato": true,
           "effetti": [
@@ -13030,7 +13030,7 @@
           ]
          },
          {
-          "controllo": "button@click showPopUp=0",
+          "controllo": "UiButton@click showPopUp=0",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -13045,7 +13045,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click deleteVice(dt.ID)",
+          "controllo": "UiButton@click deleteVice(dt.ID)",
           "etichetta": "Cancella",
           "abilitato": true,
           "effetti": [
@@ -13053,7 +13053,7 @@
           ]
          },
          {
-          "controllo": "button@click showPopUp=0",
+          "controllo": "UiButton@click showPopUp=0",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -13070,7 +13070,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click deleteVice(dt.ID)",
+          "controllo": "UiButton@click deleteVice(dt.ID)",
           "etichetta": "Cancella",
           "abilitato": true,
           "effetti": [
@@ -13078,7 +13078,7 @@
           ]
          },
          {
-          "controllo": "button@click showPopUp=0",
+          "controllo": "UiButton@click showPopUp=0",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -13093,7 +13093,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click deleteVice(dt.ID)",
+          "controllo": "UiButton@click deleteVice(dt.ID)",
           "etichetta": "Cancella",
           "abilitato": true,
           "effetti": [
@@ -13101,7 +13101,7 @@
           ]
          },
          {
-          "controllo": "button@click showPopUp=0",
+          "controllo": "UiButton@click showPopUp=0",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -13116,7 +13116,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click deleteVice(dt.ID)",
+          "controllo": "UiButton@click deleteVice(dt.ID)",
           "etichetta": "Cancella",
           "abilitato": true,
           "effetti": [
@@ -13124,7 +13124,7 @@
           ]
          },
          {
-          "controllo": "button@click showPopUp=0",
+          "controllo": "UiButton@click showPopUp=0",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -13141,7 +13141,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click deleteVice(dt.ID)",
+          "controllo": "UiButton@click deleteVice(dt.ID)",
           "etichetta": "Cancella",
           "abilitato": true,
           "effetti": [
@@ -13149,7 +13149,7 @@
           ]
          },
          {
-          "controllo": "button@click showPopUp=0",
+          "controllo": "UiButton@click showPopUp=0",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -13164,7 +13164,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click deleteVice(dt.ID)",
+          "controllo": "UiButton@click deleteVice(dt.ID)",
           "etichetta": "Cancella",
           "abilitato": true,
           "effetti": [
@@ -13172,7 +13172,7 @@
           ]
          },
          {
-          "controllo": "button@click showPopUp=0",
+          "controllo": "UiButton@click showPopUp=0",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -13187,7 +13187,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click deleteVice(dt.ID)",
+          "controllo": "UiButton@click deleteVice(dt.ID)",
           "etichetta": "Cancella",
           "abilitato": true,
           "effetti": [
@@ -13195,7 +13195,7 @@
           ]
          },
          {
-          "controllo": "button@click showPopUp=0",
+          "controllo": "UiButton@click showPopUp=0",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -13212,7 +13212,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click deleteVice(dt.ID)",
+          "controllo": "UiButton@click deleteVice(dt.ID)",
           "etichetta": "Cancella",
           "abilitato": true,
           "effetti": [
@@ -13220,7 +13220,7 @@
           ]
          },
          {
-          "controllo": "button@click showPopUp=0",
+          "controllo": "UiButton@click showPopUp=0",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -13235,7 +13235,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click deleteVice(dt.ID)",
+          "controllo": "UiButton@click deleteVice(dt.ID)",
           "etichetta": "Cancella",
           "abilitato": true,
           "effetti": [
@@ -13243,7 +13243,7 @@
           ]
          },
          {
-          "controllo": "button@click showPopUp=0",
+          "controllo": "UiButton@click showPopUp=0",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -13259,7 +13259,7 @@
      }
     },
     {
-     "id": "button@click deleteVice(dt.ID)",
+     "id": "UiButton@click deleteVice(dt.ID)",
      "etichetta": "Cancella",
      "evento": "click",
      "handler": "deleteVice(dt.ID)",
@@ -13297,7 +13297,7 @@
      }
     },
     {
-     "id": "button@click showPopUp=0",
+     "id": "UiButton@click showPopUp=0",
      "etichetta": "Annulla",
      "evento": "click",
      "handler": "showPopUp=0",
@@ -13621,12 +13621,12 @@
    ],
    "controlli": [
     {
-     "id": "button@click createfixture()",
+     "id": "UiButton@click createfixture()",
      "etichetta": "Agg. Attrezzatura",
      "evento": "click",
      "handler": "createfixture()",
-     "disabled": "",
-     "classe": "{'pure-button-disabled':dataStored.userLevel<=1}",
+     "disabled": "dataStored.userLevel<=1",
+     "classe": "",
      "esiti": {
       "tre attrezzature liv2": {
        "abilitato": true,
@@ -13777,7 +13777,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click deletefixture(dt.ID)",
+          "controllo": "UiButton@click deletefixture(dt.ID)",
           "etichetta": "Cancella",
           "abilitato": true,
           "effetti": [
@@ -13785,7 +13785,7 @@
           ]
          },
          {
-          "controllo": "button@click showPopUp=0",
+          "controllo": "UiButton@click showPopUp=0",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -13800,7 +13800,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click deletefixture(dt.ID)",
+          "controllo": "UiButton@click deletefixture(dt.ID)",
           "etichetta": "Cancella",
           "abilitato": true,
           "effetti": [
@@ -13808,7 +13808,7 @@
           ]
          },
          {
-          "controllo": "button@click showPopUp=0",
+          "controllo": "UiButton@click showPopUp=0",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -13823,7 +13823,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click deletefixture(dt.ID)",
+          "controllo": "UiButton@click deletefixture(dt.ID)",
           "etichetta": "Cancella",
           "abilitato": true,
           "effetti": [
@@ -13831,7 +13831,7 @@
           ]
          },
          {
-          "controllo": "button@click showPopUp=0",
+          "controllo": "UiButton@click showPopUp=0",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -13848,7 +13848,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click deletefixture(dt.ID)",
+          "controllo": "UiButton@click deletefixture(dt.ID)",
           "etichetta": "Cancella",
           "abilitato": true,
           "effetti": [
@@ -13856,7 +13856,7 @@
           ]
          },
          {
-          "controllo": "button@click showPopUp=0",
+          "controllo": "UiButton@click showPopUp=0",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -13871,7 +13871,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click deletefixture(dt.ID)",
+          "controllo": "UiButton@click deletefixture(dt.ID)",
           "etichetta": "Cancella",
           "abilitato": true,
           "effetti": [
@@ -13879,7 +13879,7 @@
           ]
          },
          {
-          "controllo": "button@click showPopUp=0",
+          "controllo": "UiButton@click showPopUp=0",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -13894,7 +13894,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click deletefixture(dt.ID)",
+          "controllo": "UiButton@click deletefixture(dt.ID)",
           "etichetta": "Cancella",
           "abilitato": true,
           "effetti": [
@@ -13902,7 +13902,7 @@
           ]
          },
          {
-          "controllo": "button@click showPopUp=0",
+          "controllo": "UiButton@click showPopUp=0",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -13919,7 +13919,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click deletefixture(dt.ID)",
+          "controllo": "UiButton@click deletefixture(dt.ID)",
           "etichetta": "Cancella",
           "abilitato": true,
           "effetti": [
@@ -13927,7 +13927,7 @@
           ]
          },
          {
-          "controllo": "button@click showPopUp=0",
+          "controllo": "UiButton@click showPopUp=0",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -13942,7 +13942,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click deletefixture(dt.ID)",
+          "controllo": "UiButton@click deletefixture(dt.ID)",
           "etichetta": "Cancella",
           "abilitato": true,
           "effetti": [
@@ -13950,7 +13950,7 @@
           ]
          },
          {
-          "controllo": "button@click showPopUp=0",
+          "controllo": "UiButton@click showPopUp=0",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -13965,7 +13965,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click deletefixture(dt.ID)",
+          "controllo": "UiButton@click deletefixture(dt.ID)",
           "etichetta": "Cancella",
           "abilitato": true,
           "effetti": [
@@ -13973,7 +13973,7 @@
           ]
          },
          {
-          "controllo": "button@click showPopUp=0",
+          "controllo": "UiButton@click showPopUp=0",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -13990,7 +13990,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click deletefixture(dt.ID)",
+          "controllo": "UiButton@click deletefixture(dt.ID)",
           "etichetta": "Cancella",
           "abilitato": true,
           "effetti": [
@@ -13998,7 +13998,7 @@
           ]
          },
          {
-          "controllo": "button@click showPopUp=0",
+          "controllo": "UiButton@click showPopUp=0",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -14013,7 +14013,7 @@
         ],
         "conferme": [
          {
-          "controllo": "button@click deletefixture(dt.ID)",
+          "controllo": "UiButton@click deletefixture(dt.ID)",
           "etichetta": "Cancella",
           "abilitato": true,
           "effetti": [
@@ -14021,7 +14021,7 @@
           ]
          },
          {
-          "controllo": "button@click showPopUp=0",
+          "controllo": "UiButton@click showPopUp=0",
           "etichetta": "Annulla",
           "abilitato": true,
           "effetti": []
@@ -14139,7 +14139,7 @@
      }
     },
     {
-     "id": "button@click deletefixture(dt.ID)",
+     "id": "UiButton@click deletefixture(dt.ID)",
      "etichetta": "Cancella",
      "evento": "click",
      "handler": "deletefixture(dt.ID)",
@@ -14177,7 +14177,7 @@
      }
     },
     {
-     "id": "button@click showPopUp=0",
+     "id": "UiButton@click showPopUp=0",
      "etichetta": "Annulla",
      "evento": "click",
      "handler": "showPopUp=0",
@@ -14485,12 +14485,12 @@
    ],
    "controlli": [
     {
-     "id": "button@click CreateGripper()",
+     "id": "UiButton@click CreateGripper()",
      "etichetta": "Agg. Pinza",
      "evento": "click",
      "handler": "CreateGripper()",
-     "disabled": "",
-     "classe": "{'pure-button-disabled':dataStored.userLevel<=1}",
+     "disabled": "dataStored.userLevel<=1",
+     "classe": "",
      "esiti": {
       "pinza 944 a bordo liv2": {
        "abilitato": true,

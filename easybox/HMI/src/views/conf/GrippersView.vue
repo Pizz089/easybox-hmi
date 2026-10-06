@@ -1,6 +1,8 @@
 <script setup>
     import { RouterLink, RouterView } from 'vue-router'
     import buttonsCMD from '../../components/Comands/ComandsRows.vue';
+    import UiButton from '../../components/ui/UiButton.vue';
+    import { Lock, Plus } from 'lucide-vue-next';
 
     import { ref, onMounted } from 'vue'
     import { dataStored } from '../../data';
@@ -8,65 +10,58 @@
     const el = ref()
 </script>
 
-<template>   
-      <div class="view-shell view-shell--fill conf-card">
-        <div class="view-header">
-          <h3 class="view-title">{{$t('gripper.welcome')}}</h3>
-          <button class="pure-button pure-button-primary" :class="{'pure-button-disabled':dataStored.userLevel<=1}" :id="locked" @click="CreateGripper()" >
+<template>
+      <!-- (v3 fase D) Attrezzaggio · Pinze: card come i cataloghi del
+           Magazzino (assets/css/catalog-v3.css), invece della tabella.
+           Comandi, guardie e conferme quelli di prima: Modifica, Cancella e Prendi/Rilascia dal
+           componente di sempre (ComandsRows, stesse props ed eventi),
+           la cancellazione chiede conferma come prima (window.confirm in deleteGripper). Aggiungi spento sotto il livello 2, come prima
+           (pure-button-disabled). tests/test_golden_equivalenza.mjs -->
+      <div class="view-shell view-shell--fill cat">
+        <div class="cat-head">
+          <h2 class="cat-head__title">{{$t('gripper.welcome')}}</h2>
+          <UiButton variant="primary" :icon="dataStored.userLevel<=1 ? Lock : Plus"
+                  :disabled="dataStored.userLevel<=1" @click="CreateGripper()">
             {{$t('gripper.add_gripper')}}
-          </button>
+          </UiButton>
         </div>
-
-        <div class="table-scroll">
-        <table class="pure-table pure-table-horizontal">
-            <thead>
-                <tr>
-                    <!--th>{{$t('gripper.name')}}</th-->
-                    <th>{{$t('gripper.family')}}</th>
-                    <th style='width:22%'>{{$t('gripper.descr')}}</th>
-                    <th>{{$t('gripper.stato')}}</th>
-                    <th>{{$t('gripper.position')}}</th>
-                    <th>{{$t('gripper.comands')}}</th>
-                </tr>
-            </thead>
-            <tbody>
-                <template v-for="(dt, index) in datiTab" :key="dt.ID" >
-                    <tr :class="{'pure-table-odd':(index%2==1)}" >
-                        <!--td>{{dt.ID}} </td-->
-                        <!-- (gripper-twins) UNA riga per pinza fisica (util/grippers.js,
-                             riga canonica = ID minore): via le celle unite del
-                             modello legacy SUB_POS 0/1/>1 che lasciavano la
-                             FAMILY vuota sulla doppia (gemelle a SUB_POS 3) -->
-                        <td>
-                            {{dt.FAMILY.trim()}}
-                            <span v-if="isTwinGripper(dt)" class="twin-badge">{{ $t('gripper.twinBadge', { ids: dt.twinIDs.join('+') }) }}</span>
-                            <!-- (gripper-twins) la gemella non ha una riga sua ma la
-                                 geometria del lato 2 vive SOLO li': accesso diretto al
-                                 form di modifica (stesso modifyGripper, per ID) -->
-                            <button v-for="tid in dt.twinIDs.filter(i => i != dt.ID)" :key="tid"
-                                    type="button" class="twin-link"
-                                    :title="$t('gripper.twinOpen', { id: tid })"
-                                    @click="modifyGripper(tid)">
-                                &#9998; {{ $t('gripper.twinOpen', { id: tid }) }}
-                            </button>
-                        </td>
-                        <td class="cell-descr">{{dt.DESCR.trim()}}</td>
-                        <td>{{ $t(dt.STATUS_DESC.trim()) }}</td>
-                        <td v-html="calculatePos(index)" class="cell-pos"> </td>
-                        <td>
-                            <buttonsCMD  :reference="createLink( dt.ID )"
-                                       :index="toStr(dt.ID)"
-                                       modify=true                      @cmdModify="modifyGripper(dt.ID)"
-                                       del=true                         @cmdDel="deleteGripper(dt.ID)"
-                                       :move="dt.POS_PLANT>=0 && (!gripperOnRobot || (gripperOnRobot && dt.POS_PLANT==1000))"   @cmdMove="PickReleaseGripper(dt.ID)"
-                                       :moveDisable="!dataStored.cmdActive" >
-                                       <!--:move="dt.POS_PLANT!=1000 || !gripperOnRobot"   @cmdMove="PickReleaseGripper(dt.ID)"-->
-                            </buttonsCMD>
-                        </td>
-                    </tr>
-                </template>
-            </tbody>
-        </table>
+        <div class="cat-list">
+          <template v-for="(dt, index) in datiTab" :key="dt.ID" >
+            <!-- (gripper-twins) UNA card per pinza fisica (util/grippers.js,
+                 riga canonica = ID minore); la gemella si apre dal link -->
+            <article class="cat-card">
+              <div class="cat-card__head">
+                <span class="cat-card__code">{{dt.FAMILY.trim()}}</span>
+              </div>
+              <span class="cat-card__desc">{{dt.DESCR.trim()}}</span>
+              <div v-if="isTwinGripper(dt)" class="twin-row">
+                <span v-if="isTwinGripper(dt)" class="twin-badge">{{ $t('gripper.twinBadge', { ids: dt.twinIDs.join('+') }) }}</span>
+                <!-- (gripper-twins) la gemella non ha una riga sua ma la
+                     geometria del lato 2 vive SOLO li': accesso diretto al
+                     form di modifica (stesso modifyGripper, per ID) -->
+                <button v-for="tid in dt.twinIDs.filter(i => i != dt.ID)" :key="tid"
+                        type="button" class="twin-link"
+                        :title="$t('gripper.twinOpen', { id: tid })"
+                        @click="modifyGripper(tid)">
+                    &#9998; {{ $t('gripper.twinOpen', { id: tid }) }}
+                </button>
+              </div>
+              <dl class="cat-card__facts">
+                <div><dt>{{$t('gripper.stato')}}</dt><dd>{{ $t(dt.STATUS_DESC.trim()) }}</dd></div>
+                <div><dt>{{$t('gripper.position')}}</dt><dd v-html="calculatePos(index)" class="cell-pos"></dd></div>
+              </dl>
+              <div class="cat-card__actions">
+                <buttonsCMD  :reference="createLink( dt.ID )"
+                           :index="toStr(dt.ID)"
+                           modify=true                      @cmdModify="modifyGripper(dt.ID)"
+                           del=true                         @cmdDel="deleteGripper(dt.ID)"
+                           :move="dt.POS_PLANT>=0 && (!gripperOnRobot || (gripperOnRobot && dt.POS_PLANT==1000))"   @cmdMove="PickReleaseGripper(dt.ID)"
+                           :moveDisable="!dataStored.cmdActive" >
+                           <!--:move="dt.POS_PLANT!=1000 || !gripperOnRobot"   @cmdMove="PickReleaseGripper(dt.ID)"-->
+                </buttonsCMD>
+              </div>
+            </article>
+          </template>
         </div>
       </div>
 </template>
@@ -202,9 +197,10 @@ export default {
 
     /* (gripper-twins) link alla gemella: stessa misura touch dei bottoni ghost */
     .twin-link {
-        display: inline-block;
+        display: inline-flex;
+        align-items: center;
         margin-left: var(--space-2);
-        min-height: 32px;
+        min-height: var(--touch-target-min);  /* (v3 fase D) 48, era 32 */
         padding: 0 var(--space-2);
         background: transparent;
         border: 1px dashed var(--border-strong);
@@ -218,10 +214,12 @@ export default {
         border-color: var(--accent);
     }
 
+    /* (v3 fase D) badge e link della gemella su una riga della card */
+    .twin-row { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); }
     /* (gripper-twins) badge "doppia" sulla riga canonica */
     .twin-badge {
         display: inline-block;
-        margin-left: var(--space-2);
+        margin-left: 0;
         padding: 0 var(--space-2);
         border: 1px solid var(--accent);
         border-radius: var(--radius-sm);
