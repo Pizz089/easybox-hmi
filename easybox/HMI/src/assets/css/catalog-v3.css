@@ -153,3 +153,24 @@
     .shell .conf-v3 .view-title,
     .shell .conf-v3 .piece-header h1 { font-size: 26px; }
 }
+
+/* (C-bis) casella "Spinta in battuta" del Pezzo: bersaglio da 44 px (la
+   casella nativa era 13 x 13). Disegnata da CSS: quadrato chiaro, spunta
+   scura su fondo accento quando e' attiva. */
+.shell .conf-v3 .push-row input[type="checkbox"] {
+    -webkit-appearance: none;
+    appearance: none;
+    flex: none;
+    width: 44px;
+    height: 44px;
+    margin: 0;
+    border: 2px solid var(--border-strong);
+    border-radius: 12px;
+    background: var(--bg-input);
+    cursor: pointer;
+}
+.shell .conf-v3 .push-row input[type="checkbox"]:checked {
+    border-color: var(--accent);
+    background: var(--accent) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230A1220' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'/></svg>") center / 26px no-repeat;
+}
+.shell .conf-v3 .push-row input[type="checkbox"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

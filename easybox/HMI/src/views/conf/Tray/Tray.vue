@@ -12,7 +12,9 @@
 </script>
 
 <template>   
-      <div class="view-shell conf-card">
+      <!-- (v3 fase C-bis) conf-v3: campi e +/- da 48 px (erano 36 e 44),
+           titolo e card v3 (assets/css/catalog-v3.css) -->
+      <div class="view-shell conf-card conf-v3">
         <!-- (5/10) il cassetto si chiama col suo NUMERO (FLOOR_MAG, come
              ExtractedTray nel PLC; OUT se e' fuori, come nella tabella di
              TraysView), non con l'ID della tabella TRAY, che dopo il
