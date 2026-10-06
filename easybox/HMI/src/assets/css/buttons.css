@@ -1,4 +1,14 @@
 ﻿/* ============ BUTTON VARIANTS — 6 varianti canoniche (doc §3) ============ */
+/* (v3, 6/10) Le classi legacy restano e prendono l'aspetto delle varianti
+   v3 di components/ui/UiButton.vue, senza toccare i template:
+     .pure-button-primary / -micromission -> primario (accento cobalto)
+     .pure-button-mission                 -> secondario neutro (via token:
+                                             --color-warning-button punta
+                                             a --bg-surface-2: le missioni
+                                             non sono piu' gialle)
+     .specialCMD                          -> pericoloso (rosso pieno)
+     .btn-ghost                           -> contorno
+   Pesi 700 e niente spaziatura delle lettere: Manrope non ne ha bisogno. */
 /* Sede unica delle varianti bottone del pannello (decisione audit-sistema-b).
    Spostate qui da unit-views.css; import in main.js DOPO design-tokens.css
    (token) e DOPO pure.css (l'alias .pure-button-primary ridefinisce una classe
@@ -22,8 +32,8 @@
     border-radius: var(--radius-btn);
     padding: var(--space-4) var(--space-5);
     min-height: var(--touch-target);
-    font-weight: var(--font-weight-medium);
-    letter-spacing: 0.025em;
+    font-weight: var(--font-weight-bold);
+    letter-spacing: 0;
     cursor: pointer;
     transition: filter var(--transition-fast);
 }
@@ -36,8 +46,8 @@
     border-radius: var(--radius-btn);
     padding: var(--space-4) var(--space-5);
     min-height: var(--touch-target);
-    font-weight: var(--font-weight-medium);
-    letter-spacing: 0.025em;
+    font-weight: var(--font-weight-bold);
+    letter-spacing: 0;
     cursor: pointer;
     transition: filter var(--transition-fast);
 }
@@ -63,9 +73,10 @@
 .specialCMD {
     border-radius: var(--radius-btn);
     background: var(--color-critical);
-    color: var(--text-primary);
+    /* v3: testo bianco sul rosso pieno */
+    color: #fff;
     font-weight: var(--font-weight-bold);
-    letter-spacing: 0.05em;
+    letter-spacing: 0;
 }
 
 .specialCMD:hover:not(:disabled) {
@@ -78,20 +89,21 @@
    che sarebbe inerte: l'hover non cambia luminosita' ma sfondo/bordo). */
 .btn-ghost {
     background: transparent;
-    border: 1px solid var(--border-default);
-    color: var(--text-secondary);
+    border: 0;
+    box-shadow: inset 0 0 0 1.5px var(--border-default);
+    color: var(--text-primary);
     border-radius: var(--radius-btn);
     min-height: var(--touch-target);
     padding: var(--space-4) var(--space-5);
-    font-weight: var(--font-weight-medium);
-    letter-spacing: 0.025em;
+    font-weight: var(--font-weight-bold);
+    letter-spacing: 0;
     cursor: pointer;
     transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
 }
 
 .btn-ghost:hover:not(:disabled) {
     background: var(--bg-surface);
-    border-color: var(--border-strong);
+    box-shadow: inset 0 0 0 1.5px var(--border-strong);
     color: var(--text-primary);
 }
 
@@ -133,16 +145,17 @@
 .pure-button-mission:disabled {
     background: var(--bg-input);
     background-image: none;
-    color: var(--text-secondary);
-    /* 0.7 -> 0.8 (audit WCAG): contrasto effettivo 4.08 -> 4.64,
-       resta "subdued ma leggibile". */
-    opacity: 0.8;
+    /* v3: testo --text-muted pieno (4.5:1 su --bg-input) invece di
+       secondary + opacita': "subdued ma leggibile", come in UiButton */
+    color: var(--text-muted);
+    opacity: 1;
+    box-shadow: none;
     border: 0;
     border-radius: var(--radius-btn);
     padding: var(--space-4) var(--space-5);
     min-height: var(--touch-target);
-    font-weight: var(--font-weight-medium);
-    letter-spacing: 0.025em;
+    font-weight: var(--font-weight-bold);
+    letter-spacing: 0;
     cursor: not-allowed;
     pointer-events: none;
 }

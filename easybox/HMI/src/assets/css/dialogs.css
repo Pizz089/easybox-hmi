@@ -1,12 +1,11 @@
-/* ============ DIALOG DI CONFERMA — sede unica (UI-DESIGN-SYSTEM v2 §12) ============ */
-/* Prima stava copiato, scoped, in 10 file (RelaunchDialog, robotView,
-   CNC1View, productionView, layoutView, TraysView, WarehousesView,
-   AttrezzaggiView, Grating, PushSim), con piccole differenze di larghezza e
-   altezza; in Fixture.vue mancava del tutto e il dialog si apriva senza
-   overlay. Valori: quelli comuni alle copie. Le larghezze restano quelle di
-   prima con due modificatori (--wide 560, --narrow 480).
-   Import in main.js dopo buttons.css. Il comando pericoloso dentro i dialog
-   resta Critical (.specialCMD, rosso pieno); "Annulla" resta Ghost. */
+/* ============ DIALOG DI CONFERMA — sede unica (UI-DESIGN-SYSTEM v3 §12) ============ */
+/* Nata in fase 0 (v2) al posto di 10 copie scoped; in v3 prende l'aspetto
+   della tavola Conferma: fondo --bg-dialog, angoli 24, ombra (l'unica del
+   pannello), velo --bg-backdrop. Le classi restano quelle di oggi, cosi'
+   tutti i dialog esistenti cambiano aspetto senza toccare i .vue; i dialog
+   nuovi usano components/ui/UiConfirmDialog.vue, che si appoggia qui.
+   Il comando pericoloso resta rosso pieno (.specialCMD / UiButton danger),
+   "Annulla" resta in contorno. Import in main.js dopo buttons.css. */
 
 .mission-dialog-overlay {
     position: fixed;
@@ -19,19 +18,31 @@
 }
 
 .mission-dialog {
-    background: var(--bg-surface);
-    border: var(--border-card);
-    border-radius: var(--radius-lg);
+    background: var(--bg-dialog);
+    border: 0;
+    border-radius: 24px;
     box-shadow: var(--elevation-3);
-    padding: var(--space-4);
-    width: min(520px, 92vw);
-    max-height: 85vh;
+    padding: 36px 36px 28px;
+    width: min(720px, 94vw);
+    max-height: 88vh;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: var(--space-4);
+    gap: 22px;
+    box-sizing: border-box;
 }
 
-/* larghezze che alcune pagine avevano gia' */
-.mission-dialog--wide   { width: min(560px, 92vw); }   /* Rilancia, Cassetti, Azzera produzione */
-.mission-dialog--narrow { width: min(480px, 92vw); }   /* Grigliato */
+/* larghezze: --wide per i dialog con elenchi (Rilancia, Cassetti, Azzera
+   produzione), --narrow per il Grigliato */
+.mission-dialog--wide   { width: min(800px, 94vw); }
+.mission-dialog--narrow { width: min(560px, 94vw); }
+
+/* coppia Conferma / Annulla dei dialog esistenti (due .pure-u-1-2): 14 px
+   fra i due, come nella tavola, invece di due pulsanti che si toccano */
+.mission-dialog .pure-g > .pure-u-1-2 { box-sizing: border-box; }
+.mission-dialog .pure-g > .pure-u-1-2:first-child { padding-right: 7px; }
+.mission-dialog .pure-g > .pure-u-1-2:last-child  { padding-left: 7px; }
+
+@media (max-width: 1599px) {
+    .mission-dialog { padding: 28px 24px 22px; gap: 18px; border-radius: 20px; }
+}

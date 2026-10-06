@@ -21,12 +21,21 @@
   --bg-icon:        #2A2C30;   /* cerchio dietro le icone dei tile */
   --bg-strip:       #151618;   /* striscia di stato in alto (v3) */
   --bg-raised:      #222428;   /* voce attiva della barra, riga selezionata (v3) */
+  /* presi dalle tavole v3 (non nella tabella dei token, servono a
+     riprodurle): chip e tracce dei selettori, segmento scelto, righe di
+     elenco, riquadro interno (precondizioni), fondo dei dialog */
+  --bg-chip:        #1F2023;
+  --bg-segment-on:  #2E3034;
+  --bg-row:         #202124;
+  --bg-well:        #1A1B1E;
+  --bg-dialog:      #212226;
 
   /* ---------- Testo ---------- */
   --text-primary:   #ECEDEE;
   --text-secondary: #A4A8AE;
   --text-muted:     #868A90;   /* >= 4.5:1 su --bg-surface (test_tokens_v3) */
   --text-disabled:  #5F636A;
+  --text-chip:      #C4C7CC;   /* testo dei chip della striscia (tavole v3) */
 
   /* ---------- Bordi ---------- */
   --border-subtle:  #24262A;
@@ -38,8 +47,8 @@
   --border-card: 1px solid var(--border-subtle);
   --bg-card:     var(--bg-surface);
 
-  /* Velo dietro dialog e modali. */
-  --bg-backdrop: rgba(0, 0, 0, 0.6);
+  /* Velo dietro dialog e modali (tavola Conferma). */
+  --bg-backdrop: rgba(6, 7, 8, 0.72);
 
   /* ---------- Accento: UNO solo ----------
      Solo per l'azione primaria, la voce attiva e le barre di avanzamento. */
@@ -148,6 +157,10 @@
   /* ---------- Shell ---------- */
   --rail-width:          104px;
   --status-strip-height: 76px;
+  /* margini fluidi, tarati sulle tre tavole: pagina 16 / 20 / 28 e card
+     18 / 20 / 24 a 1024 / 1280 / 1920 px di larghezza */
+  --page-padding: clamp(16px, calc(16px + (100vw - 1024px) * 0.015625), 28px);
+  --card-padding: clamp(18px, calc(18px + (100vw - 1024px) * 0.0078125), 24px);
 
   /* ---------- Transizioni ---------- */
   --transition-fast: 150ms ease;
