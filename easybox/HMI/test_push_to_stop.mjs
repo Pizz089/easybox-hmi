@@ -128,9 +128,27 @@ check(vv.vice.CLAW_LENGTH === 150, 'in lettura: 150000 micron -> 150 mm nel camp
 check(vv.editedFields().CLAW_LENGTH === 150000, 'in scrittura: 150 mm -> 150000 micron');
 vv.vice.CLAW_LENGTH = null;
 check(vv.editedFields().CLAW_LENGTH === '', 'campo vuoto -> payload vuoto, il backend scrive NULL');
+// (6/10) fino a oggi Vice.vue aveva due blocchi computed e il secondo
+// cancellava il primo: clawLengthMicron undefined, la sezione «Appoggi
+// dichiarati» (v-if clawLengthMicron > 0) non compariva mai e buildStopRows
+// non vedeva nessun pezzo eccedere la ganascia
+check(typeof Vice.computed.clawLengthMicron === 'function' && typeof Vice.computed.vicePositionLabel === 'function',
+	'Vice.vue: clawLengthMicron e vicePositionLabel nello stesso blocco computed');
+vv.vice.CLAW_LENGTH = 150;
+check(vv.clawLengthMicron === 150000, '   ganascia 150 mm -> 150000 micron: la sezione «Appoggi dichiarati» compare');
+vv.pieces = [{ ID: 1029, FAMILY: 'P1', Y: 160000, PUSH_TO_STOP: 1 }, { ID: 1030, FAMILY: 'P2', Y: 100000, PUSH_TO_STOP: 1 }, { ID: 1031, FAMILY: 'P3', Y: 200000, PUSH_TO_STOP: 0 }];
+vv.stops = [{ PIECE_ID: 1030, STOP_BEYOND_CLAW: 0 }];
+vv.buildStopRows();
+const r1029 = vv.stopRows.find(r => r.PIECE_ID === 1029), r1030 = vv.stopRows.find(r => r.PIECE_ID === 1030);
+check(vv.stopRows.length === 2 && r1029 && r1029.exceeds && r1029.overhang === 5000 && !r1029.declared
+	&& r1030 && r1030.declared && !r1030.exceeds && r1030.value === 0 && !vv.stopRows.some(r => r.PIECE_ID === 1031),
+	"   righe: il pezzo che eccede con la spinta (sporge 5 mm per lato) e la dichiarazione gia' fatta; non il pezzo senza spinta");
+check(vv.vicePositionLabel === 'Mag 1.1', '   e la posizione in sola lettura resta quella (Mag 1.1)');
 const srcVice = readFileSync('src/views/conf/Vice/Vice.vue', 'utf8');
 check(/vice\.clawLength"/.test(srcVice) && /vice\.clawLengthHint/.test(srcVice), 'campo etichettato e con il motivo');
 check(/&micro;m/.test(srcVice), 'X/Y/Z smettono di dire mm su valori in micron (difetto storico, ora l\'etichetta e\' onesta)');
+check(/v-model="row\.value"[\s\S]{0,120}@keydown\.enter\.prevent/.test(srcVice) && /<form[^>]*@submit\.prevent/.test(srcVice),
+	"Invio nel campo dell'appoggio non fa l'invio implicito del form (cliccherebbe Save della morsa)");
 
 const it = JSON.parse(readFileSync('src/locales/it.json', 'utf8')), en = JSON.parse(readFileSync('src/locales/en.json', 'utf8'));
 const flat = (o, p = '') => Object.entries(o).flatMap(([k, v]) => v && typeof v === 'object' ? flat(v, p + k + '.') : [p + k]);

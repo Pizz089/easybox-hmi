@@ -136,6 +136,10 @@
                   <small v-if="!row.exceeds" class="stop-unused">{{ $t("vice.stopsUnused") }}</small>
                 </div>
                 <div class="stop-edit">
+                  <!-- Invio qui NON deve fare l'invio implicito del form:
+                       cliccherebbe "Save" della morsa e la pagina uscirebbe
+                       senza aver salvato l'appoggio (6/10, la sezione prima
+                       non compariva mai) -->
                   <input
                     class="aligned-foo"
                     type="number"
@@ -144,6 +148,7 @@
                     v-model="row.value"
                     inputmode="decimal"
                     autocomplete="off"
+                    @keydown.enter.prevent
                   />
                   <span class="unit" aria-hidden="true">mm</span>
                   <button
@@ -278,6 +283,10 @@ export default {
     };
   },
 
+  // UN SOLO blocco computed (6/10): fino a oggi ce n'erano due e il secondo
+  // (vicePositionLabel) cancellava il primo, quindi clawLengthMicron era
+  // undefined e la sezione «Appoggi dichiarati» non compariva mai.
+  // test_chiavi_duplicate.mjs controlla che non succeda piu'.
   computed: {
     // ganascia in micron: nel form e' in millimetri, il confronto con le
     // misure del pezzo va fatto nell'unita' del database
@@ -285,6 +294,16 @@ export default {
       const v = this.vice.CLAW_LENGTH;
       if (v === null || v === undefined || String(v).trim() === "") return 0;
       return Math.round(Number(v) * 1000);
+    },
+
+    // AF: decodifica in sola lettura — stessa semantica della colonna
+    // storica di VicesView (rimossa): POS_PLANT>200 MC2, >100 MC1,
+    // altrimenti magazzino morse MAG.
+    vicePositionLabel() {
+      if (this.create) return this.$t("OUT");
+      if (this.vice.POS_PLANT > 200) return "MC 2";
+      if (this.vice.POS_PLANT > 100) return "MC 1";
+      return this.$t("Mag") + " " + this.vice.MAG + "." + this.vice.MAG_POS;
     },
   },
 
@@ -692,18 +711,6 @@ export default {
           return this.$router.push(this.$route.query.returnTo || "/conf/Vices");
         })
         .catch(console.info);
-    },
-  },
-
-  computed: {
-    // AF: decodifica in sola lettura — stessa semantica della colonna
-    // storica di VicesView (rimossa): POS_PLANT>200 MC2, >100 MC1,
-    // altrimenti magazzino morse MAG.
-    vicePositionLabel() {
-      if (this.create) return this.$t("OUT");
-      if (this.vice.POS_PLANT > 200) return "MC 2";
-      if (this.vice.POS_PLANT > 100) return "MC 1";
-      return this.$t("Mag") + " " + this.vice.MAG + "." + this.vice.MAG_POS;
     },
   },
 
