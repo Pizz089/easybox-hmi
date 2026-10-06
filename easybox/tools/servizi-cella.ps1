@@ -233,7 +233,7 @@ if (-not (Test-Path -LiteralPath $Nssm)) {
 	if (-not (Test-Path -LiteralPath $Nssm)) { Fermati ('copia di nssm.exe in ' + $Nssm + ' non riuscita.') 'chiamare Dario.' }
 	Scrivi ('nssm copiato in ' + $Nssm)
 }
-New-Item -ItemType Directory -Path (Split-Path $LogP) -Force | Out-Null
+foreach ($d in @((Split-Path $LogB), (Split-Path $LogP))) { New-Item -ItemType Directory -Path $d -Force | Out-Null }
 
 foreach ($a in $comandi) {
 	Scrivi ('  ' + (Testo $a))
