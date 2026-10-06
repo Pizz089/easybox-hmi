@@ -5,7 +5,7 @@
         <rect class="pocket-shape" :x='x' :y='y' :width='width' :height='height' :style='getStyle'/> 
         <!--rect :x='x-6+width/2' :y='y-6+height/2' :width='12' :height='12' style='fill:none;stroke-width:2;stroke:blue'/--> 
 
-        <circle v-if="!hideCenter && showCenter" :cx='parseInt(x)+width/2'  :cy="parseInt(y)+height/2" r="4" style="stroke:red;fill:red" />
+        <circle v-if="!hideCenter && showCenter" :cx='parseInt(x)+width/2'  :cy="parseInt(y)+height/2" :r="centerR" style="stroke:red;fill:red" />
         <text v-if="labelMode === 'v3' && showLabel" class="pocket-label" :x="x+width/2" :y="labelY" text-anchor="middle"
             :style="'fill:' + labelFill + ';font-family:var(--font-family);font-weight:700;font-size:' + labelSize + 'px'">
             <slot></slot>
@@ -108,6 +108,11 @@
             },
             labelFill() {
                 return pocketLabelFill(this.status);
+            },
+            // pallino del centro: 4 mm come prima, ma mai piu' di un ottavo
+            // della tasca nel disegno v3 (su un grigliato fitto la copriva)
+            centerR() {
+                return this.labelMode === 'v3' ? Math.min(4, Math.min(this.width, this.height) / 8) : 4;
             },
             // (v3) numero in alto nella tasca; su una tasca bassa, al centro
             labelY() {

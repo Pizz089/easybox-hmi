@@ -191,7 +191,10 @@ Scenari: modifica, vicini 7 e 9, liv2 · modifica, reset aperto
 | Cassetto {{neighbors.next.floor}} | `goNeighbor('next')` | `!neighbors.next \|\| navBlocked` | modifica, vicini 7 e 9, liv2: sì<br>modifica, reset aperto: no | router "/layout/23/1/9" | no |
 | Scarta e cambia cassetto | `confirmDiscard()` |  | modifica, vicini 7 e 9, liv2: –<br>modifica, reset aperto: – |  | no |
 | Annulla | `navConfirm = null` |  | modifica, vicini 7 e 9, liv2: –<br>modifica, reset aperto: – |  | no |
-| (pick) | `clickPiece($event.index)` |  | modifica, vicini 7 e 9, liv2: sì<br>modifica, reset aperto: sì | stato: vm.listPz = [{"SUB_POS":1,"x":65,"y":50,"status":5,"prisma":true,"order_ID":0,"partType":103 | no |
+| (pick) | `toccaTasca($event)` |  | modifica, vicini 7 e 9, liv2: sì<br>modifica, reset aperto: sì | stato: vm.listPz = [{"SUB_POS":1,"x":65,"y":50,"status":5,"prisma":true,"order_ID":0,"partType":103 | no |
+| (tap) | `toccaVassoio($event)` |  | modifica, vicini 7 e 9, liv2: sì<br>modifica, reset aperto: sì | – | no |
+| (scale) | `scala($event)` |  | modifica, vicini 7 e 9, liv2: sì<br>modifica, reset aperto: sì | stato: vm.scalaPiena = undefined | no |
+| Tutto il cassetto | `zona = null` |  | modifica, vicini 7 e 9, liv2: –<br>modifica, reset aperto: – |  | no |
 | Tutti grezzi | `allRaugh()` |  | modifica, vicini 7 e 9, liv2: sì<br>modifica, reset aperto: sì | stato: vm.listPz = [{"SUB_POS":1,"x":65,"y":50,"status":4,"prisma":true,"order_ID":0,"partType":103 | no |
 | Tutti vuoti | `allEmpty()` |  | modifica, vicini 7 e 9, liv2: sì<br>modifica, reset aperto: sì | stato: vm.listPz = [{"SUB_POS":1,"x":65,"y":50,"status":2,"prisma":true,"order_ID":0,"partType":103 | no |
 | Azzera stato cassetto | `openTrayReset()` |  | modifica, vicini 7 e 9, liv2: sì<br>modifica, reset aperto: sì | stato: vm.trayReset.open = true | Azzera → fetch POST api/conf/position/resetTray/8<br>Annulla → – |
@@ -212,7 +215,10 @@ Scenari: sola lettura liv0
 | Cassetto {{neighbors.next.floor}} | `goNeighbor('next')` | `!neighbors.next \|\| navBlocked` | sola lettura liv0: sì | router "/layout/23/0/9" | no |
 | Scarta e cambia cassetto | `confirmDiscard()` |  | sola lettura liv0: – |  | no |
 | Annulla | `navConfirm = null` |  | sola lettura liv0: – |  | no |
-| (pick) | `clickPiece($event.index)` |  | sola lettura liv0: sì | stato: dataStored.alert.title = "ATTENTION", dataStored.alert.desc = "VIEW ONLY!" | no |
+| (pick) | `toccaTasca($event)` |  | sola lettura liv0: sì | stato: dataStored.alert.title = "ATTENTION", dataStored.alert.desc = "VIEW ONLY!" | no |
+| (tap) | `toccaVassoio($event)` |  | sola lettura liv0: sì | – | no |
+| (scale) | `scala($event)` |  | sola lettura liv0: sì | stato: vm.scalaPiena = undefined | no |
+| Tutto il cassetto | `zona = null` |  | sola lettura liv0: – |  | no |
 | Tutti grezzi | `allRaugh()` |  | sola lettura liv0: – |  | no |
 | Tutti vuoti | `allEmpty()` |  | sola lettura liv0: – |  | no |
 | Azzera stato cassetto | `openTrayReset()` |  | sola lettura liv0: – |  | no |

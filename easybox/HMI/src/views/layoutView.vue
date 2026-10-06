@@ -8,6 +8,10 @@
     import { neighborTrays, pocketsSignature, layoutModeFor } from '../util/trayNeighbors.js'
     import { KO_ACTIVE_ORDER, KO_TRAY_EXTRACTED, KO_NO_PIECE_DECLARED, KO_PIECE_TOO_BIG, KO_Z_BELOW_GRATING } from '../util/errorCodes.js'
     import { POCKET_STATES } from '../util/pocketColors.js'
+    // (v3 fase C, regola 4) tasche sotto i 44 px: il primo tocco ingrandisce
+    import { pitchOf, needsZoom, zoomFactor, zoneAround, TRAY_FALLBACK } from '../util/trayZoom.js'
+    import UiButton from '../components/ui/UiButton.vue'
+    import { ZoomOut } from 'lucide-vue-next'
 </script>
 
 
@@ -65,15 +69,23 @@
              stato cella" per far cliccare la tasca da correggere (comando
              39). Qui restano i dati e le regole di modifica. -->
         <!-- (v3 fase C, regola 4) in scala: contorno da TRAY.X x TRAY.Y,
-             il disegno riempie il riquadro senza deformarsi -->
+             il disegno riempie il riquadro senza deformarsi. Se la tasca
+             scende sotto i 44 px (4:3, grigliati fitti) il primo tocco
+             ingrandisce la zona intorno (util/trayZoom.js) e solo nella zona
+             ingrandita il tocco cambia lo stato della tasca: nessun tocco su
+             bersagli piccoli. -->
         <div class="layout-draw">
             <TrayPockets fill
                 :pockets="listPz"
                 :dimX="dim_x" :dimY="dim_y" :radius="radius"
                 :trayX="trayX / 1000" :trayY="trayY / 1000"
-                :robotSide="robotSide"
-                @pick="clickPiece($event.index)" />
+                :robotSide="robotSide" :zone="zona"
+                @pick="toccaTasca($event)" @tap="toccaVassoio($event)" @scale="scala($event)" />
+            <UiButton v-if="zona" class="layout-unzoom" variant="secondary" size="min" :icon="ZoomOut" @click="zona = null">
+                {{ $t('trays.wholeTray') }}
+            </UiButton>
         </div>
+        <p v-if="zoomServe && !zona" class="layout-zoom-hint">{{ $t('trays.zoomHint') }}</p>
     </div>
 
     <div class="pure-u-1">
@@ -200,6 +212,10 @@
                 // misure del cassetto (TRAY.X / TRAY.Y, micron): contorno in scala
                 trayX:0,
                 trayY:0,
+                // (v3 fase C) zona ingrandita (null = tutto il cassetto) e
+                // scala del disegno intero (px per mm)
+                zona: null,
+                scalaPiena: 0,
                 robotSide:false,   //visualizzazione del layout da parte del robot o dell'operatore
                 avanzamento:0,
                 trayReset: { open: false, busy: false },  // dialog AZZERA STATO CASSETTO
@@ -223,6 +239,7 @@
                     this.listPz = [];
                     this.loadedSig = null;
                     this.navConfirm = null;
+                    this.zona = null;
                     this.trayReset.open = false;
                     this.trayType.open = false;
                     this.getDataTable();
@@ -258,6 +275,22 @@
                         this.avanzamento = 0;
                         this.loadedSig = pocketsSignature(this.listPz);
                     });
+            },
+            // (v3 fase C) tocco su una tasca: con tasche sotto i 44 px il primo
+            // tocco ingrandisce, solo nella zona ingrandita cambia lo stato
+            toccaTasca(ev) {
+                if (!this.zona && this.zoomServe) {
+                    this.zona = zoneAround(ev, this.trayDisegno, zoomFactor(this.geoTasche, this.scalaPiena));
+                    return;
+                }
+                this.clickPiece(ev.index);
+            },
+            toccaVassoio(ev) {
+                if (!this.zona && this.zoomServe)
+                    this.zona = zoneAround(ev, this.trayDisegno, zoomFactor(this.geoTasche, this.scalaPiena));
+            },
+            scala(ev) {
+                if (ev && !ev.zoned) this.scalaPiena = ev.pxPerMm;
             },
             // (P3 5/10) elenco cassetti per le frecce
             loadTrays() {
@@ -511,6 +544,17 @@
             // conversione la fa TrayPockets con robotToDrawing: qui non c'e'
             // nessuna formula, e non deve tornarci.
             robotAxisAlong() { return ROBOT_AXIS_ALONG; },
+            // (v3 fase C) passo fra le tasche (mm del disegno: w = y robot,
+            // h = x robot) e contorno, per la zona ingrandita
+            geoTasche() {
+                const r = this.listPz || [];
+                return { pitchW: pitchOf(r.map(p => p.y)), pitchH: pitchOf(r.map(p => p.x)), dimX: this.dim_x };
+            },
+            trayDisegno() {
+                const k = this.trayX > 0 && this.trayY > 0;
+                return { trayW: k ? this.trayX / 1000 : TRAY_FALLBACK.w, trayH: k ? this.trayY / 1000 : TRAY_FALLBACK.h };
+            },
+            zoomServe() { return needsZoom(this.geoTasche, this.scalaPiena); },
             // (P3 5/10) vicini del piano attuale nell'elenco cassetti
             neighbors() { return neighborTrays(this.trays, this.$route.params.floorMag); },
             // modifiche locali non salvate: solo in modifica, e solo dopo che
@@ -543,8 +587,19 @@
     /* (v3 fase C) riquadro del disegno: altezza data, il cassetto ci sta
        dentro in scala (TrayPockets fill, meet) */
     .layout-draw {
+        position: relative;
         width: 100%;
         height: clamp(280px, 52vh, 640px);
+    }
+    .layout-unzoom {
+        position: absolute;
+        top: var(--space-2);
+        right: var(--space-2);
+    }
+    .layout-zoom-hint {
+        margin: var(--space-1) 0 0;
+        font-size: var(--font-size-sm);
+        color: var(--text-muted);
     }
     /* (UI v2 fase 1.5) legenda stati tasca */
     .pocket-legend {

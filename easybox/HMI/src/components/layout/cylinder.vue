@@ -5,7 +5,7 @@
         <circle class="pocket-shape" :cx='x' :cy='y' :r="width" :style='getStyle' />
                 <!--stroke-width="8" stroke="red" stroke-dasharray="3"/-->
 
-        <circle v-if="showCenter" :cx='parseInt(x)'  :cy="parseInt(y)" r="4" style="stroke:red;fill:red" />
+        <circle v-if="showCenter" :cx='parseInt(x)'  :cy="parseInt(y)" :r="labelMode === 'v3' ? Math.min(4, width / 4) : 4" style="stroke:red;fill:red" />
         <text v-if="labelMode === 'v3' && showLabel" class="pocket-label" :x="x" :y="y + labelSize * 0.35" text-anchor="middle"
             :style="'fill:' + labelFill + ';font-family:var(--font-family);font-weight:700;font-size:' + labelSize + 'px'">
             <slot></slot>

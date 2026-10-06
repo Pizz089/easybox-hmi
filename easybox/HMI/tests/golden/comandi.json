@@ -4665,10 +4665,10 @@
      }
     },
     {
-     "id": "TrayPockets@pick clickPiece($event.index)",
+     "id": "TrayPockets@pick toccaTasca($event)",
      "etichetta": "",
      "evento": "pick",
-     "handler": "clickPiece($event.index)",
+     "handler": "toccaTasca($event)",
      "disabled": "",
      "classe": "",
      "esiti": {
@@ -4686,6 +4686,62 @@
         "vm.listPz = [{\"SUB_POS\":1,\"x\":65,\"y\":50,\"status\":5,\"prisma\":true,\"order_ID\":0,\"partType\":103"
        ]
       }
+     }
+    },
+    {
+     "id": "TrayPockets@tap toccaVassoio($event)",
+     "etichetta": "",
+     "evento": "tap",
+     "handler": "toccaVassoio($event)",
+     "disabled": "",
+     "classe": "",
+     "esiti": {
+      "modifica, vicini 7 e 9, liv2": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": []
+      },
+      "modifica, reset aperto": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": []
+      }
+     }
+    },
+    {
+     "id": "TrayPockets@scale scala($event)",
+     "etichetta": "",
+     "evento": "scale",
+     "handler": "scala($event)",
+     "disabled": "",
+     "classe": "",
+     "esiti": {
+      "modifica, vicini 7 e 9, liv2": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.scalaPiena = undefined"
+       ]
+      },
+      "modifica, reset aperto": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.scalaPiena = undefined"
+       ]
+      }
+     }
+    },
+    {
+     "id": "UiButton@click zona = null",
+     "etichetta": "Tutto il cassetto",
+     "evento": "click",
+     "handler": "zona = null",
+     "disabled": "",
+     "classe": "",
+     "esiti": {
+      "modifica, vicini 7 e 9, liv2": "nascosto",
+      "modifica, reset aperto": "nascosto"
      }
     },
     {
@@ -4996,10 +5052,10 @@
      }
     },
     {
-     "id": "TrayPockets@pick clickPiece($event.index)",
+     "id": "TrayPockets@pick toccaTasca($event)",
      "etichetta": "",
      "evento": "pick",
-     "handler": "clickPiece($event.index)",
+     "handler": "toccaTasca($event)",
      "disabled": "",
      "classe": "",
      "esiti": {
@@ -5011,6 +5067,49 @@
         "dataStored.alert.desc = \"VIEW ONLY!\""
        ]
       }
+     }
+    },
+    {
+     "id": "TrayPockets@tap toccaVassoio($event)",
+     "etichetta": "",
+     "evento": "tap",
+     "handler": "toccaVassoio($event)",
+     "disabled": "",
+     "classe": "",
+     "esiti": {
+      "sola lettura liv0": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": []
+      }
+     }
+    },
+    {
+     "id": "TrayPockets@scale scala($event)",
+     "etichetta": "",
+     "evento": "scale",
+     "handler": "scala($event)",
+     "disabled": "",
+     "classe": "",
+     "esiti": {
+      "sola lettura liv0": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.scalaPiena = undefined"
+       ]
+      }
+     }
+    },
+    {
+     "id": "UiButton@click zona = null",
+     "etichetta": "Tutto il cassetto",
+     "evento": "click",
+     "handler": "zona = null",
+     "disabled": "",
+     "classe": "",
+     "esiti": {
+      "sola lettura liv0": "nascosto"
      }
     },
     {

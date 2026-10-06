@@ -1325,5 +1325,9 @@
     "noAlarms": "No active alarms",
     "unitAlarm": "{unit} in alarm",
     "moreAlarms": "+{n} alarms"
+  },
+  "trays": {
+    "wholeTray": "Whole tray",
+    "zoomHint": "Small pockets: the first tap zooms into the area, the second acts on the pocket."
   }
 }

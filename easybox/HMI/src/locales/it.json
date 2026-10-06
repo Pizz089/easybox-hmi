@@ -1325,5 +1325,9 @@
     "noAlarms": "Nessun allarme attivo",
     "unitAlarm": "{unit} in allarme",
     "moreAlarms": "+{n} allarmi"
+  },
+  "trays": {
+    "wholeTray": "Tutto il cassetto",
+    "zoomHint": "Tasche piccole: il primo tocco ingrandisce la zona, il secondo agisce sulla tasca."
   }
 }
