@@ -3324,33 +3324,6 @@
    ],
    "controlli": [
     {
-     "id": "UiTile@click cmdActiveMission?sendToRobot(26):''",
-     "etichetta": "Inserisci Cassetto n° {{getTrayExtract()}}",
-     "evento": "click",
-     "handler": "cmdActiveMission?sendToRobot(26):''",
-     "disabled": "!cmdActiveMission",
-     "classe": "",
-     "esiti": {
-      "locale, cassetto 8 fuori": {
-       "abilitato": true,
-       "effetti": [
-        "emit TO_PLANT/CMD/ROBOT 26"
-       ],
-       "stato": []
-      },
-      "remoto, cassetto 8 fuori": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": []
-      },
-      "locale, nessun cassetto fuori": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": []
-      }
-     }
-    },
-    {
      "id": "UiButton@click sendToBox(99)",
      "etichetta": "Reset EasyBox",
      "evento": "click",

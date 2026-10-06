@@ -43,6 +43,9 @@ export const AMMESSE = [
 	// ---- work object per cassetto (6/10, da ui-lifting c1ad480)
 	{ pagina: 'TraysView', tipo: 'tolto', firma: /^fetch GET api\/conf\/position\/show\/all \| fetch GET api\/conf\/tray\/extractCoords \| fetch GET api\/conf\/piece\/show\/all$/,
 		motivo: '"0 CASSETTIERA" eliminato (decisione di Dario, work object per cassetto): via il pulsante che apriva il dialog del teaching (queste tre letture) e con lui la scrittura teachTrays, che ora risponde 410 KO_WORKOBJECT. Le rotazioni si impostano dalla scheda del cassetto' },
+	// ---- fase C (risposte di Dario alla fase B, 6/10)
+	{ pagina: 'smallboxView', tipo: 'tolto', firma: /^emit TO_PLANT\/CMD\/ROBOT 26$/,
+		motivo: '"Inserisci cassetto" tolto dai Controlli EasyBox (decisione di Dario): era sempre spento, perche\' la sua condizione RobotInLocalMode non la scrive nessuno (le assegnazioni in robotView sono commentate). Il cassetto si rilascia da Robot -> Gestione cassetto' },
 ];
 const ammessa = (pagina, firma) => AMMESSE.find(a => (!a.pagina || a.pagina === pagina) && a.firma.test(firma));
 

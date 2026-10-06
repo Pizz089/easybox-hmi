@@ -1,21 +1,21 @@
 <script setup>
   import { dataStored } from '../../data.js'
-  import { sendToRobot } from '../../util/globalFunction.js';
   // (v3 fase B) stato col nome e il tono della striscia, componenti v3
   import { statusKey, statusTone } from '../../util/unitStatus.js'
   import UiCard from '../../components/ui/UiCard.vue'
-  import UiTile from '../../components/ui/UiTile.vue'
   import UiButton from '../../components/ui/UiButton.vue'
-  import { ArrowDownToLine, RotateCcw } from 'lucide-vue-next'
+  import { RotateCcw } from 'lucide-vue-next'
 </script>
 
 <template>
   <!-- (v3 fase B) Controlli · EasyBox, stesso schema della pagina Robot (non
        disegnata nelle tavole). A sinistra lo stato: STATUS della cassettiera
        (unit/show/SMALLBOX, stesso nome della striscia) con il cassetto non in
-       posizione se c'e', e il cassetto fuori (EXTRACT). A destra i comandi:
-       inserimento del cassetto e reset. Comandi e abilitazioni quelli di
-       prima (tests/test_golden_equivalenza.mjs). -->
+       posizione se c'e', e il cassetto fuori (EXTRACT). A destra il reset.
+       Comandi e abilitazioni quelli di prima (tests/test_golden_equivalenza.mjs).
+       (v3 fase C, decisione di Dario) "Inserisci cassetto" (26 al robot) TOLTO:
+       era sempre spento, perche' la sua condizione (RobotInLocalMode) non la
+       scrive nessuno. Il cassetto si rilascia da Robot -> Gestione cassetto. -->
   <div class="ctl">
     <div class="ctl__col">
       <UiCard :label="$t('Stato')">
@@ -39,15 +39,6 @@
       <div class="aux-banner" v-if="dataStored.safetyAux === 0">
         {{ $t('robot.auxBanner') }}
       </div>
-
-      <UiCard :label="$t('unit.MacroMission')">
-        <div class="box-tiles">
-          <UiTile :icon="ArrowDownToLine" :disabled="!cmdActiveMission"
-            @click="cmdActiveMission?sendToRobot(26):''">
-            <span>{{ $t('tray.INSERISCI_CASSETTO') }}<template v-if="getTrayExtract()>0"> n° {{ getTrayExtract() }}</template></span>
-          </UiTile>
-        </div>
-      </UiCard>
 
       <!-- reset della cassettiera (99): nessuna conferma, come prima -->
       <section class="box-restore">
@@ -179,26 +170,12 @@ export default {
         // off del solo handler nominato; i due listener BOX/* anonimi sopra
         // restano senza off (debito preesistente, censito in P3)
         dataStored.WS.socket.off('connect', this.requestSnapshots);
-    },
-    computed: {
-      cmdActiveMission(){
-        if (dataStored.RobotInLocalMode && this.getTrayExtract()>0) 
-          return true;
-        else 
-          return false;
-      }
     }
   }
 </script>
 
 <style scoped>
 /* (v3 fase B) colonne, stato e segmenti da assets/css/controls-v3.css */
-.box-tiles {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: var(--space-3);
-}
-.box-tiles .ui-tile { min-height: 112px; }
 .box-restore {
   display: flex;
   align-items: center;
@@ -214,9 +191,5 @@ export default {
   letter-spacing: var(--letter-spacing-label);
   text-transform: uppercase;
   color: var(--text-muted);
-}
-@media (max-width: 1599px) {
-  .box-tiles .ui-tile { min-height: 64px; flex-direction: row; align-items: center; justify-content: flex-start; padding: var(--space-2) var(--space-3); font-size: var(--font-size-sm); }
-  .box-tiles :deep(.ui-tile__icon) { width: var(--icon-size-md); height: var(--icon-size-md); }
 }
 </style>

@@ -98,7 +98,6 @@ Scenari: locale, cassetto 8 fuori · remoto, cassetto 8 fuori · locale, nessun 
 
 | Etichetta | Handler | Abilitazione | Abilitato per scenario | Effetto | Conferma |
 |---|---|---|---|---|---|
-| Inserisci Cassetto n° {{getTrayExtract()}} | `cmdActiveMission?sendToRobot(26):''` | `!cmdActiveMission` | locale, cassetto 8 fuori: sì<br>remoto, cassetto 8 fuori: no<br>locale, nessun cassetto fuori: no | emit TO_PLANT/CMD/ROBOT 26 | no |
 | Reset EasyBox | `sendToBox(99)` |  | locale, cassetto 8 fuori: sì<br>remoto, cassetto 8 fuori: sì<br>locale, nessun cassetto fuori: sì | emit TO_PLANT/CMD/BOX 99 | no |
 
 ## DashboardView (`src/views/DashboardView.vue`)
