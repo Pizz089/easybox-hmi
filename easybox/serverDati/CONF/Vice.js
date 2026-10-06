@@ -268,7 +268,8 @@ router.get('/stops/:viceID', (req, res) => {
 			res.status(500).send("KO");
 			return;
 		}
-		let query = `select pv.VICE_ID, pv.PIECE_ID, pv.STOP_BEYOND_CLAW, pv.COMP_PUSH,
+		// (6/10) anche Z_PUSH, la quota Z della spinta (NULL = alla quota di presa)
+		let query = `select pv.VICE_ID, pv.PIECE_ID, pv.STOP_BEYOND_CLAW, pv.COMP_PUSH, pv.Z_PUSH,
 							rtrim(p.FAMILY) as PIECE_FAMILY, rtrim(p.DESCR) as PIECE_DESCR,
 							p.X as PIECE_X, p.Y as PIECE_Y, p.PUSH_TO_STOP
 					 from PIECE_ON_VICE pv
@@ -382,6 +383,74 @@ router.get('/setCompPush', (req, res) => {
 			}
 			audit.audit('Morsa ID ' + viceID + ', pezzo ID ' + pieceID
 				+ ': compensazione spinta ' + (vuoto ? 'rimossa' : comp + ' um'),
+				audit.SRC_PUSH_SIM, 'PIECE_ON_VICE:' + viceID + ':' + pieceID);
+			res.send("OK");
+		});
+	});
+})
+
+// (6/10) QUOTA Z DELLA SPINTA (Z_PUSH): l'altezza della chela dal FONDO del
+// pezzo durante la spinta, da 0 alla quota di presa del grezzo (PIECE.Z_PICK).
+// Vuoto = NULL = alla quota di presa, cioe' alla Z del deposito: come prima.
+// Stessa chiave e STESSA REGOLA di COMP_PUSH: SOLO UPDATE, NESSUN UPSERT. La
+// riga nasce dichiarando l'appoggio; senza riga -> KO_NOT_FOUND.
+// Il limite superiore si legge dal DB nella stessa query, MAI dal payload: il
+// pannello lo mostra, ma il valore che decide e' quello del pezzo adesso.
+// Oltre la quota di presa, o pezzo senza quota di presa -> KO_Z_PUSH_RANGE e
+// nessuna scrittura. La vista COORDINATES_PUSH_MC tratterebbe comunque un
+// valore fuori campo come vuoto (Z_PUSH_DROP = 0), ma qui non deve entrare.
+router.get('/setZPush', (req, res) => {
+	const viceID  = parseInt(req.query.VICE_ID, 10);
+	const pieceID = parseInt(req.query.PIECE_ID, 10);
+	const raw     = req.query.Z_PUSH;
+	const vuoto   = raw === undefined || String(raw).trim() === '';
+	const z       = vuoto ? null : Number(String(raw).trim());
+	if (!Number.isInteger(viceID) || viceID < 1
+		|| !Number.isInteger(pieceID) || pieceID < 1
+		|| (!vuoto && (!Number.isInteger(z) || z < 0))) { res.status(400).send("KO_BAD_INPUT"); return; }
+	const val = vuoto ? 'NULL' : String(z);
+	sql.connect(DBf.configDB, function (err) {
+		if (err) {
+			log.error("err setZPush: " + err);
+			res.status(500).send("KO");
+			return;
+		}
+		// la riga c'e'? e la quota di presa del pezzo, ADESSO. L'UPDATE parte
+		// solo se c'e' la riga e (valore vuoto oppure dentro 0..Z_PICK).
+		let query = `SET NOCOUNT ON;
+					DECLARE @riga int = (SELECT COUNT(*) FROM PIECE_ON_VICE WHERE VICE_ID=${viceID} AND PIECE_ID=${pieceID});
+					DECLARE @zpick int = (SELECT Z_PICK FROM PIECE WHERE ID=${pieceID});
+					DECLARE @n int = 0;
+					IF @riga > 0 AND (${vuoto ? '1 = 1' : '@zpick IS NOT NULL AND ' + val + ' <= @zpick'})
+					BEGIN
+						UPDATE PIECE_ON_VICE SET Z_PUSH=${val}
+						 WHERE VICE_ID=${viceID} AND PIECE_ID=${pieceID};
+						SET @n = @@ROWCOUNT;
+					END
+					SELECT @riga AS riga, @zpick AS z_pick, @n AS n;`;
+		var request = new sql.Request();
+		log.info('query ' + query);
+		request.query(query, function (err, result) {
+			if (err) {
+				log.error("Err query: " + err);
+				res.status(500).send("KO");
+				return;
+			}
+			const row = (result.recordset && result.recordset[0]) || {};
+			if (!row.riga) {
+				log.standard('setZPush ' + ERR.KO_NOT_FOUND + ': morsa ' + viceID
+					+ ' pezzo ' + pieceID + ' senza riga PIECE_ON_VICE');
+				res.send(ERR.KO_NOT_FOUND);
+				return;
+			}
+			if (!row.n) {
+				log.standard('setZPush ' + ERR.KO_Z_PUSH_RANGE + ': morsa ' + viceID + ' pezzo ' + pieceID
+					+ ' Z_PUSH ' + val + ' fuori da 0..' + (row.z_pick === null || row.z_pick === undefined ? 'NULL' : row.z_pick));
+				res.send(ERR.KO_Z_PUSH_RANGE);
+				return;
+			}
+			audit.audit('Morsa ID ' + viceID + ', pezzo ID ' + pieceID
+				+ ': quota Z della spinta ' + (vuoto ? 'rimossa (alla quota di presa)' : z + ' um dal fondo del pezzo'),
 				audit.SRC_PUSH_SIM, 'PIECE_ON_VICE:' + viceID + ':' + pieceID);
 			res.send("OK");
 		});

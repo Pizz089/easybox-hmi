@@ -323,6 +323,41 @@ check(r.q.some(q => /INSERT INTO LOG/.test(q) && /passo delle tasche/.test(q)),
 r = call('GET /setSize', { ID: '1029', X: '40000', Y: '0' }, []);
 check(r.res.code === 400 && r.n === 0, 'dimensione a zero -> 400');
 
+console.log('\n3d) quota Z della spinta (6/10)');
+// zPushDrop: di quanto scende la chela sotto la Z di deposito. IDENTICA alla
+// colonna Z_PUSH_DROP di COORDINATES_PUSH_MC, server e pannello alla pari.
+const CASI_Z = [
+	[{ zPush: null, zPick: 10000 }, 0, 'vuota -> 0, la Z resta quella del deposito'],
+	[{ zPush: '', zPick: 10000 }, 0, 'campo vuoto -> 0'],
+	[{ zPush: 10000, zPick: 10000 }, 0, 'alla quota di presa -> 0'],
+	[{ zPush: 0, zPick: 10000 }, 10000, 'sul fondo del pezzo -> scende di tutta la quota di presa'],
+	[{ zPush: 4000, zPick: 10000 }, 6000, '4 mm dal fondo con presa a 10 -> scende di 6'],
+	[{ zPush: 10001, zPick: 10000 }, 0, 'oltre la quota di presa (pezzo cambiato dopo) -> 0, come prima'],
+	[{ zPush: 4000, zPick: null }, 0, 'pezzo senza quota di presa -> 0'],
+	[{ zPush: 0, zPick: 0 }, 0, 'quota di presa zero -> 0'],
+];
+for (const [a, atteso, l] of CASI_Z)
+	check(srv.zPushDrop(a) === atteso && hmi.zPushDrop(a) === atteso, 'zPushDrop ' + JSON.stringify(a) + ' = ' + atteso + ': ' + l + ' (server e pannello)');
+r = call('GET /stops/:viceID', { viceID: '1' }, [{ recordset: [] }]);
+check(/pv\.Z_PUSH,/.test(r.q[0]), 'la lettura di PIECE_ON_VICE restituisce anche Z_PUSH');
+r = call('GET /setZPush', { VICE_ID: '1', PIECE_ID: '1035', Z_PUSH: '4000' }, [{ recordset: [{ riga: 1, z_pick: 10000, n: 1 }] }]);
+check(r.res.body === 'OK' && r.res.code === 200, 'setZPush 4000 -> 200 OK (la seconda query e\' l\'audit)');
+check(/SELECT Z_PICK FROM PIECE WHERE ID=1035/.test(r.q[0]) && /4000 <= @zpick/.test(r.q[0]), '   il limite e\' la quota di presa letta dal DB nella stessa query');
+check(/UPDATE PIECE_ON_VICE SET Z_PUSH=4000 WHERE VICE_ID=1 AND PIECE_ID=1035/.test(r.q[0]) && !/INSERT/i.test(r.q[0]), '   solo UPDATE, nessun upsert: la riga nasce dichiarando l\'appoggio');
+r = call('GET /setZPush', { VICE_ID: '1', PIECE_ID: '1035', Z_PUSH: '4000', Z_PICK: '999999' }, [{ recordset: [{ riga: 1, z_pick: 10000, n: 1 }] }]);
+check(!/999999/.test(r.q[0]), '   un Z_PICK nel payload non entra nella query');
+r = call('GET /setZPush', { VICE_ID: '1', PIECE_ID: '1035', Z_PUSH: '4000' }, [{ recordset: [{ riga: 0, z_pick: 10000, n: 0 }] }]);
+check(r.res.body === errorCodes.KO_NOT_FOUND && r.res.code === 200, 'senza riga PIECE_ON_VICE -> 200 KO_NOT_FOUND');
+r = call('GET /setZPush', { VICE_ID: '1', PIECE_ID: '1035', Z_PUSH: '10001' }, [{ recordset: [{ riga: 1, z_pick: 10000, n: 0 }] }]);
+check(r.res.body === errorCodes.KO_Z_PUSH_RANGE && r.res.code === 200, 'oltre la quota di presa -> 200 KO_Z_PUSH_RANGE, nessuna scrittura');
+r = call('GET /setZPush', { VICE_ID: '1', PIECE_ID: '1035', Z_PUSH: '' }, [{ recordset: [{ riga: 1, z_pick: 10000, n: 1 }] }]);
+check(/SET Z_PUSH=NULL/.test(r.q[0]) && /IF @riga > 0 AND \(1 = 1\)/.test(r.q[0]) && r.res.body === 'OK', 'campo vuoto -> NULL (alla quota di presa), senza limite');
+for (const v of ['-1', '1.5', 'abc'])
+	check(call('GET /setZPush', { VICE_ID: '1', PIECE_ID: '1035', Z_PUSH: v }, []).res.code === 400, 'Z_PUSH "' + v + '" -> 400 senza toccare il database');
+check(errorCodes.KO_Z_PUSH_RANGE === 'KO_Z_PUSH_RANGE', 'codice nuovo in errorCodes.js');
+r = call('GET /pushQuotes/:orderID', { orderID: '2117' }, [{ recordset: [] }]);
+check(/PUSH_STATUS, Z_PUSH, Z_PUSH_REF, Z_PUSH_DROP from COORDINATES_PUSH_MC/.test(r.q[0]), 'la lettura della vista per la simulazione porta anche Z_PUSH, Z_PUSH_REF e Z_PUSH_DROP');
+
 console.log('\n4) lo script della vista non nasconde la definizione');
 // (blow 18/9) la vista del SOFFIAGGIO: stesse regole, e una in piu' — la
 // query che la legge deve stare sotto i 254 caratteri di queryTemp del PLC
