@@ -77,11 +77,13 @@ import { configuredMachineNumbers } from '@/util/machineBrands';
 import { useCompact } from '@/util/breakpoints';
 import { plant } from '@/stores/plantStatus.js';
 import { robotStatoIgnoto } from '@/util/holdState.js';
+import { useLingua } from '@/util/lingua.js';
 import UiChip from '@/components/ui/UiChip.vue';
 
 defineProps({ alarms: { type: Number, default: 0 } });
 defineEmits(['open-user']);
-const { t, locale } = useI18n();
+const { t } = useI18n();
+const { locale, cambiaLingua } = useLingua();
 const compact = useCompact();
 const livello = computed(() => Number(dataStored.userLevel) || 0);
 const ignoto = computed(() => robotStatoIgnoto(plant.robot));
@@ -121,11 +123,7 @@ const cella = computed(() => {
 });
 const macchine = computed(() => configuredMachineNumbers().map(n => ({ n, status: plant['mc' + n] })));
 
-// lingua: stesso ciclo it -> en della barra di oggi
-function cambiaLingua() {
-	const lingue = ['it', 'en'];
-	locale.value = lingue[(lingue.indexOf(locale.value) + 1) % lingue.length];
-}
+// lingua: stesso ciclo it -> en della barra di prima (util/lingua.js)
 
 // ora locale, ogni 10 s
 const ora = ref('');

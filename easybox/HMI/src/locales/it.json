@@ -77,7 +77,8 @@
     },
     "tab": {
       "mc1": "Macchina MC1",
-      "mc2": "Macchina MC2"
+      "mc2": "Macchina MC2",
+      "userLang": "Utente e lingua"
     }
   },
   "strip": {
@@ -119,6 +120,16 @@
     "unitInAlarm": "{unit} in allarme",
     "history": "Storico",
     "historyEmpty": "Nessun allarme registrato."
+  },
+  "settings": {
+    "user": "Utente",
+    "changeLevel": "Cambia livello",
+    "language": "Lingua",
+    "changeLanguage": "Cambia lingua",
+    "langName": {
+      "it": "Italiano",
+      "en": "English"
+    }
   },
   "layout": {
     "viewOnly": "SOLO VISUALIZZAZIONE!!",

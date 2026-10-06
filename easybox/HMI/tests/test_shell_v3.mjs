@@ -38,7 +38,7 @@ const ora = [...router.matchAll(/^\s*path: "([^"]+)"/gm)].map(m => m[1]);
 const sparite = PRIMA.filter(p => !ora.includes(p));
 check(sparite.length === 0, 'tutti gli URL di prima ci sono ancora (' + PRIMA.length + ')' + (sparite.length ? ': mancano ' + sparite.join(', ') : ''));
 const nuove = ora.filter(p => !PRIMA.includes(p));
-check(nuove.length === 1 && nuove[0] === '/alarms', 'l\'unica rotta nuova e\' /alarms' + (nuove.length ? ' (' + nuove.join(', ') + ')' : ''));
+check(nuove.slice().sort().join() === '/alarms,/settings/user', 'rotte nuove solo /alarms e /settings/user' + (nuove.length ? ' (' + nuove.join(', ') + ')' : ''));
 const blocchi = router.split(/\n\s*\{\s*\n/).filter(b => /path: "/.test(b));
 const senzaShell = blocchi.filter(b => /component:/.test(b) && !/meta: \{ layout: AppShell \}/.test(b)).map(b => b.match(/path: "([^"]+)"/)[1]);
 check(senzaShell.length === 1 && senzaShell[0] === '/dispatcher', 'ogni pagina e\' nella shell (fuori solo /dispatcher, che non aveva layout neanche prima)' + (senzaShell.length ? ': ' + senzaShell.join(', ') : ''));
@@ -53,7 +53,7 @@ const esempi = { '/': 'home', '/dashboard': 'home', '/production': 'production',
 	'/conf/Trays': 'warehouse', '/conf/tray': 'warehouse', '/layout/22/1/8': 'warehouse', '/conf/Gratings': 'warehouse', '/conf/Grating/2095': 'warehouse', '/conf/importGrating': 'warehouse', '/conf/Parts': 'warehouse', '/conf/piece/piece': 'warehouse',
 	'/conf/Attrezzaggi': 'tooling', '/conf/Attrezzaggio': 'tooling', '/conf/Pallets': 'tooling', '/conf/pallet': 'tooling', '/conf/Vices': 'tooling', '/conf/vice': 'tooling',
 	'/conf/Fixtures': 'tooling', '/conf/Fixture': 'tooling', '/conf/FixtureOnPallet': 'tooling', '/conf/Grippers': 'tooling', '/conf/Gripper/gripper': 'tooling', '/sim/push': 'tooling',
-	'/alarms': 'alarms', '/diag/mqtt': 'alarms', '/conf/Position': 'settings', '/conf/Machines': 'settings', '/conf/Warehouses': 'settings' };
+	'/alarms': 'alarms', '/diag/mqtt': 'alarms', '/conf/Position': 'settings', '/conf/Machines': 'settings', '/conf/Warehouses': 'settings', '/settings/user': 'settings' };
 const sbagliate = Object.entries(esempi).filter(([p, id]) => (sectionOf(p) || {}).id !== id).map(([p, id]) => p + ' -> ' + ((sectionOf(p) || {}).id || 'nessuna') + ' (attesa ' + id + ')');
 check(sbagliate.length === 0, 'ogni rotta accende la sua voce (' + Object.keys(esempi).length + ' rotte)' + (sbagliate.length ? ': ' + sbagliate.join('; ') : ''));
 check((sectionOf('/UNIT/robot') || {}).id === 'controls', 'senza distinguere maiuscole, come il router');
@@ -66,7 +66,10 @@ check(['/conf/Position', '/conf/Warehouses', '/diag/mqtt'].every(r => tec.includ
 check(amm.includes('/conf/Machines'), 'livello 2: anche Macchine');
 check(op.includes('/sim/push') && op.includes('/alarms'), 'operatore: Spinta in battuta e Allarmi visibili');
 check(!op.includes('/unit/CNC2') && etichette(0, tutte([1, 2])).includes('/unit/CNC2'), 'MC2 solo se configurata');
-check(visibleTabs(NAV.find(s => s.id === 'settings'), 0, solo1).length === 0, 'Impostazioni senza schede per l\'operatore (la voce apre il cambio utente, nessun "non abilitato")');
+check(visibleTabs(NAV.find(s => s.id === 'settings'), 0, solo1).map(t => t.to).join() === '/settings/user', 'Impostazioni per l\'operatore: solo Utente e lingua (nessun "non abilitato")');
+const su = readFileSync('src/views/SettingsUserView.vue', 'utf8'), lingua = readFileSync('src/util/lingua.js', 'utf8');
+check(/<ChangeUserModal/.test(su) && /useLingua/.test(su) && /useLingua/.test(readFileSync('src/layout/v3/StatusStrip.vue', 'utf8')) && /LINGUE = \['it', 'en'\]/.test(lingua),
+	'Utente e lingua: stesso dialog di cambio utente e stesso ciclo it/en della striscia');
 const rail = readFileSync('src/layout/v3/NavRail.vue', 'utf8');
 check(/v-else type="button"[\s\S]{0,200}\$emit\('open-user'\)/.test(rail), 'voce senza schede -> cambio utente');
 

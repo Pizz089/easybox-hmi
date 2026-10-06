@@ -47,6 +47,9 @@ export const NAV = [
 		{ to: '/conf/Position', label: 'menu.position', match: ['/conf/Position'], level: 1 },
 		{ to: '/conf/Machines', label: 'menu.machines', match: ['/conf/Machines'], level: 2 },
 		{ to: '/conf/Warehouses', label: 'menu.warehouses', match: ['/conf/Warehouses'], level: 1 },
+		// livello 0: cambio utente (stesso dialog di oggi) e lingua (stesso
+		// ciclo della striscia), cosi' anche sul tablet in compatto
+		{ to: '/settings/user', label: 'nav.tab.userLang', match: ['/settings/user'] },
 	] },
 ];
 

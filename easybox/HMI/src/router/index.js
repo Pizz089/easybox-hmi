@@ -279,6 +279,13 @@ const router = createRouter({
       component: () => import("../views/AlarmsView.vue"),
     },
     {
+      // (v3) Impostazioni > Utente e lingua: anche per l'operatore
+      path: "/settings/user",
+      name: "settings_user",
+      meta: { layout: AppShell },
+      component: () => import("../views/SettingsUserView.vue"),
+    },
+    {
       path: "/diag/mqtt",
       name: "diag_mqtt",
       meta: { layout: AppShell },

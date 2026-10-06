@@ -77,7 +77,8 @@
     },
     "tab": {
       "mc1": "Machine MC1",
-      "mc2": "Machine MC2"
+      "mc2": "Machine MC2",
+      "userLang": "User and language"
     }
   },
   "strip": {
@@ -119,6 +120,16 @@
     "unitInAlarm": "{unit} in alarm",
     "history": "History",
     "historyEmpty": "No alarm recorded."
+  },
+  "settings": {
+    "user": "User",
+    "changeLevel": "Change level",
+    "language": "Language",
+    "changeLanguage": "Change language",
+    "langName": {
+      "it": "Italiano",
+      "en": "English"
+    }
   },
   "layout": {
     "viewOnly": "VIEW ONLY!!",
