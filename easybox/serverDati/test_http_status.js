@@ -21,6 +21,8 @@ const fs = require('fs');
 
 const routes = {};
 let queryErr = null, connErr = null, results = [];
+// contatori del finto mssql (sezione 2c: rotte che NON devono toccare il DB)
+let nConnect = 0, nQuery = 0;
 const fakeRouter = () => {
 	const reg = method => (p, h) => { routes[method + ' ' + p] = h; };
 	return { get: reg('GET'), post: reg('POST'), delete: reg('DELETE'), put: reg('PUT') };
@@ -29,8 +31,8 @@ const origLoad = Module._load;
 Module._load = function (req) {
 	if (req === 'express') return Object.assign(() => {}, { Router: fakeRouter, static: () => {} });
 	if (req === 'mssql') return {
-		connect: (cfg, cb) => cb(connErr),
-		Request: function () { this.query = (q, cb) => cb(queryErr, results.length ? results.shift() : { recordset: [], rowsAffected: [0] }); },
+		connect: (cfg, cb) => { nConnect++; cb(connErr); },
+		Request: function () { this.query = (q, cb) => { nQuery++; cb(queryErr, results.length ? results.shift() : { recordset: [], rowsAffected: [0] }); }; },
 	};
 	if (req.endsWith('DBFunct')) return { configDB: {}, io: { emit: () => {}, on: () => {} } };
 	if (req.endsWith('LogFunct')) return { standard: () => {}, error: () => {}, info: () => {}, init: () => {} };
@@ -60,7 +62,8 @@ const tech = [
 	['GET /insertFixtureOnPallet', { PALLET_ID: '9', FIXTURE_ID: '1' }],
 	['GET /updateFixtureOnPallet', { POS_PLANT: '9', ID: '1', POS_X: '0', POS_Y: '0', POS_Z: '0', POS_X_CORR: '0', POS_Y_CORR: '0', POS_Z_CORR: '0', POS_X_ROT: '0', POS_Y_ROT: '0', POS_Z_ROT: '0' }],
 	['GET /updateTray', { ID: '1' }],
-	['GET /teachTrays', { rows: JSON.stringify([{ tray: 1, xCorr: 0, yCorr: 0, zCorr: 0, xRot: 0, yRot: 0, zRot: 0 }]) }],
+	// (6/10) GET /teachTrays non c'e' piu' qui: "0 CASSETTIERA" e' eliminato e
+	// la rotta risponde 410 senza toccare il DB (sezione 2c)
 	['GET /insertOrder', { pieceID: '1', gripperID: '1', viceID: '0', fixtureID: '1', palletID: '1', machineID: '1', quantity: '1', PP: '1' }],
 	['GET /updateOrder', { ID: '1', pieceID: '1', gripperID: '1', viceID: '0', fixtureID: '1', palletID: '1', status: '4', machineID: '1', quantity: '1', PP: '1' }],
 ];
@@ -98,6 +101,28 @@ for (const [key, params, what] of bad) {
 	const r = call(key, params, params, []);
 	const body = typeof r.body === 'string' ? r.body : (r.body && r.body.ris);
 	check(r.code === 400 && body === 'KO_BAD_INPUT', key + ' (' + what + ') -> ' + r.code + ' ' + body);
+}
+
+console.log('\n2c) "0 CASSETTIERA" eliminato (6/10): /teachTrays -> 410 KO_WORKOBJECT, nessuna query');
+{
+	// il finto mssql conta connessioni e query: la rotta non deve fare ne'
+	// le une ne' le altre, qualunque cosa le arrivi (anche righe valide)
+	queryErr = null; connErr = null;
+	const c0 = nConnect, q0 = nQuery;
+	for (const params of [{ rows: JSON.stringify([{ tray: 1, xCorr: 0, yCorr: 0, zCorr: 0, xRot: 0, yRot: 0, zRot: 0 }]) }, {}, { rows: 'x' }]) {
+		const r = call('GET /teachTrays', params, null, []);
+		check(r.code === 410 && r.body === errorCodes.KO_WORKOBJECT, 'teachTrays ' + JSON.stringify(params).slice(0, 40) + ' -> ' + r.code + ' ' + r.body);
+	}
+	check(nConnect === c0 && nQuery === q0, 'nessuna connessione e nessuna query (' + (nConnect - c0) + ' / ' + (nQuery - q0) + ')');
+	// controprova: una rotta che il DB lo usa davvero fa salire i contatori
+	call('GET /updateTray', { ID: '1' }, null, []);
+	check(nConnect > c0 && nQuery > q0, 'controprova: updateTray si connette e interroga (i contatori funzionano)');
+	// e nel sorgente la rotta non costruisce query
+	const tray = fs.readFileSync(path.join(SRV, 'CONF', 'Tray.js'), 'utf8');
+	const i = tray.indexOf("router.get('/teachTrays'");
+	const corpo = tray.slice(i, tray.indexOf('router.', i + 10));
+	check(i > 0 && !/sql\.|query|UPDATE|INSERT|Request/i.test(corpo.replace(/query=/g, '').replace(/req\.query/g, '')), 'la rotta non costruisce nessuna query (sorgente)');
+	check(errorCodes.KO_WORKOBJECT === 'KO_WORKOBJECT', 'serverDati/errorCodes.js: KO_WORKOBJECT');
 }
 
 console.log('\n3) nessun fallimento tecnico lasciato a 200 nel sorgente');

@@ -194,6 +194,10 @@
                      vengono propagate alle [POSITION] del cassetto. -->
                 <h4 class="section-label">{{$t('tray.sectionRot')}}</h4>
                 <small class="teach-locked-hint" v-if="teachLocked">{{$t('tray.teach.lockedHint')}}</small>
+                <!-- (6/10) "0 CASSETTIERA" eliminato: le rotazioni si
+                     impostano qui, cassetto per cassetto (salva ->
+                     propagateTeaching -> tutte le tasche del cassetto) -->
+                <p class="tray-wo-notice">{{$t('tray.workObjectRotations')}}</p>
                 <div class="pure-control-group">
                     <label for="aligned-foo">{{$t('tray.X_Rot')}}</label>
                     <numericField name="X_ROT" unitMeasure="&deg;" min="-180" max="180" step="0.1" :locked="teachLocked"

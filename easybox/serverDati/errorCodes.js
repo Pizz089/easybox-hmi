@@ -47,6 +47,9 @@ exports.KO_NOT_FOUND         = "KO_NOT_FOUND";
 // Cassetti bloccati (P1 5/10, decisione 29/9): insertTray e DELETE /tray/:ID non
 // toccano piu' il DB e rispondono 403 con questo codice.
 exports.KO_TRAY_LOCKED       = "KO_TRAY_LOCKED";       // aggiunta/eliminazione cassetti disabilitata
+// "0 CASSETTIERA" eliminato (6/10, work object per cassetto): GET /teachTrays
+// non tocca piu' il DB e risponde 410 con questo codice.
+exports.KO_WORKOBJECT        = "KO_WORKOBJECT";        // teaching cassettiera eliminato
 // Rilancia ordine finito (P2 5/10): POST /order/relaunch/:orderId
 exports.KO_ORDER_NOT_FINISHED = "KO_ORDER_NOT_FINISHED"; // l'ordine non e' a STATUS 5 (finito): niente da rilanciare
 exports.KO_NO_RAW             = "KO_NO_RAW";             // mode 'available' senza grezzi nei cassetti per il pezzo dell'ordine

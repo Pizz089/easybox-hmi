@@ -1,14 +1,15 @@
 // ============================================================================
-// test_tray_workobject.mjs — correzioni del cassetto e work object (6/10)
+// test_tray_workobject.mjs — cassetti e work object per cassetto (6/10)
 //
 // Dalla vista 4Robot v4 (serverDati/scripts/robot-tray-view-v4.sql) le
 // correzioni del cassetto (TRAY.X_CORR, Y_CORR, Z_CORR) restano nel DB ma NON
-// entrano piu' nelle quote del robot: la posizione del cassetto e' nel robot.
-// Il pannello lo dice dove l'operatore le vedrebbe o le scriverebbe:
-//   1. pagina Cassetto: avviso fisso sopra i campi X/Y/Z;
-//   2. "0 CASSETTIERA": il comando resta (scrive le rotazioni anche nelle
-//      tasche), la conferma dice che X/Y/Z non contano piu';
-//   3. testi in italiano e in inglese; nessun cambio al comando.
+// entrano piu' nelle quote del robot, e le quote di estrazione sono relative
+// al cassetto (scripts/extract-coords-workobject.sql). Quindi:
+//   1. pagina Cassetto: avviso fisso sopra i campi X/Y/Z e, accanto alle
+//      rotazioni, la riga che dice che si impostano li', cassetto per cassetto;
+//   2. "0 CASSETTIERA" ELIMINATO (decisione di Dario): in TraysView nessun
+//      pulsante, nessun dialog, nessuna chiamata a teachTrays/extractCoords;
+//   3. testi in italiano e in inglese, chiavi del dialog tolte.
 //
 // Uso:   node test_tray_workobject.mjs     (dalla cartella easybox/HMI)
 // ============================================================================
@@ -16,29 +17,39 @@ import { readFileSync } from 'node:fs';
 
 let failed = 0;
 const check = (c, l) => { console.log((c ? '  ok   ' : '  FAIL ') + l); if (!c) failed++; };
-const tpl = f => { const s = readFileSync(f, 'utf8'); return s.slice(s.indexOf('<template>'), s.lastIndexOf('</template>')).replace(/<!--[\s\S]*?-->/g, ''); };
-const it = JSON.parse(readFileSync('src/locales/it.json', 'utf8'));
-const en = JSON.parse(readFileSync('src/locales/en.json', 'utf8'));
+const leggi = f => readFileSync(f, 'utf8');
+const tpl = s => s.slice(s.indexOf('<template>'), s.lastIndexOf('</template>')).replace(/<!--[\s\S]*?-->/g, '');
+const it = JSON.parse(leggi('src/locales/it.json'));
+const en = JSON.parse(leggi('src/locales/en.json'));
 
 console.log('1) pagina Cassetto');
-const tray = tpl('src/views/conf/Tray/Tray.vue');
+const tray = tpl(leggi('src/views/conf/Tray/Tray.vue'));
 const iAvviso = tray.indexOf("$t('tray.workObjectNotice')");
 const iX = tray.indexOf("$t('tray.X_Corr')");
 check(iAvviso > 0 && iAvviso < iX, 'avviso sopra le correzioni X/Y/Z');
-check(!/v-if|v-show/.test((tray.slice(0, iAvviso).match(/<[^<]*$/) || [''])[0]), 'avviso fisso (nessuna condizione)');
+const iRotSez = tray.indexOf("$t('tray.sectionRot')");
+const iRot = tray.indexOf("$t('tray.workObjectRotations')");
+const iXRot = tray.indexOf("$t('tray.X_Rot')");
+check(iRotSez > 0 && iRot > iRotSez && iRot < iXRot, 'riga sulle rotazioni accanto ai campi delle rotazioni');
+const classe = i => ((tray.slice(0, i).match(/<p class="([^"]+)">[^<]*$/) || [])[1]);
+check(classe(iAvviso) === 'tray-wo-notice' && classe(iRot) === 'tray-wo-notice', 'stessa classe dei due avvisi (tray-wo-notice), nessuna condizione');
+check(/propagateTeaching/.test(leggi('src/views/conf/Tray/Tray.vue')), 'il salvataggio porta ancora le rotazioni alle tasche (propagateTeaching)');
 
-console.log('\n2) 0 CASSETTIERA');
-const trays = tpl('src/views/conf/TraysView.vue');
-const passo3 = trays.slice(trays.indexOf('v-if="teach.step==3"'), trays.indexOf('confirmTeach()'));
-check(passo3.includes("$t('tray.teach.workObjectNote')"), 'la conferma (passo 3, prima di CONFERMA E SCRIVI) dice che X/Y/Z non contano piu\'');
-const src = readFileSync('src/views/conf/TraysView.vue', 'utf8');
-check(/api\/conf\/tray\/teachTrays\?rows=/.test(src) && /dataStored\.userLevel>1 \? openTeach\(\) : ''/.test(src), 'il comando teachTrays resta, con lo stesso gate');
+console.log('\n2) "0 CASSETTIERA" eliminato');
+const traysSrc = leggi('src/views/conf/TraysView.vue');
+const trays = tpl(traysSrc);
+check(!/tray\.teach\.button|openTeach|teach\.open/.test(trays), 'nessun pulsante e nessun dialog del teaching in TraysView');
+check(!/openTeach|closeTeach|calcPreview\(|confirmTeach|eligibleFloors|teachTrays|extractCoords|numericField/.test(traysSrc.replace(/<!--[\s\S]*?-->/g, '')), 'nessun metodo, dato o chiamata del teaching (codice, commenti esclusi)');
+check(!/\.teach-field|\.teach-table|teach-wo-note/.test(traysSrc), 'via gli stili usati solo dal teaching');
+check(/\.teach-hint|\.teach-warning/.test(traysSrc) && /class="teach-hint"/.test(trays), 'restano quelli che usa anche il dialog del grigliato');
+check(/"0 CASSETTIERA" ELIMINATO[\s\S]{0,600}7fc7964/.test(traysSrc), 'commento: perche\' e dove ritrovare il codice di prima');
 
 console.log('\n3) testi');
-const parla = t => /work object/i.test(t) && /robot/i.test(t);
-check(parla(it.tray.workObjectNotice) && parla(en.tray.workObjectNotice), 'avviso della pagina Cassetto in italiano e in inglese');
-check(parla(it.tray.teach.workObjectNote) && parla(en.tray.teach.workObjectNote) && /X\/Y\/Z/.test(it.tray.teach.workObjectNote) && /rotazioni/.test(it.tray.teach.workObjectNote),
-	'nota della conferma: X/Y/Z non contano, il comando serve per le rotazioni');
+check(it.tray.workObjectNotice && en.tray.workObjectNotice && /work object/i.test(it.tray.workObjectNotice) && /work object/i.test(en.tray.workObjectNotice), 'avviso sulle correzioni in italiano e in inglese');
+check(it.tray.workObjectRotations === "Con i work object per cassetto le rotazioni si impostano qui, cassetto per cassetto: al salvataggio vanno a tutte le tasche del cassetto."
+	&& en.tray.workObjectRotations === "With one work object per tray, rotations are set here, tray by tray: on save they are applied to all the tray's pockets.", 'riga sulle rotazioni, testi decisi');
+check(JSON.stringify(Object.keys(it.tray.teach).sort()) === JSON.stringify(['applied', 'back', 'lockedHint', 'next']) && JSON.stringify(Object.keys(en.tray.teach).sort()) === JSON.stringify(Object.keys(it.tray.teach).sort()),
+	'di tray.teach restano solo le chiavi usate altrove (applied, back, lockedHint, next)');
 
 console.log('\n' + (failed ? failed + ' CHECK FALLITI' : 'TUTTI I CHECK PASSATI'));
 process.exit(failed ? 1 : 0);

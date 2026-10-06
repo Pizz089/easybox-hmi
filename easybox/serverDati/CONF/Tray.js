@@ -408,55 +408,22 @@ router.get('/extractCoords', (req, res) => {
 	});
 })
 
-// Scrittura ATOMICA del teaching su tutta la cassettiera (comando "0").
-// Input: rows = JSON [{tray:1..12, xCorr,yCorr,zCorr,xRot,yRot,zRot}, ...]
-// (millesimi interi). Validazione numerica server-side: QUALUNQUE campo non
-// numerico -> KO_BAD_INPUT, nessuna scrittura. Per ogni riga, nella STESSA
-// transazione (SET XACT_ABORT ON + BEGIN TRAN: qualsiasi errore runtime
-// annulla TUTTO — o si scrive tutta la cassettiera o niente):
-//   1. UPDATE TRAY (CORR+ROT) WHERE FLOOR_MAG=tray (piano senza riga TRAY:
-//      no-op, non errore — il pannello lo annota in anteprima);
-//   2. UPDATE [POSITION] ROT + Z=0 WHERE PARENT = 'TRAY_n' (helper trayParent).
-//      Z=0 = migrazione alla CONVENZIONE (vedi Position.js): le righe
-//      vecchio-regime con Z=interasse vengono azzerate QUI, nella stessa
-//      transazione del teaching che mette la quota assoluta in TRAY.Z_CORR.
+// "0 CASSETTIERA" ELIMINATO (6/10, decisione di Dario). Con i work object
+// per cassetto le quote delle tasche (vista 4Robot v4) e quelle di estrazione
+// (scripts/extract-coords-workobject.sql) sono relative al cassetto: il
+// comando non ha piu' senso, e il calcolo del pannello vecchio (differenze fra
+// le righe di COORDINATES_FOR_EXTRACT, ora ~0,2 mm) scriverebbe in TRAY
+// correzioni senza senso, rendendo impossibile il ritorno alla v3.
+// La rotta resta registrata: un pannello rimasto aperto su una versione
+// vecchia, o un cambio di versione con tools/pannello.ps1, potrebbe ancora
+// chiamarla. Risponde 410 + KO_WORKOBJECT, una riga di log, e NESSUN accesso
+// al DB: nessuna connessione, nessuna query. Il codice di prima (scrittura
+// transazionale di CORR e ROT su TRAY e ROT + Z=0 sulle tasche) e' nella
+// storia git, commit 7fc7964. Le rotazioni ora si impostano cassetto per
+// cassetto dalla scheda del cassetto (/propagateTeaching qui sotto).
 router.get('/teachTrays', (req, res) => {
-	let rows;
-	try { rows = JSON.parse(req.query.rows); } catch (e) { res.status(400).send("KO_BAD_INPUT"); return; }
-	if (!Array.isArray(rows) || rows.length < 1 || rows.length > 12) { res.status(400).send("KO_BAD_INPUT"); return; }
-	const FIELDS = ['xCorr','yCorr','zCorr','xRot','yRot','zRot'];
-	for (const r of rows) {
-		const tray = Number(r && r.tray);
-		if (!Number.isInteger(tray) || tray < 1 || tray > 12) { res.status(400).send("KO_BAD_INPUT"); return; }
-		for (const f of FIELDS)
-			if (!Number.isFinite(Number(r[f]))) { res.status(400).send("KO_BAD_INPUT"); return; }
-	}
-	sql.connect(DBf.configDB, function (err) {
-		if (err) {
-			log.error("err teachTrays: " + err);
-			res.status(500).send("KO");
-			return;
-		}
-		// tutti i valori passano da Math.round(Number()) DOPO la validazione:
-		// nella query entrano SOLO numeri.
-		let query = "SET XACT_ABORT ON; BEGIN TRAN;";
-		for (const r of rows) {
-			const t = Math.round(Number(r.tray));
-			const v = f => Math.round(Number(r[f]));
-			query += ` UPDATE TRAY SET X_CORR=${v('xCorr')}, Y_CORR=${v('yCorr')}, Z_CORR=${v('zCorr')}, X_ROT=${v('xRot')}, Y_ROT=${v('yRot')}, Z_ROT=${v('zRot')} WHERE FLOOR_MAG=${t};`;
-			query += ` UPDATE [POSITION] SET X_ROT=${v('xRot')}, Y_ROT=${v('yRot')}, Z_ROT=${v('zRot')}, Z=0 WHERE ${trayParentPredicate(t)};`;
-		}
-		query += " COMMIT TRAN;";
-		var request = new sql.Request();
-		log.info('query ' + query);
-		request.query(query, function (err) {
-			if (err) {
-				log.error("Err query: " + err)
-				res.status(500).send("KO")
-			}else
-				res.send("OK")
-		});
-	});
+	log.standard('0 CASSETTIERA eliminato (work object per cassetto): GET /teachTrays rifiutata, query=' + JSON.stringify(req.query || {}).slice(0, 500));
+	res.status(410).send(errorCodes.KO_WORKOBJECT);
 })
 
 // Propagazione teaching del SINGOLO cassetto (form Tray): ROT + APPROACH
