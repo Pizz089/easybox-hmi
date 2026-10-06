@@ -26,17 +26,27 @@
 -- Riscontro col pezzo 1035 (X 40, Y 109, Z 15): Width 40, Length 109,
 -- Height 15. test_push_to_stop.js controlla la mappa nei tre stati del PLC.
 --
--- SEMANTICA DELLE MISURE DEL PEZZO (decisa da Dario e dal robotista il 5/10):
--- PIECE.X = lunghezza, PIECE.Y = larghezza, PIECE.Z = altezza, come le
--- etichette L/W/H della pagina Pezzo.
+-- SEMANTICA DELLE MISURE DEL PEZZO: due vocabolari.
+--   Anagrafica e pagina Pezzo: PIECE.X etichettata L (D se cilindro),
+--   PIECE.Y = W, PIECE.Z = H.
+--   Robot (dal 6/10, riscontrato in cella col pezzo 1035):
+--   Part_Width_mm = PIECE.X, Part_Length_mm = PIECE.Y,
+--   Part_Height_mm = PIECE.Z.
+-- Le colonne PART_WIDTH / PART_LENGTH di questa vista seguono l'anagrafica,
+-- non il robot: una variabile PROFINET non si deduce dal nome della
+-- colonna, vale la MAPPA qui sopra.
 --
--- STORIA: dal 18/9 al 5/10 PART_WIDTH era pz.X, cioe' la LUNGHEZZA, e su
--- %QW636 andava quella. La nota P8 del 5/10 l'aveva "confermata" come
--- larghezza perche' aveva confrontato la definizione della vista, non il
--- pezzo. Corretta in cella il 5/10 alle 19:17 con un ALTER VIEW guardato;
--- il backup della definizione precedente sta sul PC di cella in
--- D:\Backup\COORDINATES_BLOW_MC_20261005.txt. Lezione: un nome di colonna o
--- di tag non prova il significato, si confronta col pezzo (VERIFICA 2).
+-- STORIA: dal 18/9 al 5/10 PART_WIDTH era pz.X, e su %QW636 andava quella.
+-- La nota P8 del 5/10 l'aveva "confermata" come larghezza confrontando la
+-- definizione della vista. Il 5/10 la vista e' stata girata (PART_WIDTH =
+-- pz.Y) seguendo l'etichetta W dell'anagrafica: corretta in cella alle
+-- 19:17 con un ALTER VIEW guardato; il backup della definizione precedente
+-- sta sul PC di cella in D:\Backup\COORDINATES_BLOW_MC_20261005.txt. Il 6/10
+-- il robot ha mostrato che per lui era giusto il comportamento precedente
+-- su %QW636 (PIECE.X). Dario ha scelto di lasciare la vista com'e' e di
+-- incrociare X e Y nel PLC (d89b2de). Lezione: si confronta con quello che
+-- fa il robot, non con un nome, che sia di colonna, di tag o di etichetta.
+-- La VERIFICA 2 qui sotto prova solo che la vista segue l'anagrafica.
 --
 -- PERCHE' UNA VISTA E NON UNA QUERY DIRETTA. Con i join scritti a mano la
 -- query (a tre colonne) misurava 298 caratteri contro i 254 di queryTemp nel

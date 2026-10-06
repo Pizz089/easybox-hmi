@@ -5,6 +5,55 @@
 > stato corretto sul momento. Gli interventi manuali da fare in impianto
 > stanno invece in `APPUNTI-CELLA.md`.
 
+## [ ] FB_Robot: il commento "lo decide la vista, non il PLC" non vale piu'
+
+**Cosa.** Negli stati 1418 (scambio), 39 di Part_Robot_to_MC e 39 di
+Part_MC_to_Robot, sopra le righe che scrivono `Part_Length_mm` e
+`Part_Height_mm`, il commento dice ancora che quale colonna di PIECE diventa
+lunghezza e quale altezza "lo decide la vista COORDINATES_BLOW_MC, non il
+PLC". Dal 6/10 (d89b2de) X e Y si incrociano nel PLC: `Part_Width_mm` :=
+col[3] (PIECE.X), `Part_Length_mm` := col[1] (PIECE.Y).
+
+**Perche' non e' stato corretto sul momento.** E' un commento nel PLC: si
+cambia in TIA e va scaricato.
+
+**Come si chiude.** Alla prossima finestra di download: riscrivere il
+commento nei tre stati (la mappa e' nell'intestazione di
+`serverDati/scripts/coordinates-blow-mc.sql`), poi tia-export e commit.
+
+**Trovato il** 2026-10-06, nell'export dopo lo scambio di X e Y.
+
+## [ ] Misure del pezzo al robot: verificare la mappa con X > Y e con un cilindro
+
+**Cosa.** La mappa del 6/10 (`Part_Width_mm` = PIECE.X, `Part_Length_mm` =
+PIECE.Y, `Part_Height_mm` = PIECE.Z) e' stata riscontrata in cella con un
+solo pezzo, il 1035 (X 40, Y 109, Z 15), che ha X < Y.
+
+**Ipotesi da falsificare.** Il robot vuole la misura per ASSE (Length = lungo
+le chele = PIECE.Y), non il lato piu' lungo. Col 1035 le due letture danno lo
+stesso risultato, perche' il lato lungo le chele e' anche il piu' lungo.
+
+**Come si chiude.** Col primo pezzo con X > Y e col primo cilindro (X = D):
+guardare cosa fa il robot con le misure che riceve (%QW636, %QW640, %QW642).
+Se con X > Y vuole ancora Length = PIECE.Y, la mappa e' per asse e resta; se
+vuole il lato piu' lungo, va rivista.
+
+**Trovato il** 2026-10-06.
+
+## [ ] Etichette L/W/H della pagina Pezzo e nomi delle misure del robot
+
+**Cosa.** Nella pagina Pezzo X e' etichettata L (D se cilindro), Y W e Z H;
+il robot riceve `Part_Width_mm` = PIECE.X e `Part_Length_mm` = PIECE.Y. La
+stessa misura si chiama L nel pannello e Width verso il robot, e Y il
+contrario. Le colonne della vista COORDINATES_BLOW_MC seguono l'anagrafica.
+
+**Da decidere.** Se rinominare le etichette della pagina Pezzo, o
+affiancarle ai nomi del robot, oppure tenere i due vocabolari con la mappa
+scritta nell'intestazione di `coordinates-blow-mc.sql`. Dipende anche
+dall'esito della voce precedente.
+
+**Trovato il** 2026-10-06.
+
 ## [ ] Stato tasche in QoS 0: una radice di topic separata lato PLC
 
 **Cosa.** Dal 18/9 la subscribe e' `FROM_PLANT/#` in **QoS 0** (prima QoS 2):
