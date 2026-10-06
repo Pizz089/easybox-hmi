@@ -94,6 +94,10 @@
                     ris = "fill:#080866";
                 if (this.status==7)  //abort
                     ris = "fill:#ff0000ab";
+                // BLOCCATA (9): il colore della sua voce di legenda (LOCK,
+                // coral in layoutView), non il nero di "non definita"
+                if (this.status==9)  //locked
+                    ris = "fill:coral";
                 if (this.status==3)  //working
                     ris = "fill:lightblue;stroke:black;stroke-width:1";
                 if (this.status==2)  //empty
