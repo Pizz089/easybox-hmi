@@ -12,28 +12,59 @@
 
 Sul disco vengono scritti solo i file della radice e la cartella `easybox/`: `tools/` e `plc/` in cella non ci sono. **Tutto quello che deve arrivare in cella sta sotto `easybox/`** (per questo `pannello.ps1` sta in `easybox/tools/`).
 
-**Avvio: nessun servizio, niente nssm.** Due `.bat` che non sono nel repo, ciascuno nella sua finestra:
+**Avvio: servizi Windows** (decisione di Dario, 6/10). Installati il ………… (da compilare quando Dario li installa).
+
+Backend e pannello partono da soli all'accensione, come servizi nssm creati da `easybox/tools/servizi-cella.ps1`:
+- `EasyBoxBackend`: `node --max-old-space-size=1024 server.js` in `easybox\serverDati`;
+- `EasyBoxPannello`: Vite lanciato con node (`node_modules\vite\bin\vite.js`, senza npm, cosi' nssm ferma il processo vero) in `easybox\HMI`;
+- utente di sistema (LocalSystem), avvio automatico **ritardato** (circa 2 minuti dopo l'accensione), nessuna dipendenza da SQL Server e mosquitto: fermarli per manutenzione non deve fermare i servizi, il backend si ricollega da solo;
+- se node si chiude, nssm lo riavvia dopo 5 secondi;
+- log di node (uscita ed errori, rotazione a 10 MB): `serverDati\log\servizio_backend.log` e `HMI\log\servizio_pannello.log`. `access.log` resta dov'e';
+- nssm viene copiato in `C:\Program Files\nssm\nssm.exe`: il servizio non dipende da `D:\Prog\easybox\nssm.exe`, che resta non tracciato.
+
+Comandi, da PowerShell **come amministratore**:
+
+```
+powershell -ExecutionPolicy Bypass -File D:\Prog\easybox\tools\servizi-cella.ps1 -Azione stato
+powershell -ExecutionPolicy Bypass -File D:\Prog\easybox\tools\servizi-cella.ps1 -Azione prova
+powershell -ExecutionPolicy Bypass -File D:\Prog\easybox\tools\servizi-cella.ps1 -Azione installa
+powershell -ExecutionPolicy Bypass -File D:\Prog\easybox\tools\servizi-cella.ps1 -Azione riavvia
+powershell -ExecutionPolicy Bypass -File D:\Prog\easybox\tools\servizi-cella.ps1 -Azione rimuovi
+```
+
+- `stato`: servizi, porte 8080/3000/5173, ultime righe dei log. Non cambia niente.
+- `prova`: tutti i controlli di `installa` e i 34 comandi nssm che eseguirebbe (17 per servizio), senza eseguirli. Non cambia niente.
+- `installa`: copia nssm, crea i due servizi, li avvia e aspetta le porte. Si ferma se non e' amministratore, se i servizi esistono gia', se c'e' un altro servizio nssm o se le porte sono occupate (prima: cella in HOLD, Ctrl+C nelle due finestre). Se un passo fallisce toglie quello che ha creato.
+- `riavvia`: riavvia i due servizi (node non rilegge i file da solo).
+- `rimuovi`: ferma e toglie **solo** `EasyBoxBackend` ed `EasyBoxPannello`.
+
+Dopo un pull i servizi si riavviano con `-Azione riavvia`, oppure li riavvia `pannello.ps1` (procedura qui sotto).
+
+**Riserva: i due `.bat`**, che non sono nel repo, ciascuno nella sua finestra. Si usano solo dopo `-Azione rimuovi` (con i servizi accesi le porte sono occupate):
 - backend: `D:\Prog\easybox\serverDati\start_server.bat` (`timeout /t 10`, `cd /d`, `mkdir log`, `node --max-old-space-size=1024 server.js`, `pause`);
 - pannello: `D:\Prog\easybox\HMI\start_hmi.bat` (`timeout /t 15`, `cd /d`, `npm run dev`).
 
-Nessuno dei due si riavvia da solo. **Le due finestre non si chiudono senza rilanciarle.** Il 6/10 la chiusura della finestra del backend ha fermato il ponte fra PLC e SQL per circa 13 minuti.
+Con le finestre nessuno dei due si riavvia da solo, e **le due finestre non si chiudono senza rilanciarle.** Il 6/10 la chiusura della finestra del backend ha fermato il ponte fra PLC e SQL per circa 13 minuti.
 
-Nel working tree di cella ci sono file non tracciati che il `.gitignore` non esclude: i due `.bat` e la cartella `easybox/serverDati_BACKUP_2026-06-03/`. Sono normali: `pannello.ps1` conta come modifiche locali solo i file tracciati.
+Nel working tree di cella ci sono file non tracciati che il `.gitignore` non esclude: i due `.bat`, `easybox/nssm.exe` e la cartella `easybox/serverDati_BACKUP_2026-06-03/`. Sono normali: `pannello.ps1` conta come modifiche locali solo i file tracciati.
 
-**Attenzione: nel clone parziale `git pull` e `git switch` non si fermano** su un file non tracciato che il ramo in arrivo porta allo stesso percorso. Lo sovrascrivono, con il solo warning «already present and thus not updated despite sparse patterns», e finiscono con codice 0. Provato il 6/10 con git 2.52 su un clone parziale come quello di cella; in un clone completo git invece si ferma. Quindi nel repo nessun file ai percorsi dove la cella ha file suoi (i due `.bat`, `easybox/serverDati_BACKUP_2026-06-03/`). `pannello.ps1` lo controlla da sé prima di cambiare ramo o aggiornare; un `git pull` a mano no.
+**Attenzione: nel clone parziale `git pull` e `git switch` non si fermano** su un file non tracciato che il ramo in arrivo porta allo stesso percorso. Lo sovrascrivono, con il solo warning «already present and thus not updated despite sparse patterns», e finiscono con codice 0. Provato il 6/10 con git 2.52 su un clone parziale come quello di cella; in un clone completo git invece si ferma. Quindi nel repo nessun file ai percorsi dove la cella ha file suoi (i due `.bat`, `easybox/nssm.exe`, `easybox/serverDati_BACKUP_2026-06-03/`). `pannello.ps1` lo controlla da sé prima di cambiare ramo o aggiornare; un `git pull` a mano no.
 
 **Procedura di aggiornamento:**
 1. Cella in HOLD.
-2. `cd D:\Prog`, poi `git pull`; oppure lo script, che fa fetch, cambio di ramo, pull solo in avanti e `npm install` se serve:
+2. Lo script (con i servizi: da PowerShell **come amministratore**, senza si ferma prima di toccare qualunque cosa e dice il comando da rilanciare):
    ```
    powershell -ExecutionPolicy Bypass -File D:\Prog\easybox\tools\pannello.ps1 -Versione stato
    ```
-   `-Versione stato` dice su che versione si è, senza cambiare niente; `-Versione stabile` (ramo `ui-lifting`) o `-Versione v3` (ramo `ui-v3`) aggiorna o cambia versione.
-3. Backend: nella finestra di `start_server.bat` Ctrl+C, poi rilanciare il `.bat`.
-4. Pannello: rilanciare `start_hmi.bat` solo se sono cambiati `package.json`, `package-lock.json` o `vite.config.js`, altrimenti basta Ctrl+F5 sui client.
-5. Controlli:
+   `-Versione stato` dice su che versione si è e lo stato dei servizi, senza cambiare niente; `-Versione stabile` (ramo `ui-lifting`) o `-Versione v3` (ramo `ui-v3`) aggiorna o cambia versione: fetch, cambio di ramo, pull solo in avanti, `npm install` se serve.
+   - **Con i servizi** ferma `EasyBoxPannello` prima di toccare i file, alla fine riavvia `EasyBoxBackend`, avvia `EasyBoxPannello` e aspetta le porte (al massimo 90 secondi). Se qualcosa fallisce dopo aver fermato il pannello, lo rimette su comunque, sulla versione che c'è.
+   - **Senza servizi** (le finestre): nella finestra di `start_server.bat` Ctrl+C, poi rilanciare il `.bat`; rilanciare `start_hmi.bat` solo se sono cambiati `package.json`, `package-lock.json` o `vite.config.js`, altrimenti basta Ctrl+F5 sui client.
+
+   In alternativa `cd D:\Prog`, `git pull` e poi `servizi-cella.ps1 -Azione riavvia` (se il pull cambia `package-lock.json` serve `npm install`: meglio lo script).
+3. Controlli:
    - porte 5173, 8080 e 3000 in ascolto;
    - `INIT` nuovo in `access.log`;
+   - Ctrl+F5 sui client (touch di cella e tablet);
    - stato del robot che si aggiorna;
    - `DB_executeQuery.readyForNextQuery` TRUE.
 

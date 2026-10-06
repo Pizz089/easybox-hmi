@@ -32,12 +32,22 @@
 #   4. git pull --ff-only (se non e' un avanzamento semplice si ferma);
 #   5. npm install in easybox\HMI se package-lock.json e' cambiato (o se
 #      node_modules manca, o se l'ultima installazione e' fallita);
-#   6. dice cosa e' attivo e cosa riavviare. In cella non ci sono servizi:
-#      backend e pannello girano nelle finestre di start_server.bat e
-#      start_hmi.bat e nessuno dei due si riavvia da solo. Il backend va
-#      riavviato sempre; il pannello solo se c'e' stato npm install o sono
-#      cambiati package.json, package-lock.json o vite.config.js, altrimenti
-#      basta Ctrl+F5 sui client.
+#   6. dice cosa e' attivo e cosa riavviare. Senza servizi, backend e
+#      pannello girano nelle finestre di start_server.bat e start_hmi.bat e
+#      nessuno dei due si riavvia da solo. Il backend va riavviato sempre; il
+#      pannello solo se c'e' stato npm install o sono cambiati package.json,
+#      package-lock.json o vite.config.js, altrimenti basta Ctrl+F5 sui client.
+#
+# CON I SERVIZI (easybox/tools/servizi-cella.ps1: EasyBoxBackend ed
+# EasyBoxPannello, decisione di Dario del 6/10):
+#   - serve PowerShell come amministratore: senza, si ferma PRIMA di toccare
+#     qualunque cosa e dice il comando da rilanciare;
+#   - prima di git switch / git pull ferma EasyBoxPannello: Vite acceso
+#     terrebbe bloccati i file di npm install. Da li' in poi, se qualcosa
+#     fallisce, EasyBoxPannello si rimette su comunque, sulla versione che
+#     c'e', prima di uscire;
+#   - alla fine riavvia EasyBoxBackend, avvia EasyBoxPannello e aspetta le
+#     porte 8080, 3000 e 5173 (al massimo 90 secondi). Niente finestre.
 # Non usa MAI reset, clean, stash, checkout -- o --force: nel peggiore dei
 # casi si ferma e spiega, e il repo resta com'era.
 # Testi senza lettere accentate: PowerShell 5.1 legge i file senza BOM come
@@ -66,6 +76,9 @@ function Fermati([string]$perche, [string]$cosaFare, [string]$nota = 'Il repo no
 	Scrivi ('FERMO: ' + $perche) 'Red'
 	if ($cosaFare) { Scrivi ('Cosa fare: ' + $cosaFare) 'Yellow' }
 	if ($nota) { Scrivi $nota 'Yellow' }
+	# (servizi) il pannello fermato per il cambio di versione si rimette su
+	# comunque, sulla versione che c'e': mai uscire lasciandolo spento
+	if ($script:PannelloFermato) { RimettiSuPannello }
 	exit 1
 }
 # git con uscita e codice, senza far diventare errore l'stderr (git ci
@@ -73,6 +86,46 @@ function Fermati([string]$perche, [string]$cosaFare, [string]$nota = 'Il repo no
 function G([string[]]$argomenti) {
 	$uscita = & git -C $script:Radice @argomenti 2>&1 | ForEach-Object { "$_" }
 	return [pscustomobject]@{ Codice = $LASTEXITCODE; Uscita = @($uscita) }
+}
+
+# ---------------------------------------------------------------- servizi
+# Backend e pannello come servizi Windows (servizi-cella.ps1). Get-Service,
+# Stop-Service, Start-Service, Restart-Service e Get-NetTCPConnection sono i
+# cmdlet di sempre (la prova li sostituisce con funzioni finte dello stesso
+# nome, che PowerShell preferisce ai cmdlet).
+$S_B = 'EasyBoxBackend'
+$S_P = 'EasyBoxPannello'
+$PORTE = @(8080, 3000, 5173)
+$script:PannelloFermato = $false
+function Servizio([string]$nome) { return Get-Service -Name $nome -ErrorAction SilentlyContinue }
+function StatoServizio([string]$nome) { $s = Servizio $nome; if ($s) { return [string]$s.Status } else { return 'non installato' } }
+# amministratore: se esiste gia' una funzione con questo nome (la prova ne
+# definisce una finta) si usa quella, altrimenti la verifica vera
+if (-not (Get-Command Test-EasyBoxAmministratore -CommandType Function -ErrorAction SilentlyContinue)) {
+	function Test-EasyBoxAmministratore {
+		$p = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
+		return $p.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+	}
+}
+function PorteInAscolto {
+	return @(Get-NetTCPConnection -State Listen -LocalPort $PORTE -ErrorAction SilentlyContinue | ForEach-Object { [int]$_.LocalPort } | Sort-Object -Unique)
+}
+function AspettaPorte([int]$secondi = 90) {
+	$fine = (Get-Date).AddSeconds($secondi)
+	do {
+		$su = PorteInAscolto
+		if (@($PORTE | Where-Object { $su -notcontains $_ }).Count -eq 0) { return $true }
+		Start-Sleep -Seconds 3
+	} while ((Get-Date) -lt $fine)
+	return $false
+}
+function RimettiSuPannello {
+	$script:PannelloFermato = $false
+	Scrivi ''
+	Scrivi ('Rimetto su ' + $S_P + ' sulla versione che c''e''...') 'Yellow'
+	Start-Service -Name $S_P -ErrorAction SilentlyContinue
+	if ((StatoServizio $S_P) -eq 'Running') { Scrivi ($S_P + ' avviato: il pannello e'' di nuovo su.') 'Yellow' }
+	else { Scrivi ($S_P + ' NON avviato: con la cella in HOLD lanciare servizi-cella.ps1 -Azione riavvia, oppure chiamare Dario.') 'Red' }
 }
 
 # ---------------------------------------------------------------- radice
@@ -105,6 +158,7 @@ function ModificheLocali { return @((G @('status', '--porcelain', '--untracked-f
 # ---------------------------------------------------------------- stato
 if ($Versione -eq 'stato') {
 	Stato
+	Scrivi ('Servizi: ' + $S_B + ' ' + (StatoServizio $S_B) + ', ' + $S_P + ' ' + (StatoServizio $S_P))
 	$mod = ModificheLocali
 	if ($mod.Count -eq 0) { Scrivi 'Modifiche locali (file tracciati): nessuna' 'Green' }
 	else {
@@ -118,6 +172,16 @@ if ($Versione -eq 'stato') {
 $ramo = $RAMI[$Versione]
 Scrivi ('Passo alla versione ' + $Versione + ' (ramo ' + $ramo + ')') 'Cyan'
 Scrivi 'Promemoria: la cella deve essere in HOLD.' 'Yellow'
+
+# 0. servizi installati? Allora serve l'amministratore (fermare e avviare i
+#    servizi): si controlla prima di qualunque altra cosa
+$conServizi = @(@($S_B, $S_P) | Where-Object { Servizio $_ }).Count -gt 0
+if ($conServizi) {
+	Scrivi ('Servizi: ' + $S_B + ' ' + (StatoServizio $S_B) + ', ' + $S_P + ' ' + (StatoServizio $S_P))
+	if (-not (Test-EasyBoxAmministratore)) {
+		Fermati 'con i servizi EasyBoxBackend ed EasyBoxPannello installati serve PowerShell come amministratore.' ('aprire PowerShell con "Esegui come amministratore" e rilanciare: powershell -ExecutionPolicy Bypass -File ' + $PSCommandPath + ' -Versione ' + $Versione)
+	}
+}
 
 # 1. modifiche locali: si guarda e basta
 $mod = ModificheLocali
@@ -171,6 +235,16 @@ if ($intralcio.Count -gt 0) {
 $headPrima = ((G @('rev-parse', 'HEAD')).Uscita -join '').Trim()
 $lockPrima = ((G @('rev-parse', ('HEAD:' + $LOCK))).Uscita -join '').Trim()
 
+# 2c. (servizi) il pannello si ferma prima di cambiare i file: Vite come
+#     servizio terrebbe bloccati i file di npm install. Da qui ogni FERMO lo
+#     rimette su (Fermati -> RimettiSuPannello).
+if ($conServizi -and (Servizio $S_P)) {
+	Scrivi ('Fermo ' + $S_P + '...') 'Cyan'
+	Stop-Service -Name $S_P -Force -ErrorAction SilentlyContinue
+	if ((StatoServizio $S_P) -ne 'Stopped') { Fermati ($S_P + ' non si e'' fermato (' + (StatoServizio $S_P) + ').') 'chiamare Dario con questo messaggio: nessun file e'' stato cambiato.' }
+	$script:PannelloFermato = $true
+}
+
 # 3. switch
 $attuale = ((G @('branch', '--show-current')).Uscita -join '').Trim()
 if ($attuale -eq $ramo) {
@@ -184,6 +258,7 @@ if ($attuale -eq $ramo) {
 	$s = G @('switch', $ramo)
 	if ($s.Codice -ne 0) {
 		$s.Uscita | ForEach-Object { Scrivi ('  ' + $_) }
+		if ($conServizi) { Fermati ('git switch su ' + $ramo + ' non riuscito.') 'chiamare Dario con questo messaggio.' }
 		Fermati ('git switch su ' + $ramo + ' non riuscito.') 'se il messaggio parla di file in uso, chiudere la finestra del pannello e rilanciare; altrimenti chiamare Dario con questo messaggio.'
 	}
 }
@@ -220,6 +295,7 @@ if ($serve) {
 	Pop-Location
 	if ($npm -ne 0) {
 		if (Test-Path $moduli) { Set-Content -Path $segnoFile -Value 'fallito' -Encoding ASCII }
+		if ($conServizi) { Fermati 'npm install non riuscito.' 'rilanciare lo script con la stessa versione: rifa'' npm install. Se fallisce ancora, chiamare Dario con il messaggio qui sopra.' $giaCambiato }
 		Fermati 'npm install non riuscito.' 'chiudere la finestra del pannello (Ctrl+C), rilanciare lo script con la stessa versione: rifa'' npm install. Se fallisce ancora, chiamare Dario con il messaggio qui sopra.' $giaCambiato
 	}
 	Set-Content -Path $segnoFile -Value $lockDopo -Encoding ASCII
@@ -233,6 +309,33 @@ if ($serve) {
 #    docs/APPUNTI-CELLA.md: npm install fatto, o cambiato uno di questi file.
 $cambiatiHmi = @((G (@('diff', '--name-only', $headPrima, 'HEAD', '--') + $HMI_AVVIO)).Uscita | Where-Object { $_ -and $_.Trim() })
 $riavviaHmi = $serve -or ($cambiatiHmi.Count -gt 0)
+
+# 6-servizi: si riavvia il backend (node non rilegge i file da solo), si
+# riavvia il pannello e si aspettano le porte. Niente finestre.
+if ($conServizi) {
+	Scrivi 'Riavvio dei servizi...' 'Cyan'
+	if (Servizio $S_B) { Restart-Service -Name $S_B -Force -ErrorAction SilentlyContinue }
+	if (Servizio $S_P) { Start-Service -Name $S_P -ErrorAction SilentlyContinue }
+	$script:PannelloFermato = $false
+	$porteOk = AspettaPorte 90
+	Scrivi ''
+	Stato
+	Scrivi ''
+	Scrivi 'Fatto. Servizi:' 'Green'
+	Scrivi ('  ' + $S_B + ': riavviato (' + (StatoServizio $S_B) + ');') 'Green'
+	Scrivi ('  ' + $S_P + ': riavviato (' + (StatoServizio $S_P) + ').') 'Green'
+	if ($porteOk) { Scrivi 'Porte 8080, 3000 e 5173 in ascolto.' 'Green' }
+	else {
+		$su = PorteInAscolto
+		Scrivi ('Dopo 90 secondi non tutte le porte sono in ascolto (in ascolto: ' + $(if ($su.Count) { $su -join ', ' } else { 'nessuna' }) + '): servizi-cella.ps1 -Azione stato per i log.') 'Red'
+	}
+	Scrivi 'Controlli:' 'Green'
+	Scrivi '  - Ctrl+F5 sui client (touch di cella e tablet);' 'Green'
+	Scrivi '  - stato del robot che si aggiorna;' 'Green'
+	Scrivi '  - DB_executeQuery.readyForNextQuery TRUE.' 'Green'
+	exit 0
+}
+
 Scrivi ''
 Stato
 Scrivi ''
