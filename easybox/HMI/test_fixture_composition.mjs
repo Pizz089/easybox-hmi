@@ -77,6 +77,13 @@ const src = readFileSync('src/views/conf/Fixture/Fixture.vue', 'utf8');
 check(/chiediAllineamento\(\)/.test(src) && /alignDialog/.test(src), 'l\'allineamento passa da una conferma, non da un click');
 check(/confermaAllineamento\(\)[\s\S]{0,400}this\.fixture\.Z = q\.somma/.test(src), 'e confermando cambia SOLO il campo');
 check(!/updateFixture[\s\S]{0,200}confermaAllineamento/.test(src), 'non scrive da solo: il robot si sposta al salvataggio');
+// il dialog ha il suo velo: CSS nella pagina (copia scoped, come le altre
+// pagine con dialog) oppure globale (assets/css/dialogs.css importato in
+// main.js). Prima non c'era ne' l'uno ne' l'altro e si apriva in mezzo al modulo.
+const mainJs = readFileSync('src/main.js', 'utf8');
+const velo = /\.mission-dialog-overlay\s*\{[^}]*position:\s*fixed/;
+const cssGlobale = /import '@\/assets\/css\/dialogs\.css'/.test(mainJs) && velo.test(readFileSync('src/assets/css/dialogs.css', 'utf8'));
+check(/class="mission-dialog-overlay"/.test(src) && (velo.test(src) || cssGlobale), 'il dialog di allineamento si apre sopra un velo (overlay con CSS)');
 
 console.log('\n5) il form scrive davvero le due colonne');
 const calls = [];
