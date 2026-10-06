@@ -159,6 +159,12 @@
                 <!-- (teach-pick-target) campi di teaching gated al livello
                      tecnico: visibili ma in sola lettura, MAI spariti -->
                 <small class="teach-locked-hint" v-if="teachLocked">{{$t('tray.teach.lockedHint')}}</small>
+                <!-- (work object per cassetto, 6/10) dalla vista 4Robot v4 le
+                     correzioni del cassetto restano nel DB ma NON entrano piu'
+                     nelle quote del robot: la posizione del cassetto e' nel
+                     robot. Avviso fisso, perche' nessuno pensi di correggere
+                     da qui. -->
+                <p class="tray-wo-notice">{{$t('tray.workObjectNotice')}}</p>
                 <div class="pure-control-group">
                     <label for="aligned-foo">{{$t('tray.X_Corr')}}</label>
                     <!--input type="number" id="aligned-foo" name="X_CORR" v-model="tray.X_CORR"  :readonly="dataStored.userLevel==0"/-->
@@ -472,6 +478,16 @@ export default {
 </script>
 
 <style scoped>
+    /* (work object per cassetto, 6/10) avviso sulle correzioni del cassetto */
+    .tray-wo-notice {
+        margin: var(--space-2) 0 var(--space-4);
+        padding: var(--space-2) var(--space-4);
+        border-radius: var(--radius-md);
+        background: var(--color-warning-bg);
+        color: var(--color-warning);
+        font-size: var(--font-size-sm);
+        max-width: 44rem;
+    }
     .pure-table-horizontal  #td {
         justify-content: center;
         display: flex;
