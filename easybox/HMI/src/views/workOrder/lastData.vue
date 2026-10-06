@@ -12,6 +12,7 @@
     import { pushQuotes, PUSH_STATUS, zPushDrop } from '../../util/pushQuotes.js'
     import { useI18n } from 'vue-i18n'
     import workOrderStep from '../../components/workOrder_step.vue'
+    import UiButton from '../../components/ui/UiButton.vue'
 
     const { t } = useI18n()
 </script>
@@ -19,6 +20,9 @@
 <template>
   <workOrderStep />
 
+  <!-- (v3 fase D-bis) card, etichette e testi sui token v3, "Vedi perche'"
+       come chip da 48, Salva ordine UiButton. Solo aspetto: controlli, blocchi,
+       messaggi e salvataggio non cambiano; la discesa della quota Z resta. -->
   <div class="last-data-page view-shell">
 
     <!-- ===== SETUP CARD: Quantita' + Part Program ===== -->
@@ -88,7 +92,7 @@
              la simulazione gia' sul caso reale, dove si VEDE perche' non
              ci sta. La simulazione non scrive nulla. -->
         <router-link
-          class="pure-button push-why"
+          class="cat-chip push-why"
           :to="{ path: '/sim/push', query: {
             pieceID: dataStored.createWorkOrder.pieceID,
             gripperID: dataStored.createWorkOrder.gripperID,
@@ -113,14 +117,15 @@
 
     <!-- ===== SAVE ===== -->
     <div class="save-row btn-group btn-group--center">
-      <button
-        type="button"
-        class="pure-button-primary"
+      <UiButton
+        variant="primary"
+        size="main"
+        class="save-btn"
         @click="saveData"
         :disabled="!piecePPValid || !fixtureOk || !pushOk || !quantityValid"
       >
         {{ t('wizard.lastData.save') }}
-      </button>
+      </UiButton>
     </div>
 
   </div>
@@ -342,19 +347,20 @@ export default {
 .setup-card {
   background: var(--bg-surface);
   border-radius: var(--radius-lg);
-  padding: var(--space-5);
+  padding: var(--card-padding);
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
 }
 
+/* (v3) etichetta di sezione come le etichette v3 */
 .setup-title {
   margin: 0;
-  font-size: 13px;
-  font-weight: 700;
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-extrabold);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-secondary);
+  letter-spacing: var(--letter-spacing-label);
+  color: var(--text-muted);
 }
 
 .form-row {
@@ -365,20 +371,20 @@ export default {
 
 .form-label {
   flex: 0 0 200px;
-  color: var(--text-primary);
-  font-size: 14px;
-  font-weight: 600;
+  color: var(--text-secondary);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
 }
 
 .required {
-  color: var(--color-danger);
+  color: var(--color-danger-fg);
   margin-left: 2px;
 }
 
 .form-input,
 .form-select {
-  background: var(--bg-base);
-  border: 1px solid var(--border-subtle);
+  background: var(--bg-input);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-md);
   padding: var(--space-2) var(--space-4);
   min-height: 52px;
@@ -400,21 +406,30 @@ export default {
 /* PP ereditato dal particolare: valore sola-lettura + origine */
 .pp-value {
   color: var(--text-primary);
-  font-size: 16px;
-  font-weight: 700;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
 }
 
 .pp-origin {
-  color: var(--text-muted);
-  font-size: 12px;
-  font-weight: 400;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-normal);
   margin-left: var(--space-2);
 }
 
+/* blocchi: testo d'errore v3 sul fondo della card */
 .pp-missing {
-  color: var(--color-danger);
-  font-size: 14px;
-  font-weight: 600;
+  color: var(--color-danger-fg);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-normal);
+}
+
+/* "Vedi perche'": chip v3 da 48 (.cat-chip, catalog-v3.css), prima 119x38 */
+.push-why {
+  flex: none;
+  margin: 0;
+  text-decoration: none;
 }
 
 .form-select {
@@ -434,7 +449,7 @@ export default {
 .form-select:focus,
 .form-select:focus-visible {
   outline: none;
-  border-color: var(--text-primary);
+  border-color: var(--accent);
 }
 
 /* Hide native number spinners (HMI touch, no +/- arrows) */
@@ -453,6 +468,9 @@ export default {
   padding: var(--space-3) 0 var(--space-5);
 }
 
-/* Save: variante Primary canonica (buttons.css), CSS ad-hoc .btn-save rimosso
-   (decisione audit-sistema-b). */
+/* Save: UiButton primary da 64 (56 in compatto), l'azione della pagina;
+   spento lo disegna il componente. */
+.save-btn {
+  min-width: 220px;
+}
 </style>
