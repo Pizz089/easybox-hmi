@@ -69,10 +69,22 @@ function mappa(pagina) {
 	}
 	return per;
 }
-const tutte = g => { const out = new Map(); for (const [n, p] of Object.entries(g.pagine)) for (const m of Object.values(mappa(p))) for (const f of m.keys()) { if (!out.has(f)) out.set(f, new Set()); out.get(f).add(n); } return out; };
+// tutte le firme di una mappa. Per la mappa di oggi contano solo gli scenari
+// che il riferimento conosce: uno scenario aggiunto dopo (es. "eco morsa
+// manuale ON", fase B) puo' far comparire un payload che il riferimento non
+// ha mai provato, senza che il comando sia nuovo.
+const tutte = (g, rif) => {
+	const out = new Map();
+	for (const [n, p] of Object.entries(g.pagine)) {
+		const m = mappa(p);
+		const scen = rif && rif.pagine[n] ? p.scenari.filter(s => rif.pagine[n].scenari.includes(s)) : p.scenari;
+		for (const s of scen) for (const f of m[s].keys()) { if (!out.has(f)) out.set(f, new Set()); out.get(f).add(n); }
+	}
+	return out;
+};
 
 console.log('1) nessun comando sparito, nessun comando nuovo');
-const A = tutte(RIF), B = tutte(ORA);
+const A = tutte(RIF), B = tutte(ORA, RIF);
 const sparite = [...A.keys()].filter(f => !B.has(f)).filter(f => ![...A.get(f)].every(p => ammessa(p, f)));
 const nuove = [...B.keys()].filter(f => !A.has(f)).filter(f => ![...B.get(f)].every(p => ammessa(p, f)));
 check(sparite.length === 0, 'comandi del riferimento ancora presenti (' + A.size + ')' + (sparite.length ? ':\n       - ' + sparite.join('\n       - ') : ''));

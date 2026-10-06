@@ -1,0 +1,121 @@
+/* ============ CONTROLLI v3 — sede unica (UI-DESIGN-SYSTEM v3, fase B) ============
+   Pezzi comuni alle pagine Controlli (Robot, MC1, MC2, EasyBox):
+   - .ctl / .ctl__col     due colonne: stato a sinistra, comandi a destra
+                          (MC e EasyBox; la pagina Robot ha la sua griglia .rv)
+   - .ctl-state-title     stato grande col pallino del colore della striscia
+                          (.ctl-dot + .ctl-tone--<tono di util/unitStatus.js>)
+   - .ctl-seg             controllo a piu' posizioni: .ctl-seg__opt.on e'
+                          la posizione LETTA (mai quella comandata); senza
+                          stato letto nessuna posizione e' accesa
+   - .ctl-row             etichetta + .ctl-seg sulla stessa riga
+   - .ctl-outline         pulsante a contorno (azione secondaria nella card)
+   Import in main.js dopo dialogs.css. */
+
+.ctl {
+    display: grid;
+    grid-template-columns: minmax(320px, 0.6fr) minmax(0, 1fr);
+    gap: var(--space-4);
+    align-items: start;
+}
+.ctl__col {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    min-width: 0;
+}
+
+/* --- stato --- */
+.ctl-state-title {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    font-size: var(--font-size-state);
+    font-weight: var(--font-weight-extrabold);
+    line-height: var(--line-height-tight);
+}
+.ctl-state-title > span { display: inline-block; }
+.ctl-state-title > span::first-letter { text-transform: uppercase; }
+.ctl-sub {
+    margin-top: var(--space-2);
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+}
+.ctl-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--text-muted);
+    flex: none;
+}
+.ctl-tone--warning .ctl-dot { background: var(--color-warning); }
+.ctl-tone--danger .ctl-dot { background: var(--color-danger); }
+.ctl-tone--success .ctl-dot { background: var(--color-success); }
+.ctl-tone--accent .ctl-dot { background: var(--accent); }
+.ctl-tone--info .ctl-dot { background: var(--color-info); }
+
+/* valore grande di una card di stato (es. "Cassetto 8 fuori") */
+.ctl-value {
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-extrabold);
+}
+.ctl-muted { color: var(--text-muted); }
+
+/* --- segmenti: come UiSegmented (--bg-chip, 14 / 11 px) --- */
+.ctl-seg {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    gap: var(--space-1);
+    padding: var(--space-1);
+    border-radius: 14px;
+    background: var(--bg-chip);
+}
+.ctl-seg__opt {
+    min-height: var(--touch-target-min);
+    padding: 0 var(--space-3);
+    border: 0;
+    border-radius: 11px;
+    background: transparent;
+    color: var(--text-secondary);
+    font: inherit;
+    font-weight: var(--font-weight-bold);
+    cursor: pointer;
+}
+.ctl-seg__opt.on { background: var(--bg-segment-on); color: var(--text-primary); }
+.ctl-seg__opt:hover:not(:disabled):not(.on) { background: var(--bg-surface-2); }
+.ctl-seg__opt:disabled { color: var(--text-muted); cursor: not-allowed; }
+/* la posizione letta resta leggibile anche a comando spento */
+.ctl-seg__opt.on:disabled { color: var(--text-secondary); }
+
+.ctl-row {
+    display: grid;
+    grid-template-columns: 150px minmax(0, 1fr);
+    align-items: center;
+    gap: var(--space-1) var(--space-3);
+}
+.ctl-row + .ctl-row { margin-top: var(--space-3); }
+.ctl-row__label { display: flex; flex-direction: column; font-weight: var(--font-weight-bold); }
+.ctl-row__state { font-size: var(--font-size-xs); font-weight: var(--font-weight-normal); color: var(--text-muted); }
+.ctl-row__note { grid-column: 2; font-size: var(--font-size-xs); color: var(--text-muted); }
+
+/* --- pulsante a contorno --- */
+.ctl-outline {
+    flex: none;
+    min-height: var(--touch-target-min);
+    padding: 0 var(--space-4);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-btn);
+    background: transparent;
+    color: var(--text-primary);
+    font: inherit;
+    font-weight: var(--font-weight-bold);
+    cursor: pointer;
+}
+.ctl-outline:hover:not(:disabled) { background: var(--bg-surface-2); }
+.ctl-outline:disabled { color: var(--text-muted); border-color: var(--border-subtle); cursor: not-allowed; }
+
+@media (max-width: 1599px) {
+    .ctl { grid-template-columns: minmax(0, 0.62fr) minmax(0, 1fr); gap: var(--space-3); }
+    .ctl__col { gap: var(--space-3); }
+    .ctl-row { grid-template-columns: 112px minmax(0, 1fr); }
+}

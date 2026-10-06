@@ -1,32 +1,49 @@
 <script setup>
     import { dataStored } from '../../data.js'
+    // (v3 fase B) stato MC2 dallo store della shell (stessa fonte della
+    // striscia), componenti v3
+    import { plant } from '../../stores/plantStatus.js'
+    import { statusKey, statusTone } from '../../util/unitStatus.js'
+    import UiCard from '../../components/ui/UiCard.vue'
 </script>
 
 <template>
-  <div class="pure-u-1 unit-columns">
-    <div class="pure-u-10-24">
-      <h1 class="view-title">{{$t('Stato')}} {{ $t('MC2') }}</h1>
-      <div class="status-card pure-u-1">
-          <h5 v-if="dataFixture.ID>0"> Gripper ID: {{ dataFixture.ID }} </h5>
-          <h5 v-if="dataFixture.ID>0"> 
-            {{ dataFixture.FAMILY }} 
-            {{ (dataFixture.DESCR.trim().length)? ' - '+dataFixture.DESCR:'' }}  
-          </h5>
-          <h5 v-if="dataFixture.ID>0">Status: {{ dataFixture.STATUS_DESC }}</h5>
-          <h5 v-if="!dataFixture.ID>0"> {{ $t('machine.noFixture') }} </h5>
+  <!-- (v3 fase B) Controlli · Macchina MC2, stesso schema di MC1. I due
+       pulsanti della porta non avevano un comando collegato (nessun @click):
+       restano visibili ma spenti, invece di sembrare comandi che fanno
+       qualcosa. Lo stato e' lo STATUS di MC2 dalla striscia. -->
+  <div class="ctl">
+    <div class="ctl__col">
+      <UiCard :label="$t('Stato')">
+        <div class="ctl-state-title" :class="'ctl-tone--' + statusTone(plant.mc2)">
+          <i class="ctl-dot" aria-hidden="true"></i><span>{{ $t(statusKey(plant.mc2)) }}</span>
+        </div>
+      </UiCard>
+
+      <!-- attrezzatura sulla macchina (api fixture/showOnMC/2, poll 3 s) -->
+      <UiCard :label="$t('machine.fixtureSection')">
+        <template v-if="dataFixture.ID>0">
+          <div class="ctl-value">{{ dataFixture.FAMILY }}</div>
+          <div class="ctl-sub">
+            <span v-if="(dataFixture.DESCR || '').trim().length">{{ dataFixture.DESCR }} · </span>ID {{ dataFixture.ID }}
+          </div>
+          <div class="ctl-sub">{{ $t('Stato') }}: {{ dataFixture.STATUS_DESC }}</div>
+        </template>
+        <div v-else class="ctl-value ctl-muted">{{ $t('machine.noFixture') }}</div>
+      </UiCard>
     </div>
 
-    </div>
-    <div class="pure-u-10-24">
-      <h1 class="view-title"> {{$t('Comandi')}} </h1>
-      
-      <div class="pure-u-1-2">
-        <button class="pure-button-micromission pure-u-1 button_pressed"> {{ $t('APRI_PORTA')}}</button>
-      </div>
-      <div class="pure-u-1-2">
-        <button class="pure-button-micromission pure-u-1 button_pressed"> {{ $t('CHIUDI_PORTA')}}</button>
-      </div>    
-      
+    <div class="ctl__col">
+      <UiCard :label="$t('machine.cmdSection')">
+        <div class="ctl-row">
+          <span class="ctl-row__label">{{ $t('machine.door') }}</span>
+          <div class="ctl-seg">
+            <button type="button" class="ctl-seg__opt" disabled :title="$t('machine.notWired')">{{ $t('machine.open') }}</button>
+            <button type="button" class="ctl-seg__opt" disabled :title="$t('machine.notWired')">{{ $t('machine.close') }}</button>
+          </div>
+          <small class="ctl-row__note">{{ $t('machine.notWired') }}</small>
+        </div>
+      </UiCard>
     </div>
   </div>
 </template>

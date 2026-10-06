@@ -1,101 +1,97 @@
 <script setup>
     import { dataStored } from '../../data.js'
+    // (v3 fase B) stato MC1 dallo store della shell (stessa fonte della
+    // striscia), componenti v3
+    import { plant } from '../../stores/plantStatus.js'
+    import { statusKey, statusTone } from '../../util/unitStatus.js'
+    import UiCard from '../../components/ui/UiCard.vue'
+    import UiButton from '../../components/ui/UiButton.vue'
+    import UiConfirmDialog from '../../components/ui/UiConfirmDialog.vue'
 </script>
 
 <template>
-  <div class="pure-u-1 unit-columns">
-    <div class="pure-u-10-24">
-      <h1 class="view-title">{{$t('Stato')}} {{ $t('MC1') }}</h1>
-      <div class="status-card pure-u-1">
-          <h5 v-if="dataFixture.ID>0"> {{$t('Fixture')}} ID: {{ dataFixture.ID }} </h5>
-          <h5 v-if="dataFixture.ID>0"> 
-            {{ dataFixture.FAMILY }} 
-            {{ (dataFixture.DESCR.trim().length)? ' - '+dataFixture.DESCR:'' }}  
-          </h5>
-          <h5 v-if="dataFixture.ID>0"> Status: {{ dataFixture.STATUS_DESC }}</h5>
-          <h5 v-if="!dataFixture.ID>0"> {{ $t('machine.noFixture') }} </h5>
-      </div>
+  <!-- (v3 fase B) Controlli · Macchina MC1, stesso schema della pagina Robot
+       (non disegnata nelle tavole). A sinistra lo stato: STATUS di MC1 (la
+       stessa fonte e lo stesso nome della striscia) e attrezzatura in
+       macchina. A destra i comandi: Porta / Pallet / Morsa e l'attrezzaggio.
+       Porta, pallet e morsa NON hanno uno stato letto (nessun topic del PLC
+       lo pubblica): due comandi, nessuna posizione accesa. La morsa manuale
+       si': l'eco DECLARE/MC1 accende la posizione letta.
+       Comandi, abilitazioni e conferme quelli di prima
+       (tests/test_golden_equivalenza.mjs). -->
+  <div class="ctl">
+    <div class="ctl__col">
+      <UiCard :label="$t('Stato')">
+        <div class="ctl-state-title" :class="'ctl-tone--' + statusTone(plant.mc1)">
+          <i class="ctl-dot" aria-hidden="true"></i><span>{{ $t(statusKey(plant.mc1)) }}</span>
+        </div>
+      </UiCard>
 
+      <!-- attrezzatura sulla macchina (api fixture/showOnMC/1, poll 3 s) -->
+      <UiCard :label="$t('machine.fixtureSection')">
+        <template v-if="dataFixture.ID>0">
+          <div class="ctl-value">{{ dataFixture.FAMILY }}</div>
+          <div class="ctl-sub">
+            <span v-if="(dataFixture.DESCR || '').trim().length">{{ dataFixture.DESCR }} · </span>ID {{ dataFixture.ID }}
+          </div>
+          <div class="ctl-sub">{{ $t('Stato') }}: {{ dataFixture.STATUS_DESC }}</div>
+        </template>
+        <div v-else class="ctl-value ctl-muted">{{ $t('machine.noFixture') }}</div>
+      </UiCard>
     </div>
-    <div class="pure-u-10-24">
-      <h1 class="view-title"> {{$t('Comandi')}} </h1>
-      
-      <div class="pure-u-1-2">
-        <button class="pure-button-micromission pure-u-1 button_pressed"
-                @click="sendToPLC(30)">
-                {{ $t('APRI_PORTA')}}
-        </button>
-      </div>
-      <div class="pure-u-1-2">
-        <button class="pure-button-micromission pure-u-1 button_pressed"
-              @click="sendToPLC(31)">
-              {{ $t('CHIUDI_PORTA')}}
-        </button>
-      </div>  
-      
-      <div class="pure-u-1-2">
-        <button class="pure-button-micromission pure-u-1 button_pressed"
-                @click="sendToPLC(20)">
-                {{ $t('machine.palletUnlock') }}
-        </button>
-      </div>
-      <div class="pure-u-1-2">
-        <button class="pure-button-micromission pure-u-1 button_pressed"
-              @click="sendToPLC(21)">
-              {{ $t('machine.palletLock') }}
-        </button>
-      </div> 
 
-      <div class="pure-u-1-2">
-        <button class="pure-button-micromission pure-u-1 button_pressed"
-                @click="sendToPLC(10)">
-                {{ $t('machine.viceUnlock') }}
-        </button>
-      </div>
-      <!-- BLOCCO MORSA (11): gemello dello sblocco, stesso invio e stesso
-           (non-)gating dei comandi macchina della pagina; passa SOLO dal
-           dialog di conferma perche' la morsa si chiude. Nessun fallback ne'
-           timeout: il pannello manda e basta, come gli altri comandi. -->
-      <div class="pure-u-1-2">
-        <button class="pure-button-micromission pure-u-1 button_pressed"
-                @click="openViceLockDialog()">
-                {{ $t('machine.viceLock') }}
-        </button>
-      </div>
-
-      <div v-if="viceLockOpen" class="mission-dialog-overlay">
-        <div class="mission-dialog mission-dialog--danger">
-          <h3 class="command-section-title">{{ $t('machine.viceLockConfirm') }}</h3>
-          <div class="vice-lock-warn">{{ $t('machine.viceLockWarn') }}</div>
-          <div class="pure-g">
-            <div class="pure-u-1-2">
-              <button style="width:100%" class="button_pressed pure-button-mission" @click="confirmViceLock()">
-                {{ $t('robot.dialog.confirm') }}
-              </button>
-            </div>
-            <div class="pure-u-1-2">
-              <button style="width:100%" class="btn-ghost" @click="closeViceLockDialog()">
-                {{ $t('robot.dialog.cancel') }}
-              </button>
-            </div>
+    <div class="ctl__col">
+      <!-- comandi macchina su TO_PLANT/CMD/MC1: porta 30/31, pallet 20/21,
+           morsa 10/11. Nessun gating, come prima. Il BLOCCO MORSA (11)
+           passa SOLO dal dialog di conferma perche' la morsa si chiude. -->
+      <UiCard :label="$t('machine.cmdSection')">
+        <div class="ctl-row">
+          <span class="ctl-row__label">{{ $t('machine.door') }}</span>
+          <div class="ctl-seg">
+            <button type="button" class="ctl-seg__opt" @click="sendToPLC(30)">{{ $t('machine.open') }}</button>
+            <button type="button" class="ctl-seg__opt" @click="sendToPLC(31)">{{ $t('machine.close') }}</button>
           </div>
         </div>
-      </div>
+        <div class="ctl-row">
+          <span class="ctl-row__label">{{ $t('machine.pallet') }}</span>
+          <div class="ctl-seg">
+            <button type="button" class="ctl-seg__opt" @click="sendToPLC(20)">{{ $t('machine.unlock') }}</button>
+            <button type="button" class="ctl-seg__opt" @click="sendToPLC(21)">{{ $t('machine.lock') }}</button>
+          </div>
+        </div>
+        <div class="ctl-row">
+          <span class="ctl-row__label">{{ $t('machine.vice') }}</span>
+          <div class="ctl-seg">
+            <button type="button" class="ctl-seg__opt" @click="sendToPLC(10)">{{ $t('machine.unlock') }}</button>
+            <button type="button" class="ctl-seg__opt" @click="openViceLockDialog()">{{ $t('machine.lock') }}</button>
+          </div>
+        </div>
+      </UiCard>
 
       <!-- ===== FASE B: Attrezzaggio macchina (DECLARE/MC1) =====
            Lo stato mostrato viene SOLO dagli echi PLC (niente optimistic
            update): FROM_PLANT/DECLARE/MC1 "pallet;manualVice" e' la fonte
            di verita', ripubblicata a power-on e su refresh 90. -->
-      <section class="command-section decl-section">
-        <h3 class="section-label">{{ $t('machine.rigSection') }}</h3>
-
-        <div class="decl-row">
-          <span class="decl-label">{{ $t('machine.declaredPallet') }}</span>
-          <span class="decl-value">{{ declKnown ? (declPallet > 0 ? '#' + declPallet : $t('machine.noPallet')) : '—' }}</span>
+      <UiCard :label="$t('machine.rigSection')">
+        <div class="ctl-row">
+          <span class="ctl-row__label">{{ $t('machine.declaredPallet') }}</span>
+          <span class="mc-decl-value">{{ declKnown ? (declPallet > 0 ? '#' + declPallet : $t('machine.noPallet')) : '—' }}</span>
         </div>
-        <div class="decl-row">
-          <span class="decl-label">{{ $t('machine.manualVice') }}</span>
-          <span class="decl-value">{{ declKnown ? (declManualVice ? 'ON' : 'OFF') : '—' }}</span>
+        <!-- morsa manuale: SOLO MQTT 42/43, lo stato cambia con l'eco. Due
+             posizioni: quella accesa e' l'eco; si preme l'altra (toggle
+             invariato: manda 42 da OFF, 43 da ON) -->
+        <div class="ctl-row">
+          <span class="ctl-row__label">{{ $t('machine.manualVice') }}</span>
+          <div class="ctl-seg">
+            <button type="button" class="ctl-seg__opt"
+              :class="{ on: declKnown && !declManualVice }"
+              :disabled="rigBlockReason!='' || declWaiting || !declManualVice"
+              @click="toggleManualVice()">OFF</button>
+            <button type="button" class="ctl-seg__opt"
+              :class="{ on: declKnown && !!declManualVice }"
+              :disabled="rigBlockReason!='' || declWaiting || !!declManualVice"
+              @click="toggleManualVice()">ON</button>
+          </div>
         </div>
 
         <!-- gating D1: mai bottoni muti, il motivo e' esposto -->
@@ -108,27 +104,31 @@
               #{{ p.ID }} {{ (p.FAMILY || '').trim() }}
             </option>
           </select>
-          <button class="pure-button pure-button-primary"
+          <UiButton variant="primary"
             :disabled="rigBlockReason!='' || declWaiting || !(palletSel>0)"
             @click="declarePallet()">
             {{ $t('machine.declarePallet') }}
-          </button>
-          <button class="btn-ghost"
+          </UiButton>
+          <button type="button" class="ctl-outline"
             :disabled="rigBlockReason!='' || declWaiting || !(declPallet>0)"
             @click="removePallet()">
             {{ $t('machine.removePallet') }}
           </button>
-          <!-- morsa manuale: SOLO MQTT 42/43, lo stato cambia con l'eco -->
-          <button class="btn-ghost"
-            :disabled="rigBlockReason!='' || declWaiting"
-            @click="toggleManualVice()">
-            {{ $t('machine.manualVice') }}: {{ declManualVice ? 'OFF' : 'ON' }}
-          </button>
         </div>
         <div class="decl-hint" v-if="declWaiting">{{ $t('machine.waitingEcho') }}</div>
-      </section>
-
+      </UiCard>
     </div>
+
+    <!-- conferma BLOCCO MORSA (11): la morsa si chiude, mani fuori -->
+    <template v-if="viceLockOpen">
+      <UiConfirmDialog open tone="danger"
+        :title="$t('machine.viceLockConfirm')"
+        :text="$t('machine.viceLockWarn')"
+        :confirm-label="$t('machine.viceLockAction')"
+        :cancel-label="$t('robot.dialog.cancel')"
+        @confirm="confirmViceLock()"
+        @cancel="closeViceLockDialog()" />
+    </template>
   </div>
 </template>
 
@@ -358,28 +358,10 @@ export default {
 </script>
 
 <style scoped>
-    /* FASE B: sezione attrezzaggio macchina (pattern command-section) */
-    .decl-section {
-        margin-top: var(--space-4);
-    }
-
-    .decl-row {
-        display: flex;
-        gap: var(--space-4);
-        align-items: center;
-        padding: 2px 0;
-    }
-
-    .decl-label {
-        min-width: 10em;
-        font-size: var(--font-size-sm);
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        color: var(--text-secondary);
-    }
-
-    .decl-value {
-        font-weight: var(--font-weight-semibold);
+    /* (v3 fase B) colonne, segmenti e stato da assets/css/controls-v3.css */
+    .mc-decl-value {
+        font-size: var(--font-size-md);
+        font-weight: var(--font-weight-bold);
     }
 
     .decl-actions {
@@ -387,37 +369,25 @@ export default {
         flex-wrap: wrap;
         gap: var(--space-2);
         align-items: center;
-        margin-top: var(--space-2);
+        margin-top: var(--space-4);
     }
 
     .decl-actions select {
-        min-height: 44px;
+        flex: 1;
+        min-width: 160px;
+        min-height: var(--touch-target-min);
         background: var(--bg-input);
         color: var(--text-primary);
         border: 1px solid var(--border-strong);
-        border-radius: var(--radius-sm);
+        border-radius: var(--radius-btn);
         padding: var(--space-2) var(--space-4);
+        font: inherit;
     }
 
     .decl-hint {
         color: var(--text-muted);
         font-size: var(--font-size-sm);
         font-style: italic;
-        margin-top: var(--space-1);
-    }
-
-    /* dialog conferma BLOCCO MORSA: stesso overlay delle view missione */
-    /* dialog: stile comune in assets/css/dialogs.css (UI-DESIGN-SYSTEM v2 §12) */
-
-
-    /* avviso di sicurezza: la morsa si chiude (status warning, non muted) */
-    .vice-lock-warn {
-        background: var(--color-warning-bg);
-        color: var(--color-warning);
-        border: 1px solid var(--color-warning);
-        border-radius: var(--radius-md);
-        padding: var(--space-2) var(--space-4);
-        font-size: var(--font-size-base);
-        font-weight: var(--font-weight-semibold);
+        margin-top: var(--space-3);
     }
 </style>

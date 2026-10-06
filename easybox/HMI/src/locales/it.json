@@ -992,10 +992,25 @@
     "viceLock": "BLOCCO MORSA",
     "viceLockConfirm": "Bloccare la morsa?",
     "viceLockWarn": "La morsa SI CHIUDE. Nessuno deve avere le mani in macchina.",
-    "noFixture": "NO FIXTURE MOUNTED!",
+    "noFixture": "Nessuna attrezzatura in macchina",
     "palletUnlock": "SBLOCCO PALLET",
     "palletLock": "BLOCCO PALLET",
-    "viceUnlock": "SBLOCCO MORSA"
+    "viceUnlock": "SBLOCCO MORSA",
+    "fixtureSection": "Attrezzatura in macchina",
+    "cmdSection": "Comandi macchina",
+    "door": "Porta",
+    "pallet": "Pallet",
+    "vice": "Morsa",
+    "open": "Apri",
+    "close": "Chiudi",
+    "unlock": "Sblocca",
+    "lock": "Blocca",
+    "viceLockAction": "Blocca morsa",
+    "notWired": "Comando non collegato"
+  },
+  "smallbox": {
+    "trayOut": "Cassetto fuori",
+    "reset": "Reset EasyBox"
   },
   "vice": {
     "welcome": "Elenco morse",

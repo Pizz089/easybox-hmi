@@ -53,12 +53,12 @@
       <UiCard :label="$t('Stato')" class="rv-state">
         <div class="rv-state__row">
           <div class="rv-state__main">
-            <div class="rv-state__title" :class="'rv-tone--' + statusTone(dataRobot.STATUS)">
-              <i class="rv-dot" aria-hidden="true"></i><span>{{ $t(statusKey(dataRobot.STATUS)) }}</span>
+            <div class="ctl-state-title" :class="'ctl-tone--' + statusTone(dataRobot.STATUS)">
+              <i class="ctl-dot" aria-hidden="true"></i><span>{{ $t(statusKey(dataRobot.STATUS)) }}</span>
             </div>
-            <div class="rv-state__sub" v-if="statoDettaglio">{{ statoDettaglio }}</div>
+            <div class="ctl-sub" v-if="statoDettaglio">{{ statoDettaglio }}</div>
           </div>
-          <button type="button" class="rv-outline"
+          <button type="button" class="ctl-outline"
             :disabled="dataStored.cmdActive==0"
             @click="dataStored.cmdActive==1?openDeclDialog():''">
             {{ $t('robot.decl.button') }}
@@ -155,8 +155,8 @@
         <UiStepper :disabled="!speedEnabled" @step="stepSpeed($event)">
           <div class="rv-speed__bar"><i :style="{ width: (speedKnown ? displaySpeed : 0) + '%' }"></i></div>
         </UiStepper>
-        <div class="rv-presets">
-          <button v-for="p in speedPresets" :key="p" type="button" class="rv-preset"
+        <div class="ctl-seg rv-presets">
+          <button v-for="p in speedPresets" :key="p" type="button" class="ctl-seg__opt"
             :class="{ on: speedKnown && displaySpeed == p }"
             :disabled="!speedEnabled"
             @click="setSpeedPreset(p)">
@@ -169,10 +169,10 @@
     <div class="rv__col rv__col--cmd">
       <!-- (compatto) schede Movimenti / Missioni / Chele; in largo nascoste,
            le tre card si vedono tutte. Solo CSS: i comandi restano nel DOM. -->
-      <div class="rv-tabs" role="tablist">
-        <button type="button" class="rv-tabs__opt" :class="{ on: rvTab=='movement' }" @click="rvTab='movement'">{{ $t('robot.section.movement') }}</button>
-        <button type="button" class="rv-tabs__opt" :class="{ on: rvTab=='mission' }" @click="rvTab='mission'">{{ $t('robot.section.mission') }}</button>
-        <button type="button" class="rv-tabs__opt" :class="{ on: rvTab=='claw' }" @click="rvTab='claw'">{{ $t('robot.section.claws') }}</button>
+      <div class="ctl-seg rv-tabs" role="tablist">
+        <button type="button" class="ctl-seg__opt rv-tabs__opt" :class="{ on: rvTab=='movement' }" @click="rvTab='movement'">{{ $t('robot.section.movement') }}</button>
+        <button type="button" class="ctl-seg__opt rv-tabs__opt" :class="{ on: rvTab=='mission' }" @click="rvTab='mission'">{{ $t('robot.section.mission') }}</button>
+        <button type="button" class="ctl-seg__opt rv-tabs__opt" :class="{ on: rvTab=='claw' }" @click="rvTab='claw'">{{ $t('robot.section.claws') }}</button>
       </div>
 
       <!-- i comandi manuali partono solo in HOLD (CMD_enabled -> cmdActive):
@@ -223,26 +223,26 @@
            non ha sensore: due comandi, nessuno stato. -->
       <UiCard :label="$t('robot.section.claws')" class="rv-panel rv-panel--claw" :class="{ 'rv-panel--off': rvTab!='claw' }">
         <div class="rv-claws">
-        <div class="rv-claw" v-for="side in [1, 2]" :key="side">
-          <span class="rv-claw__side">
+        <div class="ctl-row" v-for="side in [1, 2]" :key="side">
+          <span class="ctl-row__label">
             {{ $t('robot.claw.side', { side: side }) }}
-            <small v-if="side==1" class="rv-claw__state">{{ gripperClosed1===1 ? $t('robot.claw.stateClosed') : gripperClosed1===0 ? $t('robot.claw.stateOpen') : '—' }}</small>
+            <small v-if="side==1" class="ctl-row__state">{{ gripperClosed1===1 ? $t('robot.claw.stateClosed') : gripperClosed1===0 ? $t('robot.claw.stateOpen') : '—' }}</small>
           </span>
-          <div class="rv-seg">
-            <button type="button" class="rv-seg__opt"
+          <div class="ctl-seg">
+            <button type="button" class="ctl-seg__opt"
               :class="{ on: side==1 && gripperClosed1===0, 'btn-mission-running': missionRunning=='claw-open-'+side }"
               :disabled="!clawEnabled(side)"
               @click="clawEnabled(side) ? openClawDialog(side) : ''">
               {{ $t('robot.claw.open') }}
             </button>
-            <button type="button" class="rv-seg__opt"
+            <button type="button" class="ctl-seg__opt"
               :class="{ on: side==1 && gripperClosed1===1, 'btn-mission-running': missionRunning=='claw-close-'+side }"
               :disabled="!clawEnabled(side)"
               @click="clawEnabled(side) ? sendClaw(side, false) : ''">
               {{ $t('robot.claw.close') }}
             </button>
           </div>
-          <small class="rv-claw__why" v-if="side==2 && dataStored.cmdActive==1 && !clawSide2Available">{{ $t('robot.claw.noSide2') }}</small>
+          <small class="ctl-row__note" v-if="side==2 && dataStored.cmdActive==1 && !clawSide2Available">{{ $t('robot.claw.noSide2') }}</small>
         </div>
         </div>
       </UiCard>
@@ -2595,54 +2595,17 @@ export default {
 }
 
 /* --- Stato --- */
+/* il pulsante va sotto lo stato solo se non c'e' posto (compatto con uno
+   stato lungo, es. "In lavoro"): il titolo non va mai a capo */
 .rv-state__row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-4);
+  gap: var(--space-3) var(--space-4);
 }
+.rv-state__main .ctl-state-title { white-space: nowrap; }
 .rv-state__main { min-width: 0; }
-.rv-state__title {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  font-size: var(--font-size-state);
-  font-weight: var(--font-weight-extrabold);
-  line-height: var(--line-height-tight);
-}
-.rv-state__title span { display: inline-block; }
-.rv-state__title span::first-letter { text-transform: uppercase; }
-.rv-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: var(--text-muted);
-  flex: none;
-}
-.rv-tone--warning .rv-dot { background: var(--color-warning); }
-.rv-tone--danger .rv-dot { background: var(--color-danger); }
-.rv-tone--success .rv-dot { background: var(--color-success); }
-.rv-tone--accent .rv-dot { background: var(--accent); }
-.rv-tone--info .rv-dot { background: var(--color-info); }
-.rv-state__sub {
-  margin-top: var(--space-2);
-  font-size: var(--font-size-sm);
-  color: var(--text-secondary);
-}
-.rv-outline {
-  flex: none;
-  min-height: var(--touch-target-min);
-  padding: 0 var(--space-4);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-btn);
-  background: transparent;
-  color: var(--text-primary);
-  font: inherit;
-  font-weight: var(--font-weight-bold);
-  cursor: pointer;
-}
-.rv-outline:hover:not(:disabled) { background: var(--bg-surface-2); }
-.rv-outline:disabled { color: var(--text-muted); border-color: var(--border-subtle); cursor: not-allowed; }
 .rv-banner { margin: var(--space-3) 0 0; }
 
 /* --- Pinza a bordo --- */
@@ -2750,42 +2713,10 @@ h6 {
   font-weight: var(--font-weight-bold);
   color: var(--accent);
 }
-/* contenitore dei segmenti: come UiSegmented (--bg-chip, 14 / 11 px) */
-.rv-presets,
-.rv-seg,
-.rv-tabs {
-  display: grid;
-  gap: var(--space-1);
-  padding: var(--space-1);
-  border-radius: 14px;
-  background: var(--bg-chip);
-}
-.rv-presets { grid-template-columns: repeat(4, 1fr); margin-top: var(--space-3); }
-.rv-seg { grid-template-columns: 1fr 1fr; }
-.rv-preset,
-.rv-seg__opt,
-.rv-tabs__opt {
-  min-height: var(--touch-target-min);
-  border: 0;
-  border-radius: 11px;
-  background: transparent;
-  color: var(--text-secondary);
-  font: inherit;
-  font-weight: var(--font-weight-bold);
-  cursor: pointer;
-}
-.rv-preset.on,
-.rv-seg__opt.on,
-.rv-tabs__opt.on { background: var(--bg-segment-on); color: var(--text-primary); }
-.rv-preset:hover:not(:disabled):not(.on),
-.rv-seg__opt:hover:not(:disabled):not(.on),
-.rv-tabs__opt:hover:not(.on) { background: var(--bg-surface-2); }
-.rv-preset:disabled,
-.rv-seg__opt:disabled { color: var(--text-muted); cursor: not-allowed; }
-/* lo stato letto resta leggibile anche a comandi spenti */
-.rv-seg__opt.on:disabled { color: var(--text-secondary); }
+.rv-presets { margin-top: var(--space-3); }
 
 /* --- Comandi --- */
+/* schede del compatto: in largo non ci sono */
 .rv-tabs { display: none; }
 .rv-gate {
   margin: 0;
@@ -2813,15 +2744,8 @@ h6 {
   grid-template-columns: 1fr 1fr;
   gap: var(--space-3) var(--space-6);
 }
-.rv-claw {
-  display: grid;
-  grid-template-columns: 96px minmax(0, 1fr);
-  align-items: center;
-  gap: var(--space-1) var(--space-3);
-}
-.rv-claw__side { display: flex; flex-direction: column; font-weight: var(--font-weight-bold); }
-.rv-claw__state { font-size: var(--font-size-xs); font-weight: var(--font-weight-normal); color: var(--text-muted); }
-.rv-claw__why { grid-column: 2; font-size: var(--font-size-xs); color: var(--text-muted); }
+/* in largo i due lati stanno affiancati: niente stacco verticale */
+.rv-claws .ctl-row + .ctl-row { margin-top: 0; }
 
 /* --- Ripristino: card a riga, fuori dalle schede --- */
 .rv-restore {
@@ -2847,7 +2771,7 @@ h6 {
 @media (max-width: 1599px) {
   .rv { grid-template-columns: minmax(0, 0.62fr) minmax(0, 1fr); gap: var(--space-3); }
   .rv__col { gap: var(--space-3); }
-  .rv-tabs { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--bg-surface); border-radius: var(--radius-lg); }
+  .rv-tabs { display: grid; background: var(--bg-surface); border-radius: var(--radius-lg); }
   .rv-panel--off { display: none; }
   .rv-panel :deep(.ui-card__head) { display: none; }
   .rv-grid--move,

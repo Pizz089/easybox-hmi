@@ -1,76 +1,61 @@
 <script setup>
   import { dataStored } from '../../data.js'
   import { sendToRobot } from '../../util/globalFunction.js';
+  // (v3 fase B) stato col nome e il tono della striscia, componenti v3
+  import { statusKey, statusTone } from '../../util/unitStatus.js'
+  import UiCard from '../../components/ui/UiCard.vue'
+  import UiTile from '../../components/ui/UiTile.vue'
+  import UiButton from '../../components/ui/UiButton.vue'
+  import { ArrowDownToLine, RotateCcw } from 'lucide-vue-next'
 </script>
 
 <template>
-  <div class="pure-u-1 unit-columns">
-    <div class="pure-u-10-24">
-      <h1 class="view-title">{{$t('Stato')}} EasyBox </h1>
-      <div class="status-card pure-u-1" :class="getColorFromStatus()">
-          <h5>
-            {{ getDescriptionFromStatus(status) }}
-            <span v-if="error>0 && error<999">
-              <br><br>
-              {{$t('TRAY')}} #{{ error }} {{$t('tray.NOT_IN_POSITION')}}
-            </span>
-            <span v-if="error==999">
-              <br><br>
-              {{$t('menu.trays')}} {{$t('tray.NOT_IN_POSITION')}}
-            </span>
-          </h5>
-      </div>
+  <!-- (v3 fase B) Controlli · EasyBox, stesso schema della pagina Robot (non
+       disegnata nelle tavole). A sinistra lo stato: STATUS della cassettiera
+       (unit/show/SMALLBOX, stesso nome della striscia) con il cassetto non in
+       posizione se c'e', e il cassetto fuori (EXTRACT). A destra i comandi:
+       inserimento del cassetto e reset. Comandi e abilitazioni quelli di
+       prima (tests/test_golden_equivalenza.mjs). -->
+  <div class="ctl">
+    <div class="ctl__col">
+      <UiCard :label="$t('Stato')">
+        <div class="ctl-state-title" :class="'ctl-tone--' + statusTone(status)">
+          <i class="ctl-dot" aria-hidden="true"></i><span>{{ $t(statusKey(status)) }}</span>
+        </div>
+        <div class="ctl-sub" v-if="error>0 && error<999">{{$t('TRAY')}} #{{ error }} {{$t('tray.NOT_IN_POSITION')}}</div>
+        <div class="ctl-sub" v-if="error==999">{{$t('menu.trays')}} {{$t('tray.NOT_IN_POSITION')}}</div>
+      </UiCard>
 
-      <!--div class="area pure-u-1">
-        <h5 v-for="d in data" :key="d.ID">
-        <span v-if="d.EXTRACT==1"> 
-          Cassetto {{ d.ID }} estratto 
-        </span>
-        </h5>
-      </div-->
-
-      <div class="status-card pure-u-1">
-        <h5>
+      <UiCard :label="$t('smallbox.trayOut')">
+        <div class="ctl-value" :class="{ 'ctl-muted': !(getTrayExtract()>0) }">
           {{getTrayExtract()>0? $t("tray.extract")+getTrayExtract(): $t("tray.no_extract")}}
-        </h5>
-      </div>
+        </div>
+      </UiCard>
     </div>
 
-    <!--------------------- COLONNA COMANDI -------------------->
-
-    <div class="pure-u-10-24">
-      <h1 class="view-title"> {{$t('Comandi')}} </h1>
-      
-      <button class="pure-button-micromission pure-u-1 specialCMD button_pressed" 
-        @click="sendToBox(99)">
-        {{ $t('cmd.reset') }}
-      </button>
-
-      <!--div class="pure-u-1-2">
-        <button class="pure-button-micromission pure-u-1"  style="margin-top:10px; padding:10px"> {{ $t('APRI_PORTA')}}</button>
-      </div>
-      <div class="pure-u-1-2">
-        <button class="pure-button-micromission pure-u-1"  style="margin-top:10px; padding:10px"> {{ $t('CHIUDI_PORTA')}}</button>
-      </div-->    
-      
+    <div class="ctl__col">
       <!-- (AN 1-bis) precondizione ausiliari (vale per ogni vista con
            comandi missione): banner SOLO con AUX=0 -->
       <div class="aux-banner" v-if="dataStored.safetyAux === 0">
         {{ $t('robot.auxBanner') }}
       </div>
-      <h6 class="section-label"> {{ $t("unit.MacroMission") }}
-      </h6>
-      <div class="pure-u-1">
-        <button class="pure-u-1"
-          :class="[!cmdActiveMission? 'pure-button-disable' : 'pure-button-mission']"
-          @click="cmdActiveMission?sendToRobot(26):''">
-          {{ $t('tray.INSERISCI_CASSETTO') }} 
-          <span v-if="getTrayExtract()>0"> 
-            n° {{ getTrayExtract() }}
-          </span>
-        </button>
-      </div>
 
+      <UiCard :label="$t('unit.MacroMission')">
+        <div class="box-tiles">
+          <UiTile :icon="ArrowDownToLine" :disabled="!cmdActiveMission"
+            @click="cmdActiveMission?sendToRobot(26):''">
+            <span>{{ $t('tray.INSERISCI_CASSETTO') }}<template v-if="getTrayExtract()>0"> n° {{ getTrayExtract() }}</template></span>
+          </UiTile>
+        </div>
+      </UiCard>
+
+      <!-- reset della cassettiera (99): nessuna conferma, come prima -->
+      <section class="box-restore">
+        <span class="box-restore__label">{{ $t('robot.section.restore') }}</span>
+        <UiButton variant="danger" :icon="RotateCcw" @click="sendToBox(99)">
+          {{ $t('smallbox.reset') }}
+        </UiButton>
+      </section>
     </div>
   </div>
 </template>
@@ -205,3 +190,33 @@ export default {
     }
   }
 </script>
+
+<style scoped>
+/* (v3 fase B) colonne, stato e segmenti da assets/css/controls-v3.css */
+.box-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-3);
+}
+.box-tiles .ui-tile { min-height: 112px; }
+.box-restore {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--card-padding);
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface);
+}
+.box-restore__label {
+  flex: 1;
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-extrabold);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+@media (max-width: 1599px) {
+  .box-tiles .ui-tile { min-height: 64px; flex-direction: row; align-items: center; justify-content: flex-start; padding: var(--space-2) var(--space-3); font-size: var(--font-size-sm); }
+  .box-tiles :deep(.ui-tile__icon) { width: var(--icon-size-md); height: var(--icon-size-md); }
+}
+</style>

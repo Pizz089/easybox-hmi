@@ -30,12 +30,13 @@ for (const [k, f] of Object.entries(comp.methods)) vm[k] = f.bind(vm);
 
 console.log('1) template: gemello dello sblocco, stesso stile e stesso (non-)gating');
 const tpl = src.slice(0, src.lastIndexOf('</template>'));
-const btn = (label) => {
-	const m = tpl.match(new RegExp('<button([^>]*)>\\s*' + label + '\\s*</button>'));
+// (v3 fase B) i due comandi stanno nella riga "Morsa" (Sblocca | Blocca):
+// si trovano per handler, non piu' per etichetta
+const btn = (click) => {
+	const m = tpl.match(new RegExp('<button([^>]*@click="' + click + '"[^>]*)>'));
 	return m ? m[1] : null;
 };
-// (UI v2 fase 0) anche SBLOCCO MORSA passa da i18n (machine.viceUnlock, stesso testo)
-const unlock = btn("\\{\\{ \\$t\\('machine\\.viceUnlock'\\) \\}\\}"), lock = btn("\\{\\{ \\$t\\('machine\\.viceLock'\\) \\}\\}");
+const unlock = btn('sendToPLC\\(10\\)'), lock = btn('openViceLockDialog\\(\\)');
 check(unlock !== null && lock !== null, 'entrambi i bottoni presenti');
 const itMsg = JSON.parse(readFileSync('src/locales/it.json', 'utf8')), enMsg = JSON.parse(readFileSync('src/locales/en.json', 'utf8'));
 check(itMsg.machine.viceUnlock === 'SBLOCCO MORSA' && enMsg.machine.viceUnlock === 'SBLOCCO MORSA', 'testo dello sblocco invariato: SBLOCCO MORSA');
@@ -45,7 +46,8 @@ check(!/:disabled/.test(unlock) && !/:disabled/.test(lock), 'nessun :disabled su
 check(/@click="openViceLockDialog\(\)"/.test(lock), 'il bottone apre SOLO il dialog');
 check((tpl.match(/sendToPLC\('11'\)|sendToPLC\(11\)/g) || []).length === 0, "nessun invio di 11 dal template");
 check((src.match(/sendToPLC\('11'\)/g) || []).length === 1 && /confirmViceLock\(\)\s*\{[\s\S]*?sendToPLC\('11'\)/.test(src), "l'11 parte SOLO da confirmViceLock");
-check((tpl.match(/mission-dialog-overlay/g) || []).length === 1, 'un solo overlay nella pagina');
+// (v3 fase B) il dialog e' UiConfirmDialog (che porta l'overlay)
+check((tpl.match(/mission-dialog-overlay|<UiConfirmDialog/g) || []).length === 1, 'un solo overlay nella pagina');
 check(/machine\.viceLockWarn/.test(tpl), 'il dialog mostra l\'avviso di sicurezza');
 
 console.log('\n2) dialog sempre prima dell\'invio, annulla non invia');

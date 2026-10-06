@@ -992,10 +992,25 @@
     "viceLock": "LOCK VICE",
     "viceLockConfirm": "Lock the vice?",
     "viceLockWarn": "The vice WILL CLOSE. Nobody must have their hands inside the machine.",
-    "noFixture": "NO FIXTURE MOUNTED!",
+    "noFixture": "No fixture in the machine",
     "palletUnlock": "SBLOCCO PALLET",
     "palletLock": "BLOCCO PALLET",
-    "viceUnlock": "SBLOCCO MORSA"
+    "viceUnlock": "SBLOCCO MORSA",
+    "fixtureSection": "Fixture in the machine",
+    "cmdSection": "Machine commands",
+    "door": "Door",
+    "pallet": "Pallet",
+    "vice": "Vice",
+    "open": "Open",
+    "close": "Close",
+    "unlock": "Unlock",
+    "lock": "Lock",
+    "viceLockAction": "Lock vice",
+    "notWired": "Command not wired"
+  },
+  "smallbox": {
+    "trayOut": "Tray out",
+    "reset": "Reset EasyBox"
   },
   "vice": {
     "welcome": "List vices",

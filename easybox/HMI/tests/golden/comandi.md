@@ -69,21 +69,22 @@ Scenari: HOLD liv2 · HOLD liv0 · HOLD liv2 cassetto 8 fuori · AUTO liv2 · OF
 
 ## CNC1View (`src/views/unit/CNC1View.vue`)
 
-Scenari: base · pallet 2 scelto e dichiarato
+Scenari: base · pallet 2 scelto e dichiarato · eco morsa manuale ON
 
 | Etichetta | Handler | Abilitazione | Abilitato per scenario | Effetto | Conferma |
 |---|---|---|---|---|---|
-| Apri porta | `sendToPLC(30)` |  | base: sì<br>pallet 2 scelto e dichiarato: sì | emit TO_PLANT/CMD/MC1 30 | no |
-| Chiudi porta | `sendToPLC(31)` |  | base: sì<br>pallet 2 scelto e dichiarato: sì | emit TO_PLANT/CMD/MC1 31 | no |
-| SBLOCCO PALLET | `sendToPLC(20)` |  | base: sì<br>pallet 2 scelto e dichiarato: sì | emit TO_PLANT/CMD/MC1 20 | no |
-| BLOCCO PALLET | `sendToPLC(21)` |  | base: sì<br>pallet 2 scelto e dichiarato: sì | emit TO_PLANT/CMD/MC1 21 | no |
-| SBLOCCO MORSA | `sendToPLC(10)` |  | base: sì<br>pallet 2 scelto e dichiarato: sì | emit TO_PLANT/CMD/MC1 10 | no |
-| BLOCCO MORSA | `openViceLockDialog()` |  | base: sì<br>pallet 2 scelto e dichiarato: sì | stato: vm.viceLockOpen = true | Conferma → emit TO_PLANT/CMD/MC1 "11"<br>Annulla → – |
-| Conferma | `confirmViceLock()` |  | base: –<br>pallet 2 scelto e dichiarato: – |  | no |
-| Annulla | `closeViceLockDialog()` |  | base: –<br>pallet 2 scelto e dichiarato: – |  | no |
-| Dichiara pallet | `declarePallet()` | `rigBlockReason!='' \|\| declWaiting \|\| !(palletSel>0)` | base: no<br>pallet 2 scelto e dichiarato: sì | emit TO_PLANT/CMD/MC1 "40;2" | no |
-| Rimuovi pallet | `removePallet()` | `rigBlockReason!='' \|\| declWaiting \|\| !(declPallet>0)` | base: no<br>pallet 2 scelto e dichiarato: sì | emit TO_PLANT/CMD/MC1 "41" | no |
-| Morsa manuale : {{declManualVice ? 'OFF' : 'ON'}} | `toggleManualVice()` | `rigBlockReason!='' \|\| declWaiting` | base: sì<br>pallet 2 scelto e dichiarato: sì | emit TO_PLANT/CMD/MC1 "42" | no |
+| Apri | `sendToPLC(30)` |  | base: sì<br>pallet 2 scelto e dichiarato: sì<br>eco morsa manuale ON: sì | emit TO_PLANT/CMD/MC1 30 | no |
+| Chiudi | `sendToPLC(31)` |  | base: sì<br>pallet 2 scelto e dichiarato: sì<br>eco morsa manuale ON: sì | emit TO_PLANT/CMD/MC1 31 | no |
+| Sblocca | `sendToPLC(20)` |  | base: sì<br>pallet 2 scelto e dichiarato: sì<br>eco morsa manuale ON: sì | emit TO_PLANT/CMD/MC1 20 | no |
+| Blocca | `sendToPLC(21)` |  | base: sì<br>pallet 2 scelto e dichiarato: sì<br>eco morsa manuale ON: sì | emit TO_PLANT/CMD/MC1 21 | no |
+| Sblocca | `sendToPLC(10)` |  | base: sì<br>pallet 2 scelto e dichiarato: sì<br>eco morsa manuale ON: sì | emit TO_PLANT/CMD/MC1 10 | no |
+| Blocca | `openViceLockDialog()` |  | base: sì<br>pallet 2 scelto e dichiarato: sì<br>eco morsa manuale ON: sì | stato: vm.viceLockOpen = true |  → emit TO_PLANT/CMD/MC1 "11"<br> → – |
+| OFF | `toggleManualVice()` | `rigBlockReason!='' \|\| declWaiting \|\| !declManualVice` | base: no<br>pallet 2 scelto e dichiarato: no<br>eco morsa manuale ON: sì | emit TO_PLANT/CMD/MC1 "43" | no |
+| ON | `toggleManualVice()` | `rigBlockReason!='' \|\| declWaiting \|\| !!declManualVice` | base: sì<br>pallet 2 scelto e dichiarato: sì<br>eco morsa manuale ON: no | emit TO_PLANT/CMD/MC1 "42" | no |
+| Dichiara pallet | `declarePallet()` | `rigBlockReason!='' \|\| declWaiting \|\| !(palletSel>0)` | base: no<br>pallet 2 scelto e dichiarato: sì<br>eco morsa manuale ON: no | emit TO_PLANT/CMD/MC1 "40;2" | no |
+| Rimuovi pallet | `removePallet()` | `rigBlockReason!='' \|\| declWaiting \|\| !(declPallet>0)` | base: no<br>pallet 2 scelto e dichiarato: sì<br>eco morsa manuale ON: no | emit TO_PLANT/CMD/MC1 "41" | no |
+| (confirm) | `confirmViceLock()` |  | base: –<br>pallet 2 scelto e dichiarato: –<br>eco morsa manuale ON: – |  | no |
+| (cancel) | `closeViceLockDialog()` |  | base: –<br>pallet 2 scelto e dichiarato: –<br>eco morsa manuale ON: – |  | no |
 
 ## CNC2View (`src/views/unit/CNC2View.vue`)
 
@@ -97,8 +98,8 @@ Scenari: locale, cassetto 8 fuori · remoto, cassetto 8 fuori · locale, nessun 
 
 | Etichetta | Handler | Abilitazione | Abilitato per scenario | Effetto | Conferma |
 |---|---|---|---|---|---|
-| RESET | `sendToBox(99)` |  | locale, cassetto 8 fuori: sì<br>remoto, cassetto 8 fuori: sì<br>locale, nessun cassetto fuori: sì | emit TO_PLANT/CMD/BOX 99 | no |
-| Inserisci Cassetto n° {{getTrayExtract()}} | `cmdActiveMission?sendToRobot(26):''` | `[!cmdActiveMission? 'pure-button-disable' : 'pure-button-mission']` | locale, cassetto 8 fuori: sì<br>remoto, cassetto 8 fuori: no<br>locale, nessun cassetto fuori: no | emit TO_PLANT/CMD/ROBOT 26 | no |
+| Inserisci Cassetto n° {{getTrayExtract()}} | `cmdActiveMission?sendToRobot(26):''` | `!cmdActiveMission` | locale, cassetto 8 fuori: sì<br>remoto, cassetto 8 fuori: no<br>locale, nessun cassetto fuori: no | emit TO_PLANT/CMD/ROBOT 26 | no |
+| Reset EasyBox | `sendToBox(99)` |  | locale, cassetto 8 fuori: sì<br>remoto, cassetto 8 fuori: sì<br>locale, nessun cassetto fuori: sì | emit TO_PLANT/CMD/BOX 99 | no |
 
 ## DashboardView (`src/views/DashboardView.vue`)
 

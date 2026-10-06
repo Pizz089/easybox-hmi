@@ -19,6 +19,8 @@ import '@/assets/css/custom-fix.css'
 import '@/assets/css/buttons.css'
 // (v2 §12) dialog di conferma: sede unica, al posto delle copie scoped
 import '@/assets/css/dialogs.css'
+// (v3 fase B) pezzi comuni delle pagine Controlli: colonne, stato, segmenti
+import '@/assets/css/controls-v3.css'
 // (v2 fase 1.2) campi form scuri: dopo pure.css e theme.css, che li facevano bianchi
 import '@/assets/css/forms.css'
 import '@/assets/css/layout-shell.css'

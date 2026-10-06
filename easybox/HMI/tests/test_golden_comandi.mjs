@@ -315,6 +315,8 @@ const PAGINE = [
 	{ nome: 'CNC1View', file: 'src/views/unit/CNC1View.vue', scenari: {
 		'base': (vm, ds) => { ds.userLevel = 2; },
 		'pallet 2 scelto e dichiarato': (vm, ds) => { ds.userLevel = 2; vm.palletsList = [{ ID: 2, FAMILY: 'ZP', DESCR: 'pallet prova' }]; vm.palletSel = 2; vm.declPallet = 2; },
+		// (fase B) morsa manuale a due posizioni: con l'eco ON si preme OFF (43)
+		'eco morsa manuale ON': (vm, ds) => { ds.userLevel = 2; vm.declKnown = true; vm.declManualVice = 1; },
 	} },
 	{ nome: 'CNC2View', file: 'src/views/unit/CNC2View.vue', scenari: { 'base': () => {} } },
 	{ nome: 'smallboxView', file: 'src/views/unit/smallboxView.vue', scenari: {

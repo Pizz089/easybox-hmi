@@ -2918,12 +2918,13 @@
    "file": "src/views/unit/CNC1View.vue",
    "scenari": [
     "base",
-    "pallet 2 scelto e dichiarato"
+    "pallet 2 scelto e dichiarato",
+    "eco morsa manuale ON"
    ],
    "controlli": [
     {
      "id": "button@click sendToPLC(30)",
-     "etichetta": "Apri porta",
+     "etichetta": "Apri",
      "evento": "click",
      "handler": "sendToPLC(30)",
      "disabled": "",
@@ -2942,12 +2943,19 @@
         "emit TO_PLANT/CMD/MC1 30"
        ],
        "stato": []
+      },
+      "eco morsa manuale ON": {
+       "abilitato": true,
+       "effetti": [
+        "emit TO_PLANT/CMD/MC1 30"
+       ],
+       "stato": []
       }
      }
     },
     {
      "id": "button@click sendToPLC(31)",
-     "etichetta": "Chiudi porta",
+     "etichetta": "Chiudi",
      "evento": "click",
      "handler": "sendToPLC(31)",
      "disabled": "",
@@ -2966,12 +2974,19 @@
         "emit TO_PLANT/CMD/MC1 31"
        ],
        "stato": []
+      },
+      "eco morsa manuale ON": {
+       "abilitato": true,
+       "effetti": [
+        "emit TO_PLANT/CMD/MC1 31"
+       ],
+       "stato": []
       }
      }
     },
     {
      "id": "button@click sendToPLC(20)",
-     "etichetta": "SBLOCCO PALLET",
+     "etichetta": "Sblocca",
      "evento": "click",
      "handler": "sendToPLC(20)",
      "disabled": "",
@@ -2990,12 +3005,19 @@
         "emit TO_PLANT/CMD/MC1 20"
        ],
        "stato": []
+      },
+      "eco morsa manuale ON": {
+       "abilitato": true,
+       "effetti": [
+        "emit TO_PLANT/CMD/MC1 20"
+       ],
+       "stato": []
       }
      }
     },
     {
      "id": "button@click sendToPLC(21)",
-     "etichetta": "BLOCCO PALLET",
+     "etichetta": "Blocca",
      "evento": "click",
      "handler": "sendToPLC(21)",
      "disabled": "",
@@ -3014,12 +3036,19 @@
         "emit TO_PLANT/CMD/MC1 21"
        ],
        "stato": []
+      },
+      "eco morsa manuale ON": {
+       "abilitato": true,
+       "effetti": [
+        "emit TO_PLANT/CMD/MC1 21"
+       ],
+       "stato": []
       }
      }
     },
     {
      "id": "button@click sendToPLC(10)",
-     "etichetta": "SBLOCCO MORSA",
+     "etichetta": "Sblocca",
      "evento": "click",
      "handler": "sendToPLC(10)",
      "disabled": "",
@@ -3038,12 +3067,19 @@
         "emit TO_PLANT/CMD/MC1 10"
        ],
        "stato": []
+      },
+      "eco morsa manuale ON": {
+       "abilitato": true,
+       "effetti": [
+        "emit TO_PLANT/CMD/MC1 10"
+       ],
+       "stato": []
       }
      }
     },
     {
      "id": "button@click openViceLockDialog()",
-     "etichetta": "BLOCCO MORSA",
+     "etichetta": "Blocca",
      "evento": "click",
      "handler": "openViceLockDialog()",
      "disabled": "",
@@ -3057,16 +3093,16 @@
        ],
        "conferme": [
         {
-         "controllo": "button@click confirmViceLock()",
-         "etichetta": "Conferma",
+         "controllo": "UiConfirmDialog@confirm confirmViceLock()",
+         "etichetta": "",
          "abilitato": true,
          "effetti": [
           "emit TO_PLANT/CMD/MC1 \"11\""
          ]
         },
         {
-         "controllo": "button@click closeViceLockDialog()",
-         "etichetta": "Annulla",
+         "controllo": "UiConfirmDialog@cancel closeViceLockDialog()",
+         "etichetta": "",
          "abilitato": true,
          "effetti": []
         }
@@ -3080,16 +3116,39 @@
        ],
        "conferme": [
         {
-         "controllo": "button@click confirmViceLock()",
-         "etichetta": "Conferma",
+         "controllo": "UiConfirmDialog@confirm confirmViceLock()",
+         "etichetta": "",
          "abilitato": true,
          "effetti": [
           "emit TO_PLANT/CMD/MC1 \"11\""
          ]
         },
         {
-         "controllo": "button@click closeViceLockDialog()",
-         "etichetta": "Annulla",
+         "controllo": "UiConfirmDialog@cancel closeViceLockDialog()",
+         "etichetta": "",
+         "abilitato": true,
+         "effetti": []
+        }
+       ]
+      },
+      "eco morsa manuale ON": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.viceLockOpen = true"
+       ],
+       "conferme": [
+        {
+         "controllo": "UiConfirmDialog@confirm confirmViceLock()",
+         "etichetta": "",
+         "abilitato": true,
+         "effetti": [
+          "emit TO_PLANT/CMD/MC1 \"11\""
+         ]
+        },
+        {
+         "controllo": "UiConfirmDialog@cancel closeViceLockDialog()",
+         "etichetta": "",
          "abilitato": true,
          "effetti": []
         }
@@ -3098,31 +3157,69 @@
      }
     },
     {
-     "id": "button@click confirmViceLock()",
-     "etichetta": "Conferma",
+     "id": "button@click toggleManualVice()",
+     "etichetta": "OFF",
      "evento": "click",
-     "handler": "confirmViceLock()",
-     "disabled": "",
-     "classe": "",
+     "handler": "toggleManualVice()",
+     "disabled": "rigBlockReason!='' || declWaiting || !declManualVice",
+     "classe": "{ on: declKnown && !declManualVice }",
      "esiti": {
-      "base": "nascosto",
-      "pallet 2 scelto e dichiarato": "nascosto"
+      "base": {
+       "abilitato": false,
+       "effetti": [
+        "emit TO_PLANT/CMD/MC1 \"42\""
+       ],
+       "stato": []
+      },
+      "pallet 2 scelto e dichiarato": {
+       "abilitato": false,
+       "effetti": [
+        "emit TO_PLANT/CMD/MC1 \"42\""
+       ],
+       "stato": []
+      },
+      "eco morsa manuale ON": {
+       "abilitato": true,
+       "effetti": [
+        "emit TO_PLANT/CMD/MC1 \"43\""
+       ],
+       "stato": []
+      }
      }
     },
     {
-     "id": "button@click closeViceLockDialog()",
-     "etichetta": "Annulla",
+     "id": "button@click toggleManualVice() #2",
+     "etichetta": "ON",
      "evento": "click",
-     "handler": "closeViceLockDialog()",
-     "disabled": "",
-     "classe": "",
+     "handler": "toggleManualVice()",
+     "disabled": "rigBlockReason!='' || declWaiting || !!declManualVice",
+     "classe": "{ on: declKnown && !!declManualVice }",
      "esiti": {
-      "base": "nascosto",
-      "pallet 2 scelto e dichiarato": "nascosto"
+      "base": {
+       "abilitato": true,
+       "effetti": [
+        "emit TO_PLANT/CMD/MC1 \"42\""
+       ],
+       "stato": []
+      },
+      "pallet 2 scelto e dichiarato": {
+       "abilitato": true,
+       "effetti": [
+        "emit TO_PLANT/CMD/MC1 \"42\""
+       ],
+       "stato": []
+      },
+      "eco morsa manuale ON": {
+       "abilitato": false,
+       "effetti": [
+        "emit TO_PLANT/CMD/MC1 \"43\""
+       ],
+       "stato": []
+      }
      }
     },
     {
-     "id": "button@click declarePallet()",
+     "id": "UiButton@click declarePallet()",
      "etichetta": "Dichiara pallet",
      "evento": "click",
      "handler": "declarePallet()",
@@ -3144,6 +3241,11 @@
         "vm.declTimer = 1",
         "vm.declWaiting = true"
        ]
+      },
+      "eco morsa manuale ON": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
       }
      }
     },
@@ -3170,31 +3272,38 @@
         "vm.declTimer = 1",
         "vm.declWaiting = true"
        ]
+      },
+      "eco morsa manuale ON": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
       }
      }
     },
     {
-     "id": "button@click toggleManualVice()",
-     "etichetta": "Morsa manuale : {{declManualVice ? 'OFF' : 'ON'}}",
-     "evento": "click",
-     "handler": "toggleManualVice()",
-     "disabled": "rigBlockReason!='' || declWaiting",
+     "id": "UiConfirmDialog@confirm confirmViceLock()",
+     "etichetta": "",
+     "evento": "confirm",
+     "handler": "confirmViceLock()",
+     "disabled": "",
      "classe": "",
      "esiti": {
-      "base": {
-       "abilitato": true,
-       "effetti": [
-        "emit TO_PLANT/CMD/MC1 \"42\""
-       ],
-       "stato": []
-      },
-      "pallet 2 scelto e dichiarato": {
-       "abilitato": true,
-       "effetti": [
-        "emit TO_PLANT/CMD/MC1 \"42\""
-       ],
-       "stato": []
-      }
+      "base": "nascosto",
+      "pallet 2 scelto e dichiarato": "nascosto",
+      "eco morsa manuale ON": "nascosto"
+     }
+    },
+    {
+     "id": "UiConfirmDialog@cancel closeViceLockDialog()",
+     "etichetta": "",
+     "evento": "cancel",
+     "handler": "closeViceLockDialog()",
+     "disabled": "",
+     "classe": "",
+     "esiti": {
+      "base": "nascosto",
+      "pallet 2 scelto e dichiarato": "nascosto",
+      "eco morsa manuale ON": "nascosto"
      }
     }
    ]
@@ -3215,8 +3324,35 @@
    ],
    "controlli": [
     {
-     "id": "button@click sendToBox(99)",
-     "etichetta": "RESET",
+     "id": "UiTile@click cmdActiveMission?sendToRobot(26):''",
+     "etichetta": "Inserisci Cassetto n° {{getTrayExtract()}}",
+     "evento": "click",
+     "handler": "cmdActiveMission?sendToRobot(26):''",
+     "disabled": "!cmdActiveMission",
+     "classe": "",
+     "esiti": {
+      "locale, cassetto 8 fuori": {
+       "abilitato": true,
+       "effetti": [
+        "emit TO_PLANT/CMD/ROBOT 26"
+       ],
+       "stato": []
+      },
+      "remoto, cassetto 8 fuori": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "locale, nessun cassetto fuori": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      }
+     }
+    },
+    {
+     "id": "UiButton@click sendToBox(99)",
+     "etichetta": "Reset EasyBox",
      "evento": "click",
      "handler": "sendToBox(99)",
      "disabled": "",
@@ -3241,33 +3377,6 @@
        "effetti": [
         "emit TO_PLANT/CMD/BOX 99"
        ],
-       "stato": []
-      }
-     }
-    },
-    {
-     "id": "button@click cmdActiveMission?sendToRobot(26):''",
-     "etichetta": "Inserisci Cassetto n° {{getTrayExtract()}}",
-     "evento": "click",
-     "handler": "cmdActiveMission?sendToRobot(26):''",
-     "disabled": "",
-     "classe": "[!cmdActiveMission? 'pure-button-disable' : 'pure-button-mission']",
-     "esiti": {
-      "locale, cassetto 8 fuori": {
-       "abilitato": true,
-       "effetti": [
-        "emit TO_PLANT/CMD/ROBOT 26"
-       ],
-       "stato": []
-      },
-      "remoto, cassetto 8 fuori": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": []
-      },
-      "locale, nessun cassetto fuori": {
-       "abilitato": false,
-       "effetti": [],
        "stato": []
       }
      }
