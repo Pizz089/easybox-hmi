@@ -13488,20 +13488,84 @@
      }
     },
     {
+     "id": "input@keydown ",
+     "etichetta": "",
+     "evento": "keydown",
+     "handler": "",
+     "disabled": "",
+     "classe": "",
+     "esiti": {
+      "modifica 911 liv2": [
+       {
+        "abilitato": true,
+        "effetti": [],
+        "stato": []
+       },
+       {
+        "abilitato": true,
+        "effetti": [],
+        "stato": []
+       }
+      ],
+      "modifica 911 liv0": [
+       {
+        "abilitato": true,
+        "effetti": [],
+        "stato": []
+       },
+       {
+        "abilitato": true,
+        "effetti": [],
+        "stato": []
+       }
+      ],
+      "nuova morsa": [],
+      "nuova morsa da Attrezzaggio": []
+     }
+    },
+    {
      "id": "button@click saveStop(row)",
      "etichetta": "Salva",
      "evento": "click",
      "handler": "saveStop(row)",
-     "disabled": "!stopValueValid(row) || stopBusy",
+     "disabled": "!stopValueValid(row) || stopBusy || !canDeclareStop",
      "classe": "",
      "esiti": {
       "modifica 911 liv2": [
-       "nascosto",
-       "nascosto"
+       {
+        "abilitato": true,
+        "effetti": [
+         "fetch GET api/conf/vice/setStop?VICE_ID=911&PIECE_ID=931&STOP_BEYOND_CLAW=2000",
+         "fetch GET api/conf/piece/show/all",
+         "fetch GET api/conf/vice/stops/911"
+        ],
+        "stato": [
+         "vm.stopRows = []"
+        ]
+       },
+       {
+        "abilitato": true,
+        "effetti": [
+         "fetch GET api/conf/vice/setStop?VICE_ID=911&PIECE_ID=932&STOP_BEYOND_CLAW=1500",
+         "fetch GET api/conf/piece/show/all",
+         "fetch GET api/conf/vice/stops/911"
+        ],
+        "stato": [
+         "vm.stopRows = []"
+        ]
+       }
       ],
       "modifica 911 liv0": [
-       "nascosto",
-       "nascosto"
+       {
+        "abilitato": false,
+        "effetti": [],
+        "stato": []
+       },
+       {
+        "abilitato": false,
+        "effetti": [],
+        "stato": []
+       }
       ],
       "nuova morsa": [],
       "nuova morsa da Attrezzaggio": []
@@ -13512,15 +13576,29 @@
      "etichetta": "Cancella",
      "evento": "click",
      "handler": "removeStop(row)",
-     "disabled": "stopBusy",
+     "disabled": "stopBusy || !canDeclareStop",
      "classe": "",
      "esiti": {
       "modifica 911 liv2": [
-       "nascosto",
+       {
+        "abilitato": true,
+        "effetti": [
+         "fetch GET api/conf/vice/deleteStop?VICE_ID=911&PIECE_ID=931",
+         "fetch GET api/conf/piece/show/all",
+         "fetch GET api/conf/vice/stops/911"
+        ],
+        "stato": [
+         "vm.stopRows = []"
+        ]
+       },
        "nascosto"
       ],
       "modifica 911 liv0": [
-       "nascosto",
+       {
+        "abilitato": false,
+        "effetti": [],
+        "stato": []
+       },
        "nascosto"
       ],
       "nuova morsa": [],
@@ -15994,64 +16072,6 @@
          "vm.datiInEdit.APPROACH_Z = 50000"
         ]
        }
-      ]
-     }
-    },
-    {
-     "id": "button@click deleteposition(dt.ID)",
-     "etichetta": "Cancella",
-     "evento": "click",
-     "handler": "deleteposition(dt.ID)",
-     "disabled": "",
-     "classe": "",
-     "esiti": {
-      "scaffale liv2": [
-       "nascosto",
-       "nascosto"
-      ],
-      "scaffale liv0": [
-       "nascosto",
-       "nascosto"
-      ],
-      "macchine liv2": [
-       "nascosto"
-      ],
-      "scaffale, 951 in modifica liv2": [
-       "nascosto",
-       "nascosto"
-      ],
-      "scaffale, 951 in modifica liv0": [
-       "nascosto",
-       "nascosto"
-      ]
-     }
-    },
-    {
-     "id": "button@click showPopUp=0",
-     "etichetta": "Annulla",
-     "evento": "click",
-     "handler": "showPopUp=0",
-     "disabled": "",
-     "classe": "",
-     "esiti": {
-      "scaffale liv2": [
-       "nascosto",
-       "nascosto"
-      ],
-      "scaffale liv0": [
-       "nascosto",
-       "nascosto"
-      ],
-      "macchine liv2": [
-       "nascosto"
-      ],
-      "scaffale, 951 in modifica liv2": [
-       "nascosto",
-       "nascosto"
-      ],
-      "scaffale, 951 in modifica liv0": [
-       "nascosto",
-       "nascosto"
       ]
      }
     }

@@ -129,6 +129,9 @@
             <label>{{ $t("vice.stops") }}</label>
             <div class="stops-body">
               <small class="claw-hint">{{ $t("vice.stopsHint") }}</small>
+              <!-- (6/10) stessa regola della pagina Spinta in battuta: la
+                   dichiarazione si scrive da livello 1 -->
+              <small v-if="!canDeclareStop" class="claw-hint">{{ $t("vice.stopsLevel") }}</small>
               <p v-if="!stopRows.length" class="stops-empty">
                 {{ $t("vice.stopsNone") }}
               </p>
@@ -139,6 +142,10 @@
                   <small v-if="!row.exceeds" class="stop-unused">{{ $t("vice.stopsUnused") }}</small>
                 </div>
                 <div class="stop-edit">
+                  <!-- Invio qui NON deve fare l'invio implicito del form:
+                       cliccherebbe "Save" della morsa e la pagina uscirebbe
+                       senza aver salvato l'appoggio (6/10, la sezione prima
+                       non compariva mai) -->
                   <input
                     class="aligned-foo"
                     type="number"
@@ -147,12 +154,13 @@
                     v-model="row.value"
                     inputmode="decimal"
                     autocomplete="off"
+                    @keydown.enter.prevent
                   />
                   <span class="unit" aria-hidden="true">mm</span>
                   <button
                     type="button"
                     class="pure-button button_pressed"
-                    :disabled="!stopValueValid(row) || stopBusy"
+                    :disabled="!stopValueValid(row) || stopBusy || !canDeclareStop"
                     @click="saveStop(row)"
                   >
                     {{ $t("vice.stopsSave") }}
@@ -161,7 +169,7 @@
                     type="button"
                     class="pure-button button_pressed del"
                     v-if="row.declared"
-                    :disabled="stopBusy"
+                    :disabled="stopBusy || !canDeclareStop"
                     @click="removeStop(row)"
                   >
                     {{ $t("vice.stopsDelete") }}
@@ -281,6 +289,10 @@ export default {
     };
   },
 
+  // UN SOLO blocco computed (6/10): fino a oggi ce n'erano due e il secondo
+  // (vicePositionLabel) cancellava il primo, quindi clawLengthMicron era
+  // undefined e la sezione «Appoggi dichiarati» non compariva mai.
+  // test_chiavi_duplicate.mjs controlla che non succeda piu'.
   computed: {
     // ganascia in micron: nel form e' in millimetri, il confronto con le
     // misure del pezzo va fatto nell'unita' del database
@@ -288,6 +300,24 @@ export default {
       const v = this.vice.CLAW_LENGTH;
       if (v === null || v === undefined || String(v).trim() === "") return 0;
       return Math.round(Number(v) * 1000);
+    },
+
+    // AF: decodifica in sola lettura — stessa semantica della colonna
+    // storica di VicesView (rimossa): POS_PLANT>200 MC2, >100 MC1,
+    // altrimenti magazzino morse MAG.
+    // (6/10) la sezione degli appoggi compare da oggi (prima un secondo
+    // blocco computed cancellava clawLengthMicron): la dichiarazione segue la
+    // regola della pagina Spinta in battuta (canEdit, livello >= 1), che
+    // scrive la stessa riga PIECE_ON_VICE con la stessa rotta setStop.
+    canDeclareStop() {
+      return Number(dataStored.userLevel) >= 1;
+    },
+
+    vicePositionLabel() {
+      if (this.create) return this.$t("OUT");
+      if (this.vice.POS_PLANT > 200) return "MC 2";
+      if (this.vice.POS_PLANT > 100) return "MC 1";
+      return this.$t("Mag") + " " + this.vice.MAG + "." + this.vice.MAG_POS;
     },
   },
 
@@ -522,7 +552,7 @@ export default {
     },
 
     saveStop(row) {
-      if (!this.stopValueValid(row)) return;
+      if (!this.stopValueValid(row) || !this.canDeclareStop) return;
       const viceID = Number(this.$route.query.viceID);
       const micron = Math.round(Number(row.value) * 1000);
       const url =
@@ -550,6 +580,7 @@ export default {
     },
 
     removeStop(row) {
+      if (!this.canDeclareStop) return;
       const viceID = Number(this.$route.query.viceID);
       const url =
         dataStored.server +
@@ -695,18 +726,6 @@ export default {
           return this.$router.push(this.$route.query.returnTo || "/conf/Vices");
         })
         .catch(console.info);
-    },
-  },
-
-  computed: {
-    // AF: decodifica in sola lettura — stessa semantica della colonna
-    // storica di VicesView (rimossa): POS_PLANT>200 MC2, >100 MC1,
-    // altrimenti magazzino morse MAG.
-    vicePositionLabel() {
-      if (this.create) return this.$t("OUT");
-      if (this.vice.POS_PLANT > 200) return "MC 2";
-      if (this.vice.POS_PLANT > 100) return "MC 1";
-      return this.$t("Mag") + " " + this.vice.MAG + "." + this.vice.MAG_POS;
     },
   },
 

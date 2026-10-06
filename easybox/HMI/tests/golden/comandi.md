@@ -369,8 +369,9 @@ Scenari: modifica 911 liv2 · modifica 911 liv0 · nuova morsa · nuova morsa da
 | (input) | `onDimInput('X', $event)` |  | modifica 911 liv2: sì<br>modifica 911 liv0: sì<br>nuova morsa: sì<br>nuova morsa da Attrezzaggio: sì | stato: vm.vice.X = 1 | no |
 | (input) | `onDimInput('Y', $event)` |  | modifica 911 liv2: sì<br>modifica 911 liv0: sì<br>nuova morsa: sì<br>nuova morsa da Attrezzaggio: sì | stato: vm.vice.Y = 1 | no |
 | (input) | `onDimInput('Z', $event)` |  | modifica 911 liv2: sì<br>modifica 911 liv0: sì<br>nuova morsa: sì<br>nuova morsa da Attrezzaggio: sì | stato: vm.vice.Z = 1 | no |
-| Salva | `saveStop(row)` | `!stopValueValid(row) \|\| stopBusy` | modifica 911 liv2: –<br>modifica 911 liv0: –<br>nuova morsa: –<br>nuova morsa da Attrezzaggio: – |  | no |
-| Cancella | `removeStop(row)` | `stopBusy` | modifica 911 liv2: –<br>modifica 911 liv0: –<br>nuova morsa: –<br>nuova morsa da Attrezzaggio: – |  | no |
+| (keydown) | `` |  | modifica 911 liv2: sì<br>modifica 911 liv0: sì<br>nuova morsa: –<br>nuova morsa da Attrezzaggio: – | – | no |
+| Salva | `saveStop(row)` | `!stopValueValid(row) \|\| stopBusy \|\| !canDeclareStop` | modifica 911 liv2: sì<br>modifica 911 liv0: no<br>nuova morsa: –<br>nuova morsa da Attrezzaggio: – | fetch GET api/conf/vice/setStop?VICE_ID=911&PIECE_ID=931&STOP_BEYOND_CLAW=2000<br>fetch GET api/conf/piece/show/all<br>fetch GET api/conf/vice/stops/911 | no |
+| Cancella | `removeStop(row)` | `stopBusy \|\| !canDeclareStop` | modifica 911 liv2: sì<br>modifica 911 liv0: no<br>nuova morsa: –<br>nuova morsa da Attrezzaggio: – | fetch GET api/conf/vice/deleteStop?VICE_ID=911&PIECE_ID=931<br>fetch GET api/conf/piece/show/all<br>fetch GET api/conf/vice/stops/911 | no |
 | (update) | `(val) => (vice.STATUS = val)` |  | modifica 911 liv2: sì<br>modifica 911 liv0: sì<br>nuova morsa: sì<br>nuova morsa da Attrezzaggio: sì | stato: vm.vice.STATUS = 5 | no |
 | Salva | `saveData` |  | modifica 911 liv2: sì<br>modifica 911 liv0: sì<br>nuova morsa: sì<br>nuova morsa da Attrezzaggio: sì | fetch GET api/conf/vice/show/911<br>fetch GET api/conf/vice/updateVice?ID=911&FAMILY=MORSA-PROVA&DESCR=morsa+prova+A&STATUS=2&X=150000&Y=100000&Z=80000&CLAW_LENGTH=40000&Z_CLAW=5000&Z_SINK_CLAW=1000&MAG=1&MAG_POS=1&POS_PLANT=0<br>router "/conf/Vices" | no |
 
@@ -448,8 +449,6 @@ Scenari: scaffale liv2 · scaffale liv0 · macchine liv2 · scaffale, 951 in mod
 | Pos {{sortDir==1?'▲':'▼'}} | `setSort('SUB_POS')` |  | scaffale liv2: sì<br>scaffale liv0: sì<br>macchine liv2: sì<br>scaffale, 951 in modifica liv2: sì<br>scaffale, 951 in modifica liv0: sì | stato: vm.sortDir = -1 | no |
 | (cmdModify) | `updatePosition(dt.ID)` |  | scaffale liv2: sì<br>scaffale liv0: sì<br>macchine liv2: sì<br>scaffale, 951 in modifica liv2: sì<br>scaffale, 951 in modifica liv0: sì | stato: vm.datiTab = [{"ID":951,"PARENT":"SHELF","SUB_POS":1,"X":"100.000","Y":"200.000","Z":"300.000, vm.datiTabFiltred = [{"ID":951,"PARENT":"SHELF","SUB_POS":1,"X":"100.000","Y":"200.000","Z":"300.000 | no |
 | (cmdSave) | `updatePosition(dt.ID)` |  | scaffale liv2: sì<br>scaffale liv0: sì<br>macchine liv2: sì<br>scaffale, 951 in modifica liv2: sì<br>scaffale, 951 in modifica liv0: sì | stato: vm.datiTab = [{"ID":951,"PARENT":"SHELF","SUB_POS":1,"X":"100.000","Y":"200.000","Z":"300.000, vm.datiTabFiltred = [{"ID":951,"PARENT":"SHELF","SUB_POS":1,"X":"100.000","Y":"200.000","Z":"300.000 | no |
-| Cancella | `deleteposition(dt.ID)` |  | scaffale liv2: –<br>scaffale liv0: –<br>macchine liv2: –<br>scaffale, 951 in modifica liv2: –<br>scaffale, 951 in modifica liv0: – |  | no |
-| Annulla | `showPopUp=0` |  | scaffale liv2: –<br>scaffale liv0: –<br>macchine liv2: –<br>scaffale, 951 in modifica liv2: –<br>scaffale, 951 in modifica liv0: – |  | no |
 
 ## WarehousesView (`src/views/conf/WarehousesView.vue`)
 
