@@ -37,7 +37,7 @@ cd D:\Prog\easybox\serverDati\scripts; sqlcmd -S .\SQLEXPRESS -E -d ADMG -y 0 -i
 - La guardia confronta la definizione attuale (a spazi normalizzati) con la v3 attesa e con la v4: v3 → la stampa nel file e passa alla v4; già v4 → "conforme", niente; qualunque altra cosa → FERMO, niente.
 - La **prima tabella** del file è il default delle colonne `*_CORR` di `[POSITION]`, letto dai metadati: nel repo non c'è, e i due inserimenti di tasche del backend (`insertPositionTray` e "Genera") non scrivono nessuna correzione. Sul clone del DB di cella (6/10): default 0, NULL ammesso (vedi sopra, ISNULL).
 - **Verifica**, in fondo al file (cassetto 8, tasche 1/13/40/52): con il grigliato attuale Z_PICK 10000 e X/Y uguali a prima (tasca 1: 101500 / 61500); dopo la rigenerazione con le distanze 19/25, tasca 1 circa 100150 / 55500.
-- **Rollback:** rilanciare la definizione v3, che è nel file di backup, in fondo allo script v4 (commentata) e in `scripts/superati/robot-tray-view-v3.sql`. Solo insieme al ritorno del robot al riferimento unico.
+- **Rollback:** con `rollback-wo.sql` (vedi **Rollback** in fondo a questa voce). La definizione v3 resta anche nel file di backup, in fondo allo script v4 (commentata) e in `scripts/superati/robot-tray-view-v3.sql`.
 - `superati/robot-tray-view-v3.sql` e `superati/robot-tray-view-v2.sql` sono **inerti sempre**: la v3 migrava alla v3 qualunque vista non fosse v3, la v2 si fermava solo trovando la v3. Dopo la v4 entrambe avrebbero riportato indietro la vista.
 
 **Causa dello scarto trovata il 6/10.** Il grigliato 2098 aveva distanze 18/24 contro la piastra vera, che misurata col metro dà 19/25: passi 709/12 e 405/3. La piastra è centrata nel cassetto 819 × 605: tasca 1 a 100 / 55 misurata, contro 101,5 / 61,5 del modello. Rimedio: rigenerare le tasche col grigliato a 19/25.
@@ -59,7 +59,16 @@ cd D:\Prog\easybox\serverDati\scripts; sqlcmd -S .\SQLEXPRESS -E -d ADMG -y 0 -i
 6. Robot sul programma con i WO.
 7. Prova lenta: estrazione dell'8, rilascio dell'8, prelievo dalla tasca 1 con l'8 fuori.
 
-**Rollback.** Si torna indietro su tre cose insieme: vista v3 dal file di backup, rollback commentato in coda allo script di estrazione, robot di nuovo sul riferimento unico. Per riavere "0 CASSETTIERA" si annulla il commit che lo ha tolto, `c1ad480` (pannello e rotta `/teachTrays` insieme).
+**Rollback**: `serverDati/scripts/rollback-wo.sql` (scritto da Dario, provato sul clone prima della fermata), al posto della copia a mano dei due blocchi commentati. **Solo con il robot già tornato sul riferimento unico**: per questo parte solo con `-v ROBOT_RIF_UNICO=SI`. Comando (è nella sua intestazione), con il resoconto nel file:
+```
+cd D:\Prog\easybox\serverDati\scripts; sqlcmd -S .\SQLEXPRESS -E -d ADMG -W -v ROBOT_RIF_UNICO=SI -i rollback-wo.sql -o D:\Backup\rollback_wo.txt; Get-Content D:\Backup\rollback_wo.txt
+```
+- In **una transazione**: riporta la vista dalla v4 alla v3; rimette le 12 righe `EXTRACT_TRAY_n` esattamente come prima del passaggio (X/Y/Z e X/Y/Z_CORR, dalla tabella `dbo.POSITION_EXTRACT_PRE_WO`); rinomina la tabella di backup in `POSITION_EXTRACT_PRE_WO_ANNULLATO_<data_ora>`, così lo script di estrazione si può rilanciare. Due controlli (righe uguali al backup, vista risultante v3): se uno non torna, `ROLLBACK` di tutto.
+- **Stati**: vista v4 + backup → annulla tutti e due i passi; vista v3 + backup → solo le quote; vista v4 senza backup con quote ancora assolute (fermata interrotta prima dello script di estrazione) → solo la vista; vista v3 senza backup con quote assolute → niente da annullare; qualunque altro caso → FERMO, nessuna modifica.
+- **Non tocca** la tabella TRAY, le tasche, il PLC (`N_Cassetto` resta: il robot sul riferimento unico lo ignora), il pannello. Avvisa (non ferma) se le correzioni TRAY di un piano o le quote di estrazione sono cambiate dopo il passaggio, e scarta le correzioni a mano fatte dopo (restano nel resoconto).
+- Per riavere "0 CASSETTIERA" restano da annullare i commit del pannello: `c1ad480` (pannello e rotta `/teachTrays` insieme).
+
+**Compatibilità del DB**: il DB ADMG della cella ha livello di compatibilità **100** (intestazione del backup del 6/10). Negli script niente funzioni che richiedono un livello più alto, come `TRY_CAST` e `TRY_CONVERT`.
 
 ### 5/10 sera — dati pezzo al robot e larghezza corretta
 - Su richiesta del robotista il PLC passa le tre misure del pezzo dell'ordine in mm interi, troncati: %QW636 `Part_Width_mm` = PIECE.Y, %QW640 `Part_Length_mm` = PIECE.X, %QW642 `Part_Height_mm` = PIECE.Z, accanto a %QW634 `Vice_ClawLength_mm` e %QW638 `X_Support_mm`. Libere da %QW644 a %QW666 (dal 6/10 %QW644 è `N_Cassetto`: vedi sopra).
