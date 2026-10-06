@@ -20,12 +20,13 @@ La vista v3 sommava le correzioni del cassetto (`TRAY.X_CORR`, `Y_CORR`, `Z_CORR
 - a riposo può restare il numero dell'ultimo cassetto usato, e un "Vai a EasyBox" dopo una missione sul cassetto porta N_Cassetto diverso da 0 (il posizionamento scrive Unit_code ma non Object_Type);
 - da qui le uscite libere verso il robot partono da %QW646.
 
-**Vista v4** (`serverDati/scripts/robot-tray-view-v4.sql`): stesse colonne della v3, stessi nomi e stesso ordine; cambiano solo le quote.
+**Vista v4** (`serverDati/scripts/robot-tray-view-v4.sql`): stesse colonne della v3, stessi nomi e stesso ordine; cambiano le quote e l'espressione di TRAY.
 - `X_PICK = pos.X + ISNULL(pos.X_CORR,0) + ISNULL(decentrato pick X,0)`, Y uguale;
 - `Z_PICK = ISNULL(pos.Z,0) + ISNULL(pos.Z_CORR,0) + PIECE.Z_PICK`;
 - place allo stesso modo; rotazioni come la v3, con `ISNULL` sulla correzione della tasca;
 - **niente più `t.X_CORR`, `t.Y_CORR`, `t.Z_CORR`**. Il join su TRAY resta: limita la vista ai piani configurati.
-- `ISNULL` su ogni correzione: il ponte SQL verso il PLC non converte NULL in zero, passa valori casuali.
+- `ISNULL` su ogni correzione: il ponte SQL verso il PLC non converte NULL in zero, passa valori casuali. Sul clone del DB di cella (6/10) le colonne di correzione di `[POSITION]` hanno default 0 e **accettano NULL**: gli `ISNULL` sono necessari.
+- **Colonna TRAY a prova di cast** (decisione di Dario, 6/10): `CASE WHEN pos.PARENT LIKE 'TRAY[_]%' THEN SUBSTRING(pos.PARENT,6,2) END AS TRAY`. Resta la seconda colonna, stesso nome e stesso tipo (nvarchar); sulle tasche dei cassetti vale come prima, sulle altre righe NULL. Perché: con il SUBSTRING nudo le righe `EXTRACT_TRAY_n` davano `'CT'`, e l'ottimizzatore può calcolare un cast a int anche su righe che la vista poi scarta. Il PLC fa `cast(TRAY as int)` nella lista delle colonne (`FB_Robot.scl` righe 2954, 2972, 2978) e confronta TRAY con un intero nella sottoquery su `COORDINATES_FOR_EXTRACT` (`FB_ExecuteQuery.scl` riga 39, `FB_ExecuteQuery2.scl` riga 62). In cella non è mai successo; sul clone la query di verifica con `cast(TRAY as int) = 8` ha dato l'errore 245, e ora filtra con `TRAY = '8'`, come le query del PLC.
 
 **Le correzioni del cassetto in TRAY non contano più** per le quote del robot: restano nel DB, la posizione del cassetto è nel robot. Il pannello lo dice nella pagina Cassetto (avviso fisso sopra X/Y/Z, e accanto alle rotazioni che si impostano lì).
 
@@ -34,8 +35,7 @@ La vista v3 sommava le correzioni del cassetto (`TRAY.X_CORR`, `Y_CORR`, `Z_CORR
 cd D:\Prog\easybox\serverDati\scripts; sqlcmd -S .\SQLEXPRESS -E -d ADMG -y 0 -i robot-tray-view-v4.sql -o D:\Backup\vista4Robot_prima_v4.txt; Get-Content D:\Backup\vista4Robot_prima_v4.txt
 ```
 - La guardia confronta la definizione attuale (a spazi normalizzati) con la v3 attesa e con la v4: v3 → la stampa nel file e passa alla v4; già v4 → "conforme", niente; qualunque altra cosa → FERMO, niente.
-- La **prima tabella** del file è il default delle colonne `*_CORR` di `[POSITION]`, letto dai metadati: nel repo non c'è, e i due inserimenti di tasche del backend (`insertPositionTray` e "Genera") non scrivono nessuna correzione. **Sul clone del DB di cella (6/10): default 0, e le colonne accettano NULL** — quindi gli `ISNULL` della v4 sono necessari.
-- Sempre sul clone, la verifica filtrava con `cast(TRAY as int) = 8` ed è andata in errore 245: l'ottimizzatore calcola il cast anche sulle righe `EXTRACT_TRAY_n` prima di scartarle (`SUBSTRING('EXTRACT_TRAY_1',6,2)` = `'CT'`). Ora filtra con `TRAY = '8'`, come le query del PLC; nelle WHERE su `TRAY` niente cast né convert.
+- La **prima tabella** del file è il default delle colonne `*_CORR` di `[POSITION]`, letto dai metadati: nel repo non c'è, e i due inserimenti di tasche del backend (`insertPositionTray` e "Genera") non scrivono nessuna correzione. Sul clone del DB di cella (6/10): default 0, NULL ammesso (vedi sopra, ISNULL).
 - **Verifica**, in fondo al file (cassetto 8, tasche 1/13/40/52): con il grigliato attuale Z_PICK 10000 e X/Y uguali a prima (tasca 1: 101500 / 61500); dopo la rigenerazione con le distanze 19/25, tasca 1 circa 100150 / 55500.
 - **Rollback:** rilanciare la definizione v3, che è nel file di backup, in fondo allo script v4 (commentata) e in `scripts/superati/robot-tray-view-v3.sql`. Solo insieme al ritorno del robot al riferimento unico.
 - `superati/robot-tray-view-v3.sql` e `superati/robot-tray-view-v2.sql` sono **inerti sempre**: la v3 migrava alla v3 qualunque vista non fosse v3, la v2 si fermava solo trovando la v3. Dopo la v4 entrambe avrebbero riportato indietro la vista.

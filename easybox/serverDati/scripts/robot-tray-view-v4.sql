@@ -34,6 +34,17 @@
 --   pt.Z_Place. Spariscono i termini t.X_CORR, t.Y_CORR, t.Z_CORR.
 --   Rotazioni: stessa formula della v3, con ISNULL sulla correzione della
 --   tasca (X_ROT + ISNULL(X_ROT_CORR,0)): vedi NULL qui sotto.
+--   TRAY (6/10, decisione di Dario): CASE WHEN pos.PARENT LIKE 'TRAY[_]%'
+--   THEN SUBSTRING(pos.PARENT,6,2) END. Sulle tasche dei cassetti vale come
+--   prima ('1'..'12'); sulle altre righe NULL invece di un pezzo di PARENT
+--   ('CT' per EXTRACT_TRAY_n). PERCHE': il PLC fa cast(TRAY as int) nella
+--   lista delle colonne (FB_Robot.scl righe 2954, 2972, 2978) e confronta
+--   TRAY con un intero nella sottoquery su COORDINATES_FOR_EXTRACT
+--   (FB_ExecuteQuery.scl riga 39, FB_ExecuteQuery2.scl riga 62); l'ottimizzatore
+--   puo' calcolare quel cast anche sulle righe che la WHERE della vista poi
+--   scarta, e 'CT' -> int e' l'errore 245. In cella non e' mai successo, ma
+--   la prova sul clone (6/10) l'ha ottenuto con la query di verifica. Resta la
+--   seconda colonna, stesso nome e stesso tipo (nvarchar dal SUBSTRING).
 --   Avvicinamenti, colonne, nomi, ordine e significato: come la v3 (il PLC
 --   le legge per nome: X_PICK, y_PICK, z_PICK, X_ROT, y_rot, Z_ROt,
 --   APPROACH_type, APPROACH_x, APPROACH_y, APPROACH_Z, cast(TRAY as int),
@@ -116,7 +127,7 @@ DECLARE @v3 nvarchar(max) = N'select  pt.id as partType,
 -- v4: lo STESSO testo dell'ALTER VIEW del passo 2 (test_robot_tray_view.js
 -- controlla che coincidano)
 DECLARE @v4 nvarchar(max) = N'select  pt.id as partType,
-		SUBSTRING(pos.PARENT,6,2) As TRAY,
+		CASE WHEN pos.PARENT LIKE ''TRAY[_]%'' THEN SUBSTRING(pos.PARENT,6,2) END AS TRAY,
 		pos.POS as MAG,
 		pos.SUB_POS ,
 		pt.PRISMA as PRISMA,
@@ -186,7 +197,7 @@ GO
 -- 2. v4
 ALTER VIEW COORDINATES_PIECES_TRAYS_4Robot AS
 select  pt.id as partType,
-		SUBSTRING(pos.PARENT,6,2) As TRAY,
+		CASE WHEN pos.PARENT LIKE 'TRAY[_]%' THEN SUBSTRING(pos.PARENT,6,2) END AS TRAY,
 		pos.POS as MAG,
 		pos.SUB_POS ,
 		pt.PRISMA as PRISMA,
