@@ -50,19 +50,20 @@
   pallet nessuno ha dichiarato, quindi niente deve far leggere precisione
   dove non ce n'e'.
 
-  STILE: guscio .view-shell + .conf-card, titolo .view-title, etichette di
-  sezione .section-label, bottoni dalle sei varianti canoniche
-  (assets/css/buttons.css), colori e spaziature SOLO da token. Niente valori
-  inventati qui: la pagina deve sembrare parte dello stesso applicativo.
-  DEROGA ANNOTATA (doc UI-DESIGN-SYSTEM §4.2 chiede di annotarle): i tre
-  riquadri interni sono di SECONDO livello dentro una .conf-card, quindi
-  hanno bordo ma NON l'overlay --bg-card. Tre overlay dentro un overlay
-  facevano sembrare la pagina una pila di scatole.
+  STILE (v3, fase D-bis): classe .conf-v3 come le pagine di dettaglio della
+  fase D, titolo .view-title, tre card piene senza bordo (--bg-surface),
+  etichette di sezione come le etichette v3, campi a 48 px con l'unita'
+  staccata, pulsanti UiButton, fasi del disegno su UiSegmented, esito con
+  UiBadge, conferma col dialog v3 (UiConfirmDialog). Colori e misure SOLO da
+  token. Il disegno resta quello: cambiano solo i colori, la geometria e'
+  in micron e in scala vera (regola 4).
 -->
 <template>
-  <div class="view-shell view-shell--fill conf-card push-sim">
+  <!-- (v3 fase D-bis) conf-v3: titolo e card v3, campi e pulsanti a 48 px.
+       Solo aspetto: calcoli (pushQuotes), regole, avvisi e testi non cambiano. -->
+  <div class="view-shell view-shell--fill push-sim conf-v3">
     <div class="view-header">
-      <h3 class="view-title">{{ t("pushSim.title") }}</h3>
+      <h2 class="view-title">{{ t("pushSim.title") }}</h2>
     </div>
 
     <p class="sim-intro">{{ t("pushSim.intro") }}</p>
@@ -136,15 +137,16 @@
             <span v-if="canEdit" class="sim-unit">mm</span>
             <!-- il pulsante compare SOLO sul campo che e' stato cambiato: e'
                  anche il modo piu' semplice per vedere cosa si sta per salvare -->
-            <button
+            <UiButton
               v-if="canEdit && fieldChanged(f.key)"
-              type="button"
-              class="btn-ghost sim-save"
+              variant="secondary"
+              size="min"
+              class="sim-save"
               :disabled="saving || (f.key === 'zPush' && !!zPushError)"
               @click="askSave(f.key)"
             >
               {{ t("pushSim.save") }}
-            </button>
+            </UiButton>
           </span>
         </div>
 
@@ -181,20 +183,20 @@
 
         <div v-if="diverged" class="sim-diverged">
           <strong>{{ t("pushSim.diverged") }}</strong>
-          <button type="button" class="btn-ghost" @click="restoreReal">
+          <UiButton variant="outline" size="min" @click="restoreReal">
             {{ t("pushSim.restore") }}
-          </button>
+          </UiButton>
         </div>
 
         <p class="sim-hint">{{ t("pushSim.saveHint") }}</p>
         <div class="sim-links">
-          <router-link v-if="sel.viceID" class="btn-ghost" :to="{ path: '/conf/vice', query: { viceID: sel.viceID } }">
+          <router-link v-if="sel.viceID" class="cat-chip" :to="{ path: '/conf/vice', query: { viceID: sel.viceID } }">
             {{ t("pushSim.goVice") }}
           </router-link>
-          <router-link v-if="sel.gripperID" class="btn-ghost" :to="{ path: '/conf/Gripper/gripper', query: { gripperID: sel.gripperID } }">
+          <router-link v-if="sel.gripperID" class="cat-chip" :to="{ path: '/conf/Gripper/gripper', query: { gripperID: sel.gripperID } }">
             {{ t("pushSim.goGripper") }}
           </router-link>
-          <router-link v-if="sel.pieceID" class="btn-ghost" :to="{ path: '/conf/piece/piece', query: { pieceID: sel.pieceID } }">
+          <router-link v-if="sel.pieceID" class="cat-chip" :to="{ path: '/conf/piece/piece', query: { pieceID: sel.pieceID } }">
             {{ t("pushSim.goPiece") }}
           </router-link>
         </div>
@@ -203,21 +205,21 @@
       <!-- CONFERMA: nomina l'oggetto FISICO che si sta ridefinendo e dice da
            quale valore a quale. Non e' un "sei sicuro?": chi legge deve poter
            riconoscere l'oggetto che ha davanti. -->
-      <div v-if="confirm" class="mission-dialog-overlay" @click.self="confirm = null">
-        <div class="mission-dialog" role="dialog" aria-modal="true">
-          <h3 class="section-label">{{ t("pushSim.confirmTitle") }}</h3>
-          <p class="confirm-what">{{ confirm.text }}</p>
-          <p v-if="confirm.warn" class="confirm-warn">{{ confirm.warn }}</p>
-          <div class="confirm-buttons">
-            <button type="button" class="btn-ghost" @click="confirm = null">
-              {{ t("pushSim.cancel") }}
-            </button>
-            <button type="button" class="pure-button pure-button-primary" :disabled="saving" @click="doSave">
-              {{ t("pushSim.confirmSave") }}
-            </button>
-          </div>
-        </div>
-      </div>
+      <!-- (v3 fase D-bis) dialog v3: stessi testi, stesso Annulla (anche
+           toccando fuori), stesso salva spento durante il salvataggio -->
+      <UiConfirmDialog
+        :open="!!confirm"
+        tone="warning"
+        :title="t('pushSim.confirmTitle')"
+        :text="confirm ? confirm.text : ''"
+        :confirm-label="t('pushSim.confirmSave')"
+        :cancel-label="t('pushSim.cancel')"
+        :confirm-disabled="saving"
+        @confirm="doSave"
+        @cancel="confirm = null"
+      >
+        <p v-if="confirm && confirm.warn" class="confirm-warn">{{ confirm.warn }}</p>
+      </UiConfirmDialog>
 
       <!-- ------------------------------------------------------- il disegno -->
       <section class="sim-stage sim-box">
@@ -380,21 +382,19 @@
           </g>
         </svg>
 
+        <!-- fasi: selettore a segmenti v3 (stesso goPhase, spento senza
+             esito OK); Avvia e' l'azione primaria della pagina -->
         <div class="sim-phases">
-          <button
-            v-for="(lbl, i) in phaseLabels"
-            :key="i"
-            type="button"
-            class="btn-ghost phase-btn"
-            :class="{ 'phase-active': phase === i }"
+          <UiSegmented
+            class="phase-seg"
+            :options="phaseLabels.map((lbl, i) => ({ value: i, label: t(lbl) }))"
+            :model-value="phase"
             :disabled="!ok"
-            @click="goPhase(i)"
-          >
-            {{ t(lbl) }}
-          </button>
-          <button type="button" class="pure-button pure-button-primary play-btn" :disabled="!ok" @click="play">
+            @update:model-value="goPhase"
+          />
+          <UiButton variant="primary" class="play-btn" :disabled="!ok" @click="play">
             {{ t("pushSim.play") }}
-          </button>
+          </UiButton>
         </div>
       </section>
 
@@ -417,9 +417,9 @@
 
         <h3 class="section-label">{{ t("pushSim.outcome") }}</h3>
         <p class="sim-status">
-          <span class="sim-badge" :class="ok ? 'sim-badge--ok' : 'sim-badge--ko'">
+          <UiBadge :tone="ok ? 'success' : 'warning'">
             {{ t("pushSim.status." + check.status) }}
-          </span>
+          </UiBadge>
         </p>
         <p class="sim-reason">{{ t("pushSim.reason." + check.status, reasonArgs) }}</p>
         <p v-if="ok" class="sim-rest">
@@ -453,6 +453,10 @@
 import { dataStored } from "../../data.js";
 import { pushQuotes, PUSH_STATUS, STOP_REF, zPushDrop } from "../../util/pushQuotes.js";
 import { KO_NOT_FOUND, KO_Z_PUSH_RANGE } from "../../util/errorCodes.js";
+import UiButton from "../../components/ui/UiButton.vue";
+import UiSegmented from "../../components/ui/UiSegmented.vue";
+import UiBadge from "../../components/ui/UiBadge.vue";
+import UiConfirmDialog from "../../components/ui/UiConfirmDialog.vue";
 
 // millimetri -> micron e viceversa, con il vuoto che resta vuoto: lo ZERO e'
 // un valore, l'assenza e' un'altra cosa (vale per l'appoggio dichiarato)
@@ -461,6 +465,8 @@ const toMicron = (mm) =>
 
 export default {
   name: "PushSim",
+
+  components: { UiButton, UiSegmented, UiBadge, UiConfirmDialog },
 
   data() {
     return {
@@ -1136,11 +1142,11 @@ export default {
 </script>
 
 <style scoped>
-/* Stile allineato al design system del pannello (docs/UI-DESIGN-SYSTEM.md):
-   guscio .view-shell + .conf-card, titolo .view-title, etichette
-   .section-label, bottoni dalle sei varianti canoniche. Qui sotto solo cio'
-   che e' specifico di questa pagina, e sempre con i token: nessun colore,
-   nessuna spaziatura e nessuna dimensione di carattere inventata. */
+/* (v3 fase D-bis) linguaggio v3, come le pagine di dettaglio della fase D:
+   .conf-v3 (titolo), card piene senza bordo, etichette v3, campi a 48 px,
+   pulsanti UiButton. Qui sotto solo cio' che e' specifico di questa pagina,
+   e sempre con i token: nessun colore, nessuna spaziatura e nessuna
+   dimensione di carattere inventata. */
 
 .push-sim {
   min-height: 0;
@@ -1156,8 +1162,18 @@ export default {
 .sim-intro {
   margin: 0;
   color: var(--text-secondary);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-base);
   line-height: var(--line-height-normal);
+}
+
+/* etichette di sezione come le etichette v3 (cataloghi, schede) */
+.push-sim .section-label {
+  margin: 0;
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-extrabold);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: var(--text-muted);
 }
 
 /* UNA colonna di partenza, due e poi tre quando c'e' posto davvero. L'ordine
@@ -1197,14 +1213,15 @@ export default {
   }
 }
 
-/* DEROGA ANNOTATA (doc §4.2): riquadri di SECONDO livello dentro una
-   .conf-card. Tengono il bordo del pattern outlined ma non l'overlay
-   --bg-card, altrimenti tre overlay dentro un overlay fanno sembrare la
-   pagina una pila di scatole. */
+/* (v3) le tre colonne sono card piene senza bordo, sul fondo della pagina:
+   niente piu' card esterna (prima .conf-card con tre riquadri bordati
+   dentro). */
 .sim-box {
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  padding: var(--space-4);
+  background: var(--bg-surface);
+  border: 0;
+  border-radius: var(--radius-lg);
+  padding: var(--card-padding);
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
@@ -1213,8 +1230,8 @@ export default {
 
 .sim-hint {
   margin: 0;
-  color: var(--text-muted);
-  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  font-size: var(--font-size-base);
   line-height: var(--line-height-normal);
 }
 
@@ -1230,7 +1247,8 @@ export default {
 .sim-field label {
   flex: 1 1 10rem;
   min-width: 8rem;
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-base);
+  color: var(--text-secondary);
 }
 
 /* valore, unita' e pulsante: un blocco solo, allineato a destra */
@@ -1246,12 +1264,20 @@ export default {
 .sim-field select {
   background: var(--bg-input);
   color: var(--text-primary);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
   padding: var(--space-2) var(--space-3);
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-md);
   font-family: inherit;
-  min-height: 52px;
+  /* v3: campi a 48 px (minimo touch) */
+  min-height: var(--touch-target-min);
+  box-sizing: border-box;
+}
+
+.sim-input:focus,
+.sim-field select:focus {
+  outline: none;
+  border-color: var(--accent);
 }
 
 .sim-input {
@@ -1265,38 +1291,35 @@ export default {
 
 .sim-readonly {
   min-width: 7rem;
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-md);
   font-weight: var(--font-weight-semibold);
   color: var(--text-primary);
 }
 
+/* unita' staccata dal campo, col colore delle etichette (come .conf-v3 .unit) */
 .sim-unit {
-  color: var(--text-muted);
-  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
 }
 
+/* Salva: UiButton da 48 px; spento (fuori campo, in salvataggio) lo
+   disegna UiButton, chiaramente diverso da quello attivo */
 .sim-save {
-  min-height: 44px;
-  padding: var(--space-2) var(--space-4);
-  font-size: var(--font-size-sm);
+  flex: none;
 }
 
-/* .btn-ghost non ha uno stato disabilitato: fuori campo il Salva non si
-   preme, e deve anche vedersi (il motivo e' scritto sotto il campo) */
-.sim-save:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-/* Avvisi: stessa coppia colore/fondo dei badge di stato delle altre view. */
+/* Avvisi: fondo e testo di avviso v3 (stessa coppia dei badge di stato). */
 .sim-warn,
 .sim-diverged {
   margin: 0;
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-sm);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
   background: var(--color-warning-bg);
-  color: var(--color-warning);
-  font-size: var(--font-size-sm);
+  color: var(--color-warning-fg);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-normal);
 }
 
 .sim-diverged {
@@ -1307,10 +1330,15 @@ export default {
   flex-wrap: wrap;
 }
 
+/* rimandi alle anagrafiche: chip v3 (.cat-chip, 48 px) */
 .sim-links {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
+}
+.sim-links .cat-chip {
+  margin: 0;
+  text-decoration: none;
 }
 
 /* ------------------------------------------------------------- il disegno */
@@ -1318,8 +1346,8 @@ export default {
   width: 100%;
   height: auto;
   max-height: 60vh;
-  background: var(--bg-base);
-  border: 1px solid var(--border-subtle);
+  background: var(--bg-well);
+  border: 0;
   border-radius: var(--radius-md);
 }
 
@@ -1343,7 +1371,7 @@ export default {
 
 .piece-over {
   fill: url(#overhangHatch);
-  stroke: var(--color-warning);
+  stroke: var(--color-warning-fg);
 }
 
 .swept {
@@ -1369,11 +1397,11 @@ export default {
 /* battuta sulla ganascia = esito normale; battuta dichiarata = il caso che
    questa pagina esiste per spiegare, quindi colore diverso e tratteggio */
 .stop-claw {
-  stroke: var(--color-success);
+  stroke: var(--color-success-fg);
 }
 
 .stop-declared {
-  stroke: var(--color-warning);
+  stroke: var(--color-warning-fg);
   stroke-dasharray: 9000 6000;
 }
 
@@ -1386,7 +1414,7 @@ export default {
 }
 
 .lbl-missing {
-  fill: var(--color-danger);
+  fill: var(--color-danger-fg);
   font-weight: var(--font-weight-bold);
 }
 
@@ -1405,24 +1433,17 @@ export default {
   transition: transform var(--transition-base), opacity var(--transition-fast);
 }
 
-/* Fasi come selettore segmentato (doc §3.4): ghost, la fase corrente piena
-   su --accent. */
+/* Fasi: selettore a segmenti v3 (UiSegmented), la fase corrente sul fondo
+   del segmento scelto; Avvia accanto, primario. */
 .sim-phases {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-2);
+  align-items: center;
+  gap: var(--space-3);
 }
 
-.phase-btn,
 .play-btn {
-  min-width: 6rem;
-}
-
-.phase-active {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--accent-on);
-  font-weight: var(--font-weight-semibold);
+  min-width: 8rem;
 }
 
 /* -------------------------------------------------------------- le quote */
@@ -1431,23 +1452,24 @@ export default {
   justify-content: space-between;
   align-items: baseline;
   gap: var(--space-3);
-  padding: var(--space-2) 0;
+  padding: var(--space-3) 0;
   border-bottom: 1px solid var(--border-subtle);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-base);
 }
 
 .quote-row span {
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }
 
 .quote-row strong {
   color: var(--text-primary);
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
   font-variant-numeric: tabular-nums;
 }
 
 .quote-travel strong {
-  font-size: var(--font-size-md);
+  font-size: var(--font-size-lg);
 }
 
 .quote-na strong {
@@ -1458,32 +1480,12 @@ export default {
   margin: 0;
 }
 
-/* Stesse regole dei badge di stato di Attrezzaggi e selectRig. Sono
-   duplicate in piu' view perche' la classe .badge non ha una sede comune:
-   discrepanza segnalata, non propagata oltre il necessario. */
-.sim-badge {
-  display: inline-block;
-  padding: var(--space-1) var(--space-3);
-  border-radius: var(--radius-lg);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  white-space: nowrap;
-}
-
-.sim-badge--ok {
-  background: var(--color-success-bg);
-  color: var(--color-success);
-}
-
-.sim-badge--ko {
-  background: var(--color-warning-bg);
-  color: var(--color-warning);
-}
+/* esito: UiBadge (success / warning), stesso testo */
 
 .sim-reason,
 .sim-rest {
   margin: 0;
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-base);
   line-height: var(--line-height-normal);
   color: var(--text-secondary);
 }
@@ -1496,29 +1498,14 @@ export default {
 }
 
 /* ------------------------------------------------------------- conferma */
-/* dialog: stile comune in assets/css/dialogs.css (UI-DESIGN-SYSTEM v2 §12) */
-
-.confirm-what {
-  margin: 0;
-  font-size: var(--font-size-md);
-  line-height: var(--line-height-normal);
-  color: var(--text-primary);
-}
-
+/* dialog v3 (UiConfirmDialog): qui solo l'avviso aggiuntivo nel suo corpo */
 .confirm-warn {
-  margin: 0;
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-sm);
+  margin: var(--space-3) 0 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
   background: var(--color-warning-bg);
-  color: var(--color-warning);
-  font-size: var(--font-size-sm);
+  color: var(--color-warning-fg);
+  font-size: var(--font-size-base);
   line-height: var(--line-height-normal);
-}
-
-.confirm-buttons {
-  display: flex;
-  gap: var(--space-3);
-  justify-content: flex-end;
-  flex-wrap: wrap;
 }
 </style>

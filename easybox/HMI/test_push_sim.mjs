@@ -205,17 +205,21 @@ vm.goPhase(0);
 check(vm.pieceOffset === 0, 'fase di deposito: nessuna traslazione');
 check(/PIECE\.Y lungo X/.test(src) || /pieceLen/.test(src), 'il pezzo e\' disegnato con PIECE.Y lungo la X del robot');
 check(/vice-body/.test(src) && /opacity: 0\.55/.test(src), 'corpo morsa disegnato TENUE: la sua orientazione non e\' dichiarata');
-check(/min-height: (44|52)px/.test(src), 'bersagli touch almeno 44 px');
+// (v3 fase D-bis) campi a 48 px (--touch-target-min), pulsanti UiButton (48 o 56)
+check(/min-height: var\(--touch-target-min\)/.test(src) && /<UiButton/.test(src), 'bersagli touch v3: campi a 48 px, pulsanti UiButton');
 
-console.log('\n5c) stile allineato al resto del pannello');
+console.log('\n5c) stile allineato al resto del pannello (v3, fase D-bis)');
 // La pagina deve sembrare parte dello stesso applicativo: guscio, card,
-// etichette e bottoni sono quelli del design system, non inventati qui.
-check(/class="view-shell view-shell--fill conf-card/.test(src), 'guscio e card standard delle view di configurazione');
-check(/<h3 class="view-title">/.test(src), 'titolo con la classe di pagina, non un h1 con stile proprio');
+// etichette e bottoni sono quelli del pannello v3, non inventati qui.
+const tplSim = src.split('<script')[0];
+check(/class="view-shell view-shell--fill push-sim conf-v3"/.test(src), 'guscio v3: conf-v3, come le pagine di dettaglio della fase D');
+check(/<h2 class="view-title">/.test(src), 'titolo con la classe di pagina, non un h1 con stile proprio');
 check(/class="section-label"/.test(src) && !/sim-h2/.test(src), 'etichette di sezione dal design system');
-check(/class="pure-button pure-button-primary"/.test(src), 'azione principale: variante primary canonica');
-check(/class="btn-ghost/.test(src), 'azioni secondarie: variante ghost canonica');
-check(!/class="pure-button button_pressed/.test(src), 'niente varianti legacy fuori dalle sei canoniche');
+check(/<UiButton variant="primary" class="play-btn"/.test(tplSim) && (tplSim.match(/variant="primary"/g) || []).length === 1 && /<UiConfirmDialog/.test(tplSim),
+	'azione principale: Avvia, l\'unico UiButton primary; la conferma col dialog v3');
+check(/variant="secondary"\s+size="min"\s+class="sim-save"/.test(tplSim) && /<UiButton variant="outline" size="min" @click="restoreReal">/.test(tplSim)
+	&& (tplSim.match(/class="cat-chip"/g) || []).length === 3, 'azioni secondarie: Salva secondary, Ripristina outline, rimandi come chip v3');
+check(!/pure-button|btn-ghost|button_pressed/.test(tplSim), 'niente pulsanti del pannello vecchio nel template');
 // nessun colore inventato: tutto dai token
 const styleBlock = src.slice(src.indexOf('<style'));
 check(!/#[0-9a-fA-F]{3,8}\b/.test(styleBlock), 'nessun colore esadecimale nello stile: solo token');
@@ -375,8 +379,10 @@ check(vm.zPushPlaceholder === 'pushSim.zPushEmpty mm=10', 'il segnaposto dice il
 	const tpl = readFileSync(new URL('./src/views/sim/PushSim.vue', import.meta.url), 'utf8');
 	check(/<span v-if="canEdit" class="sim-unit">mm<\/span>/.test(tpl) && /zPushPlaceholder \+ " mm" : mmText\(sim\[f\.key\]\)/.test(tpl),
 		"   in sola lettura l'unita' una volta sola (mmText la scrive gia': prima \"0.3 mm mm\")");
-	check(/:disabled="saving \|\| \(f\.key === 'zPush' && !!zPushError\)"/.test(tpl) && /\.sim-save:disabled \{[^}]*opacity/.test(tpl),
-		"   fuori campo il Salva e' disabilitato e si vede (.btn-ghost non ha uno stato disabilitato)");
+	// (v3 fase D-bis) il Salva e' un UiButton: lo stato spento lo disegna lui
+	const uiBtn = readFileSync(new URL('./src/components/ui/UiButton.vue', import.meta.url), 'utf8');
+	check(/<UiButton[^>]*class="sim-save"\s+:disabled="saving \|\| \(f\.key === 'zPush' && !!zPushError\)"/.test(tpl) && /\.ui-btn:disabled \{/.test(uiBtn),
+		"   fuori campo il Salva e' disabilitato e si vede (UiButton spento)");
 }
 check(vm.zPushPreview && vm.zPushPreview.fromMm === 10 && vm.zPushPreview.dropMm === 0, 'riscontro col campo vuoto: 10 mm dal fondo, alla quota del deposito');
 vm.sim.zPush = 4;
