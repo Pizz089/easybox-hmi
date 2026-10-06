@@ -1,92 +1,83 @@
 <script setup>
-    import orderCMD from './Comands/ComandsRows.vue'
     import { RouterLink, RouterView } from 'vue-router'
     import { dataStored } from '../data.js'
+    // (v3 fase C) ordini in card, componenti v3
+    import UiButton from './ui/UiButton.vue'
+    import UiSegmented from './ui/UiSegmented.vue'
+    import CubeIcon3D from './CubeIcon3D.vue'
+    import { Play, Square, RotateCcw, Trash2, Lock } from 'lucide-vue-next'
 </script>
 
 <template>
-    <div class="prodtable-wrapper">
-        <table v-if="orders.length>0" class="pure-table pure-table-horizontal">
-            <thead>
-                <tr class="prodtable-head">
-                    <th>{{ $t('production.part') }}</th>
-                    <th>{{ $t('production.machine') }}</th>
-                    <th></th>
-                    <th>{{ $t('production.status') }}</th>
-                    <th>{{ $t('production.production') }}</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                <template v-for="(o,index) in orders" :key="o.ID" >
-                    <tr :class="{'pure-table-odd':index%2==1}">
-                        <!--td>{{ o.ID }}</td-->
-                        <td :class="{'td_odd':index%2==1}">
-                            {{ o.PIECE }}
-                            <br>
-                            <small>{{ o.PIECE_DESC }}</small>
-                        </td>
-                        <td :class="{'td_odd':index%2==1}">
-                            MC{{ o.MACHINE_ID}}
-                        </td>
-                        <td class="table-divisor" :class="o.STATUS_DESC">
-                        </td>
-                        <td :class="{'td_odd':index%2==1}"
-                            style="width: 20%;margin: 0 auto;">
-                            {{ o.STATUS_DESC }}
-                            <hr class="status-divider">
-                            <!-- PP (path+name Heidenhain) e' vuoto per gli ordini
-                                 a numero libero HAAS: fallback sul numero PP_ID -->
-                            [ {{ (o.PP && o.PP.trim()) ? o.PP : o.PP_ID }} ]
-                        </td>
-                        <!--td>{{ o.GRIPPER }}</td-->
-
-                        <td :class="{'td_odd':index%2==1}">
-                            {{ o.PRODUCTED }} / {{ o.QUANTITY }}<br>
-                            <progress :value="o.PRODUCTED" :max="o.QUANTITY" class="prod-progress"> {{ o.PRODUCTED }} </progress>
-                        </td>
-                        <td :class="{'td_odd':index%2==1}">
-                            <orderCMD
-                                :play=true         @cmdPlay="modifyOrderStatus(o.ID,dataStored.status_working,o.PIECE_ID)"
-                                :stop=true         @cmdStop="modifyOrderStatus(o.ID,dataStored.status_raw,o.PIECE_ID)"
-                                :del=true          @cmdDel="sicurezza(o.ID, o.STATUS_DESC)"
-                                :delDisable="o.STATUS_DESC=='WORKING'"
-                            />
-                            <!-- (P2 5/10) RILANCIA: solo sugli ordini FINITI (5). Apre il
-                                 dialog con l'anteprima vera. Abilitato anche per
-                                 l'operatore (livello 0, deciso con Dario): le guardie
-                                 sono nel backend (WORKORDER/Order.js). -->
-                            <button v-if="isFinished(o)" type="button"
-                                class="btn-ghost btn-relaunch"
-                                @click="relaunchOrder = o">
-                                {{ $t('production.relaunch.button') }}
-                            </button>
-                            <!-- PaoloG 30/09
-                                :modify=true       @cmdModify="modifyOrder(o.ID)"
-                                :modifyDisable="o.STATUS_DESC=='WORKING'"
-                            -->
-                        </td>
-                    </tr>
-                    <tr v-if="_showPopUp(o.ID)">
-                        <td class="popUpOnLine" colspan="20" >
-                            <div class="center">
-                                <h3>{{ $t('production.sure') }}</h3>
-                                <!--h4>{{ $t('fixture.delete') }}</h4-->
-                                <span class="pure-g">
-                                    <span class="pure-u-1-3">&nbsp;</span>
-                                    <button class="pure-button-micromission specialCMD pure-u-1-3" @click="deleteOrder(o.ID)">
-                                        {{ $t('rowCmd.delete') }}
-                                    </button>
-                                    <button class="btn-ghost pure-u-1" @click="showPopUp=0">
-                                        {{ $t('common.cancel') }}
-                                    </button>
-                                </span>
-                            </div>
-                        </td>
-                    </tr>
-                </template>
-            </tbody>
-        </table>
+    <!-- (v3 fase C) Produzione, tavola Produzione: un ordine per card, con
+         disegno del pezzo, codice e ID, macchina e attrezzaggio, avanzamento
+         grande, stato, azioni. Le azioni sono quelle della riga di prima,
+         con le stesse conferme: Avvia e Ferma (stato 3 / 4 su
+         TO_PLANT/CMD/ORDER, senza conferma come prima), Rilancia sui finiti
+         (stesso dialog), Cancella (spenta sull'ordine in lavorazione, dal
+         livello 1 come in ComandsRows, conferma "sei sicuro?" nella card).
+         NIENTE maniglia di trascinamento: la coda ordini e' un cantiere a
+         parte, l'ordine resta quello di oggi. I filtri cambiano solo cosa
+         si vede. -->
+    <div class="prod">
+        <div v-if="orders.length>0" class="prod-filter">
+            <UiSegmented v-model="filtro" :options="opzioniFiltro" />
+        </div>
+        <div v-if="orders.length>0" class="prod-list">
+            <template v-for="o in ordiniVisibili" :key="o.ID" >
+                <article class="prod-card" :class="'prod-card--' + stato(o).key">
+                    <div class="prod-card__draw" aria-hidden="true">
+                        <CubeIcon3D v-if="pezzoDi(o)" :w="pezzoDi(o).X" :d="pezzoDi(o).Y" :h="pezzoDi(o).Z" :prisma="pezzoDi(o).PRISMA" :size="76" />
+                    </div>
+                    <div class="prod-card__piece">
+                        <div class="prod-card__code">{{ o.PIECE }} <span class="prod-card__id">#{{ o.ID }}</span></div>
+                        <div class="prod-card__desc">{{ descrizione(o) }}</div>
+                    </div>
+                    <div class="prod-card__mc">
+                        <!-- PP (path+name Heidenhain) e' vuoto per gli ordini
+                             a numero libero HAAS: si mostra il numero PP_ID -->
+                        <span class="prod-card__label">MC{{ o.MACHINE_ID }} · {{ $t('home.program', { pp: programma(o) }) }}</span>
+                        <span class="prod-card__rig">{{ attrezzaggio(o) }}</span>
+                    </div>
+                    <div class="prod-card__progress">
+                        <div class="prod-card__count"><b>{{ o.PRODUCTED }}</b> / {{ o.QUANTITY }}</div>
+                        <div class="prod-bar" :class="'prod-bar--' + stato(o).key"><i :style="{ width: avanzamento(o) + '%' }"></i></div>
+                    </div>
+                    <!-- (fase 1.5) uno stato = un colore: il badge prende lo
+                         stesso token delle tasche (grezzo/in coda azzurro, in
+                         lavoro ambra, finito verde, abortito rosso), dalla
+                         classe STATUS_DESC come la riga di prima -->
+                    <div class="prod-card__status">
+                        <span class="prod-badge" :class="String(o.STATUS_DESC || '').trim()"><i aria-hidden="true"></i>{{ stato(o).label ? $t(stato(o).label) : o.STATUS_DESC }}</span>
+                    </div>
+                    <div class="prod-card__actions">
+                        <UiButton variant="secondary" size="min" :icon="Play"
+                            @click="modifyOrderStatus(o.ID,dataStored.status_working,o.PIECE_ID)">{{ $t('rowCmd.play') }}</UiButton>
+                        <UiButton variant="secondary" size="min" :icon="Square"
+                            @click="modifyOrderStatus(o.ID,dataStored.status_raw,o.PIECE_ID)">{{ $t('rowCmd.stop') }}</UiButton>
+                        <!-- (P2 5/10) RILANCIA: solo sugli ordini FINITI (5). Apre il
+                             dialog con l'anteprima vera. Abilitato anche per
+                             l'operatore (livello 0, deciso con Dario): le guardie
+                             sono nel backend (WORKORDER/Order.js). -->
+                        <UiButton v-if="isFinished(o)" variant="secondary" size="min" :icon="RotateCcw"
+                            @click="relaunchOrder = o">{{ $t('production.relaunch.button') }}</UiButton>
+                        <!-- CANCELLA per ultimo e staccato dagli altri: e' l'unico
+                             irreversibile. Spento sull'ordine in lavorazione. -->
+                        <UiButton class="prod-card__del" variant="outline" size="min"
+                            :icon="dataStored.userLevel > 0 ? Trash2 : Lock"
+                            :disabled="o.STATUS_DESC=='WORKING'"
+                            :title="$t('rowCmd.delete')" :aria-label="$t('rowCmd.delete')"
+                            @click="chiediCancella(o)" />
+                    </div>
+                    <div v-if="_showPopUp(o.ID)" class="prod-card__confirm">
+                        <span class="prod-card__sure">{{ $t('production.sure') }}</span>
+                        <UiButton variant="danger" size="min" @click="deleteOrder(o.ID)">{{ $t('rowCmd.delete') }}</UiButton>
+                        <UiButton variant="outline" size="min" @click="showPopUp=0">{{ $t('common.cancel') }}</UiButton>
+                    </div>
+                </article>
+            </template>
+            <p v-if="ordiniVisibili.length === 0" class="prod-empty">{{ $t('production.filter.none') }}</p>
+        </div>
         <!-- (usabilita' 15/9) prima qui c'era solo "Nessun ordine al momento",
              che con la richiesta fallita era un'affermazione FALSA: l'elenco
              non era vuoto, non si era riusciti a chiederlo. -->
@@ -117,7 +108,32 @@ export default {
             statoElenco: STATO.ATTESA,
             orders:[],
             createNew:false,
-            showPopUp:false
+            showPopUp:false,
+            // (v3 fase C) filtro della lista (solo vista) e anagrafica pezzi
+            // per il disegno e le misure
+            filtro: 'tutti',
+            pezzi: []
+        }
+    },
+    computed: {
+        conteggi(){
+            const c = { tutti: this.orders.length, working: 0, queued: 0, finished: 0 };
+            for (const o of this.orders) { const k = this.stato(o).key; if (k in c) c[k]++; }
+            return c;
+        },
+        opzioniFiltro(){
+            const c = this.conteggi;
+            return [
+                { value: 'tutti', label: this.$t('production.filter.all'), count: c.tutti },
+                { value: 'working', label: this.$t('production.filter.working'), count: c.working },
+                { value: 'queued', label: this.$t('production.filter.queued'), count: c.queued },
+                { value: 'finished', label: this.$t('production.filter.finished'), count: c.finished },
+            ];
+        },
+        // l'ordine e' quello di oggi: si filtra, non si riordina
+        ordiniVisibili(){
+            if (this.filtro === 'tutti') return this.orders;
+            return this.orders.filter(o => this.stato(o).key === this.filtro);
         }
     },
     methods: {
@@ -133,6 +149,60 @@ export default {
         // riserva, e' quello che la riga usa gia' per il colore dello stato.
         isFinished(o){
             return Number(o.STATUS) === dataStored.status_finished || String(o.STATUS_DESC || '').trim().toUpperCase() === 'FINISHED';
+        },
+        // (v3 fase C) stato dell'ordine -> chiave del filtro e testo del
+        // badge (il colore lo da' la classe STATUS_DESC, token delle tasche)
+        stato(o){
+            const s = Number(o.STATUS), d = String(o.STATUS_DESC || '').trim().toUpperCase();
+            if (s === dataStored.status_working || d === 'WORKING') return { key: 'working', label: 'production.st.working' };
+            if (s === dataStored.status_finished || d === 'FINISHED') return { key: 'finished', label: 'production.st.finished' };
+            if (s === dataStored.status_paused || d === 'PAUSED') return { key: 'paused', label: 'production.st.paused' };
+            if (s === dataStored.status_aborted || d === 'ABORTED' || d === 'ABORT') return { key: 'aborted', label: 'production.st.aborted' };
+            if (s === dataStored.status_raw || d === 'RAW') return { key: 'queued', label: 'production.st.queued' };
+            return { key: 'other', label: null };
+        },
+        pezzoDi(o){
+            return this.pezzi.find(p => p.ID == o.PIECE_ID) || null;
+        },
+        mm(v){
+            return Math.round((Number(v) || 0) / 100) / 10;
+        },
+        descrizione(o){
+            const d = String(o.PIECE_DESC || '').trim();
+            const p = this.pezzoDi(o);
+            const misure = p ? this.mm(p.X) + ' × ' + this.mm(p.Y) + ' × ' + this.mm(p.Z) + ' mm' : '';
+            return [d, misure].filter(Boolean).join(' · ');
+        },
+        programma(o){
+            return (o.PP && String(o.PP).trim()) ? String(o.PP).trim() : o.PP_ID;
+        },
+        attrezzaggio(o){
+            const parti = [];
+            if (o.PALLET_ID != null && o.VICE_ID != null) parti.push(this.$t('home.rigValue', { pallet: o.PALLET_ID, vice: o.VICE_ID }));
+            const g = [o.GRIPPER, o.GRIPPER_DESC].map(x => String(x || '').trim()).filter(Boolean).join(' ');
+            if (g) parti.push(this.$t('home.gripper') + ' ' + g);
+            return parti.join(' · ');
+        },
+        avanzamento(o){
+            const q = Number(o.QUANTITY) || 0;
+            return q > 0 ? Math.min(100, Math.round(100 * (Number(o.PRODUCTED) || 0) / q)) : 0;
+        },
+        caricaPezzi(){
+            fetch(dataStored.server + 'api/conf/piece/show/all', { method: 'GET' })
+                .then(r => { if (!r.ok) throw new Error('Network response was not ok'); return r.json(); })
+                .then(d => { this.pezzi = Array.isArray(d) ? d : []; })
+                .catch(e => { console.info(e); });
+        },
+        // (v3 fase C) CANCELLA: come il cestino di ComandsRows (deleteItem),
+        // dal livello 1 in su; poi la stessa "sicurezza" di prima
+        chiediCancella(o){
+            if (dataStored.userLevel > 0)
+                this.sicurezza(o.ID, o.STATUS_DESC);
+            else {
+                dataStored.alert.title = this.$t('WARNING');
+                dataStored.alert.desc = this.$t('user_not_enabled');
+                dataStored.alert.type = 'alarm';
+            }
         },
         modifyOrder(i){
             this.$router.push('/selectRig');
@@ -174,6 +244,7 @@ export default {
     },
     mounted(){
         this.getDataTable();
+        this.caricaPezzi();
         this.productionChangedHandler = ()=>{
             this.getDataTable();
         };
@@ -187,150 +258,145 @@ export default {
 </script>
 
 <style scoped>
-/* ============ WRAPPER ============ */
-/* E2: pattern outlined §4.1 (era bg-surface-2 + radius-lg senza bordo).
-   padding verticale 0 (non --space-4): il thead sticky aggancia il bordo
-   superiore del contenitore scroll — un padding-top mostrerebbe le righe
-   che scorrono sopra l'header. */
-.prodtable-wrapper {
-    background: var(--bg-card);
-    border: var(--border-card);
-    border-radius: var(--radius-md);
-    padding: 0 var(--space-4);
-    margin-top: var(--space-4);
+/* (v3 fase C) tavola Produzione: filtri, poi la lista che scorre dentro la
+   pagina (la shell resta ferma) */
+.prod {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    flex: 1;
+    min-height: 0;
+}
+.prod-filter { display: flex; }
+.prod-list {
     flex: 1;
     min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
 }
-
-
-/* ============ EX INLINE (A12) ============ */
-/* hr sotto STATUS_DESC: separatore corto allineato a sinistra. */
-.status-divider {
-    width: 30%;
-    margin-left: 0;
+.prod-card {
+    flex: none;
+    display: grid;
+    /* stato e azioni a larghezza fissa: le colonne restano allineate da una
+       card all'altra anche quando c'e' Rilancia */
+    grid-template-columns: 88px minmax(220px, 1.3fr) minmax(220px, 1.2fr) minmax(170px, 0.9fr) 150px 450px;
+    align-items: center;
+    gap: var(--space-5);
+    padding: var(--space-4) var(--space-5);
+    border-radius: var(--radius-lg);
+    background: var(--bg-surface);
 }
-
-/* 80px: geometria barra avanzamento in cella (non spacing). */
-.prod-progress {
-    width: 80px;
+/* l'ordine in lavorazione si stacca dagli altri (tavola: fondo rialzato) */
+.prod-card--working { background: var(--bg-raised); }
+.prod-card__draw {
+    width: 88px;
+    height: 88px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 14px;
+    background: var(--bg-input);
+    overflow: hidden;
 }
-/* (P2 5/10) "Rilancia" accanto ai comandi riga, touch 44 */
-.btn-relaunch {
-    min-height: 44px;
-    margin-left: var(--space-2);
-}
-
-
-/* ============ STATUS BADGE ============ */
-/* Le classi status (WORKING/RAW/PAUSED/STOP/ABORT/FINISHED) sono applicate
-   al td.table-divisor che e' largo 0 (custom-fix.css). Per rendere il
-   badge visibile applichiamo lo stile al td adiacente (quello con il
-   testo STATUS_DESC) via sibling combinator '+ td'. */
-
-td.table-divisor.WORKING + td,
-td.table-divisor.working + td,
-td.table-divisor.RAW + td,
-td.table-divisor.raw + td,
-td.table-divisor.PAUSED + td,
-td.table-divisor.paused + td,
-td.table-divisor.STOP + td,
-td.table-divisor.stop + td,
-td.table-divisor.ABORT + td,
-td.table-divisor.abort + td,
-td.table-divisor.FINISHED + td,
-td.table-divisor.finished + td {
-    font-weight: var(--font-weight-semibold);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
-
-/* (UI v2 fase 1.5) colori = quelli delle tasche (doc §11, util/pocketColors.js):
-   lo stesso stato ha lo stesso colore nel disegno, nella legenda e qui.
-   Prima WORKING era verde e RAW azzurro qui, il contrario nel disegno. */
-
-/* WORKING = in lavoro = ambra */
-main.content table.pure-table tbody tr td.table-divisor.WORKING + td,
-main.content table.pure-table tbody tr td.table-divisor.working + td {
-    color: var(--pocket-working) !important;
-    background: var(--color-warning-bg) !important;
-}
-
-/* RAW = grezzo in attesa = azzurro */
-main.content table.pure-table tbody tr td.table-divisor.RAW + td,
-main.content table.pure-table tbody tr td.table-divisor.raw + td {
-    color: var(--pocket-raw) !important;
-    background: var(--color-info-bg) !important;
-}
-
-/* PAUSED = stato pausa = grigio neutro, no bg colorato */
-main.content table.pure-table tbody tr td.table-divisor.PAUSED + td,
-main.content table.pure-table tbody tr td.table-divisor.paused + td {
-    color: var(--text-muted) !important;
-}
-
-/* STOP / ABORT = errore o interrotto = rosso (ABORT = scarto, come la tasca) */
-main.content table.pure-table tbody tr td.table-divisor.STOP + td,
-main.content table.pure-table tbody tr td.table-divisor.stop + td,
-main.content table.pure-table tbody tr td.table-divisor.ABORT + td,
-main.content table.pure-table tbody tr td.table-divisor.abort + td {
-    color: var(--pocket-abort) !important;
-    background: var(--color-danger-bg) !important;
-}
-
-/* FINISHED = finito = verde (v1: neutro) */
-main.content table.pure-table tbody tr td.table-divisor.FINISHED + td,
-main.content table.pure-table tbody tr td.table-divisor.finished + td {
-    color: var(--pocket-finished) !important;
-    background: var(--color-success-bg) !important;
-}
-
-
-/* ============ SMALL TEXT (PIECE_DESC sotto PIECE) ============ */
-small {
-    color: var(--text-muted);
-    font-size: var(--font-size-xs);
-}
-
-
-/* ============ PROGRESS BAR ============ */
-/* height/border-radius/overflow gia' gestiti da custom-fix.css.
-   Bg-surface-2 contrasta sia con bg-base (row pari) che bg-input (row dispari). */
-progress::-webkit-progress-bar {
-    background: var(--bg-surface-2);
-    border-radius: var(--radius-pill);
-}
-
-progress::-webkit-progress-value {
-    background: var(--accent);
-    border-radius: var(--radius-pill);
-    transition: width var(--transition-base);
-}
-
-progress::-moz-progress-bar {
-    background: var(--accent);
-    border-radius: var(--radius-pill);
-}
-
-
-/* ============ DELETE POPUP ============ */
-.popUpOnLine {
-    background: var(--bg-surface-2) !important;
-    padding: var(--space-4) !important;
-}
-
-.popUpOnLine h3 {
+/* il solido di CubeIcon3D, nei grigi della v3 (come nella Home) */
+.prod-card__draw :deep(.face-top),
+.prod-card__draw :deep(.face-right),
+.prod-card__draw :deep(.face-left) { stroke: var(--bg-input); stroke-width: 0.45; }
+.prod-card__draw :deep(.face-top) { fill: var(--text-disabled); }
+.prod-card__draw :deep(.face-right) { fill: var(--border-default); }
+.prod-card__draw :deep(.face-left) { fill: var(--bg-segment-on); }
+.prod-card__piece, .prod-card__mc { min-width: 0; }
+.prod-card__code {
+    font-size: 24px;
+    font-weight: var(--font-weight-extrabold);
     color: var(--text-primary);
-    margin-bottom: var(--space-4);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
+.prod-card__id {
+    margin-left: var(--space-1);
+    font-family: var(--font-mono);
+    font-size: 15px;
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-muted);
+}
+.prod-card__desc { margin-top: 4px; font-size: var(--font-size-md); color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.prod-card__mc { display: flex; flex-direction: column; gap: 6px; }
+.prod-card__label {
+    font-size: var(--font-size-label);
+    font-weight: var(--font-weight-extrabold);
+    letter-spacing: var(--letter-spacing-label);
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+.prod-card__rig { font-size: var(--font-size-base); color: var(--text-secondary); }
+.prod-card__progress { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.prod-card__count { font-size: 20px; font-weight: var(--font-weight-bold); color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.prod-card__count b { font-size: 34px; font-weight: var(--font-weight-extrabold); color: var(--text-primary); }
+.prod-bar { height: 8px; border-radius: 4px; overflow: hidden; background: var(--bg-input); }
+.prod-bar i { display: block; height: 100%; border-radius: 4px; background: var(--accent); }
+.prod-bar--finished i { background: var(--color-success); }
+/* badge di stato: (fase 1.5) uno stato = un colore, lo stesso token delle
+   tasche e delle altre tabelle (test_pocket_colors) */
+.prod-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    height: 30px;
+    padding: 0 11px;
+    border-radius: 9px;
+    font-size: var(--font-size-label);
+    font-weight: var(--font-weight-bold);
+    white-space: nowrap;
+    background: var(--bg-chip);
+    color: var(--text-chip);
+}
+.prod-badge i { width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex: none; }
+.prod-badge.RAW { color: var(--pocket-raw); background: var(--color-info-bg); }
+.prod-badge.WORKING { color: var(--pocket-working); background: var(--color-warning-bg); }
+.prod-badge.FINISHED { color: var(--pocket-finished); background: var(--color-success-bg); }
+.prod-badge.ABORT { color: var(--pocket-abort); background: var(--color-danger-bg); }
+.prod-badge.ABORTED { color: var(--color-danger-fg); background: var(--color-danger-bg); }
+.prod-card__actions { display: flex; align-items: center; justify-content: flex-end; gap: var(--space-2); }
+/* (usabilita' 15/9) il cestino sta in fondo e staccato */
+.prod-card__del { margin-left: var(--space-4); }
+.prod-card__confirm {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--space-3);
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--border-subtle);
+}
+.prod-card__sure { margin-right: auto; font-size: var(--font-size-md); font-weight: var(--font-weight-bold); color: var(--color-danger-fg); }
+.prod-empty { margin: var(--space-4) 0; color: var(--text-muted); font-size: var(--font-size-md); }
 
-/* B1/B2: bottoni popup su varianti canoniche (Critical per DELETE = conferma
-   delete §3.2, Ghost per EXIT). Qui resta solo lo spacing tra i due. */
-.popUpOnLine .btn-ghost {
-    margin-top: var(--space-2);
-    /* border-strong: il popup sta su bg-surface-2, dove border-default
-       fa solo 2.10:1 (audit WCAG) -> 3.15. */
-    border-color: var(--border-strong);
+/* compatto: due righe di informazioni, le azioni sotto */
+@media (max-width: 1599px) {
+    .prod-card {
+        grid-template-columns: 64px minmax(0, 1fr) minmax(0, 1fr) auto;
+        grid-template-areas:
+            "draw piece piece status"
+            "draw mc prog prog"
+            "act act act act";
+        gap: var(--space-2) var(--space-4);
+        padding: var(--space-3) var(--space-4);
+    }
+    .prod-card__draw { grid-area: draw; width: 64px; height: 64px; align-self: start; }
+    .prod-card__piece { grid-area: piece; }
+    .prod-card__status { grid-area: status; }
+    .prod-card__mc { grid-area: mc; }
+    .prod-card__progress { grid-area: prog; }
+    .prod-card__actions { grid-area: act; justify-content: flex-start; flex-wrap: wrap; }
+    .prod-card__code { font-size: 20px; }
+    .prod-card__desc { font-size: var(--font-size-base); }
+    .prod-card__count b { font-size: 26px; }
+    .prod-card__count { font-size: 17px; }
+    .prod-card__del { margin-left: auto; }
 }
 </style>

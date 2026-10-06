@@ -3,45 +3,30 @@ import prodtable from '../components/productionTable.vue'
 import { dataStored } from '../data';
 import { MACHINE_POSITIONS } from '../util/machineBrands';
 import { KO_CELL_RUNNING } from '../util/errorCodes';
+// (v3 fase C) intestazione con i componenti v3
+import UiButton from '../components/ui/UiButton.vue'
+import { Plus, Lock, Eraser } from 'lucide-vue-next'
 </script>
 
 <template>
     <div class="pure-u-1 production-view-root view-shell view-shell--fill">
-        <div class="view-header">
-            <h2 class="view-title">{{ $t('production.welcome') }}</h2>
-            <!-- AZZERA PRODUZIONE (1/9): ripristino distruttivo, solo via dialog
-                 con numeri veri letti dal backend (anteprima) -->
-            <button
-                type="button"
-                class="pure-button-micromission specialCMD btn-reset-prod"
+        <!-- (v3 fase C) tavola Produzione: titolo, poi i due comandi della
+             pagina, gli stessi di prima con le stesse abilitazioni (dal
+             livello 1). AZZERA PRODUZIONE (1/9): ripristino distruttivo,
+             rosso, solo via dialog con numeri veri letti dal backend
+             (anteprima). Aggiungi ordine: il wizard di sempre (/selectRig). -->
+        <div class="prod-head">
+            <h2 class="prod-head__title">{{ $t('nav.production') }}</h2>
+            <UiButton variant="danger" :icon="Eraser"
                 :disabled="dataStored.userLevel == 0"
-                @click="openResetDialog"
-            >
+                @click="openResetDialog">
                 {{ $t('production.reset.button') }}
-            </button>
-            <button
-                type="button"
-                class="pure-button-primary btn-add-order"
+            </UiButton>
+            <UiButton variant="primary" size="main" :icon="dataStored.userLevel == 0 ? Lock : Plus"
                 :disabled="dataStored.userLevel == 0"
-                @click="navigateToWizard"
-            >
-                <svg
-                    v-if="dataStored.userLevel == 0"
-                    class="btn-lock-icon"
-                    width="16" height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    aria-hidden="true"
-                >
-                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                </svg>
+                @click="navigateToWizard">
                 {{ $t('production.addOrder') }}
-            </button>
+            </UiButton>
         </div>
 
         <prodtable></prodtable>
@@ -176,22 +161,24 @@ export default {
 /* Shell dal globale .view-shell--fill (gap 12 -> 16, esce dalla blacklist);
    header e titolo dai globali .view-header/.view-title. */
 
-/* Layout hook (opzione A audit-sistema-b): SOLO allineamento icona lucchetto,
-   l'estetica viene dalla variante Primary canonica (buttons.css). */
-.btn-add-order {
-    display: inline-flex;
+/* (v3 fase C) intestazione della tavola Produzione */
+.prod-head {
+    display: flex;
     align-items: center;
-    justify-content: center;
-    gap: var(--space-2);
+    gap: var(--space-3);
+    flex-wrap: wrap;
 }
-
-.btn-lock-icon {
-    flex-shrink: 0;
+.prod-head__title {
+    flex: 1;
+    margin: 0;
+    font-size: 32px;
+    font-weight: var(--font-weight-extrabold);
+    letter-spacing: -0.01em;
+    color: var(--text-primary);
+    text-transform: none;
 }
-
-/* AZZERA PRODUZIONE: bottone critico a fianco dell'aggiunta ordine */
-.btn-reset-prod {
-    margin-right: var(--space-2);
+@media (max-width: 1599px) {
+    .prod-head__title { font-size: 26px; }
 }
 
 /* dialog conferma: stesso overlay delle view missione */

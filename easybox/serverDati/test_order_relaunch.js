@@ -164,7 +164,11 @@ queryErr = null;
 console.log('\n9) pannello: Rilancia anche per l\'operatore, niente pausa ne\' Play nel dialog');
 const fs = require('fs');
 const table = fs.readFileSync(path.join(SRV, '../HMI/src/components/productionTable.vue'), 'utf8');
-const btn = table.slice(table.indexOf('v-if="isFinished(o)"'), table.indexOf('</button>', table.indexOf('v-if="isFinished(o)"')));
+// (v3 fase C) il pulsante puo' essere un <button> o un UiButton: si taglia
+// alla sua chiusura, qualunque sia
+const iRil = table.indexOf('v-if="isFinished(o)"');
+const fineRil = ['</button>', '</UiButton>'].map(t => table.indexOf(t, iRil)).filter(i => i > 0);
+const btn = iRil < 0 || !fineRil.length ? '' : table.slice(iRil, Math.min(...fineRil));
 check(btn.length > 0 && !/userLevel/.test(btn), 'pulsante Rilancia senza blocco di livello');
 const dlg = fs.readFileSync(path.join(SRV, '../HMI/src/components/RelaunchDialog.vue'), 'utf8');
 const dlgTpl = dlg.slice(dlg.indexOf('<template>'), dlg.indexOf('</template>', dlg.lastIndexOf('</template>') - 1));

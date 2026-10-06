@@ -619,7 +619,21 @@
     "quantity": "Quantità",
     "comand": "Comandi",
     "sure": "sei sicuro?",
-    "noOrderYet": "Nessun ordine al momento"
+    "noOrderYet": "Nessun ordine al momento",
+    "filter": {
+      "all": "Tutti",
+      "working": "In lavoro",
+      "queued": "In coda",
+      "finished": "Finiti",
+      "none": "Nessun ordine con questo filtro."
+    },
+    "st": {
+      "working": "In lavoro",
+      "queued": "In coda",
+      "finished": "Finito",
+      "paused": "In pausa",
+      "aborted": "Annullato"
+    }
   },
   "normal": "Normale",
   "cmd": {

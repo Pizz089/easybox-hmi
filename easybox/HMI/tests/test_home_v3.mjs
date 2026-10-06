@@ -28,7 +28,9 @@ console.log('1) "Ferma ordine" = stop della tabella ordini');
 const S = 'tre ordini, 102 in lavoro';
 const ferma = home.controlli.find(c => /modifyOrderStatus\(ordineInCorso\.ID,dataStored\.status_raw,ordineInCorso\.PIECE_ID\)/.test(c.handler));
 const fermaEff = ferma ? righe(ferma.esiti[S]).flatMap(r => r.effetti) : [];
-const stopTab = tab.controlli.find(c => c.evento === 'cmdStop');
+// (v3 fase C) la tabella ordini e' diventata card: lo stop non e' piu' un
+// evento di ComandsRows (cmdStop) ma un pulsante con lo stesso handler
+const stopTab = tab.controlli.find(c => c.evento === 'cmdStop' || /^modifyOrderStatus\(o\.ID,dataStored\.status_raw,o\.PIECE_ID\)$/.test(c.handler));
 const stopTabEff = stopTab ? righe(stopTab.esiti['tre ordini liv2']).flatMap(r => r.effetti).filter(x => /"id":102/.test(x)) : [];
 check(fermaEff.length === 1 && stopTabEff.length === 1 && fermaEff[0] === stopTabEff[0], 'stesso emit per l\'ordine 102: ' + fermaEff[0] + ' == ' + stopTabEff[0]);
 check(righe(ferma.esiti[S]).every(r => r.abilitato === true) && righe(stopTab.esiti['tre ordini liv2']).every(r => r.abilitato === true), 'abilitato come lo stop della tabella (sempre)');
@@ -54,7 +56,13 @@ check(/v-if="isMachineConfigured\(1\)"[^>]*@click="\$router\.push\('\/unit\/cnc1
 console.log('\n4) i comandi degli ordini restano nella Produzione');
 const prod = readFileSync('src/views/productionView.vue', 'utf8');
 check(/import prodtable from '\.\.\/components\/productionTable\.vue'/.test(prod) && /<prodtable><\/prodtable>/.test(prod), 'productionView usa ancora la tabella ordini (avvia, ferma, elimina, rilancia)');
-for (const ev of ['cmdPlay', 'cmdStop', 'cmdDel']) check(tab.controlli.some(c => c.evento === ev), 'tabella ordini: ' + ev);
+// (v3 fase C) card degli ordini: stessi handler, non piu' eventi di ComandsRows
+const AZIONI = {
+	cmdPlay: /^modifyOrderStatus\(o\.ID,dataStored\.status_working,o\.PIECE_ID\)$/,
+	cmdStop: /^modifyOrderStatus\(o\.ID,dataStored\.status_raw,o\.PIECE_ID\)$/,
+	cmdDel: /^(sicurezza\(o\.ID, o\.STATUS_DESC\)|chiediCancella\(o\))$/,
+};
+for (const [ev, re] of Object.entries(AZIONI)) check(tab.controlli.some(c => c.evento === ev || re.test(c.handler)), 'tabella ordini: ' + ev);
 check(tab.controlli.some(c => c.handler === 'relaunchOrder = o'), 'tabella ordini: rilancia');
 
 console.log('\n5) eco della velocita\' nello store della shell');

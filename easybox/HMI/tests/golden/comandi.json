@@ -3717,7 +3717,7 @@
    ],
    "controlli": [
     {
-     "id": "button@click openResetDialog",
+     "id": "UiButton@click openResetDialog",
      "etichetta": "Azzera produzione",
      "evento": "click",
      "handler": "openResetDialog",
@@ -3779,7 +3779,7 @@
      }
     },
     {
-     "id": "button@click navigateToWizard",
+     "id": "UiButton@click navigateToWizard",
      "etichetta": "Aggiungi ordine",
      "evento": "click",
      "handler": "navigateToWizard",
@@ -3848,9 +3848,9 @@
    ],
    "controlli": [
     {
-     "id": "orderCMD@cmdPlay modifyOrderStatus(o.ID,dataStored.status_working,o.PIECE_ID)",
-     "etichetta": "",
-     "evento": "cmdPlay",
+     "id": "UiButton@click modifyOrderStatus(o.ID,dataStored.status_working,o.PIECE_ID)",
+     "etichetta": "Avvia",
+     "evento": "click",
      "handler": "modifyOrderStatus(o.ID,dataStored.status_working,o.PIECE_ID)",
      "disabled": "",
      "classe": "",
@@ -3904,9 +3904,9 @@
      }
     },
     {
-     "id": "orderCMD@cmdStop modifyOrderStatus(o.ID,dataStored.status_raw,o.PIECE_ID)",
-     "etichetta": "",
-     "evento": "cmdStop",
+     "id": "UiButton@click modifyOrderStatus(o.ID,dataStored.status_raw,o.PIECE_ID)",
+     "etichetta": "Ferma",
+     "evento": "click",
      "handler": "modifyOrderStatus(o.ID,dataStored.status_raw,o.PIECE_ID)",
      "disabled": "",
      "classe": "",
@@ -3960,109 +3960,7 @@
      }
     },
     {
-     "id": "orderCMD@cmdDel sicurezza(o.ID, o.STATUS_DESC)",
-     "etichetta": "",
-     "evento": "cmdDel",
-     "handler": "sicurezza(o.ID, o.STATUS_DESC)",
-     "disabled": "",
-     "classe": "",
-     "esiti": {
-      "tre ordini liv2": [
-       {
-        "abilitato": true,
-        "effetti": [],
-        "stato": [
-         "vm.showPopUp = 101"
-        ],
-        "conferme": [
-         {
-          "controllo": "button@click deleteOrder(o.ID)",
-          "etichetta": "Cancella",
-          "abilitato": true,
-          "effetti": [
-           "fetch DELETE api/order/101"
-          ]
-         },
-         {
-          "controllo": "button@click showPopUp=0",
-          "etichetta": "Annulla",
-          "abilitato": true,
-          "effetti": []
-         }
-        ]
-       },
-       {
-        "abilitato": true,
-        "effetti": [
-         "alert \"impossibile cancellare se è in esecuzione\""
-        ],
-        "stato": []
-       },
-       {
-        "abilitato": true,
-        "effetti": [],
-        "stato": [
-         "vm.showPopUp = 103"
-        ],
-        "conferme": [
-         {
-          "controllo": "button@click deleteOrder(o.ID)",
-          "etichetta": "Cancella",
-          "abilitato": true,
-          "effetti": [
-           "fetch DELETE api/order/103"
-          ]
-         },
-         {
-          "controllo": "button@click showPopUp=0",
-          "etichetta": "Annulla",
-          "abilitato": true,
-          "effetti": []
-         }
-        ]
-       }
-      ],
-      "tre ordini, popup elimina aperto": [
-       {
-        "abilitato": true,
-        "effetti": [],
-        "stato": []
-       },
-       {
-        "abilitato": true,
-        "effetti": [
-         "alert \"impossibile cancellare se è in esecuzione\""
-        ],
-        "stato": []
-       },
-       {
-        "abilitato": true,
-        "effetti": [],
-        "stato": [
-         "vm.showPopUp = 103"
-        ],
-        "conferme": [
-         {
-          "controllo": "button@click deleteOrder(o.ID)",
-          "etichetta": "Cancella",
-          "abilitato": true,
-          "effetti": [
-           "fetch DELETE api/order/103"
-          ]
-         },
-         {
-          "controllo": "button@click showPopUp=0",
-          "etichetta": "Annulla",
-          "abilitato": true,
-          "effetti": []
-         }
-        ]
-       }
-      ]
-     }
-    },
-    {
-     "id": "button@click relaunchOrder = o",
+     "id": "UiButton@click relaunchOrder = o",
      "etichetta": "Rilancia",
      "evento": "click",
      "handler": "relaunchOrder = o",
@@ -4110,7 +4008,109 @@
      }
     },
     {
-     "id": "button@click deleteOrder(o.ID)",
+     "id": "UiButton@click chiediCancella(o)",
+     "etichetta": "",
+     "evento": "click",
+     "handler": "chiediCancella(o)",
+     "disabled": "o.STATUS_DESC=='WORKING'",
+     "classe": "",
+     "esiti": {
+      "tre ordini liv2": [
+       {
+        "abilitato": true,
+        "effetti": [],
+        "stato": [
+         "vm.showPopUp = 101"
+        ],
+        "conferme": [
+         {
+          "controllo": "UiButton@click deleteOrder(o.ID)",
+          "etichetta": "Cancella",
+          "abilitato": true,
+          "effetti": [
+           "fetch DELETE api/order/101"
+          ]
+         },
+         {
+          "controllo": "UiButton@click showPopUp=0",
+          "etichetta": "Annulla",
+          "abilitato": true,
+          "effetti": []
+         }
+        ]
+       },
+       {
+        "abilitato": false,
+        "effetti": [
+         "alert \"impossibile cancellare se è in esecuzione\""
+        ],
+        "stato": []
+       },
+       {
+        "abilitato": true,
+        "effetti": [],
+        "stato": [
+         "vm.showPopUp = 103"
+        ],
+        "conferme": [
+         {
+          "controllo": "UiButton@click deleteOrder(o.ID)",
+          "etichetta": "Cancella",
+          "abilitato": true,
+          "effetti": [
+           "fetch DELETE api/order/103"
+          ]
+         },
+         {
+          "controllo": "UiButton@click showPopUp=0",
+          "etichetta": "Annulla",
+          "abilitato": true,
+          "effetti": []
+         }
+        ]
+       }
+      ],
+      "tre ordini, popup elimina aperto": [
+       {
+        "abilitato": true,
+        "effetti": [],
+        "stato": []
+       },
+       {
+        "abilitato": false,
+        "effetti": [
+         "alert \"impossibile cancellare se è in esecuzione\""
+        ],
+        "stato": []
+       },
+       {
+        "abilitato": true,
+        "effetti": [],
+        "stato": [
+         "vm.showPopUp = 103"
+        ],
+        "conferme": [
+         {
+          "controllo": "UiButton@click deleteOrder(o.ID)",
+          "etichetta": "Cancella",
+          "abilitato": true,
+          "effetti": [
+           "fetch DELETE api/order/103"
+          ]
+         },
+         {
+          "controllo": "UiButton@click showPopUp=0",
+          "etichetta": "Annulla",
+          "abilitato": true,
+          "effetti": []
+         }
+        ]
+       }
+      ]
+     }
+    },
+    {
+     "id": "UiButton@click deleteOrder(o.ID)",
      "etichetta": "Cancella",
      "evento": "click",
      "handler": "deleteOrder(o.ID)",
@@ -4138,7 +4138,7 @@
      }
     },
     {
-     "id": "button@click showPopUp=0",
+     "id": "UiButton@click showPopUp=0",
      "etichetta": "Annulla",
      "evento": "click",
      "handler": "showPopUp=0",

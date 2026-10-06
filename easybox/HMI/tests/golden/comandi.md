@@ -147,10 +147,10 @@ Scenari: tre ordini liv2 · tre ordini, popup elimina aperto
 
 | Etichetta | Handler | Abilitazione | Abilitato per scenario | Effetto | Conferma |
 |---|---|---|---|---|---|
-| (cmdPlay) | `modifyOrderStatus(o.ID,dataStored.status_working,o.PIECE_ID)` |  | tre ordini liv2: sì<br>tre ordini, popup elimina aperto: sì | emit TO_PLANT/CMD/ORDER {"id":101,"status":3,"pieceID":1} | no |
-| (cmdStop) | `modifyOrderStatus(o.ID,dataStored.status_raw,o.PIECE_ID)` |  | tre ordini liv2: sì<br>tre ordini, popup elimina aperto: sì | emit TO_PLANT/CMD/ORDER {"id":101,"status":4,"pieceID":1} | no |
-| (cmdDel) | `sicurezza(o.ID, o.STATUS_DESC)` |  | tre ordini liv2: sì<br>tre ordini, popup elimina aperto: sì | stato: vm.showPopUp = 101 | Cancella → fetch DELETE api/order/101<br>Annulla → – |
+| Avvia | `modifyOrderStatus(o.ID,dataStored.status_working,o.PIECE_ID)` |  | tre ordini liv2: sì<br>tre ordini, popup elimina aperto: sì | emit TO_PLANT/CMD/ORDER {"id":101,"status":3,"pieceID":1} | no |
+| Ferma | `modifyOrderStatus(o.ID,dataStored.status_raw,o.PIECE_ID)` |  | tre ordini liv2: sì<br>tre ordini, popup elimina aperto: sì | emit TO_PLANT/CMD/ORDER {"id":101,"status":4,"pieceID":1} | no |
 | Rilancia | `relaunchOrder = o` |  | tre ordini liv2: sì<br>tre ordini, popup elimina aperto: sì | stato: vm.relaunchOrder = {"ID":103,"PIECE":"PZ-C","PIECE_DESC":"prova","MACHINE_ID":1,"STATUS":5,"STATUS_ |  → – |
+| (click) | `chiediCancella(o)` | `o.STATUS_DESC=='WORKING'` | tre ordini liv2: sì<br>tre ordini, popup elimina aperto: sì | stato: vm.showPopUp = 101 | Cancella → fetch DELETE api/order/101<br>Annulla → – |
 | Cancella | `deleteOrder(o.ID)` |  | tre ordini liv2: –<br>tre ordini, popup elimina aperto: sì | fetch DELETE api/order/101 | no |
 | Annulla | `showPopUp=0` |  | tre ordini liv2: –<br>tre ordini, popup elimina aperto: sì | stato: vm.showPopUp = 0 | no |
 | (riprova) | `getDataTable()` |  | tre ordini liv2: –<br>tre ordini, popup elimina aperto: – |  | no |
