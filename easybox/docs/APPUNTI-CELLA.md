@@ -369,13 +369,23 @@ nessun controllo che se ne accorga.
 ## HTTPS del pannello: accensione e RITORNO IN HTTP
 
 Il pannello gira in HTTPS per poter installare la PWA sul tablet, che arriva
-per indirizzo IP. Il certificato lo prepara da solo
-`HMI\tools\ensure-cert.ps1`, chiamato da `start_hmi.bat` prima di Vite.
+per indirizzo IP. Il certificato lo prepara `HMI\tools\ensure-cert.ps1`
+(`npm run cert`), che `start_hmi.bat` deve chiamare prima di Vite: in cella,
+al 6/10, non lo chiama (voce aperta qui sotto).
+
+### [ ] Aperto (6/10): lo `start_hmi.bat` di cella non chiama `npm run cert`
+
+Al 6/10 lo `start_hmi.bat` di cella non chiama `npm run cert`, e Dario non l'ha ancora aggiunto.
+- Il certificato del pannello in cella esiste, quindi il pannello gira in HTTPS. È del 15/09 e `ensure-cert.ps1` lo fa valere 2 anni: scade intorno a settembre 2028.
+- Il rinnovo automatico parte solo con `call npm run cert` nel `.bat`, prima di `npm run dev`. Il `call` serve perché `npm` è a sua volta un `.bat`: senza, lo `start_hmi.bat` finirebbe dopo il certificato e Vite non partirebbe.
+
+Finché la riga non c'è, quello che questa sezione dice su rigenerazione e rinnovo del certificato non vale: resta quello del 15/09.
 
 ### Se in cella qualcosa non va: tornare in HTTP
 
-**Una riga sola, in `start_hmi.bat`, PRIMA della riga che chiama il
-certificato.** Togliere il `rem`:
+**Una riga sola, in `start_hmi.bat`, PRIMA di `npm run dev` (e di
+`call npm run cert`, quando ci sarà).** Se la riga c'è con il `rem` davanti,
+togliere il `rem`; nel `.bat` di cella del 6/10 non c'è, e va scritta:
 
 ```
 set HMI_HTTP_ONLY=1
@@ -408,9 +418,12 @@ Get-ChildItem Cert:\CurrentUser\Root | Where-Object { $_.Subject -like '*EasyBox
 ### Riaccendere
 
 Rimettere il `rem` davanti alla riga, riavviare. Il certificato si rigenera da
-solo se serve.
+solo se serve, ma solo se il `.bat` chiama `npm run cert` (voce aperta qui
+sopra).
 
 ### Cosa NON serve fare
+
+Vale quando `start_hmi.bat` chiama `npm run cert` (voce aperta qui sopra).
 
 - Non serve rinnovare niente a mano: lo script rigenera il certificato del
   pannello quando mancano meno di 30 giorni alla scadenza, firmandolo con la
