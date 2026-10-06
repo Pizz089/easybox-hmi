@@ -19,6 +19,7 @@ La vista v3 sommava le correzioni del cassetto (`TRAY.X_CORR`, `Y_CORR`, `Z_CORR
 - 0 in tutte le altre missioni (pinze sullo scaffale, pallet, macchina);
 - a riposo può restare il numero dell'ultimo cassetto usato, e un "Vai a EasyBox" dopo una missione sul cassetto porta N_Cassetto diverso da 0 (il posizionamento scrive Unit_code ma non Object_Type);
 - da qui le uscite libere verso il robot partono da %QW646.
+- Il commit 6cabcc4 riporta l'export TIA alle 09:34: è l'ora UTC letta dalla macchina di appoggio. L'export è delle 11:34 ora italiana, dopo l'ultima modifica del progetto delle 11:21.
 
 **Vista v4** (`serverDati/scripts/robot-tray-view-v4.sql`): stesse colonne della v3, stessi nomi e stesso ordine; cambiano le quote e l'espressione di TRAY.
 - `X_PICK = pos.X + ISNULL(pos.X_CORR,0) + ISNULL(decentrato pick X,0)`, Y uguale;
