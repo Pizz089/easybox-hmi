@@ -43,7 +43,9 @@ defineProps({
 }
 /* cliccabile (utente, lingua): bersaglio touch minimo 48, anche se la
    tavola li disegna a 44 come gli altri chip */
-button.ui-chip { cursor: pointer; height: var(--touch-target-min); }
+/* cliccabile: bersaglio di almeno 48 x 48 (il chip della lingua "IT" era
+   largo 41) */
+button.ui-chip { cursor: pointer; height: var(--touch-target-min); min-width: var(--touch-target-min); justify-content: center; }
 .ui-chip :deep(b) { color: var(--text-primary); font-weight: var(--font-weight-extrabold); }
 .ui-chip__dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
 .ui-chip__dot--success { background: var(--color-success); }
