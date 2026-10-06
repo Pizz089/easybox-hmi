@@ -31,8 +31,13 @@ const iRotSez = tray.indexOf("$t('tray.sectionRot')");
 const iRot = tray.indexOf("$t('tray.workObjectRotations')");
 const iXRot = tray.indexOf("$t('tray.X_Rot')");
 check(iRotSez > 0 && iRot > iRotSez && iRot < iXRot, 'riga sulle rotazioni accanto ai campi delle rotazioni');
-const classe = i => ((tray.slice(0, i).match(/<p class="([^"]+)">[^<]*$/) || [])[1]);
-check(classe(iAvviso) === 'tray-wo-notice' && classe(iRot) === 'tray-wo-notice', 'stessa classe dei due avvisi (tray-wo-notice), nessuna condizione');
+// (v3 fase C) il paragrafo che contiene il testo: icona + testo, stessa
+// classe di base, un tono ciascuno (attenzione / informazione), mai un v-if
+const paragrafo = i => { const a = tray.lastIndexOf('<p ', i); return tray.slice(a, tray.indexOf('>', a) + 1); };
+const pA = paragrafo(iAvviso), pR = paragrafo(iRot);
+check(/class="tray-wo-notice tray-wo-notice--warn"/.test(pA) && /class="tray-wo-notice tray-wo-notice--info"/.test(pR) && !/v-if|v-show/.test(pA + pR),
+  'stessa classe dei due avvisi (tray-wo-notice, un tono ciascuno), nessuna condizione');
+check(tray.slice(tray.lastIndexOf('<p ', iAvviso), iAvviso).indexOf('</p>') < 0 && tray.slice(tray.lastIndexOf('<p ', iRot), iRot).indexOf('</p>') < 0, 'il testo sta dentro il suo avviso');
 check(/propagateTeaching/.test(leggi('src/views/conf/Tray/Tray.vue')), 'il salvataggio porta ancora le rotazioni alle tasche (propagateTeaching)');
 
 console.log('\n2) "0 CASSETTIERA" eliminato');

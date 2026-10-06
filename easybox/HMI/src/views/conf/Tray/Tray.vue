@@ -4,6 +4,8 @@
     //import SimpleKeyboard from '../../../components/keyboard.vue'
     import optionStatus from '@/components/optionStatus.vue';
     import { dataStored } from '../../../data.js'
+    // (v3 fase C) icone degli avvisi work object
+    import { TriangleAlert, Info } from 'lucide-vue-next'
 
     import { ref, onMounted } from 'vue'
     const el = ref()
@@ -164,7 +166,9 @@
                      nelle quote del robot: la posizione del cassetto e' nel
                      robot. Avviso fisso, perche' nessuno pensi di correggere
                      da qui. -->
-                <p class="tray-wo-notice">{{$t('tray.workObjectNotice')}}</p>
+                <!-- (v3 fase C) avviso fisso, stile v3: icona + testo, tono
+                     di attenzione (queste correzioni non contano piu') -->
+                <p class="tray-wo-notice tray-wo-notice--warn"><TriangleAlert class="tray-wo-notice__icon" :stroke-width="2" aria-hidden="true" /><span>{{$t('tray.workObjectNotice')}}</span></p>
                 <div class="pure-control-group">
                     <label for="aligned-foo">{{$t('tray.X_Corr')}}</label>
                     <!--input type="number" id="aligned-foo" name="X_CORR" v-model="tray.X_CORR"  :readonly="dataStored.userLevel==0"/-->
@@ -197,7 +201,9 @@
                 <!-- (6/10) "0 CASSETTIERA" eliminato: le rotazioni si
                      impostano qui, cassetto per cassetto (salva ->
                      propagateTeaching -> tutte le tasche del cassetto) -->
-                <p class="tray-wo-notice">{{$t('tray.workObjectRotations')}}</p>
+                <!-- (v3 fase C) stesso avviso, tono informativo: dice dove
+                     si impostano le rotazioni -->
+                <p class="tray-wo-notice tray-wo-notice--info"><Info class="tray-wo-notice__icon" :stroke-width="2" aria-hidden="true" /><span>{{$t('tray.workObjectRotations')}}</span></p>
                 <div class="pure-control-group">
                     <label for="aligned-foo">{{$t('tray.X_Rot')}}</label>
                     <numericField name="X_ROT" unitMeasure="&deg;" min="-180" max="180" step="0.1" :locked="teachLocked"
@@ -483,15 +489,23 @@ export default {
 
 <style scoped>
     /* (work object per cassetto, 6/10) avviso sulle correzioni del cassetto */
+    /* (v3 fase C) avvisi fissi della scheda: icona + testo su tinta del
+       tono (attenzione / informazione), testo chiaro del tono (-fg) */
     .tray-wo-notice {
+        display: flex;
+        align-items: flex-start;
+        gap: var(--space-3);
         margin: var(--space-2) 0 var(--space-4);
-        padding: var(--space-2) var(--space-4);
+        padding: var(--space-3) var(--space-4);
         border-radius: var(--radius-md);
-        background: var(--color-warning-bg);
-        color: var(--color-warning);
-        font-size: var(--font-size-sm);
-        max-width: 44rem;
+        font-size: var(--font-size-base);
+        line-height: 1.45;
+        max-width: 48rem;
+        box-sizing: border-box;
     }
+    .tray-wo-notice--warn { background: var(--color-warning-bg); color: var(--color-warning-fg); }
+    .tray-wo-notice--info { background: var(--color-info-bg); color: var(--color-info-fg); }
+    .tray-wo-notice__icon { flex: none; width: 22px; height: 22px; margin-top: 1px; }
     .pure-table-horizontal  #td {
         justify-content: center;
         display: flex;
