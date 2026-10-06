@@ -7,12 +7,15 @@
 -- si e' dovuto capire perche' PRODUCTED restava a zero. Nessuna vista nuova
 -- di questo progetto sara' mai WITH ENCRYPTION.
 --
--- STATO: in cella (2026-09-17) c'e' gia' una versione con COMP_PUSH e, dopo
--- una correzione a mano, col segno giusto — ma SENZA il ramo NO_COMP. Questo
--- script lo aggiunge. Le guardie qui sotto distinguono quattro varianti
--- (segno giusto CON NO_COMP -> esce; segno giusto senza -> aggiunge; segno
--- sbagliato -> corregge; nessuna compensazione -> applica).
--- Non e' un no-op: va lanciato.
+-- STATO (6/10): in cella c'e' la variante completa della compensazione
+-- (segno giusto CON il ramo NO_COMP; letta sul clone del 6/10). Questo script
+-- aggiunge in fondo le tre colonne della QUOTA Z DELLA SPINTA (Z_PUSH,
+-- Z_PUSH_REF, Z_PUSH_DROP, vedi sotto). Le guardie distinguono cinque
+-- varianti: con Z_PUSH_DROP gia' presente e la stessa formula -> "conforme",
+-- esce; le quattro precedenti (completa; segno giusto senza NO_COMP; segno
+-- sbagliato; nessuna compensazione) -> ALTER alla definizione completa, che
+-- comprende anche il ramo NO_COMP; qualunque altra -> FERMO, non sovrascrive.
+-- Non e' un no-op: va lanciato (dopo piece-on-vice-z-push.sql).
 --
 -- RISCONTRO, ordine 1104, pezzo 1034 (Y 100000), ganascia morsa 107200,
 -- chela pinza 42000, deposito 311000, COMP_PUSH 300:
@@ -29,7 +32,32 @@
 --   deposito = P.X                                        (invariata)
 --   spinta   = P.X - pezzo.Y/2 - lunghezza_ganascia_pinza/2
 --   arrivo   = spinta + corsa - compensazione
--- Durante la spinta Y e Z restano quelle del deposito: si muove solo la X.
+-- Durante la spinta la Y resta quella del deposito. La Z (6/10) scende di
+-- Z_PUSH_DROP sotto la Z di deposito: la chela spinge a PIECE_ON_VICE.Z_PUSH
+-- dal fondo del pezzo. Con Z_PUSH vuota Z_PUSH_DROP = 0 e la Z resta quella
+-- del deposito, come prima del 6/10.
+--
+-- QUOTA Z DELLA SPINTA (decisione di Dario 6/10, 18:24). Tre colonne in fondo:
+--   Z_PUSH       il valore di PIECE_ON_VICE.Z_PUSH com'e', anche NULL: serve
+--                al pannello, il PLC non la legge;
+--   Z_PUSH_REF   ISNULL(PIECE.Z_PICK, 0), la quota di presa del grezzo. E' la
+--                quota con cui il pezzo entra nella Z di deposito
+--                (COORDINATES_Z_MC.Z_PLACE_MC, verificato il 6/10);
+--   Z_PUSH_DROP  di quanto scende la chela rispetto alla Z di deposito:
+--                  Z_PUSH vuota                 -> 0
+--                  Z_PICK nulla o <= 0          -> 0
+--                  Z_PUSH > Z_PICK (fuori campo,
+--                  pezzo cambiato dopo)         -> 0, come prima
+--                  altrimenti                   -> Z_PICK - Z_PUSH
+--                MAI NULL: il ponte SQL non converte NULL in zero, restituisce
+--                numeri casuali. Non dipende da PUSH_STATUS: il PLC la usa
+--                solo quando X_PUSH e X_STOP sono valide.
+-- Il PLC (consegna 31) scrive Z_Push = Z deposito - Z_PUSH_DROP su %QW646
+-- (Z_Push_LOW) e %QW648 (Z_Push_HIGH). Legge
+--   select X_PUSH,X_STOP,Z_PUSH_DROP from COORDINATES_PUSH_MC where ...
+-- e l'ORDINE delle colonne nella query e' quello: la posizione nella vista non
+-- conta. Il pannello replica il calcolo (util/pushQuotes.js, backend e HMI,
+-- test di parita').
 --
 -- LA CORSA HA DUE CASI (chiarito da Dario 15/9). Un pezzo PIU' LUNGO della
 -- ganascia non e' un errore: e' legittimo e succede. In quel caso non appoggia
@@ -144,8 +172,10 @@
 --
 -- ORDINE DI DEPLOY: DOPO piece-push-to-stop.sql, vice-claw-length.sql,
 -- gripper-claw-length.sql e piece-on-vice.sql (li nomina tutti), piu' la
--- colonna PIECE_ON_VICE.COMP_PUSH (int NULL, micron), a cella ferma con -E.
---   sqlcmd -S .\SQLEXPRESS -E -d ADMG -i coordinates-push-mc.sql
+-- colonna PIECE_ON_VICE.COMP_PUSH (int NULL, micron) e, dal 6/10,
+-- piece-on-vice-z-push.sql (colonna PIECE_ON_VICE.Z_PUSH), a cella ferma con
+-- -E. "-f 65001": il file e' UTF-8 (trattini lunghi nei commenti della vista).
+--   sqlcmd -S .\SQLEXPRESS -E -d ADMG -f 65001 -i coordinates-push-mc.sql
 -- ===========================================================================
 SET NOCOUNT ON;
 
@@ -154,8 +184,9 @@ IF COL_LENGTH('dbo.PIECE', 'PUSH_TO_STOP') IS NULL
    OR COL_LENGTH('dbo.GRIPPER', 'CLAW_LENGTH') IS NULL
    OR OBJECT_ID('dbo.PIECE_ON_VICE') IS NULL
    OR COL_LENGTH('dbo.PIECE_ON_VICE', 'COMP_PUSH') IS NULL
+   OR COL_LENGTH('dbo.PIECE_ON_VICE', 'Z_PUSH') IS NULL
 BEGIN
-	PRINT 'MANCANO colonne o tabelle: eseguire prima piece-push-to-stop.sql, vice-claw-length.sql, gripper-claw-length.sql, piece-on-vice.sql e la colonna PIECE_ON_VICE.COMP_PUSH (int NULL, micron).';
+	PRINT 'MANCANO colonne o tabelle: eseguire prima piece-push-to-stop.sql, vice-claw-length.sql, gripper-claw-length.sql, piece-on-vice.sql, la colonna PIECE_ON_VICE.COMP_PUSH (int NULL, micron) e piece-on-vice-z-push.sql (colonna PIECE_ON_VICE.Z_PUSH).';
 	SET NOEXEC ON;
 END
 GO
@@ -170,24 +201,39 @@ DECLARE @norm NVARCHAR(MAX) = REPLACE(REPLACE(REPLACE(ISNULL(@def, N''),
 WHILE CHARINDEX(N'  ', @norm) > 0
 	SET @norm = REPLACE(@norm, N'  ', N' ');
 
--- QUATTRO VARIANTI POSSIBILI, e vanno distinte tutte.
+-- (6/10) CINQUE VARIANTI: la nuova, con la quota Z della spinta, e le
+-- quattro della compensazione qui sotto, che ora vanno tutte aggiornate.
+--
+-- QUATTRO VARIANTI DELLA COMPENSAZIONE, e vanno distinte tutte.
 --
 -- La compensazione e' arrivata in cella in due riprese e sbagliando due volte:
 -- prima col SEGNO invertito (somma invece di sottrazione), poi col segno
 -- giusto ma SENZA il ramo NO_COMP. Una guardia che si accontenti di vedere il
 -- meno uscirebbe dicendo "c'e' gia" e lascerebbe la vista senza l'esito che
 -- impedisce la spinta rovesciata — cioe' proprio il caso che si sta chiudendo.
--- Per questo il ramo "esci" chiede DUE cose: il segno giusto E il NO_COMP.
+-- Per questo il ramo "esci" chiedeva DUE cose: il segno giusto E il NO_COMP.
+-- (6/10) Ora ne chiede tre: anche la quota Z della spinta con la sua formula.
 IF @def IS NULL
 	PRINT 'coordinates-push-mc: la vista non esiste, la creo.';
 ELSE IF @norm LIKE N'%q.X_PUSH_RAW + q.TRAVEL_RAW - q.COMP_PUSH end as X_STOP%'
 	 AND @norm LIKE N'%then ''NO_COMP''%'
+	 AND @norm LIKE N'%when pv.Z_PUSH > pz.Z_PICK then 0 else pz.Z_PICK - pv.Z_PUSH end as Z_PUSH_DROP%'
 BEGIN
-	PRINT 'coordinates-push-mc: segno giusto e ramo NO_COMP gia'' presenti, nessuna modifica.';
+	PRINT 'coordinates-push-mc: conforme (segno giusto, ramo NO_COMP e quota Z della spinta gia'' presenti), nessuna modifica.';
+	SET NOEXEC ON;
+END
+-- c'e' Z_PUSH_DROP ma non com'e' qui: e' qualcosa che non conosco
+ELSE IF @norm LIKE N'%as Z_PUSH_DROP%'
+BEGIN
+	PRINT 'coordinates-push-mc: la vista ha Z_PUSH_DROP ma non e'' la variante attesa. FERMO.';
+	PRINT 'Leggerla con: SELECT definition FROM sys.sql_modules WHERE object_id = OBJECT_ID(''dbo.COORDINATES_PUSH_MC'');';
 	SET NOEXEC ON;
 END
 ELSE IF @norm LIKE N'%q.X_PUSH_RAW + q.TRAVEL_RAW - q.COMP_PUSH end as X_STOP%'
-	PRINT 'coordinates-push-mc: segno giusto ma MANCA il ramo NO_COMP: lo aggiungo.';
+	 AND @norm LIKE N'%then ''NO_COMP''%'
+	PRINT 'coordinates-push-mc: variante completa della compensazione (segno giusto e NO_COMP), senza la quota Z della spinta: aggiungo Z_PUSH, Z_PUSH_REF e Z_PUSH_DROP.';
+ELSE IF @norm LIKE N'%q.X_PUSH_RAW + q.TRAVEL_RAW - q.COMP_PUSH end as X_STOP%'
+	PRINT 'coordinates-push-mc: segno giusto ma MANCA il ramo NO_COMP: lo aggiungo, con la quota Z della spinta.';
 ELSE IF @norm LIKE N'%q.X_PUSH_RAW + q.TRAVEL_RAW + q.COMP_PUSH end as X_STOP%'
 	PRINT 'coordinates-push-mc: trovata la variante col PIU'' (arrivo oltre la battuta): la correggo.';
 ELSE IF @norm LIKE N'%then q.X_PUSH_RAW + q.TRAVEL_RAW end as X_STOP%'
@@ -195,7 +241,7 @@ ELSE IF @norm LIKE N'%then q.X_PUSH_RAW + q.TRAVEL_RAW end as X_STOP%'
 -- nessuna delle quattro: la vista in cella e' qualcosa che non conosco
 ELSE
 BEGIN
-	PRINT 'coordinates-push-mc: la vista in cella non e'' nessuna delle varianti note. FERMO.';
+	PRINT 'coordinates-push-mc: la vista in cella non e'' nessuna delle cinque varianti note. FERMO.';
 	PRINT 'Leggerla con: SELECT definition FROM sys.sql_modules WHERE object_id = OBJECT_ID(''dbo.COORDINATES_PUSH_MC'');';
 	PRINT 'e riconciliare a mano: il testo qui sotto sovrascriverebbe modifiche che non conosco.';
 	SET NOEXEC ON;
@@ -223,7 +269,11 @@ select	q.ORDER_ID,
 		q.STOP_BEYOND_CLAW,
 		q.COMP_PUSH,
 		q.PUSH_ENABLED,
-		q.PUSH_STATUS
+		q.PUSH_STATUS,
+		-- (6/10) QUOTA Z DELLA SPINTA: il PLC legge solo Z_PUSH_DROP
+		q.Z_PUSH,
+		q.Z_PUSH_REF,
+		q.Z_PUSH_DROP
 from (
 	select	w.ID													as ORDER_ID,
 			w.MACHINE_ID											as MC,
@@ -267,7 +317,18 @@ from (
 							 then ISNULL(pv.STOP_BEYOND_CLAW, 0) else 0 end
 					  - ISNULL(pv.COMP_PUSH, 0) < 0
 																	then 'NO_COMP'
-				 else 'OK' end										as PUSH_STATUS
+				 else 'OK' end										as PUSH_STATUS,
+			-- (6/10) altezza della chela dal FONDO del pezzo durante la spinta
+			-- (micron, NULL = alla quota di presa, cioe' alla Z di deposito)
+			pv.Z_PUSH												as Z_PUSH,
+			ISNULL(pz.Z_PICK, 0)									as Z_PUSH_REF,
+			-- di quanto scende la chela sotto la Z di deposito. MAI NULL (il
+			-- ponte SQL non converte NULL in zero); vuota, pezzo senza quota di
+			-- presa o fuori campo (pezzo cambiato dopo): 0, come prima
+			case when pv.Z_PUSH is null								then 0
+				 when ISNULL(pz.Z_PICK, 0) <= 0						then 0
+				 when pv.Z_PUSH > pz.Z_PICK							then 0
+				 else pz.Z_PICK - pv.Z_PUSH end						as Z_PUSH_DROP
 	from WORKORDER w
 	inner join [POSITION] p	on RTRIM(p.PARENT) = CONCAT('MC_', w.MACHINE_ID)
 	inner join PIECE pz		on pz.ID = w.PIECE_ID
@@ -328,6 +389,18 @@ GO
 --   SELECT ORDER_ID, X_PUSH, X_STOP, CLEARANCE, COMP_PUSH
 --     FROM COORDINATES_PUSH_MC WHERE PUSH_STATUS = 'OK' AND X_STOP < X_PUSH;
 --   Atteso: nessuna riga. Se ne esce una, quelle righe dovevano dare NO_COMP.
+--
+-- QUOTA Z DELLA SPINTA (6/10). Ognuna, atteso: nessuna riga.
+--   Z_PUSH_DROP mai NULL:
+--     SELECT ORDER_ID FROM COORDINATES_PUSH_MC WHERE Z_PUSH_DROP IS NULL;
+--   sempre fra 0 e la quota di presa:
+--     SELECT ORDER_ID, Z_PUSH, Z_PUSH_REF, Z_PUSH_DROP FROM COORDINATES_PUSH_MC
+--      WHERE Z_PUSH_DROP < 0 OR Z_PUSH_DROP > Z_PUSH_REF;
+--   con Z_PUSH vuota la Z non cambia:
+--     SELECT ORDER_ID FROM COORDINATES_PUSH_MC
+--      WHERE Z_PUSH IS NULL AND Z_PUSH_DROP <> 0;
+-- Riscontro (pezzo con Z_PICK 10000): Z_PUSH 10000 -> 0; Z_PUSH 0 -> 10000;
+-- Z_PUSH 10001 -> 0 (fuori campo); Z_PUSH 4000 -> 6000.
 -- ===========================================================================
 
 -- ===========================================================================
@@ -335,6 +408,9 @@ GO
 -- qui sopra con
 --   X_STOP:     q.X_PUSH_RAW + q.TRAVEL_RAW - q.COMP_PUSH  ->  q.X_PUSH_RAW + q.TRAVEL_RAW
 --   subquery:   ISNULL(pv.COMP_PUSH, 0) as COMP_PUSH       ->  pv.COMP_PUSH as COMP_PUSH
--- Sono le uniche due differenze. Per togliere la vista del tutto:
+-- Sono le uniche due differenze. (6/10) Per tornare a prima della quota Z
+-- della spinta basta togliere le tre colonne Z_PUSH, Z_PUSH_REF, Z_PUSH_DROP
+-- (fuori e dentro la subquery), dopo aver tolto la consegna 31 dal PLC. Per
+-- togliere la vista del tutto:
 --   DROP VIEW dbo.COORDINATES_PUSH_MC;
 -- ===========================================================================
