@@ -22,7 +22,8 @@ const el = ref()
 </script>
 
 <template>
-  <div class="view-shell">
+  <!-- (v3 fase C) conf-v3: titolo, card e bersagli v3 (assets/css/catalog-v3.css) -->
+  <div class="view-shell conf-v3">
   <!-- (UI v2 fase 1.3) titolo di pagina: stesso testo del bottone che la
        apre dall'elenco Grigliati -->
   <h2 class="view-title">{{ $t('grating.importNew') }}</h2>

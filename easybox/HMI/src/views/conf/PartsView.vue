@@ -5,85 +5,74 @@
     import CubeIcon3D from '../../components/CubeIcon3D.vue';
     import StatoElenco from '../../components/StatoElenco.vue';
     import { caricaElenco, STATO } from '../../util/caricaElenco.js';
+    // (v3 fase C) anagrafica in card, componenti v3 (stili in assets/css/catalog-v3.css)
+    import UiButton from '../../components/ui/UiButton.vue'
+    import { Plus, Lock } from 'lucide-vue-next'
 
 </script>
 
 <template>
-    <div class="view-shell view-shell--fill conf-card" >
-      <div class="view-header">
-          <h3 class="view-title"> Tipo pezzi </h3>
-          <button class="pure-button pure-button-primary"
-                  :class="{'pure-button-disabled':dataStored.userLevel<=1}"
-                  :id="locked"
+    <!-- (v3 fase C) Magazzino · Pezzi: anagrafica in card, componenti v3.
+         Campi, chiamate e conferme quelli di prima: Crea nuovo tipo pezzo
+         dal livello 2 (lucchetto sotto), Modifica e Cancella da ComandsRows
+         (stesse guardie), la conferma di cancellazione nella card con lo
+         stesso testo. Il solido e' quello di sempre (CubeIcon3D, misure
+         vere). -->
+    <div class="view-shell view-shell--fill cat" >
+      <div class="cat-head">
+          <h2 class="cat-head__title">{{ $t('piece.listTitle') }}</h2>
+          <UiButton variant="primary" :icon="dataStored.userLevel<=1 ? Lock : Plus"
+                  :disabled="dataStored.userLevel<=1"
                   @click="createPart()">
             {{$t('piece.createNew')}}
-          </button>
+          </UiButton>
       </div>
-      <div class="table-scroll">
-      <table class="pure-table pure-table-horizontal">
-          <thead>
-              <tr>
-                  <th>{{$t('piece.prisma')}}</th>
-                  <th>{{$t('piece.family')}}</th>
-                  <th style='width:15%'>{{$t('piece.descr')}}</th>
-                  
-                  <th>{{$t('piece.dim')}}</th>
-                  <th>{{$t('piece.Z')}}</th>
-                  <th id='hide'>{{$t('piece.Z_pick')}}</th>
-                  <th id='hide'>{{$t('piece.Z_place')}}</th>
-                  <th>{{$t('piece.comands')}}</th>
-              </tr>
-          </thead>
-          <tbody>
-            <template v-for="(p) in pieces" :key="p.ID" >
-                <tr v-if="p.ID>0" :class="{'pure-table-odd':(p.ID % 2==1)}">
-                  <td>
-                      <!-- feat(parts-images): anteprima proporzionale a token dark,
-                           stesso generatore del wizard produzione (audit J, opz. A) -->
-                      <CubeIcon3D :w="p.X" :d="p.Y" :h="p.Z" :prisma="p.PRISMA" :size="56" />
-                    </td>
-                    <td>{{p.FAMILY}}</td>
-                    <td>{{p.DESCR}}</td>
-                    <!--td>{{p.PRISMA?'PRISMATIC':'CYLINDER'}}</td-->
-                    <td><strong>{{p.X/1000}}x{{p.Y/1000}}</strong> </td>
-                    <td><strong>{{p.Z/1000}}</strong></td>
-                    <td id='hide'>{{p.Z_PICK/1000}}</td>
-                    <td id='hide'>{{p.Z_PLACE/1000}}</td>
-                    <td>
-                        <orderCMD  :reference="createLink( p.ID )" 
-                                    :index="toStr(p.ID)"
-                                    modify="true"   @cmdModify="modifyPiece(p.ID)"
-                                    del="true"  	@cmdDel="sicurezza(p.ID)"
-                                    >
-                        </orderCMD>
-                    </td>
-                </tr>
-                 <tr v-if="_showPopUp(p.ID)">
-                    <td class="popUpOnLine" colspan="20" >
-                        <div class="center">
-                            <h3>{{ $t('pallet.sure') }}</h3>
-                            <!--h4>{{ $t('pallet.delete') }}</h4-->
-                            <span class="pure-g">
-                                <button class="pure-button-micromission specialCMD pure-u-1" @click="deletePiece(p.ID)">
-                                    {{ $t('rowCmd.delete') }}
-                                </button>
-                                <button class="btn-ghost pure-u-1" @click="showPopUp=0">
-                                    {{ $t('common.cancel') }}
-                                </button>
-                            </span>
-                        </div>
-                    </td>
-                </tr>
-            </template>
-          </tbody>
-        </table>
-        <StatoElenco
-          :stato="statoElenco"
-          :vuoto="pieces.length === 0"
-          :messaggio-vuoto="$t('piece.nessuno')"
-          @riprova="getDataTable()"
-        />
+      <div class="cat-list">
+        <template v-for="(p) in pieces" :key="p.ID" >
+            <article v-if="p.ID>0" class="cat-card">
+                <div class="part-card__top">
+                    <!-- feat(parts-images): anteprima proporzionale a token dark,
+                         stesso generatore del wizard produzione (audit J, opz. A) -->
+                    <div class="part-card__draw" aria-hidden="true">
+                        <CubeIcon3D :w="p.X" :d="p.Y" :h="p.Z" :prisma="p.PRISMA" :size="72" />
+                    </div>
+                    <div class="part-card__id">
+                        <span class="cat-card__code">{{p.FAMILY}}</span>
+                        <span class="cat-card__desc">{{p.DESCR}}</span>
+                    </div>
+                </div>
+                <dl class="cat-card__facts">
+                    <div><dt>{{$t('piece.dim')}}</dt><dd>{{p.X/1000}} × {{p.Y/1000}}</dd></div>
+                    <div><dt>{{$t('piece.Z')}}</dt><dd>{{p.Z/1000}}</dd></div>
+                    <div><dt>{{$t('piece.Z_pick')}}</dt><dd>{{p.Z_PICK/1000}}</dd></div>
+                    <div><dt>{{$t('piece.Z_place')}}</dt><dd>{{p.Z_PLACE/1000}}</dd></div>
+                </dl>
+                <div class="cat-card__actions">
+                    <orderCMD  :reference="createLink( p.ID )"
+                                :index="toStr(p.ID)"
+                                modify="true"   @cmdModify="modifyPiece(p.ID)"
+                                del="true"  	@cmdDel="sicurezza(p.ID)"
+                                >
+                    </orderCMD>
+                </div>
+                <div v-if="_showPopUp(p.ID)" class="cat-card__confirm">
+                    <div class="cat-card__sure"><b>{{ $t('pallet.sure') }}</b></div>
+                    <UiButton variant="danger" size="min" @click="deletePiece(p.ID)">
+                        {{ $t('rowCmd.delete') }}
+                    </UiButton>
+                    <UiButton variant="outline" size="min" @click="showPopUp=0">
+                        {{ $t('common.cancel') }}
+                    </UiButton>
+                </div>
+            </article>
+        </template>
       </div>
+      <StatoElenco
+        :stato="statoElenco"
+        :vuoto="pieces.length === 0"
+        :messaggio-vuoto="$t('piece.nessuno')"
+        @riprova="getDataTable()"
+      />
     </div>
 </template>
 
@@ -169,74 +158,25 @@ export default {
   </script>
 
 <style scoped>
-/* CARDS — blocco legacy della versione a card (PartsView_cards): il template
-   attuale (tabella) non usa queste classi. Era NON scoped e faceva leak
-   globale su .card/.container della dashboard (LV7): ora scoped + token. */
-.errore{
-    background-color: var(--color-danger-bg);
-}
-.normal{
-    background-color: var(--bg-surface);
-}
-
-.card {
-  box-shadow: var(--elevation-2);
-  transition: 0.6s;
-  padding-top: var(--space-5);
-  margin-top: var(--space-2);
-  margin-left: var(--space-2);
-  margin-right: var(--space-2);
-  place-items: center;
-  display:grid;
-}
-
-.card img{
-    border-radius: var(--radius-lg);
-    background-color: var(--color-success-bg);
-    /* 2px: micro-aggiustamento ottico (eccezione §2.1) */
-    padding: 2px;
-}
-
-
-.card:hover {
-  box-shadow: var(--elevation-3);
-}
-
-.container {
-  /* 2px verticale: micro-aggiustamento ottico (eccezione §2.1) */
-  padding: 2px var(--space-4);
-}
-
-.center {
+/* (v3 fase C) card, intestazione e conferma da assets/css/catalog-v3.css;
+   qui solo il disegno del pezzo accanto a codice e descrizione */
+.part-card__top { display: flex; align-items: center; gap: var(--space-4); min-width: 0; }
+.part-card__draw {
+  flex: none;
+  width: 84px;
+  height: 84px;
+  display: flex;
+  align-items: center;
   justify-content: center;
+  border-radius: 14px;
+  background: var(--bg-input);
 }
-</style>
-
-<style scoped>
-    .pure-table-horizontal  #td {
-        justify-content: center;
-        display: flex;
-    }
-    .pure-table{
-        width: inherit;
-    }
-
-    .popUpOnLine{
-        /*background-image: url(/src/assets/up_red.png);*/
-        background-repeat: no-repeat;
-        background-position-x: 14.6em;
-    }
-
-    .popUpOnLine .btn-ghost {
-        margin-top: var(--space-2);
-    }
-
-    /* 2px (non 1px --border-card): il popup di conferma delete deve
-       staccare piu' di un bordo card. */
-    .center {
-        margin: auto;
-        width: 20%;
-        border: 2px solid var(--color-critical);
-        padding: var(--space-6);
-    }
+/* il solido nei grigi della v3 (come Home e Produzione) */
+.part-card__draw :deep(.face-top),
+.part-card__draw :deep(.face-right),
+.part-card__draw :deep(.face-left) { stroke: var(--bg-input); stroke-width: 0.45; }
+.part-card__draw :deep(.face-top) { fill: var(--text-disabled); }
+.part-card__draw :deep(.face-right) { fill: var(--border-default); }
+.part-card__draw :deep(.face-left) { fill: var(--bg-segment-on); }
+.part-card__id { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 </style>

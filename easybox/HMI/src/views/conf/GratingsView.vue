@@ -8,6 +8,10 @@
     import { KO_IN_USE } from '../../util/errorCodes';
     // (grating-thickness) stessa regola del dialog cassetti e del server
     import { pickClearance } from '../../util/gratingGrid.js';
+    // (v3 fase C) catalogo in card, componenti v3 (stili in assets/css/catalog-v3.css)
+    import UiButton from '../../components/ui/UiButton.vue'
+    import UiBadge from '../../components/ui/UiBadge.vue'
+    import { Plus, Lock, FileInput, Grid3x3 } from 'lucide-vue-next'
 
     const el = ref()
 </script>
@@ -18,85 +22,78 @@
      pagina Cassetti. La cancellazione e' rifiutata se un cassetto usa il
      modello (KO_IN_USE). -->
 <template>
-      <div class="view-shell view-shell--fill conf-card">
-        <div class="view-header">
-          <h3 class="view-title">{{$t('grating.welcome')}}</h3>
-          <div class="btn-group">
-            <button class="pure-button pure-button-primary" :class="{'pure-button-disabled':dataStored.userLevel<=1}" :id="locked" @click="createGrating()">
-              {{$t('grating.createNew')}}
-            </button>
-            <button class="pure-button pure-button-primary" :class="{'pure-button-disabled':dataStored.userLevel<=1}" :id="locked" @click="importGrating()">
-              {{$t('grating.importNew')}}
-            </button>
-          </div>
+      <!-- (v3 fase C) Magazzino · Grigliati: catalogo dei modelli in card,
+           componenti v3. Campi, chiamate e conferme quelli di prima:
+           Crea / Grigliato esistente dal livello 2 (lucchetto sotto),
+           Modifica e Cancella da ComandsRows (stesse guardie), la conferma
+           di cancellazione nella card con lo stesso testo (spenta se un
+           cassetto usa il grigliato: prima si dissocia dalla pagina
+           Cassetti). I cassetti che usano il modello portano alle loro
+           tasche, come prima. -->
+      <div class="view-shell view-shell--fill cat">
+        <div class="cat-head">
+          <h2 class="cat-head__title">{{$t('grating.welcome')}}</h2>
+          <UiButton variant="secondary" :icon="dataStored.userLevel<=1 ? Lock : Plus" :disabled="dataStored.userLevel<=1" @click="createGrating()">
+            {{$t('grating.createNew')}}
+          </UiButton>
+          <UiButton variant="primary" :icon="dataStored.userLevel<=1 ? Lock : FileInput" :disabled="dataStored.userLevel<=1" @click="importGrating()">
+            {{$t('grating.importNew')}}
+          </UiButton>
         </div>
-        <div class="model-note">{{ $t('grating.catalogHint') }}</div>
-        <div class="table-scroll">
-        <table class="pure-table pure-table-horizontal">
-            <thead>
-                <tr>
-                    <th>{{$t('grating.name')}}</th>
-                    <th>{{$t('grating.descr')}}</th>
-                    <th>{{$t('grating.usedByCol')}}</th>
-                    <th>{{$t('GRIPPER')}}</th>
-                    <th>{{$t('PIECE')}}</th>
-                    <th>{{$t('grating.comands')}}</th>
-                </tr>
-            </thead>
-            <tbody>
-                <template v-for="(dt) in datiTab" :key="dt.ID" >
-                    <tr :class="{'pure-table-odd':(dt.ID % 2==1)}">
-                        <td>
-                            {{dt.NAME.trim()}}
-                            <!-- (grating-thickness) indicatore nel catalogo: pezzo del
-                                 modello sotto spessore + franco. Si vede QUI, non solo
-                                 quando qualcuno prova ad associare. -->
-                            <span v-if="thicknessIssue(dt)" class="thick-badge"
-                                  :title="$t('grating.thicknessWarn', { min: thicknessIssue(dt).min / 1000, pick: thicknessIssue(dt).zPick / 1000, place: thicknessIssue(dt).zPlace / 1000 })">
-                                &#9888; {{ $t('grating.thicknessBadge') }}
-                            </span>
-                        </td>
-                        <td>{{dt.DESCR.trim()}}</td>
-                        <td>
-                            <template v-if="dt.trays.length">
-                                <button v-for="t in dt.trays" :key="t.TRAY_ID" class="btn-ghost tray-chip"
-                                        @click="goToLayout(t.TRAY_ID, t.TraySTATUS, t.FLOOR_MAG)">
-                                    <img src="../../assets/link.png" width="20em"/>&nbsp;{{ t.FLOOR_MAG }}
-                                </button>
-                            </template>
-                            <span v-else class="model-muted">{{ $t('grating.usedByNone') }}</span>
-                        </td>
-                        <td>{{ dt.GRIPPER_DESC }}</td>
-                        <td>{{ dt.PIECE_ID }}</td>
-                        <td>
-                            <orderCMD  :reference="createLink( dt.ID )"
-                                       :index="dt.ID"
-                                       modify="true" @cmdModify="$router.push('/conf/grating/'+dt.ID);"
-                                       del="true"	 @cmdDel="sicurezza(dt.ID)"
-                                       >
-                            </orderCMD>
-                        </td>
-                    </tr>
-                    <tr v-if="_showPopUp(dt.ID)">
-                        <td class="popUpOnLine" colspan="20" >
-                            <div class="center">
-                                <h3>{{ $t('tray.sure') }}</h3>
-                                <h4 v-if="dt.trays.length">{{ $t('grating.deleteInUse', { floors: dt.trays.map(t => t.FLOOR_MAG).join(', ') }) }}</h4>
-                                <h4 v-else>{{ $t('grating.delete') }}</h4>
-                                <span class="pure-g">
-                                    <button class="pure-button-micromission specialCMD pure-u-1" :disabled="dt.trays.length>0" @click="deleteGrating(dt.ID)">
-                                        {{ $t('rowCmd.delete') }}
-                                    </button>
-                                    <button class="btn-ghost pure-u-1" @click="showPopUp=0">
-                                        {{ $t('common.cancel') }}
-                                    </button>
-                                </span>
-                            </div>
-                        </td>
-                    </tr>
-                </template>
-            </tbody>
-        </table>
+        <p class="cat-note">{{ $t('grating.catalogHint') }}</p>
+        <div class="cat-list">
+          <template v-for="(dt) in datiTab" :key="dt.ID" >
+            <article class="cat-card">
+              <header class="cat-card__head">
+                <span class="cat-card__code">{{dt.NAME.trim()}}</span>
+                <!-- (grating-thickness) indicatore nel catalogo: pezzo del
+                     modello sotto spessore + franco. Si vede QUI, non solo
+                     quando qualcuno prova ad associare. -->
+                <UiBadge v-if="thicknessIssue(dt)" class="thick-badge" tone="warning"
+                      :title="$t('grating.thicknessWarn', { min: thicknessIssue(dt).min / 1000, pick: thicknessIssue(dt).zPick / 1000, place: thicknessIssue(dt).zPlace / 1000 })">
+                    {{ $t('grating.thicknessBadge') }}
+                </UiBadge>
+              </header>
+              <div class="cat-card__desc">{{dt.DESCR.trim()}}</div>
+              <dl class="cat-card__facts">
+                <div class="cat-card__trays">
+                  <dt>{{$t('grating.usedByCol')}}</dt>
+                  <dd>
+                    <template v-if="dt.trays.length">
+                      <button v-for="t in dt.trays" :key="t.TRAY_ID" type="button" class="cat-chip"
+                              @click="goToLayout(t.TRAY_ID, t.TraySTATUS, t.FLOOR_MAG)">
+                        <Grid3x3 class="cat-chip__icon" :stroke-width="2" aria-hidden="true" />{{ $t('TRAY') }} {{ t.FLOOR_MAG }}
+                      </button>
+                    </template>
+                    <span v-else class="cat-muted">{{ $t('grating.usedByNone') }}</span>
+                  </dd>
+                </div>
+                <div><dt>{{$t('GRIPPER')}}</dt><dd>{{ dt.GRIPPER_DESC }}</dd></div>
+                <div><dt>{{$t('PIECE')}}</dt><dd>{{ dt.PIECE_ID }}</dd></div>
+              </dl>
+              <div class="cat-card__actions">
+                <orderCMD  :reference="createLink( dt.ID )"
+                           :index="dt.ID"
+                           modify="true" @cmdModify="$router.push('/conf/grating/'+dt.ID);"
+                           del="true"	 @cmdDel="sicurezza(dt.ID)"
+                           >
+                </orderCMD>
+              </div>
+              <div v-if="_showPopUp(dt.ID)" class="cat-card__confirm">
+                <div class="cat-card__sure">
+                  <b>{{ $t('tray.sure') }}</b>
+                  <span v-if="dt.trays.length">{{ $t('grating.deleteInUse', { floors: dt.trays.map(t => t.FLOOR_MAG).join(', ') }) }}</span>
+                  <span v-else>{{ $t('grating.delete') }}</span>
+                </div>
+                <UiButton variant="danger" size="min" :disabled="dt.trays.length>0" @click="deleteGrating(dt.ID)">
+                  {{ $t('rowCmd.delete') }}
+                </UiButton>
+                <UiButton variant="outline" size="min" @click="showPopUp=0">
+                  {{ $t('common.cancel') }}
+                </UiButton>
+              </div>
+            </article>
+          </template>
         </div>
       </div>
 </template>
@@ -224,42 +221,7 @@ export default {
 </script>
 
 <style scoped>
-    .pure-table-horizontal  #td {
-        justify-content: center;
-        display: flex;
-    }
-    .pure-table{
-        width: inherit;
-    }
-    .popUpOnLine .btn-ghost {
-        margin-top: var(--space-2);
-    }
-    /* (grating-model) chip per cassetto che usa il modello (link al layout) */
-    .tray-chip {
-        margin: 0 var(--space-1) var(--space-1) 0;
-    }
-    .model-muted {
-        color: var(--text-muted);
-    }
-    /* (grating-thickness) pezzo del modello sotto spessore + franco */
-    .thick-badge {
-        color: var(--color-danger);
-        font-size: 0.85em;
-        margin-left: var(--space-1);
-        white-space: nowrap;
-    }
-    .model-note {
-        color: var(--text-secondary);
-        font-size: 0.9em;
-        margin-bottom: var(--space-2);
-    }
-
-    /* Uniformato alle altre list view: 2px (non 1px --border-card), il popup
-       di conferma delete deve staccare piu' di un bordo card. */
-    .center {
-        margin: auto;
-        width: 20%;
-        border: 2px solid var(--color-critical);
-        padding: var(--space-6);
-    }
+    /* (v3 fase C) card, intestazione e chip da assets/css/catalog-v3.css.
+       (grating-thickness) il badge di spessore e' un UiBadge di attenzione. */
+    .thick-badge { flex: none; }
 </style>

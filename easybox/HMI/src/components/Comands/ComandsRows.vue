@@ -228,7 +228,14 @@
     border-radius: var(--radius-btn);
     cursor: pointer;
     transition: filter var(--transition-fast);
+    /* (v3 fase C) pulsante secondario v3: grafite, icona chiara */
+    background: var(--bg-surface-2);
     color: var(--text-primary);
+}
+/* (v3 fase C) le icone PNG (modifica, pausa, posiziona, estrai, salva)
+   sono nere: sul fondo grafite si schiariscono */
+.pure-button-group .pure-button img {
+    filter: invert(0.92);
 }
 
 .cmd-icon {
@@ -276,24 +283,18 @@
 }
 
 
-/* ============ PALETTE PER-TYPE (class-based, SVG via currentColor) ============ */
-
-/* play -> verde saturato, icona nera (contrasto su verde brillante) */
-.pure-button-group .pure-button.play {
-    background: var(--color-success);
-    color: var(--bg-base);
-}
-
-/* stop -> bianco, icona nera */
-.pure-button-group .pure-button.stop {
-    background: var(--text-primary);
-    color: var(--bg-base);
-}
-
-/* del -> rosso saturato, icona scura come play/stop (audit WCAG: 2.37 -> 7.17) */
+/* ============ PALETTE (v3 fase C) ============ */
+/* Le famiglie di comandi non hanno colore (UI-DESIGN-SYSTEM v3): play e
+   stop restano grafite come gli altri (prima verde e bianco). Il rosso
+   pieno resta solo sul comando distruttivo, con l'icona bianca come il
+   pulsante "danger" dei componenti v3. */
 .pure-button-group .pure-button.del {
-    background: var(--color-danger);
-    color: var(--bg-base);
+    background: var(--color-critical);
+    color: #fff;
+}
+.pure-button-group .pure-button.del:hover:not(:disabled) {
+    background: var(--color-critical-hover);
+    filter: none;
 }
 
 

@@ -570,7 +570,8 @@
     "Forma": "Shape",
     "PRISMATICO": "Prismatic",
     "CILINDRICO": "Cylindrical",
-    "onlyFor": "Only for"
+    "onlyFor": "Only for",
+    "listTitle": "Part types"
   },
   "production": {
     "relaunch": {

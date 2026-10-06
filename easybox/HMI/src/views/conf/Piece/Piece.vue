@@ -17,7 +17,8 @@ const el = ref();
 </script>
 
 <template>
-  <div class="piece-page">
+  <!-- (v3 fase C) conf-v3: titolo, card e bersagli v3 (assets/css/catalog-v3.css) -->
+  <div class="piece-page conf-v3">
     <header class="piece-header">
       <h1 v-if="!createNew">
         {{ $t("piece.welcome") }}

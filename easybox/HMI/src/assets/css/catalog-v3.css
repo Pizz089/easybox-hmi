@@ -1,0 +1,155 @@
+/* ==========================================================================
+   catalog-v3.css — cataloghi del Magazzino in card (pannello v3, fase C)
+
+   Grigliati e Pezzi: pochi modelli, ognuno con i suoi dati e due comandi
+   (Modifica, Cancella): card invece di tabelle (UI-DESIGN-SYSTEM v3, le
+   tabelle con molti dati restano tabelle). Classi usate da GratingsView e
+   PartsView:
+   - .cat / .cat-head / .cat-head__title / .cat-note   pagina e intestazione
+   - .cat-list                                         griglia delle card
+   - .cat-card (+ __head __code __desc __facts __actions __confirm __sure)
+   - .cat-chip / .cat-muted                            collegamenti e vuoti
+   Import in main.js dopo controls-v3.css.
+   ========================================================================== */
+.cat { gap: var(--space-4); }
+.cat-head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+}
+.cat-head__title {
+    flex: 1;
+    margin: 0;
+    font-size: 32px;
+    font-weight: var(--font-weight-extrabold);
+    letter-spacing: -0.01em;
+    color: var(--text-primary);
+    text-transform: none;
+}
+.cat-note { margin: 0; font-size: var(--font-size-base); color: var(--text-secondary); }
+.cat-list {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+    align-content: start;
+    gap: var(--space-4);
+}
+.cat-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: var(--card-padding);
+    border-radius: var(--radius-lg);
+    background: var(--bg-surface);
+    min-width: 0;
+}
+.cat-card__head { display: flex; align-items: center; gap: var(--space-3); min-width: 0; }
+.cat-card__code {
+    font-family: var(--font-mono);
+    font-size: 22px;
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.cat-card__desc { font-size: var(--font-size-md); color: var(--text-secondary); }
+.cat-card__facts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: var(--space-3) var(--space-5);
+    margin: 0;
+}
+.cat-card__facts dt {
+    font-size: var(--font-size-label);
+    font-weight: var(--font-weight-extrabold);
+    letter-spacing: var(--letter-spacing-label);
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+.cat-card__facts dd {
+    margin: 4px 0 0;
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+}
+.cat-card__facts .cat-card__wide { grid-column: 1 / -1; }
+.cat-card__actions { display: flex; justify-content: flex-end; margin-top: auto; }
+.cat-card__confirm {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--border-subtle);
+}
+.cat-card__sure { flex: 1; display: flex; flex-direction: column; gap: 2px; font-size: var(--font-size-base); color: var(--text-secondary); }
+.cat-card__sure b { color: var(--color-danger-fg); font-size: var(--font-size-md); }
+.cat-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: var(--touch-target-min);
+    margin: 0 var(--space-2) var(--space-2) 0;
+    padding: 0 var(--space-4);
+    border: 0;
+    border-radius: var(--radius-chip);
+    background: var(--bg-chip);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-bold);
+    cursor: pointer;
+}
+.cat-chip__icon { width: 20px; height: 20px; color: var(--text-secondary); }
+.cat-muted { color: var(--text-muted); font-weight: var(--font-weight-regular, 400); }
+@media (max-width: 1599px) {
+    .cat-head__title { font-size: 26px; }
+    .cat-list { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: var(--space-3); }
+    .cat-card__code { font-size: 19px; }
+}
+
+/* ---- dettaglio del Magazzino: Grigliato, Importa grigliato, Pezzo ----
+   Classe .conf-v3 sulla radice della pagina. Selettori con .shell davanti:
+   devono battere gli stili scoped delle pagine (caricati dopo). Solo
+   aspetto: titoli v3, card piene senza bordo, campi e +/- a 48 px (minimo
+   touch v3, prima 44). Campi, validazioni e chiamate non cambiano. */
+.shell .conf-v3 .view-title,
+.shell .conf-v3 .piece-header h1 {
+    font-size: 32px;
+    font-weight: var(--font-weight-extrabold);
+    letter-spacing: -0.01em;
+    text-transform: none;
+    color: var(--text-primary);
+}
+.shell .conf-v3 .piece-id { font-family: var(--font-mono); font-weight: var(--font-weight-semibold); }
+.shell .conf-v3 .grating-form-card,
+.shell .conf-v3 .piece-card,
+.shell .conf-v3 form.pure-form-stacked,
+.shell .conf-v3 .stats {
+    background: var(--bg-surface);
+    border: 0;
+    border-radius: var(--radius-lg);
+    padding: var(--card-padding);
+    box-sizing: border-box;
+}
+.shell .conf-v3 .field-label { text-align: left; }
+/* campi: selettori piu' specifici di quelli scoped delle pagine (form del
+   Grigliato e form allineato del Pezzo), che li fermavano a 44 */
+.shell .conf-v3 input[type="text"],
+.shell .conf-v3 input[type="number"],
+.shell .conf-v3 select,
+.shell .conf-v3 .grating-form-card input[type="text"],
+.shell .conf-v3 .grating-form-card select,
+.shell .conf-v3 .pure-form-aligned .pure-control-group input[type="text"],
+.shell .conf-v3 .pure-form-aligned .pure-control-group input[type="number"] { min-height: var(--touch-target-min); }
+.shell .conf-v3 .numeric-field .changeValue { min-width: var(--touch-target-min); min-height: var(--touch-target-min); }
+.shell .conf-v3 .numeric-field .num-input { min-height: var(--touch-target-min); }
+@media (max-width: 1599px) {
+    .shell .conf-v3 .view-title,
+    .shell .conf-v3 .piece-header h1 { font-size: 26px; }
+}

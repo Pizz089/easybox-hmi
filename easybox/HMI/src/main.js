@@ -21,6 +21,8 @@ import '@/assets/css/buttons.css'
 import '@/assets/css/dialogs.css'
 // (v3 fase B) pezzi comuni delle pagine Controlli: colonne, stato, segmenti
 import '@/assets/css/controls-v3.css'
+// (v3 fase C) cataloghi del Magazzino in card (Grigliati, Pezzi)
+import '@/assets/css/catalog-v3.css'
 // (v2 fase 1.2) campi form scuri: dopo pure.css e theme.css, che li facevano bianchi
 import '@/assets/css/forms.css'
 import '@/assets/css/layout-shell.css'

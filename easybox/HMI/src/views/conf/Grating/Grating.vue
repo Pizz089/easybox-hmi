@@ -23,7 +23,8 @@
 </script>
 
 <template>   
-      <div class="view-shell">
+      <!-- (v3 fase C) conf-v3: titolo, card e bersagli v3 (assets/css/catalog-v3.css) -->
+      <div class="view-shell conf-v3">
         <h2 v-if="!createNew" class="view-title">{{ $t('grating.data')}}  {{ $route.params.grating_ID }}</h2>
         <h2 v-if="createNew" class="view-title"> {{ $t('grating.createNew')}} </h2>
 

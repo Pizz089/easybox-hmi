@@ -570,7 +570,8 @@
     "Forma": "Forma",
     "PRISMATICO": "Prismatica",
     "CILINDRICO": "Cilindrica",
-    "onlyFor": "Solo per"
+    "onlyFor": "Solo per",
+    "listTitle": "Tipo pezzi"
   },
   "production": {
     "relaunch": {
