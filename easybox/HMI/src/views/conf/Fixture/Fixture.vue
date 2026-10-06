@@ -320,6 +320,33 @@ export default {
     .comp-align { margin-top: var(--space-3); min-height: 44px; }
     select { min-height: 44px; }
 
+    /* dialog di allineamento: la pagina usava le classi del dialog senza il
+       loro CSS (che sta scoped in ogni pagina che lo usa), e il dialog si
+       apriva in mezzo al modulo, senza velo e senza bloccare il resto.
+       Stessa copia di AttrezzaggiView. */
+    .mission-dialog-overlay {
+        position: fixed;
+        inset: 0;
+        background: var(--bg-backdrop);
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .mission-dialog {
+        background: var(--bg-surface);
+        border: var(--border-card);
+        border-radius: var(--radius-md);
+        box-shadow: var(--elevation-3);
+        padding: var(--space-4);
+        width: min(520px, 92vw);
+        max-height: 80vh;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-4);
+    }
+
     .pure-table-horizontal  #td {
         justify-content: center;
         display: flex;
