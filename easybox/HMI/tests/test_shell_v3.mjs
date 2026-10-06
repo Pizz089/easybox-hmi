@@ -74,8 +74,12 @@ const rail = readFileSync('src/layout/v3/NavRail.vue', 'utf8');
 check(/v-else type="button"[\s\S]{0,200}\$emit\('open-user'\)/.test(rail), 'voce senza schede -> cambio utente');
 
 console.log('\n3) HOLD / Riprendi / START della striscia = pulsante di robotView');
+// la striscia dalla mappa di oggi, il pulsante della pagina Robot dalla mappa
+// di RIFERIMENTO (prima delle fasi B-D): dalla fase B il HOLD sta solo nella
+// striscia, e deve fare esattamente cio' che faceva quello della pagina
 const g = JSON.parse(readFileSync('tests/golden/comandi.json', 'utf8'));
-const strip = g.pagine.StatusStrip.controlli, robot = g.pagine.robotView.controlli;
+const rif = JSON.parse(readFileSync('tests/golden/comandi_riferimento.json', 'utf8'));
+const strip = g.pagine.StatusStrip.controlli, robot = rif.pagine.robotView.controlli;
 const emitsIn = (ctrls, scen) => ctrls.filter(c => c.handler === 'sendToRobot(17)').map(c => c.esiti[scen]).filter(e => e && typeof e === 'object').flatMap(e => e.effetti);
 const coppie = [['robot in HOLD', 'HOLD liv2'], ['robot in AUTO', 'AUTO liv2'], ['robot spento', 'OFF liv2']];
 for (const [s, r] of coppie)
