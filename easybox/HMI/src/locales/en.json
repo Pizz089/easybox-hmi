@@ -325,6 +325,7 @@
     "numColumn": "number of columns",
     "numLine": "number of lines",
     "generate": "Generates Grating",
+    "associate": "Associate with tray",
     "delete": "The model will be deleted (no tray uses it).",
     "dimensioniPz": "Dimensions hole [mm]",
     "tray": "Tray",

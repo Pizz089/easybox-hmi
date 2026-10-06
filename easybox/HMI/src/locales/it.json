@@ -325,6 +325,7 @@
     "numColumn": "numero colonne",
     "numLine": "numero righe",
     "generate":"Genera Grigliato",
+    "associate": "Associa al cassetto",
     "delete": "Il modello verrà cancellato (nessun cassetto lo usa).",
     "dimensioniPz": "Dimensioni scasso [mm]",
     "tray": "Cassetto",
