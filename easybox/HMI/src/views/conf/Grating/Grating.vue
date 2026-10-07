@@ -317,8 +317,8 @@
                 </g>
                 <!-- origine del work object (0,0), come in TrayPockets -->
                 <g id="origin">
-                    <circle cx="0" cy="0" r="9" fill="#FFFFFF" stroke="#111111" stroke-width="1.5"/>
-                    <path d="M0 0 L9 0 A9 9 0 0 1 0 9 Z M0 0 L-9 0 A9 9 0 0 1 0 -9 Z" fill="#111111"/>
+                    <circle cx="0" cy="0" r="12" fill="#FFFFFF" stroke="#111111" stroke-width="1.5"/>
+                    <path d="M0 0 L12 0 A12 12 0 0 1 0 12 Z M0 0 L-12 0 A12 12 0 0 1 0 -12 Z" fill="#111111"/>
                 </g>
                 
                 <!-- (base-dxf 7/10) base del grigliato da Base.dxf: profilo, fori
@@ -350,7 +350,8 @@
                 <g id="pocketNumbers">
                     <text v-for="p in pocketsView" :key="'n' + p.n"
                         :x="p.w" :y="p.h" :font-size="pocketNumberSize"
-                        text-anchor="middle" dominant-baseline="central" fill="#2A3548">{{ p.n }}</text>
+                        text-anchor="middle" dominant-baseline="central" fill="#FFFFFF"
+                        stroke="#111111" stroke-width="2" paint-order="stroke">{{ p.n }}</text>
                 </g>
 
                 <!-- misure (solo stampa), vicino alla tasca 1. (verso 7/10 sera) la
