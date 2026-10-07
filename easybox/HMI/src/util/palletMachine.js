@@ -15,7 +15,7 @@
 //
 // IL PROBLEMA (simulazione del 7/10, problema 16): «In macchina» e «Rimuovi»
 // del Posiziona scrivevano solo il database, e il registro del PLC restava
-// com'era.
+// com'era. Dal 7/10 sera anche «Casella» di un pallet in macchina.
 // ============================================================================
 
 export const ECO_MC_MS = 3000;      // come la pagina Macchine dal 16/9
@@ -87,6 +87,30 @@ export function leggiRegistroMacchina(socket, ms = REGISTRO_MS) {
 		socket.on('DECLARE/MC1', suEco);
 		socket.emit('GRIPPER/REQUEST_SNAPSHOT');
 	});
+}
+
+// LA GUARDIA DEL 41 (7/10), la stessa in tutti i percorsi che tolgono un
+// pallet dalla macchina: «Rimuovi» e «Casella» del Posiziona, pallet a bordo
+// del robot (util/palletOnRobot.js).
+//   posPlant  POS_PLANT del pallet nel database
+//   registro  il registro della macchina (DB_MC1.pallet) letto ADESSO,
+//             undefined se non ha risposto
+// Ritorna { ok:true, mc }: mc = la macchina a cui mandare il 41, 0 = nessun
+// 41 (il pallet non e' in macchina, oppure il registro e' gia' a 0 e basta il
+// database: il 41 azzererebbe anche il pezzo in macchina). Oppure
+// { ok:false, motivo, parametri }:
+//   - nel registro c'e' un ALTRO pallet: il 41 toglierebbe quello, si dice quale;
+//   - il registro non ha risposto: niente 41 alla cieca, si riprova.
+// Il pannello legge il registro solo di MC1 (DECLARE/MC1 nello snapshot): per
+// un'altra macchina vale come non letto.
+export function guardia41({ palletId, posPlant, registro }) {
+	const id = Number(palletId), pp = Number(posPlant);
+	const mcDb = pp > 100 && pp < 1000 ? pp - 100 : 0;
+	if (registro === id) return { ok: true, mc: 1 };
+	if (mcDb === 0) return { ok: true, mc: 0 };
+	if (mcDb !== 1 || registro === undefined) return { ok: false, motivo: 'palletMachine.err.registerUnread', parametri: {} };
+	if (registro > 0) return { ok: false, motivo: 'palletMachine.err.otherInMachine', parametri: { id: registro } };
+	return { ok: true, mc: 0 };
 }
 
 // La posizione nel database DOPO l'eco (logica di CNC1View.applyPosPlant).

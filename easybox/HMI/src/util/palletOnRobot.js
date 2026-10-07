@@ -20,7 +20,10 @@
 // PALLET IN MACCHINA. Se il pallet risulta in macchina (POS_PLANT 100+n, o e'
 // quello del registro DB_MC1.pallet) prima si manda il 41, come la pagina
 // Macchine, e si aspetta la sua eco: il 35 non tocca quel registro. Se il 41
-// non conferma ci si ferma li'. NON si fa la scrittura REST che la pagina
+// non conferma ci si ferma li'. Il 41 passa dalla STESSA guardia di «Rimuovi»
+// e «Casella» del Posiziona (guardia41 di util/palletMachine.js): con un
+// altro pallet nel registro, o col registro non letto, nessun comando; col
+// registro gia' a 0 niente 41. NON si fa la scrittura REST che la pagina
 // Macchine fa dopo il 41 (MAG_POS=-1, POS_PLANT=0): azzererebbe la casa del
 // pallet, e POS_PLANT lo scrive il 35.
 //
@@ -28,7 +31,7 @@
 // robot»; Robot, «Dichiara quale pallet e' in pinza»).
 // ============================================================================
 import { dataStored } from '../data.js';
-import { aspettaEco, mandaComandoPallet, ECO_MC_MS, RIFIUTI_MC } from './palletMachine.js';
+import { aspettaEco, mandaComandoPallet, guardia41, ECO_MC_MS, RIFIUTI_MC } from './palletMachine.js';
 
 // attese, le stesse delle pagine che mandano gia' questi comandi
 export const ECO_41_MS = ECO_MC_MS;  // pagina Macchine (util/palletMachine.js)
@@ -90,11 +93,12 @@ export function pianoDichiarazione({ palletId, pallets, robotStatus, missioneInC
 	const gemella = righe.find(r => Number(r.ID) !== pinza);
 	const cont2 = gemella ? contenutoLato(gemella.STATUS) : 0;
 	if (cont2 === null) return no('palletOnRobot.err.side2Unknown', { id: gemella.ID, status: gemella.STATUS });
-	// pallet in macchina: POS_PLANT 100+n, oppure il registro della macchina
-	const pp = Number(pallet.POS_PLANT);
-	let mc = 0;
-	if (pp > 100 && pp < 1000) mc = pp - 100;
-	else if (Number(s.mc1Pallet) === Number(pallet.ID)) mc = 1;
+	// pallet in macchina: POS_PLANT 100+n, oppure il registro della macchina.
+	// (7/10) la guardia del 41 di «Rimuovi»: prima il 41 partiva anche con un
+	// altro pallet nel registro (e lo toglieva) o col registro non letto
+	const g = guardia41({ palletId: pallet.ID, posPlant: pallet.POS_PLANT, registro: s.mc1Pallet });
+	if (!g.ok) return no(g.motivo, g.parametri);
+	const mc = g.mc;
 	return {
 		ok: true,
 		pallet,

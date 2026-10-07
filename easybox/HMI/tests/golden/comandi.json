@@ -11761,22 +11761,10 @@
       "posiziona 901, posto 20": {
        "abilitato": true,
        "effetti": [
-        "fetch GET api/conf/pallet/updatePallet?ID=901&FAMILY=PAL-PROVA&DESCR=pallet+prova+A&X=400000&Y=400000&Z=100000&X_CORR=0&Y_CORR=0&Z_CORR=0&MAG=1&MAG_POS=20&POS_PLANT=0",
-        "fetch GET api/conf/position/warehouseSlot/occupy/WPALLET/20",
-        "fetch GET api/conf/position/warehouseSlot/free/WPALLET/3",
-        "fetch GET api/conf/pallet/show/all",
-        "fetch GET api/conf/vice/show/all",
-        "fetch GET api/conf/fixture/show/all",
-        "fetch GET api/conf/fixture/showFixtureOnPallet/all",
-        "fetch GET api/conf/position/showWarehouse/WPALLET",
-        "fetch GET api/order/show/all"
+        "emit GRIPPER/REQUEST_SNAPSHOT undefined"
        ],
        "stato": [
-        "vm.pallets = []",
-        "vm.fixtures = []",
-        "vm.wpallet = []",
-        "vm.placeTarget = null",
-        "vm.placeSel = null"
+        "vm.placeBusy = true"
        ]
       },
       "posiziona 901, fuori magazzino": {

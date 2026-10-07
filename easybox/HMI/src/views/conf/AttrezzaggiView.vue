@@ -22,7 +22,7 @@
     import { dichiaraPalletABordo, messaggioEsito } from '../../util/palletOnRobot.js';
     // (7/10) «In macchina» e «Rimuovi»: 40 / 41 con l'eco, poi il database
     // (la logica della pagina Macchine, util/palletMachine.js)
-    import { mandaComandoPallet, scriviPosizione, leggiRegistroMacchina, messaggioEsitoMacchina } from '../../util/palletMachine.js';
+    import { mandaComandoPallet, scriviPosizione, leggiRegistroMacchina, guardia41, messaggioEsitoMacchina } from '../../util/palletMachine.js';
 </script>
 
 <template>
@@ -443,33 +443,51 @@ export default {
         },
         // (7/10) «Rimuovi» (fuori magazzino): se il pallet e' in macchina
         // (database POS_PLANT 100+n, o registro DB_MC1.pallet) prima il 41 con
-        // la sua eco, poi il database (MAG_POS -1, POS_PLANT 0). Il 41 si manda
-        // solo se il registro ha QUESTO pallet o non e' noto: con un altro
-        // pallet nel registro non si tocca niente (il 41 toglierebbe quello);
-        // col registro gia' a 0 basta il database. Un pallet a magazzino non
-        // riguarda la macchina: solo il database, come prima.
+        // la sua eco, poi il database (MAG_POS -1, POS_PLANT 0). Il 41 passa
+        // dalla guardia comune (guardia41 di util/palletMachine.js): con un
+        // altro pallet nel registro non si tocca niente (il 41 toglierebbe
+        // quello); col registro non letto niente 41 alla cieca; col registro
+        // gia' a 0 basta il database. Un pallet a magazzino non riguarda la
+        // macchina: solo il database, come prima.
         async confirmRemove(){
             const t = this.placeTarget;
             if (!t || this.placeBusy) return;
             const id = Number(t.ID);
             const socket = dataStored.WS.socket;
-            const pp = Number(t.POS_PLANT);
-            let mc = pp > 100 && pp < 1000 ? pp - 100 : 0;
             this.placeBusy = true;
-            let esito = { ok: true }, scritto = null;
+            let esito, scritto = null;
             try {
-                const reg = await leggiRegistroMacchina(socket);
-                if (reg === id) mc = 1;
-                else if (mc === 1 && reg === 0) mc = 0;
-                else if (mc === 1 && reg > 0) esito = { ok: false, motivo: 'palletMachine.err.otherInMachine', parametri: { id: reg } };
-                if (esito.ok && mc > 0) esito = await mandaComandoPallet(socket, { mc, tipo: 'clear' });
-                if (esito.ok) scritto = await scriviPosizione({ server: dataStored.server, tipo: 'clear', palletId: id, mc: mc || 1, liberaCasella: true });
+                const g = guardia41({ palletId: id, posPlant: t.POS_PLANT, registro: await leggiRegistroMacchina(socket) });
+                esito = g;
+                if (g.ok && g.mc > 0) esito = await mandaComandoPallet(socket, { mc: g.mc, tipo: 'clear' });
+                if (esito.ok) scritto = await scriviPosizione({ server: dataStored.server, tipo: 'clear', palletId: id, mc: g.mc || 1, liberaCasella: true });
             } finally {
                 this.placeBusy = false;
             }
             this.esitoMacchina(esito, scritto, 'clear');
         },
-        // esito comune di «In macchina» e «Rimuovi»
+        // (7/10) «Casella» di un pallet che risulta in macchina (database
+        // POS_PLANT 100+n, o registro DB_MC1.pallet = quel pallet): come
+        // «Rimuovi», prima il 41 con la stessa guardia e la sua eco, poi il
+        // database con la casella scelta (MAG_POS = casella, POS_PLANT 0),
+        // scritto come prima da writeSlot. Prima scriveva solo il database e il
+        // registro della macchina restava sul pallet. Un pallet a magazzino:
+        // nessun 41, solo il database come prima.
+        async confirmSlot(t, sel){
+            if (this.placeBusy) return;
+            const socket = dataStored.WS.socket;
+            this.placeBusy = true;
+            let esito;
+            try {
+                esito = guardia41({ palletId: t.ID, posPlant: t.POS_PLANT, registro: await leggiRegistroMacchina(socket) });
+                if (esito.ok && esito.mc > 0) esito = await mandaComandoPallet(socket, { mc: esito.mc, tipo: 'clear' });
+            } finally {
+                this.placeBusy = false;
+            }
+            if (!esito.ok) { this.esitoMacchina(esito, null, 'clear'); return; }
+            this.writeSlot(t, sel);
+        },
+        // esito comune di «In macchina», «Rimuovi» e della guardia di «Casella»
         esitoMacchina(esito, scritto, tipo){
             if (!esito.ok) {
                 dataStored.alert.title = this.$t('WARNING');
@@ -562,9 +580,15 @@ export default {
             // 41 con la loro eco, e SOLO dopo la scrittura nel database, con
             // gli stessi valori di prima. Simulazione del 7/10, problema 16:
             // scrivevano solo il database e il registro DB_MC1.pallet restava
-            // com'era. Qui sotto resta la sola casella.
+            // com'era. Resta la casella: prima la guardia del 41 (confirmSlot),
+            // poi il database come prima (writeSlot).
             if (isMachine) { this.confirmInMachine(machineN); return; }
             if (sel === -1) { this.confirmRemove(); return; }
+            this.confirmSlot(t, sel);
+        },
+        // «Casella»: la scrittura nel database, invariata (dopo l'eco del 41
+        // se il pallet era in macchina)
+        writeSlot(t, sel){
             // TRAPPOLA NOTA (incidente storico form Pallet, 396000->396):
             // update PASS-THROUGH — la riga viene rimandata ESATTAMENTE come
             // letta da show/all (X/Y/Z/CORR/FAMILY/DESCR/MAG mai toccati ne'

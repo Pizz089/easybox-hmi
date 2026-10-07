@@ -72,7 +72,10 @@ export const AMMESSE = [
 	{ pagina: 'AttrezzaggiView', tipo: 'cambiato', firma: /^fetch GET api\/conf\/pallet\/updatePallet\?ID=\d+&.*&MAG_POS=-1&POS_PLANT=(0|101)( \| .*)?$/,
 		motivo: '«In macchina» e «Rimuovi» non scrivono piu\' subito il database (simulazione del 7/10, problema 16: DB_MC1.pallet restava com\'era). La stessa scrittura, con gli stessi valori, arriva dopo il 40;<pallet> / 41 e la sua eco (util/palletMachine.js, la logica della pagina Macchine); 947 o niente eco: nessuna scrittura. Coperto da test_pallet_machine.mjs' },
 	{ pagina: 'AttrezzaggiView', tipo: 'cambiato', firma: /^emit GRIPPER\/REQUEST_SNAPSHOT undefined$/,
-		motivo: 'primo passo della conferma di «In macchina» / «Rimuovi»: si legge il registro della macchina (snapshot DECLARE/MC1) prima di decidere se mandare il 40 / 41; il resto (comando, eco, database) e\' asincrono e lo copre test_pallet_machine.mjs' },
+		motivo: 'primo passo della conferma di «In macchina» / «Rimuovi» e (7/10 sera) «Casella»: si legge il registro della macchina (snapshot DECLARE/MC1) prima di decidere se mandare il 40 / 41; il resto (comando, eco, database) e\' asincrono e lo copre test_pallet_machine.mjs' },
+	// ---- Posiziona: «Casella» di un pallet in macchina col 41 (7/10 sera, da ui-lifting d3dee0f)
+	{ pagina: 'AttrezzaggiView', tipo: 'cambiato', firma: /^fetch GET api\/conf\/pallet\/updatePallet\?ID=\d+&.*&MAG_POS=\d+&POS_PLANT=0 \| fetch GET api\/conf\/position\/warehouseSlot\/occupy\/WPALLET\/\d+( \| .*)?$/,
+		motivo: '«Casella» non scrive piu\' subito il database: prima legge il registro della macchina e, se il pallet e\' in macchina, manda il 41 con la stessa guardia di «Rimuovi» (guardia41) e ne aspetta l\'eco. Poi la stessa scrittura di prima, con gli stessi valori (MAG_POS = casella, POS_PLANT 0, occupy della casella, free della provenienza). Pallet a magazzino: nessun 41, la stessa scrittura dopo la lettura del registro. Coperto da test_pallet_machine.mjs' },
 	{ pagina: 'smallboxView', tipo: 'tolto', firma: /^emit TO_PLANT\/CMD\/ROBOT 26$/,
 		motivo: '"Inserisci cassetto" tolto dai Controlli EasyBox (decisione di Dario): era sempre spento, perche\' la sua condizione RobotInLocalMode non la scrive nessuno (le assegnazioni in robotView sono commentate). Il cassetto si rilascia da Robot -> Gestione cassetto' },
 ];

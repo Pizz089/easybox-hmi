@@ -30,11 +30,11 @@ su un errore (problema 9 di [SIMULAZIONE-2026-10-07.md](SIMULAZIONE-2026-10-07.m
 
 **Trovato il** 2026-10-07, limiti della consegna 33.
 
-## [ ] Simulazione 7/10, problema 1: [S1] il riarmo azzera il PLC mentre il robot riprende la missione
+## [x] Simulazione 7/10, problema 1: [S1] il riarmo azzera il PLC mentre il robot riprende la missione
 
 **Cosa.** `Start_AUX` (%I230.2) o `ResetAreaRobot` (%I33.5), letti a livello, azzerano le catene di FB7, il ponte SQL, `Command`, `MissionCode` e il master di FB204; il robot invece riprende la missione. Spiega l'incidente del pallet del 6/10. Della stessa famiglia il reset 99, i posizionamenti in HOLD e il 18.
 
-**Stato.** da progettare con il robotista, insieme al problema 15 e al pezzo in macchina ritentivo. Finche' non e' corretto vale la regola provvisoria scritta nel documento (riarmo solo dopo un'emergenza; con una missione in corso lasciarla finire e controllare i registri, oppure «Reimposta stato cella»).
+**Stato.** chiuso con procedura (decisione di Dario del 7/10, DECISIONI.md): nessuna correzione PLC. Dopo un'emergenza: HOLD, RESTART MAIN PROGRAM, HOME, poi Reimposta stato cella, più pallet in macchina e tasche se toccati. I 7 passi sono in APPUNTI-CELLA.md, «Riarmo dopo un'emergenza». Il punto aperto col robotista è chiuso: il 7/10 ha confermato che RESTART MAIN PROGRAM, in HOLD, abbandona la missione e mette il robot in attesa della prossima, e che i ritorni in home sono sicuri da qualunque punto. Il problema 15 e il pezzo in macchina ritentivo restano nelle loro voci.
 
 **Dettagli e direzione:** [SIMULAZIONE-2026-10-07.md](SIMULAZIONE-2026-10-07.md), problema 1.
 
@@ -168,7 +168,7 @@ su un errore (problema 9 di [SIMULAZIONE-2026-10-07.md](SIMULAZIONE-2026-10-07.m
 
 **Cosa.** Il registro `DB_MC1.pallet` restava com'era, e FB204 decide su quello.
 
-**Stato.** chiuso nel pannello il 7/10 (9c507df): le due destinazioni passano dal PLC (40/41 con l'eco) col modulo `util/palletMachine.js`; 947 o niente eco = nessuna scrittura. Da mettere in servizio aggiornando il pannello.
+**Stato.** chiuso nel pannello il 7/10 (9c507df): le due destinazioni passano dal PLC (40/41 con l'eco) col modulo `util/palletMachine.js`; 947 o niente eco = nessuna scrittura. Da mettere in servizio aggiornando il pannello. 7/10 sera: anche «Casella» di un pallet in macchina passa prima dal 41. La guardia del 41 (`guardia41`) è una sola per «Rimuovi», «Casella» e il pallet a bordo del robot: con un altro pallet nel registro, o col registro non letto, nessun comando e nessuna scrittura.
 
 **Dettagli e direzione:** [SIMULAZIONE-2026-10-07.md](SIMULAZIONE-2026-10-07.md), problema 16.
 
