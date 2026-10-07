@@ -32,13 +32,23 @@ powershell -ExecutionPolicy Bypass -File D:\Prog\easybox\tools\servizi-cella.ps1
 powershell -ExecutionPolicy Bypass -File D:\Prog\easybox\tools\servizi-cella.ps1 -Azione rimuovi
 ```
 
-- `stato`: servizi, porte 8080/3000/5173, ultime righe dei log. Non cambia niente.
+- `stato`: servizi (per uno in Paused, il motivo dagli ultimi eventi nssm), chi tiene le porte 8080/3000/5173 e se è il processo del servizio giusto (8080 e 3000 il backend, 5173 il pannello), avvii automatici delle vecchie finestre, ultime righe dei log. Non cambia niente; non serve l'amministratore (ma senza, la riga di comando dei processi può mancare).
 - `prova`: tutti i controlli di `installa` e i 34 comandi nssm che eseguirebbe (17 per servizio), senza eseguirli. Non cambia niente.
-- `installa`: copia nssm, crea i due servizi, li avvia e aspetta le porte. Si ferma se non e' amministratore, se i servizi esistono gia', se c'e' un altro servizio nssm o se le porte sono occupate (prima: cella in HOLD, Ctrl+C nelle due finestre). Se un passo fallisce toglie quello che ha creato.
-- `riavvia`: riavvia i due servizi (node non rilegge i file da solo).
+- `installa`: copia nssm, crea i due servizi, li avvia e aspetta le porte. Si ferma se non e' amministratore, se i servizi esistono gia', se c'e' un altro servizio nssm o se le porte sono occupate (prima: cella in HOLD, Ctrl+C nelle due finestre). Se un passo fallisce toglie quello che ha creato. Segnala (non tocca) gli avvii automatici delle vecchie finestre.
+- `riavvia`: ferma i due servizi, aspetta che le porte si liberino, chiude **solo** i node rimasti sulle tre porte (ne scrive pid, ora di avvio e riga di comando), riavvia i servizi e controlla che siano Running e che le porte siano loro. Altrimenti esce in errore. Un processo sulle porte che non è node non lo chiude: si ferma, coi servizi fermi.
 - `rimuovi`: ferma e toglie **solo** `EasyBoxBackend` ed `EasyBoxPannello`.
 
 Dopo un pull i servizi si riavviano con `-Azione riavvia`, oppure li riavvia `pannello.ps1` (procedura qui sotto).
+
+**7/10: servizi in Paused, le porte tenute dalle vecchie finestre.** Dagli eventi nssm i due servizi uscivano con codice 1 (EADDRINUSE) almeno dalle 13:02. Le porte le tenevano i node avviati dalle vecchie finestre cmd (`start_server.bat`, `start_hmi.bat`), che partono ancora all'accesso a Windows. Le finestre partono prima dei servizi, che hanno l'avvio ritardato: i loro node prendono 8080, 3000 e 5173. nssm rilancia node, node esce subito, e nssm mette il servizio in **Paused**. Sistemato a mano chiudendo quei node e riavviando i servizi. **Da fare con Dario: togliere l'avvio automatico delle finestre**, altrimenti si ripete a ogni accesso a Windows. Dove guardare: le cartelle Esecuzione automatica (comune e di ogni utente), le chiavi `Run`/`RunOnce`, le operazioni pianificate; `-Azione stato` e `-Azione installa` le elencano.
+
+Procedura, se i servizi sono in Paused o le porte non sono loro:
+1. cella in HOLD;
+2. `-Azione stato`: dice per ogni porta chi la tiene (pid, ora di avvio, padre, riga di comando) e se è del servizio; per un servizio in Paused, gli ultimi eventi nssm (codice di uscita, riavvio ritardato); gli avvii automatici trovati;
+3. `-Azione riavvia`, da amministratore: chiude solo i node rimasti sulle porte e rimette su i servizi. Se esce in errore, i servizi possono essere fermi: rimetterli su con le finestre dei `.bat` e chiamare Dario con la finestra;
+4. alla fine `-Azione stato`: due servizi Running, tre porte «del servizio».
+
+`pannello.ps1` riavvia i servizi ma non chiude i node delle vecchie finestre: se dopo un aggiornamento le porte non tornano, si usa `-Azione riavvia`.
 
 **Riserva: i due `.bat`**, che non sono nel repo, ciascuno nella sua finestra. Si usano solo dopo `-Azione rimuovi` (con i servizi accesi le porte sono occupate):
 - backend: `D:\Prog\easybox\serverDati\start_server.bat` (`timeout /t 10`, `cd /d`, `mkdir log`, `node --max-old-space-size=1024 server.js`, `pause`);
