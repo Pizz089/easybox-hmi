@@ -140,6 +140,39 @@ Nel working tree di cella ci sono file non tracciati che il `.gitignore` non esc
    - stato del robot che si aggiorna;
    - `DB_executeQuery.readyForNextQuery` TRUE.
 
+## [ ] 2026-10-07 — Base dei grigliati: `Base.dxf` nella cartella dei modelli
+
+**Cosa.** Dal 7/10 la pagina Grigliato non disegna più una base scritta nel codice: profilo esterno, fori e testi vengono da `Base.dxf`, nella cartella `Grating_model_dir` del `.env` del backend (la stessa dei modelli SVG del pannello). Il file **non sta nel repo**: il repo è pubblico, e in cella `git pull` sovrascriverebbe un file non tracciato allo stesso percorso. Decisione in DECISIONI.md.
+
+**Dove metterlo.** La cartella si legge nel `.env` di cella:
+```
+Select-String -Path D:\Prog\easybox\serverDati\.env -Pattern Grating_model_dir
+```
+Il file va lì, col nome esatto `Base.dxf`.
+
+**Come si sostituisce.** Si copia il file nuovo col nome `Base.dxf`, sovrascrivendo il vecchio, e si riapre la pagina del grigliato. Niente riavvii e niente build: il backend legge il file a ogni apertura della pagina (`GET /api/conf/grating/base`) e il browser non lo tiene in cache. Massimo 5 MB.
+
+**Cosa vuol dire la riga rossa** (sopra il disegno): la base manca o non è valida. Il messaggio dice perché e quale file è stato cercato. Con la riga rossa **DXF e stampa PDF sono bloccati**; generazione, salvataggio e modello SVG funzionano lo stesso.
+- «Base.dxf non trovato»: manca il file nella cartella del percorso indicato;
+- «Grating_model_dir non è impostata»: manca la riga nel `.env` del backend (non si cerca altrove);
+- «chiudi il profilo (JOIN)», «unisci il profilo in una polilinea», «ne serve una sola», «manca il profilo»: il profilo va corretto nel CAD;
+- «non sta nel cassetto W×H»: origine non in alto a sinistra, oppure quote non in mm (un disegno in pollici sta tutto in un angolo).
+
+La **riga gialla** porta gli avvisi (es. unità dichiarate in pollici, fori fuori dal layer HOLES): il file si usa lo stesso, la riga si chiude con ×. La riga sotto il disegno dice quale file è in uso, la data di modifica e quanti fori ha. Le **tasche in rosso**, con l'elenco sopra il disegno, sono a meno di 3 mm di materiale da un foro o dal profilo (valore da confermare): solo un avviso, DXF e stampa chiedono «Esportare comunque?».
+
+**Le regole del file:**
+- vista lato operatore: il grigliato come lo inserisce l'operatore nel cassetto, la scritta «Robot» sul lato lontano;
+- 0,0 in alto a sinistra del rettangolo del cassetto, X verso destra, **Y negativa verso il basso**;
+- profilo: **una sola polilinea chiusa** (2D, archi ammessi) sul layer `PROFILE`; niente linee o archi sciolti;
+- fori: cerchi, meglio sul layer `HOLES` (su un altro layer valgono lo stesso, con un avviso); il layer `PIECES` è delle tasche e nella base si ignora;
+- testi facoltativi: si disegnano in grigio, non vanno nel DXF esportato; blocchi (`INSERT`) da esplodere;
+- DXF ASCII, quote in **mm**: `$INSUNITS` e `$EXTMIN/$EXTMAX` non si usano;
+- per il robot, l'origine del work object è l'angolo opposto: **(W, −H)**, in basso a destra, dove sta la tasca 1.
+
+Il DXF esportato dalla pagina sta nello stesso frame e si sovrappone 1:1 a `Base.dxf`.
+
+**Messa in servizio:** dopo `git pull` e `servizi-cella.ps1 -Azione aggiorna` (che ricompila il pannello e riavvia anche il backend, con la route nuova), copiare `Base.dxf` nella cartella e aprire un grigliato. Col file del 7/10 attesi: nessuna riga rossa, riga gialla per le unità in pollici e per gli 8 fori sul layer 0, riga sotto il disegno con 8 fori.
+
 ## [ ] 2026-10-07 — Consegna 34 (7/10): uncino per i cassetti e pinza ferma col cassetto fuori
 
 **Cosa.** PLC, la scarica Dario (scaricata il 7/10 verso le 13:45, insieme alla 33): file `34_FB7_uncino_e_cassetto_fuori.scl`, solo FB_Robot, sulla base della consegna 33 (i blocchi non si sovrappongono, si può scaricare nella stessa finestra). Decisioni di Dario del 7/10 in DECISIONI.md: l'uncino è un dato dell'anagrafica (`GRIPPER.HAS_HOOK`); senza una pinza adatta a bordo il PLC va a prendersi quella con l'uncino; anche il rilascio vuole l'uncino; con un cassetto aperto niente pinze dallo scaffale.

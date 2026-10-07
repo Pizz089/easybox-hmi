@@ -2,6 +2,15 @@
 
 Decisioni di Dario che vincolano codice, dati e procedure in cella; la più recente in alto. Il come (script, comandi, ordine degli interventi) sta in [APPUNTI-CELLA.md](APPUNTI-CELLA.md).
 
+**Base dei grigliati da `Base.dxf` (7/10).** Il profilo esterno e i fori del grigliato non sono più scritti nel codice di Grating.vue: il pannello li legge da `Base.dxf`, nella cartella `Grating_model_dir` del backend, fuori dal repo. Se cambia il disegno si sostituisce il file, senza toccare il codice e senza build.
+1. Il DXF è il grigliato **come lo inserisce l'operatore nel cassetto, visto dal lato operatore**: 0,0 in alto a sinistra, Y negativa verso il basso, la scritta «Robot» sul lato lontano dall'operatore.
+2. È la stessa vista dell'anteprima di Grating.vue, che **non cambia verso**: la base non si ruota (`x_svg = x_dxf`, `y_svg = −y_dxf`). Il robot vede il cassetto ruotato di 180°, come già nel codice, che non si tocca: una tasca in coordinate robot (X, Y) µm sta nel DXF in (W − Y/1000, X/1000 − H), e l'origine del work object è l'angolo (W, −H), dove nasce la tasca 1.
+3. Il DXF di fabbricazione esce **nel frame di Base.dxf** e ci si sovrappone 1:1. Rispetto ai DXF esportati fino al 7/10, che avevano `y = H − y_svg`, è solo **traslato di H** in Y, non ruotato. Profilo e fori si copiano dal file letto, bulge compresi; i testi della base non si esportano; `$INSUNITS` resta 4 (mm).
+4. Un file di fabbricazione senza base non esce: con `Base.dxf` assente o non valido DXF e stampa PDF sono bloccati; generazione, salvataggio e modello SVG restano possibili.
+5. Le tasche troppo vicine a un foro o al profilo sono **solo un avviso** (in rosso nell'anteprima, conferma su DXF e stampa). Il materiale minimo `BASE_WEB_MM = 3` mm è **da confermare con Dario** (LAVORI-IN-CODA).
+
+Dove si mette il file, come si sostituisce, le regole del disegno e cosa vuol dire la riga rossa: APPUNTI-CELLA.md, «Base dei grigliati».
+
 **Pannello compilato in cella (7/10).** In cella il pannello non lo serve più il server di sviluppo di Vite, che compila i moduli alla prima richiesta e al primo caricamento ci mette troppo. Il pannello si compila **in cella** (`vite build` → `easybox\HMI\dist`, col `.env` della cella) e il servizio `EasyBoxPannello` lo serve con `vite preview`, con lo stesso proxy e lo stesso HTTPS, sulla stessa porta 5173. Dopo ogni git pull si ricompila con `servizi-cella.ps1 -Azione aggiorna`; si torna al server di sviluppo con `-Azione dev`. Il pacchetto compilato non va nel repo. L'avvio ritardato dei servizi (circa 2,5 minuti dall'accensione) resta: si decide a parte. Procedura e tempi in APPUNTI-CELLA.md.
 
 **Velocità del robot su %QW650 (7/10).** `Sys_SetRobotspeed` è stato spostato da %QW512 a %QW650 (al posto di `spare_9`) da Dario e dal robotista; il lato robot è allineato e legge la velocità dalla parola nuova. Chiude il dubbio del commit 896cb8f. Il PLC la scrive da `FB_RobotEfort`, a ogni ciclo, col valore che il pannello manda col comando 100.
