@@ -215,18 +215,18 @@ Il file va lì, col nome esatto `Base.dxf`.
 - «chiudi il profilo (JOIN)», «unisci il profilo in una polilinea», «ne serve una sola», «manca il profilo»: il profilo va corretto nel CAD;
 - «non sta nel cassetto W×H»: origine non in alto a sinistra, oppure quote non in mm (un disegno in pollici sta tutto in un angolo).
 
-La **riga gialla** porta gli avvisi (es. unità dichiarate in pollici, fori fuori dal layer HOLES): il file si usa lo stesso, la riga si chiude con ×. La riga sotto il disegno dice quale file è in uso, la data di modifica e quanti fori ha. Le **tasche in rosso**, con l'elenco sopra il disegno, sono a meno di 3 mm di materiale da un foro o dal profilo (valore da confermare): solo un avviso, DXF e stampa chiedono «Esportare comunque?».
+La **riga gialla** porta gli avvisi (es. unità dichiarate in pollici, fori fuori dal layer HOLES): il file si usa lo stesso, la riga si chiude con ×. La riga sotto il disegno dice quale file è in uso, la data di modifica e quanti fori ha. Le **tasche in rosso**, con l'elenco in giallo sopra il disegno, sono a meno di 3 mm di materiale da un foro o dal profilo (valore da confermare con la misura delle viti): solo un avviso, DXF e stampa chiedono «Esportare comunque?».
 
 **Le regole del file:**
-- vista lato operatore: il grigliato come lo inserisce l'operatore nel cassetto, la scritta «Robot» sul lato lontano;
-- 0,0 in alto a sinistra del rettangolo del cassetto, X verso destra, **Y negativa verso il basso**;
+- vista lato operatore: il grigliato come lo inserisce l'operatore nel cassetto, la scritta «Robot» sul lato lontano, in alto;
+- 0,0 in alto a sinistra del rettangolo del cassetto, X verso destra, **Y negativa verso il basso**. **Lo 0,0 è l'origine del work object** del robot;
 - profilo: **una sola polilinea chiusa** (2D, archi ammessi) sul layer `PROFILE`; niente linee o archi sciolti;
 - fori: cerchi, meglio sul layer `HOLES` (su un altro layer valgono lo stesso, con un avviso); il layer `PIECES` è delle tasche e nella base si ignora;
 - testi facoltativi: si disegnano in grigio, non vanno nel DXF esportato; blocchi (`INSERT`) da esplodere;
 - DXF ASCII, quote in **mm**: `$INSUNITS` e `$EXTMIN/$EXTMAX` non si usano;
-- per il robot, l'origine del work object è l'angolo opposto: **(W, −H)**, in basso a destra, dove sta la tasca 1.
+- il DXF, la pagina Cassetti e l'anteprima del Grigliato sono tutti in **vista lato operatore**: tasca 1 in alto a sinistra, vicino allo 0,0, lato robot in alto. Per il robot, che sta dal lato opposto, la tasca 1 è in basso a destra (correzione della sera del 7/10: qui c'era scritto che l'origine era l'angolo (W, −H), ed era sbagliato).
 
-Il DXF esportato dalla pagina sta nello stesso frame e si sovrappone 1:1 a `Base.dxf`.
+Il DXF esportato dalla pagina sta nello stesso frame e si sovrappone 1:1 a `Base.dxf`: una tasca robot (X, Y) µm cade in (Y/1000, −X/1000).
 
 **Messa in servizio:** dopo `git pull` e `servizi-cella.ps1 -Azione aggiorna` (che ricompila il pannello e riavvia anche il backend, con la route nuova), copiare `Base.dxf` nella cartella e aprire un grigliato. Col file del 7/10 attesi: nessuna riga rossa, riga gialla per le unità in pollici e per gli 8 fori sul layer 0, riga sotto il disegno con 8 fori.
 
