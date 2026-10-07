@@ -18,13 +18,17 @@
 #
 #   stato     servizi (se uno e' in Paused, il motivo dagli ultimi eventi
 #             nssm), chi tiene le porte 8080/3000/5173 e se e' il processo del
-#             servizio, avvii automatici delle vecchie finestre, ultime righe
-#             dei log. Non cambia niente.
+#             servizio, avvii automatici delle vecchie finestre (le operazioni
+#             pianificate solo se attive), ultime righe dei log. Non cambia
+#             niente.
 #   prova     fa tutti i controlli di installa e stampa i comandi nssm che
 #             eseguirebbe. Non cambia niente.
 #   installa  copia nssm.exe in Programmi\nssm, crea i due servizi, li avvia e
 #             aspetta le porte. Se un passo fallisce toglie quello che ha creato.
-#             Segnala (non tocca) gli avvii automatici delle vecchie finestre.
+#             Prima di tutto segnala gli avvii automatici delle vecchie finestre
+#             e propone di disabilitare le operazioni pianificate attive (solo
+#             con una "s"; prima ne salva la definizione). Anche coi servizi
+#             gia' installati, prima di fermarsi.
 #   riavvia   ferma i due servizi, aspetta che le porte si liberino, chiude i
 #             soli node rimasti sulle tre porte (le vecchie finestre), li
 #             riavvia e controlla che siano Running e che le porte siano loro.
@@ -39,7 +43,12 @@
 # start_hmi.bat), che partivano ancora all'accesso a Windows, PRIMA dei
 # servizi (avvio ritardato). nssm rilanciava node, node usciva subito, e nssm
 # metteva il servizio in Paused. Si e' sistemato a mano chiudendo quei node e
-# riavviando i servizi; l'avvio automatico delle finestre si toglie con Dario.
+# riavviando i servizi. CAUSA trovata il 7/10: quattro operazioni pianificate
+# all'accesso, \EasyBox Server (cmd /k ... npx nodemon server.js),
+# \ServerDati (start_server.bat), \EasyBox HMI (cmd /k ... npm run dev) e \HMI
+# (start_hmi.bat). Disabilitate da Dario ed esportate in
+# D:\EasyBox_backup\task_2026-10-07. nodemon in piu' riavviava il backend a
+# ogni git pull.
 #
 # Scelte:
 #   - avvio automatico RITARDATO (circa 2 minuti dopo l'accensione): SQL Server
@@ -84,7 +93,7 @@ $PORTE = @(8080, 3000, 5173)
 # (7/10) di chi e' ogni porta: 8080 HTTP e 3000 socket.io del backend, 5173 Vite
 $PORTA_SERVIZIO = @{ 8080 = $S_B; 3000 = $S_B; 5173 = $S_P }
 # (7/10) cosa fa pensare a un avvio di backend o pannello fuori dai servizi
-$AVVIO_SOSPETTO = '(?i)start_server|start_hmi|easybox|serverDati|vite'
+$AVVIO_SOSPETTO = '(?i)start_server|start_hmi|serverDati|\bnode(\.exe)?\b|\bnpm|nodemon|vite|easybox'
 
 function Scrivi([string]$testo, [string]$colore = 'Gray') { Write-Host $testo -ForegroundColor $colore }
 function Fermati([string]$perche, [string]$cosaFare) {
@@ -224,9 +233,9 @@ function ChiudiNodeSullePorte($rimasti) {
 
 # (7/10) AVVII AUTOMATICI DELLE VECCHIE FINESTRE: cartelle Esecuzione
 # automatica (comune e di ogni profilo), chiavi Run e RunOnce (macchina, 64 e
-# 32 bit, e utenti col profilo caricato), operazioni pianificate. Si cerca un
-# riferimento a backend o pannello ($AVVIO_SOSPETTO). Solo lettura: toglierli
-# si decide con Dario.
+# 32 bit, e utenti col profilo caricato). Si cerca un riferimento a backend o
+# pannello ($AVVIO_SOSPETTO). Solo lettura. Le operazioni pianificate sono a
+# parte (OperazioniSospette), perche' hanno uno stato e si possono disabilitare.
 function AvviiAutomatici {
 	$trovati = @()
 	$cartelle = @(Join-Path $env:ProgramData 'Microsoft\Windows\Start Menu\Programs\StartUp')
@@ -257,20 +266,72 @@ function AvviiAutomatici {
 			if ([string]$v.Value -match $AVVIO_SOSPETTO) { $trovati += [pscustomobject]@{ Dove = $k; Cosa = $v.Name + ' = ' + $v.Value } }
 		}
 	}
-	foreach ($t in @(Get-ScheduledTask -ErrorAction SilentlyContinue)) {
-		foreach ($az in @($t.Actions)) {
-			$cmd = ([string]$az.Execute + ' ' + [string]$az.Arguments + ' (in ' + [string]$az.WorkingDirectory + ')').Trim()
-			if ($cmd -match $AVVIO_SOSPETTO) { $trovati += [pscustomobject]@{ Dove = 'Operazione pianificata ' + $t.TaskPath + $t.TaskName + ' (' + $t.State + ')'; Cosa = $cmd } }
-		}
-	}
 	return ,$trovati
 }
-function MostraAvvii {
-	$trovati = AvviiAutomatici
-	if ($trovati.Count -eq 0) { Scrivi 'Avvii automatici di backend o pannello fuori dai servizi: nessuno (Esecuzione automatica, chiavi Run, operazioni pianificate).' 'Green'; return }
-	Scrivi 'ATTENZIONE: avvii automatici di backend o pannello FUORI dai servizi:' 'Yellow'
-	$trovati | ForEach-Object { Scrivi ('  [' + $_.Dove + '] ' + $_.Cosa) 'Yellow' }
-	Scrivi '  Partono all''accesso a Windows, PRIMA dei servizi (avvio ritardato): prendono le porte, i servizi escono con codice 1 (EADDRINUSE) e nssm li mette in Paused. Vanno tolti, con Dario: lo script non li tocca.' 'Yellow'
+# (7/10) OPERAZIONI PIANIFICATE che avviano backend o pannello. La causa
+# trovata in cella il 7/10: \EasyBox Server (cmd /k ... npx nodemon
+# server.js), \ServerDati (start_server.bat), \EasyBox HMI (cmd /k ... npm run
+# dev) e \HMI (start_hmi.bat) partivano all'accesso a Windows, prima dei
+# servizi. Si guarda il nome e le azioni (programma, argomenti, cartella).
+function OperazioniSospette {
+	$trovate = @()
+	foreach ($t in @(Get-ScheduledTask -ErrorAction SilentlyContinue)) {
+		$azioni = (@($t.Actions | ForEach-Object { ([string]$_.Execute + ' ' + [string]$_.Arguments + $(if ($_.WorkingDirectory) { ' (in ' + $_.WorkingDirectory + ')' } else { '' })).Trim() }) -join ' | ')
+		if (($t.TaskName + ' ' + $azioni) -match $AVVIO_SOSPETTO) {
+			$trovate += [pscustomobject]@{ Percorso = $t.TaskPath; Nome = $t.TaskName; Stato = [string]$t.State; Azioni = $azioni }
+		}
+	}
+	return ,$trovate
+}
+# Elenca gli avvii automatici. soloAttive: le operazioni pianificate solo se
+# NON disabilitate (stato); altrimenti tutte, col loro stato (installa, prova).
+# Ritorna le operazioni attive.
+function MostraAvvii([bool]$soloAttive = $false) {
+	$altri = AvviiAutomatici
+	$operazioni = OperazioniSospette
+	$attive = @($operazioni | Where-Object { $_.Stato -ne 'Disabled' })
+	$elenco = @($(if ($soloAttive) { $attive } else { $operazioni }))
+	if ($altri.Count -eq 0 -and $elenco.Count -eq 0) {
+		Scrivi ('Avvii automatici di backend o pannello fuori dai servizi: nessuno' + $(if ($soloAttive -and $operazioni.Count -gt 0) { ' attivo (operazioni pianificate trovate: ' + $operazioni.Count + ', tutte disabilitate)' } else { '' }) + ' (Esecuzione automatica, chiavi Run, operazioni pianificate).') 'Green'
+		return ,$attive
+	}
+	if ($altri.Count -gt 0 -or $attive.Count -gt 0) { Scrivi 'ATTENZIONE: avvii automatici di backend o pannello FUORI dai servizi:' 'Yellow' }
+	else { Scrivi 'Operazioni pianificate di backend o pannello: tutte disabilitate, non partono.' 'Green' }
+	$altri | ForEach-Object { Scrivi ('  [' + $_.Dove + '] ' + $_.Cosa) 'Yellow' }
+	$elenco | ForEach-Object { Scrivi ('  [operazione pianificata ' + $_.Percorso + $_.Nome + ', ' + $_.Stato + '] ' + $_.Azioni) $(if ($_.Stato -ne 'Disabled') { 'Red' } else { 'Gray' }) }
+	if ($altri.Count -gt 0 -or $attive.Count -gt 0) {
+		Scrivi '  Partono all''accesso a Windows, PRIMA dei servizi (avvio ritardato): prendono le porte, i servizi escono con codice 1 (EADDRINUSE) e nssm li mette in Paused. Vanno tolti.' 'Yellow'
+	}
+	return ,$attive
+}
+# (7/10) propone di DISABILITARE le operazioni pianificate attive trovate
+# (solo da installa, da amministratore). Solo con una "s" esplicita; prima ne
+# salva la definizione (Export-ScheduledTask) in <disco>\EasyBox_backup\
+# task_<data e ora>, come quelle che Dario ha disabilitato il 7/10. Niente
+# viene cancellato: si riattivano con Enable-ScheduledTask.
+function ProponiDisabilita($attive) {
+	$dir = Join-Path (Split-Path -Qualifier $Easybox) ('EasyBox_backup\task_' + (Get-Date -Format 'yyyy-MM-dd_HHmmss'))
+	Scrivi ''
+	Scrivi ('Disabilitare le operazioni pianificate attive qui sopra (' + $attive.Count + ')? Prima ne salvo la definizione in ' + $dir + '; si riattivano con Enable-ScheduledTask.') 'Yellow'
+	$risposta = ''
+	try { $risposta = Read-Host 'Scrivere s e invio per disabilitarle, solo invio per lasciarle' } catch { $risposta = '' }
+	if ($risposta -ne 's') {
+		Scrivi 'Lasciate come sono. A mano, da PowerShell come amministratore:' 'Yellow'
+		$attive | ForEach-Object { Scrivi ('  Disable-ScheduledTask -TaskPath ''' + $_.Percorso + ''' -TaskName ''' + $_.Nome + '''') 'Yellow' }
+		return
+	}
+	New-Item -ItemType Directory -Path $dir -Force | Out-Null
+	foreach ($o in $attive) {
+		$chi = $o.Percorso + $o.Nome
+		$xml = Export-ScheduledTask -TaskPath $o.Percorso -TaskName $o.Nome -ErrorAction SilentlyContinue
+		if (-not $xml) { Scrivi ('  ' + $chi + ': definizione non salvata, NON la disabilito.') 'Red'; continue }
+		$file = Join-Path $dir (($chi.Trim('\') -replace '[\\/:*?"<>|]', '_') + '.xml')
+		[IO.File]::WriteAllText($file, $xml, [Text.Encoding]::Unicode)
+		$null = Disable-ScheduledTask -TaskPath $o.Percorso -TaskName $o.Nome -ErrorAction SilentlyContinue
+		$dopo = Get-ScheduledTask -TaskPath $o.Percorso -TaskName $o.Nome -ErrorAction SilentlyContinue
+		if ($dopo -and [string]$dopo.State -eq 'Disabled') { Scrivi ('  ' + $chi + ': disabilitata (definizione in ' + $file + ')') 'Green' }
+		else { Scrivi ('  ' + $chi + ': NON disabilitata: guardarla in Utilita'' di pianificazione.') 'Red' }
+	}
 }
 
 # comandi nssm, uguali per prova e installa
@@ -322,7 +383,8 @@ if ($Azione -eq 'stato') {
 	if (-not (MostraProprietari)) {
 		Scrivi 'Se una porta e'' tenuta da un processo che non e'' del servizio, e'' un node avviato fuori dai servizi (le vecchie finestre dei .bat?): il servizio non riesce a prenderla. Con la cella in HOLD: -Azione riavvia (chiude solo i node rimasti sulle porte).' 'Yellow'
 	}
-	MostraAvvii
+	# (7/10) le operazioni pianificate solo se attive
+	$null = MostraAvvii $true
 	Coda $LogB; Coda $LogP; Coda $AccessLog 5
 	exit 0
 }
@@ -403,6 +465,17 @@ if (-not (Test-Path -LiteralPath $ServerJs)) { Fermati ('manca ' + $ServerJs) 'l
 if (-not (Test-Path -LiteralPath $ViteJs)) { Fermati ('manca ' + $ViteJs) 'le dipendenze del pannello non sono installate: rilanciare pannello.ps1 con la versione attiva.' }
 if (-not (Test-Path -LiteralPath $Nssm) -and -not (Test-Path -LiteralPath $NssmOrig)) { Fermati ('nssm.exe non trovato ne'' in ' + $Nssm + ' ne'' in ' + $NssmOrig) 'chiamare Dario.' }
 
+# (7/10) le vecchie finestre non devono ripartire da sole all'accesso a
+# Windows. Prima di ogni altro controllo, cosi' si vede anche coi servizi
+# gia' installati: Esecuzione automatica e chiavi Run si segnalano; per le
+# operazioni pianificate attive installa propone di disabilitarle, prova dice
+# soltanto che lo proporrebbe.
+$attive = MostraAvvii
+if ($attive.Count -gt 0) {
+	if ($prova) { Scrivi ('PROVA: installa proporrebbe di disabilitare le operazioni pianificate attive qui sopra (' + $attive.Count + '), dopo averne salvato la definizione.') 'Cyan' }
+	else { ProponiDisabilita $attive }
+}
+
 $gia = @($S_B, $S_P) | Where-Object { Servizio $_ }
 if ($gia.Count -gt 0) { Fermati ('servizi gia'' installati: ' + ($gia -join ', ')) 'per vederli -Azione stato; per rifarli prima -Azione rimuovi.' }
 $altri = @(Get-CimInstance Win32_Service | Where-Object { $_.PathName -match 'nssm' })
@@ -417,9 +490,6 @@ Scrivi ('backend:    ' + $Backend)
 Scrivi ('pannello:   ' + $Pannello)
 Scrivi ('log:        ' + $LogB + ' , ' + $LogP)
 $occupate = MostraPorte
-# (7/10) le vecchie finestre non devono ripartire da sole all'accesso a
-# Windows: si segnalano, non si toccano
-MostraAvvii
 $comandi = ComandiNssm $node
 
 if ($prova) {
