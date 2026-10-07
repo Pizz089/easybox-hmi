@@ -2,6 +2,8 @@
 
 Decisioni di Dario che vincolano codice, dati e procedure in cella; la più recente in alto. Il come (script, comandi, ordine degli interventi) sta in [APPUNTI-CELLA.md](APPUNTI-CELLA.md).
 
+**Riarmo dopo emergenza (7/10).** Nessuna correzione PLC: il robot va in home e lo stato della cella si dichiara con Reimposta stato cella (pezzi in pinza, morsa, cassetto), più pallet in macchina e tasche se la missione interrotta li ha toccati. La sequenza è HOLD, RESTART MAIN PROGRAM, HOME, poi Reimposta stato cella. Procedura completa in APPUNTI-CELLA.md, «Riarmo dopo un'emergenza»; è il problema 1 della [simulazione del 7/10](SIMULAZIONE-2026-10-07.md).
+
 **Appoggi dichiarati nella pagina Morsa (7/10).** Nella pagina Morsa gli appoggi dichiarati (Salva e Cancella della sezione «Appoggi dichiarati») si scrivono solo dal livello utente 1 in su, come nella pagina Spinta in battuta, che scrive la stessa riga di PIECE_ON_VICE con la stessa rotta (`setStop` / `deleteStop`). Sotto il livello 1 i due pulsanti sono spenti e una riga dice perché. Introdotta in e3d4387.
 
 **Deposito manuale in MC1 (6/10).** In manuale, senza ordine avviato, il deposito in MC1 usa i dati dell'ordine in attesa del pezzo prelevato: un ordine di MC1 in coda o in pausa (STATUS 4 o 6), il più recente se sono più di uno. Quote di deposito, spinta e dimensioni del pezzo vengono tutte da quell'ordine. Il pezzo si riconosce dalla tasca di provenienza: ultimo cassetto estratto e ultima tasca di prelievo. Senza ordine in attesa: allarme 970, e l'ordine si crea in Produzione senza avviarlo. Provenienza non nota: allarme 971. Prelievo manuale da MC1 e missione 16 in manuale usano ancora l'ordine più recente di MC1, sia per le quote sia per le dimensioni.

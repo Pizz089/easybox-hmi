@@ -68,6 +68,20 @@ Nel working tree di cella ci sono file non tracciati che il `.gitignore` non esc
    - stato del robot che si aggiorna;
    - `DB_executeQuery.readyForNextQuery` TRUE.
 
+## 2026-10-07 — Riarmo dopo un'emergenza: procedura (simulazione 7/10, problema 1)
+
+Decisione di Dario del 7/10 (DECISIONI.md): nessuna correzione PLC. Il riarmo (`Start_AUX`, `ResetAreaRobot`) azzera le catene del PLC, mentre il robot riprenderebbe la missione interrotta. Quindi il robot va in home e lo stato della cella si dichiara di nuovo. In quest'ordine:
+
+1. cella in HOLD. **Non premere CONTINUA né il pulsante HOLD**: il PLC riavvia il programma robot dalla riga corrente, e il robot riprenderebbe la missione interrotta;
+2. RESTART MAIN PROGRAM. Confermato dal robotista il 7/10: in HOLD abbandona la missione e mette il robot in attesa della prossima;
+3. HOME, oppure il robotista in T1 se il robot è in macchina o al cassetto. I ritorni in home sono sicuri da qualunque punto (robotista, 7/10);
+4. controllo visivo;
+5. Reimposta stato cella (pezzi in pinza, morsa, cassetto);
+6. pallet in macchina e tasche, se la missione interrotta li ha toccati;
+7. RESET, poi CONTINUA.
+
+Dettagli del problema: [SIMULAZIONE-2026-10-07.md](SIMULAZIONE-2026-10-07.md), problema 1.
+
 ## [ ] 2026-10-07 — Consegna 33 (7/10): correzioni della simulazione, vista `MAN_ORDER_MC1` **prima** del download
 
 **Cosa corregge** (PLC, la scarica Dario; file `33_FB7_correzioni_simulazione.scl`, in TIA dal 7/10, export nel commit 80a414b): quattro problemi della [simulazione del 7/10](SIMULAZIONE-2026-10-07.md):
@@ -122,7 +136,7 @@ Provato sul clone del portatile il 7/10: script lanciato due volte («aggiornata
 - pagina Robot, quando la pinza pallet risulta occupata e nessun pallet è a bordo: sotto «Gestione pallet» c'è **Dichiara quale pallet è in pinza** (prima c'era solo l'avviso «Dichiarare lo stato cella, poi riprovare») → scegliere il pallet → Conferma.
 
 **Cosa parte.** Il pannello non scrive il database. Manda al PLC:
-1. se il pallet risulta in macchina (`POS_PLANT` 100+n, oppure è quello del registro `DB_MC1.pallet`): `41` a MC1, come la pagina Macchine, e aspetta l'eco `DECLARE/MC1` col pallet a 0 (3 s). Rifiuto 947 (ciclo macchina avviato) o niente eco: ci si ferma qui, il 35 non parte. Dopo il 41 la macchina risulta vuota, anche il pezzo in morsa (`piecepresent` a 0);
+1. se il pallet risulta in macchina (`POS_PLANT` 100+n, oppure è quello del registro `DB_MC1.pallet`): `41` a MC1 con la guardia di «Rimuovi» (dal 7/10 sera, vedi sotto: altro pallet nel registro o registro non letto = nessun comando, registro a 0 = niente 41), come la pagina Macchine, e aspetta l'eco `DECLARE/MC1` col pallet a 0 (3 s). Rifiuto 947 (ciclo macchina avviato) o niente eco: ci si ferma qui, il 35 non parte. Dopo il 41 la macchina risulta vuota, anche il pezzo in morsa (`piecepresent` a 0);
 2. `35;<pinza>;3;<pallet>;<lato 2>;0` e aspetta l'eco `DECLARE/ROBOT` `<pinza>;3;<lato 2>` (5 s). Rifiuti 944, 945, 946 (e 968/969 sotto pendant) con i testi di «Reimposta stato cella».
 
 La pinza è quella che il PLC ha registrata come lato 1 (`GRIPPER/REGISTERED`), purché sia fra quelle a bordo nel database: il 35 mette in `Gripper_ID[1]` l'ID ricevuto, e per una pinza doppia la riga sbagliata scambierebbe i lati. Il lato 2 ripete il contenuto attuale della gemella; per una pinza a un lato solo (una sola riga GRIPPER a bordo) vale 0.
@@ -140,7 +154,9 @@ Non si tocca la casella del magazzino: `MAG_POS` resta la casa del pallet, dove 
 
 **Anche «In macchina» e «Rimuovi» del Posiziona passano dal PLC** (simulazione del 7/10, problema 16: scrivevano solo il database e `DB_MC1.pallet` restava com'era). Stessa logica della pagina Macchine, in `HMI/src/util/palletMachine.js`:
 - «In macchina»: `40;<pallet>` a MC1, eco `DECLARE/MC1` col pallet (3 s), poi il database come prima (`POS_PLANT` 101, la casa resta, la casella di provenienza si libera). Se il registro ha già quel pallet il 40 non parte (FB204 lo rifiuterebbe); se ne ha un altro, niente comando e si dice quale;
-- «Rimuovi» di un pallet in macchina: `41`, eco col pallet a 0, poi `MAG_POS -1`, `POS_PLANT 0`. Il 41 parte solo se il registro ha quel pallet (o non risponde); con il registro già a 0 basta il database (il 41 azzererebbe anche il pezzo in macchina); con un altro pallet nel registro non si tocca niente. «Rimuovi» di un pallet a magazzino non riguarda la macchina: solo il database;
+- «Rimuovi» di un pallet in macchina: `41`, eco col pallet a 0, poi `MAG_POS -1`, `POS_PLANT 0`. «Rimuovi» di un pallet a magazzino non riguarda la macchina: solo il database;
+- (7/10 sera) «Casella» di un pallet in macchina: come «Rimuovi», prima il `41` con la sua eco, poi la casella scelta (`MAG_POS` = casella, `POS_PLANT 0`, casella occupata e casa liberata, come prima). Prima scriveva solo il database;
+- la guardia del 41 è una sola (`guardia41`), per «Rimuovi», «Casella» e il pallet a bordo del robot. Il 41 parte solo se il registro ha quel pallet. Con il registro già a 0 basta il database (il 41 azzererebbe anche il pezzo in macchina). Con un altro pallet nel registro non si manda niente e si dice quale. Col registro che non risponde, niente 41 alla cieca: «Registro della macchina non letto, riprova» (fino al 7/10 sera il 41 partiva lo stesso). Un pallet a magazzino non ha bisogno del 41, quindi va anche col registro non letto;
 - rifiuto 947 di FB204 (ciclo macchina avviato, o 40 con un pallet già dichiarato) o niente eco: messaggio e **nessuna** scrittura nel database.
 
 **Messa in servizio.** Solo pannello: nessuno script SQL e nessuna modifica al PLC (35, 40 e 41 esistono già). Aggiornare i servizi.
