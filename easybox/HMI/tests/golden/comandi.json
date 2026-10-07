@@ -1352,6 +1352,89 @@
      }
     },
     {
+     "id": "UiTile@click openPalletDecl()",
+     "etichetta": "Dichiara quale pallet è in pinza",
+     "evento": "click",
+     "handler": "openPalletDecl()",
+     "disabled": "",
+     "classe": "",
+     "esiti": {
+      "HOLD liv2": {
+       "abilitato": true,
+       "effetti": [
+        "fetch GET api/conf/pallet/show/all"
+       ],
+       "stato": [
+        "vm.palletDecl.open = true"
+       ],
+       "conferme": [
+        {
+         "controllo": "button@click (palletDecl.sel>0 && !palletDecl.waiting)? confirmPalletDecl() : ''",
+         "etichetta": "Conferma",
+         "abilitato": false,
+         "effetti": []
+        },
+        {
+         "controllo": "button@click closePalletDecl()",
+         "etichetta": "Annulla",
+         "abilitato": true,
+         "effetti": []
+        }
+       ]
+      },
+      "HOLD liv0": {
+       "abilitato": true,
+       "effetti": [
+        "fetch GET api/conf/pallet/show/all"
+       ],
+       "stato": [
+        "vm.palletDecl.open = true"
+       ],
+       "conferme": [
+        {
+         "controllo": "button@click (palletDecl.sel>0 && !palletDecl.waiting)? confirmPalletDecl() : ''",
+         "etichetta": "Conferma",
+         "abilitato": false,
+         "effetti": []
+        },
+        {
+         "controllo": "button@click closePalletDecl()",
+         "etichetta": "Annulla",
+         "abilitato": true,
+         "effetti": []
+        }
+       ]
+      },
+      "HOLD liv2 cassetto 8 fuori": {
+       "abilitato": true,
+       "effetti": [
+        "fetch GET api/conf/pallet/show/all"
+       ],
+       "stato": [
+        "vm.palletDecl.open = true"
+       ],
+       "conferme": [
+        {
+         "controllo": "button@click (palletDecl.sel>0 && !palletDecl.waiting)? confirmPalletDecl() : ''",
+         "etichetta": "Conferma",
+         "abilitato": false,
+         "effetti": []
+        },
+        {
+         "controllo": "button@click closePalletDecl()",
+         "etichetta": "Annulla",
+         "abilitato": true,
+         "effetti": []
+        }
+       ]
+      },
+      "AUTO liv2": "nascosto",
+      "OFF liv2": "nascosto",
+      "STATUS ignoto liv2": "nascosto",
+      "NOT_DEFINED liv2": "nascosto"
+     }
+    },
+    {
      "id": "UiTile@click trayBranchEnabled?openTrayMission():''",
      "etichetta": "Gestione cassetto {{$t(trayDisabledReason)}}",
      "evento": "click",
@@ -2901,6 +2984,40 @@
      "evento": "click",
      "handler": "unloadOpen=false",
      "disabled": "",
+     "classe": "",
+     "esiti": {
+      "HOLD liv2": "nascosto",
+      "HOLD liv0": "nascosto",
+      "HOLD liv2 cassetto 8 fuori": "nascosto",
+      "AUTO liv2": "nascosto",
+      "OFF liv2": "nascosto",
+      "STATUS ignoto liv2": "nascosto",
+      "NOT_DEFINED liv2": "nascosto"
+     }
+    },
+    {
+     "id": "button@click (palletDecl.sel>0 && !palletDecl.waiting)? confirmPalletDecl() : ''",
+     "etichetta": "Conferma",
+     "evento": "click",
+     "handler": "(palletDecl.sel>0 && !palletDecl.waiting)? confirmPalletDecl() : ''",
+     "disabled": "",
+     "classe": "[(palletDecl.sel>0 && !palletDecl.waiting)? 'pure-button-mission' : 'pure-button-disable']",
+     "esiti": {
+      "HOLD liv2": "nascosto",
+      "HOLD liv0": "nascosto",
+      "HOLD liv2 cassetto 8 fuori": "nascosto",
+      "AUTO liv2": "nascosto",
+      "OFF liv2": "nascosto",
+      "STATUS ignoto liv2": "nascosto",
+      "NOT_DEFINED liv2": "nascosto"
+     }
+    },
+    {
+     "id": "button@click closePalletDecl()",
+     "etichetta": "Annulla",
+     "evento": "click",
+     "handler": "closePalletDecl()",
+     "disabled": "palletDecl.waiting",
      "classe": "",
      "esiti": {
       "HOLD liv2": "nascosto",
@@ -7820,7 +7937,13 @@
           "effetti": []
          },
          {
-          "controllo": "button@click placeSel!=null?confirmPlace():''",
+          "controllo": "button@click placeSel='robot'",
+          "etichetta": "A bordo del robot",
+          "abilitato": true,
+          "effetti": []
+         },
+         {
+          "controllo": "button@click (placeSel!=null && !placeBusy)?confirmPlace():''",
           "etichetta": "Conferma",
           "abilitato": false,
           "effetti": []
@@ -7871,7 +7994,13 @@
           "effetti": []
          },
          {
-          "controllo": "button@click placeSel!=null?confirmPlace():''",
+          "controllo": "button@click placeSel='robot'",
+          "etichetta": "A bordo del robot",
+          "abilitato": true,
+          "effetti": []
+         },
+         {
+          "controllo": "button@click (placeSel!=null && !placeBusy)?confirmPlace():''",
           "etichetta": "Conferma",
           "abilitato": false,
           "effetti": []
@@ -7922,7 +8051,13 @@
           "effetti": []
          },
          {
-          "controllo": "button@click placeSel!=null?confirmPlace():''",
+          "controllo": "button@click placeSel='robot'",
+          "etichetta": "A bordo del robot",
+          "abilitato": true,
+          "effetti": []
+         },
+         {
+          "controllo": "button@click (placeSel!=null && !placeBusy)?confirmPlace():''",
           "etichetta": "Conferma",
           "abilitato": false,
           "effetti": []
@@ -7975,7 +8110,13 @@
           "effetti": []
          },
          {
-          "controllo": "button@click placeSel!=null?confirmPlace():''",
+          "controllo": "button@click placeSel='robot'",
+          "etichetta": "A bordo del robot",
+          "abilitato": true,
+          "effetti": []
+         },
+         {
+          "controllo": "button@click (placeSel!=null && !placeBusy)?confirmPlace():''",
           "etichetta": "Conferma",
           "abilitato": false,
           "effetti": []
@@ -8026,7 +8167,13 @@
           "effetti": []
          },
          {
-          "controllo": "button@click placeSel!=null?confirmPlace():''",
+          "controllo": "button@click placeSel='robot'",
+          "etichetta": "A bordo del robot",
+          "abilitato": true,
+          "effetti": []
+         },
+         {
+          "controllo": "button@click (placeSel!=null && !placeBusy)?confirmPlace():''",
           "etichetta": "Conferma",
           "abilitato": false,
           "effetti": []
@@ -8077,7 +8224,13 @@
           "effetti": []
          },
          {
-          "controllo": "button@click placeSel!=null?confirmPlace():''",
+          "controllo": "button@click placeSel='robot'",
+          "etichetta": "A bordo del robot",
+          "abilitato": true,
+          "effetti": []
+         },
+         {
+          "controllo": "button@click (placeSel!=null && !placeBusy)?confirmPlace():''",
           "etichetta": "Conferma",
           "abilitato": false,
           "effetti": []
@@ -8130,7 +8283,13 @@
           "effetti": []
          },
          {
-          "controllo": "button@click placeSel!=null?confirmPlace():''",
+          "controllo": "button@click placeSel='robot'",
+          "etichetta": "A bordo del robot",
+          "abilitato": true,
+          "effetti": []
+         },
+         {
+          "controllo": "button@click (placeSel!=null && !placeBusy)?confirmPlace():''",
           "etichetta": "Conferma",
           "abilitato": false,
           "effetti": []
@@ -8181,7 +8340,13 @@
           "effetti": []
          },
          {
-          "controllo": "button@click placeSel!=null?confirmPlace():''",
+          "controllo": "button@click placeSel='robot'",
+          "etichetta": "A bordo del robot",
+          "abilitato": true,
+          "effetti": []
+         },
+         {
+          "controllo": "button@click (placeSel!=null && !placeBusy)?confirmPlace():''",
           "etichetta": "Conferma",
           "abilitato": false,
           "effetti": []
@@ -8232,7 +8397,13 @@
           "effetti": []
          },
          {
-          "controllo": "button@click placeSel!=null?confirmPlace():''",
+          "controllo": "button@click placeSel='robot'",
+          "etichetta": "A bordo del robot",
+          "abilitato": true,
+          "effetti": []
+         },
+         {
+          "controllo": "button@click (placeSel!=null && !placeBusy)?confirmPlace():''",
           "etichetta": "Conferma",
           "abilitato": false,
           "effetti": []
@@ -8285,7 +8456,13 @@
           "effetti": []
          },
          {
-          "controllo": "button@click placeSel!=null?confirmPlace():''",
+          "controllo": "button@click placeSel='robot'",
+          "etichetta": "A bordo del robot",
+          "abilitato": true,
+          "effetti": []
+         },
+         {
+          "controllo": "button@click (placeSel!=null && !placeBusy)?confirmPlace():''",
           "etichetta": "Conferma",
           "abilitato": false,
           "effetti": []
@@ -8336,7 +8513,13 @@
           "effetti": []
          },
          {
-          "controllo": "button@click placeSel!=null?confirmPlace():''",
+          "controllo": "button@click placeSel='robot'",
+          "etichetta": "A bordo del robot",
+          "abilitato": true,
+          "effetti": []
+         },
+         {
+          "controllo": "button@click (placeSel!=null && !placeBusy)?confirmPlace():''",
           "etichetta": "Conferma",
           "abilitato": false,
           "effetti": []
@@ -8387,7 +8570,13 @@
           "effetti": []
          },
          {
-          "controllo": "button@click placeSel!=null?confirmPlace():''",
+          "controllo": "button@click placeSel='robot'",
+          "etichetta": "A bordo del robot",
+          "abilitato": true,
+          "effetti": []
+         },
+         {
+          "controllo": "button@click (placeSel!=null && !placeBusy)?confirmPlace():''",
           "etichetta": "Conferma",
           "abilitato": false,
           "effetti": []
@@ -8440,7 +8629,13 @@
           "effetti": []
          },
          {
-          "controllo": "button@click placeSel!=null?confirmPlace():''",
+          "controllo": "button@click placeSel='robot'",
+          "etichetta": "A bordo del robot",
+          "abilitato": true,
+          "effetti": []
+         },
+         {
+          "controllo": "button@click (placeSel!=null && !placeBusy)?confirmPlace():''",
           "etichetta": "Conferma",
           "abilitato": false,
           "effetti": []
@@ -8491,7 +8686,13 @@
           "effetti": []
          },
          {
-          "controllo": "button@click placeSel!=null?confirmPlace():''",
+          "controllo": "button@click placeSel='robot'",
+          "etichetta": "A bordo del robot",
+          "abilitato": true,
+          "effetti": []
+         },
+         {
+          "controllo": "button@click (placeSel!=null && !placeBusy)?confirmPlace():''",
           "etichetta": "Conferma",
           "abilitato": false,
           "effetti": []
@@ -8544,7 +8745,13 @@
           "effetti": []
          },
          {
-          "controllo": "button@click placeSel!=null?confirmPlace():''",
+          "controllo": "button@click placeSel='robot'",
+          "etichetta": "A bordo del robot",
+          "abilitato": true,
+          "effetti": []
+         },
+         {
+          "controllo": "button@click (placeSel!=null && !placeBusy)?confirmPlace():''",
           "etichetta": "Conferma",
           "abilitato": false,
           "effetti": []
@@ -8595,7 +8802,13 @@
           "effetti": []
          },
          {
-          "controllo": "button@click placeSel!=null?confirmPlace():''",
+          "controllo": "button@click placeSel='robot'",
+          "etichetta": "A bordo del robot",
+          "abilitato": true,
+          "effetti": []
+         },
+         {
+          "controllo": "button@click (placeSel!=null && !placeBusy)?confirmPlace():''",
           "etichetta": "Conferma",
           "abilitato": false,
           "effetti": []
@@ -8646,7 +8859,13 @@
           "effetti": []
          },
          {
-          "controllo": "button@click placeSel!=null?confirmPlace():''",
+          "controllo": "button@click placeSel='robot'",
+          "etichetta": "A bordo del robot",
+          "abilitato": true,
+          "effetti": []
+         },
+         {
+          "controllo": "button@click (placeSel!=null && !placeBusy)?confirmPlace():''",
           "etichetta": "Conferma",
           "abilitato": false,
           "effetti": []
@@ -8699,7 +8918,13 @@
           "effetti": []
          },
          {
-          "controllo": "button@click placeSel!=null?confirmPlace():''",
+          "controllo": "button@click placeSel='robot'",
+          "etichetta": "A bordo del robot",
+          "abilitato": true,
+          "effetti": []
+         },
+         {
+          "controllo": "button@click (placeSel!=null && !placeBusy)?confirmPlace():''",
           "etichetta": "Conferma",
           "abilitato": false,
           "effetti": []
@@ -8750,7 +8975,13 @@
           "effetti": []
          },
          {
-          "controllo": "button@click placeSel!=null?confirmPlace():''",
+          "controllo": "button@click placeSel='robot'",
+          "etichetta": "A bordo del robot",
+          "abilitato": true,
+          "effetti": []
+         },
+         {
+          "controllo": "button@click (placeSel!=null && !placeBusy)?confirmPlace():''",
           "etichetta": "Conferma",
           "abilitato": false,
           "effetti": []
@@ -8803,7 +9034,13 @@
           "effetti": []
          },
          {
-          "controllo": "button@click placeSel!=null?confirmPlace():''",
+          "controllo": "button@click placeSel='robot'",
+          "etichetta": "A bordo del robot",
+          "abilitato": true,
+          "effetti": []
+         },
+         {
+          "controllo": "button@click (placeSel!=null && !placeBusy)?confirmPlace():''",
           "etichetta": "Conferma",
           "abilitato": false,
           "effetti": []
@@ -8854,7 +9091,13 @@
           "effetti": []
          },
          {
-          "controllo": "button@click placeSel!=null?confirmPlace():''",
+          "controllo": "button@click placeSel='robot'",
+          "etichetta": "A bordo del robot",
+          "abilitato": true,
+          "effetti": []
+         },
+         {
+          "controllo": "button@click (placeSel!=null && !placeBusy)?confirmPlace():''",
           "etichetta": "Conferma",
           "abilitato": false,
           "effetti": []
@@ -8905,7 +9148,13 @@
           "effetti": []
          },
          {
-          "controllo": "button@click placeSel!=null?confirmPlace():''",
+          "controllo": "button@click placeSel='robot'",
+          "etichetta": "A bordo del robot",
+          "abilitato": true,
+          "effetti": []
+         },
+         {
+          "controllo": "button@click (placeSel!=null && !placeBusy)?confirmPlace():''",
           "etichetta": "Conferma",
           "abilitato": false,
           "effetti": []
@@ -11440,12 +11689,65 @@
      }
     },
     {
-     "id": "button@click placeSel!=null?confirmPlace():''",
+     "id": "button@click placeSel='robot'",
+     "etichetta": "A bordo del robot",
+     "evento": "click",
+     "handler": "placeSel='robot'",
+     "disabled": "placeBusy",
+     "classe": "{ selected: placeSel==='robot' }",
+     "esiti": {
+      "tre pallet liv2": "nascosto",
+      "tre pallet liv1": "nascosto",
+      "tre pallet liv0": "nascosto",
+      "ordine attivo sul 901": "nascosto",
+      "anomalia 904 e pallet nudo 905": "nascosto",
+      "smonta morsa 911 dal 901, in conferma": "nascosto",
+      "smonta attrezzatura 924 dal 904, in conferma": "nascosto",
+      "modifica del 901 a magazzino, in conferma": "nascosto",
+      "posiziona 901, niente scelto": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.placeSel = \"robot\""
+       ]
+      },
+      "posiziona 901, posto 20": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.placeSel = \"robot\""
+       ]
+      },
+      "posiziona 901, fuori magazzino": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.placeSel = \"robot\""
+       ]
+      },
+      "posiziona 901, macchina 1 occupata": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.placeSel = \"robot\""
+       ]
+      },
+      "posiziona 903, macchina 1 libera": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": [
+        "vm.placeSel = \"robot\""
+       ]
+      }
+     }
+    },
+    {
+     "id": "button@click (placeSel!=null && !placeBusy)?confirmPlace():''",
      "etichetta": "Conferma",
      "evento": "click",
-     "handler": "placeSel!=null?confirmPlace():''",
+     "handler": "(placeSel!=null && !placeBusy)?confirmPlace():''",
      "disabled": "",
-     "classe": "[placeSel==null? 'pure-button-disable' : 'pure-button-mission']",
+     "classe": "[(placeSel==null || placeBusy)? 'pure-button-disable' : 'pure-button-mission']",
      "esiti": {
       "tre pallet liv2": "nascosto",
       "tre pallet liv1": "nascosto",
@@ -11538,7 +11840,7 @@
      "etichetta": "Annulla",
      "evento": "click",
      "handler": "closePlace()",
-     "disabled": "",
+     "disabled": "placeBusy",
      "classe": "",
      "esiti": {
       "tre pallet liv2": "nascosto",

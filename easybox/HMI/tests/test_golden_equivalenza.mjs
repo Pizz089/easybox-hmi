@@ -65,6 +65,9 @@ export const AMMESSE = [
 	// ---- difetti del pannello stabile (6/10 sera, da ui-lifting 3aa0f80 e e3d4387)
 	{ pagina: 'Vice', tipo: 'nuovo', firma: /^fetch GET api\/conf\/vice\/(setStop\?VICE_ID=\d+&PIECE_ID=\d+&STOP_BEYOND_CLAW=\d+|deleteStop\?VICE_ID=\d+&PIECE_ID=\d+) \| fetch GET api\/conf\/piece\/show\/all \| fetch GET api\/conf\/vice\/stops\/\d+$/,
 		motivo: 'Appoggi dichiarati: Salva / Cancella c\'erano nel template dal 15/9 ma non comparivano mai (due blocchi computed, clawLengthMicron undefined). Corretto il difetto: sono le stesse scritture setStop / deleteStop della pagina Spinta in battuta, con la sua stessa regola (livello >= 1: a liv0 spenti)' },
+	// ---- pallet «a bordo del robot» (7/10, da ui-lifting 086ed93)
+	{ pagina: 'robotView', tipo: 'nuovo', firma: /^fetch GET api\/conf\/pallet\/show\/all$/,
+		motivo: '«Dichiara quale pallet e\' in pinza»: con pinza pallet occupata e nessun pallet a bordo, al posto del solo avviso palletUnknownOnBoard. Il tocco apre la scelta del pallet (rilegge l\'elenco); la dichiarazione (41 se il pallet e\' in macchina, poi 35) parte solo dalla conferma, col modulo util/palletOnRobot.js, e la coprono i controlli di test_pallet_on_robot.mjs' },
 	{ pagina: 'smallboxView', tipo: 'tolto', firma: /^emit TO_PLANT\/CMD\/ROBOT 26$/,
 		motivo: '"Inserisci cassetto" tolto dai Controlli EasyBox (decisione di Dario): era sempre spento, perche\' la sua condizione RobotInLocalMode non la scrive nessuno (le assegnazioni in robotView sono commentate). Il cassetto si rilascia da Robot -> Gestione cassetto' },
 ];

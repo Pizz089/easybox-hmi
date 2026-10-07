@@ -18,6 +18,8 @@
     import UiButton from '../../components/ui/UiButton.vue';
     import { Lock, Plus } from 'lucide-vue-next';
     import { caricaElenco, STATO } from '../../util/caricaElenco.js';
+    // (7/10) pallet «a bordo del robot»: dichiarazione al PLC (35, e 41 se in macchina)
+    import { dichiaraPalletABordo, messaggioEsito } from '../../util/palletOnRobot.js';
 </script>
 
 <template>
@@ -205,16 +207,37 @@
                 <span v-if="machineBlock(mpos.n)" class="cell-empty">{{ machineBlock(mpos.n) }}</span>
             </button>
 
+            <!-- (7/10) A BORDO DEL ROBOT: qui NON si scrive il database. Si
+                 manda al PLC la dichiarazione (35; prima il 41 se il pallet e'
+                 in macchina), che aggiorna registri, pinza e POS_PLANT=1000.
+                 Guardie, comandi ed eco in util/palletOnRobot.js, lo stesso
+                 modulo del pannello Robot. -->
+            <button class="mission-dialog-item"
+                :class="{ selected: placeSel==='robot' }"
+                :disabled="placeBusy"
+                @click="placeSel='robot'">
+                {{ $t('palletOnRobot.dest') }}
+            </button>
+            <div class="plant-warning" v-if="placeSel==='robot'">
+                {{ $t('palletOnRobot.confirmText') }}
+                <template v-if="placeMachineLabel(placeTarget)">
+                    {{ $t('palletOnRobot.confirmMachine', { mc: placeMachineLabel(placeTarget) }) }}
+                </template>
+            </div>
+            <p class="place-waiting" v-if="placeBusy">{{ $t('palletOnRobot.waiting') }}</p>
+
             <div class="pure-g">
               <div class="pure-u-1-2">
                 <button style="width:100%" class="button_pressed"
-                  :class="[placeSel==null? 'pure-button-disable' : 'pure-button-mission']"
-                  @click="placeSel!=null?confirmPlace():''">
+                  :class="[(placeSel==null || placeBusy)? 'pure-button-disable' : 'pure-button-mission']"
+                  @click="(placeSel!=null && !placeBusy)?confirmPlace():''">
                   {{ $t('robot.dialog.confirm') }}
                 </button>
               </div>
               <div class="pure-u-1-2">
-                <button style="width:100%" class="btn-ghost" @click="closePlace()">
+                <!-- durante l'attesa dell'eco Annulla e' spento: i comandi sono
+                     gia' partiti, chiudere il dialog non li fermerebbe -->
+                <button style="width:100%" class="btn-ghost" :disabled="placeBusy" @click="closePlace()">
                   {{ $t('robot.dialog.cancel') }}
                 </button>
               </div>
@@ -237,6 +260,7 @@ export default {
             fop:[],          // righe FIXTURE_ON_PALLET
             wpallet:[],      // righe [POSITION] WPALLET (per gli slot disabilitati, AD)
             pending:null,    // {type:'vice'|'fixture', palletID, id} in attesa di conferma
+            placeBusy:false, // (7/10) dichiarazione «a bordo del robot» in attesa dell'eco
             pendingEdit:null,// palletID in attesa di conferma RAFFORZATA della Modifica
             orders:[],       // WORKORDERS per la guardia D1 (ordine attivo)
             // AC: dialog posizione a magazzino.
@@ -387,8 +411,46 @@ export default {
             this.placeSel = null;
         },
         closePlace(){
+            if (this.placeBusy) return;
             this.placeTarget = null;
             this.placeSel = null;
+        },
+        // (7/10) etichetta della macchina in cui il pallet risulta (POS_PLANT
+        // 100+n), per dire nella conferma che prima parte il 41
+        placeMachineLabel(p){
+            if (!p) return '';
+            const m = MACHINE_POSITIONS.find(x => x.n === Number(p.POS_PLANT) - 100);
+            return m ? this.$t(m.labelKey) : '';
+        },
+        // (7/10) «A bordo del robot»: guardie rilette adesso, poi 41 (se in
+        // macchina) e 35 con le loro eco. Il pannello NON scrive POS_PLANT:
+        // lo fa il PLC col 35. Missione in corso: questa pagina non lo sa,
+        // vale la guardia sulla cella in HOLD.
+        async confirmOnRobot(){
+            const t = this.placeTarget;
+            if (!t || this.placeBusy) return;
+            this.placeBusy = true;
+            let esito;
+            try {
+                esito = await dichiaraPalletABordo({
+                    server: dataStored.server, socket: dataStored.WS.socket,
+                    palletId: t.ID, missioneInCorso: false,
+                });
+            } finally {
+                this.placeBusy = false;
+            }
+            if (esito.ok) {
+                this.closePlace();
+                dataStored.alert.title = 'INFO';
+                dataStored.alert.desc = this.$t('palletOnRobot.done', { name: '#' + t.ID + ' ' + (t.FAMILY || '').trim() });
+                dataStored.alert.type = 'message';
+            } else {
+                const m = messaggioEsito(esito);
+                dataStored.alert.title = this.$t('WARNING');
+                dataStored.alert.desc = this.$t(m.chiave, m.parametri);
+                dataStored.alert.type = 'warning';
+            }
+            this.getDataTable();
         },
         // Occupante del posto n (qualunque pallet, incluso il target: la
         // posizione corrente non e' riselezionabile). Il polling 3s tiene
@@ -403,6 +465,8 @@ export default {
             const t = this.placeTarget;
             const sel = this.placeSel;
             if (!t || sel == null) return;
+            // (7/10) a bordo del robot: dichiarazione al PLC, niente updatePallet
+            if (sel === 'robot') { this.confirmOnRobot(); return; }
             // (R-C) tre destinazioni: casella (sel>0), Rimuovi (-1),
             // In macchina ('mc'+n)
             const isMachine = typeof sel === 'string' && sel.indexOf('mc') === 0;
@@ -715,6 +779,13 @@ export default {
         color: var(--color-warning);
         border-radius: var(--radius-md);
         padding: var(--space-2) var(--space-4);
+        font-size: var(--font-size-sm);
+    }
+
+    /* (7/10) attesa dell'eco del PLC per «a bordo del robot» */
+    .place-waiting {
+        margin: var(--space-2) 0 0;
+        color: var(--text-secondary);
         font-size: var(--font-size-sm);
     }
 

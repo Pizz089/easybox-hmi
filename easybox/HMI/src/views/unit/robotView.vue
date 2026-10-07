@@ -28,6 +28,9 @@
   import UiStepper from '../../components/ui/UiStepper.vue'
   import UiConfirmDialog from '../../components/ui/UiConfirmDialog.vue'
   import { House, Wrench, Server, Microwave, Grab, RectangleHorizontal, Archive, ArrowUp, ArrowDown, ArrowDownUp, RotateCcw, Power, Check, TriangleAlert } from 'lucide-vue-next'
+  // (7/10) «Dichiara quale pallet e' in pinza»: stesso modulo della
+  // destinazione «A bordo del robot» di Attrezzaggi (35, e 41 se in macchina)
+  import { dichiaraPalletABordo, messaggioEsito } from '../../util/palletOnRobot.js'
 </script>
 
 <template>
@@ -266,7 +269,16 @@
             :class="{'btn-mission-running': missionRunning=='pallet'}"
             @click="palletBranchEnabled?openPalletMission():''">
             <span>{{ $t('robot.mission.pallet') }}</span>
-            <small class="rv-why" v-if="!palletBranchEnabled && tileWhy(palletDisabledReason)" :title="$t(palletDisabledReason)">{{ $t(palletDisabledReason) }}</small>
+            <small class="rv-why" v-if="!palletBranchEnabled && tileWhy(palletDisabledReason) && palletDisabledReason !== 'robot.hint.palletUnknownOnBoard'" :title="$t(palletDisabledReason)">{{ $t(palletDisabledReason) }}</small>
+          </UiTile>
+          <!-- (7/10) pinza pallet occupata e nessun pallet a bordo: al posto del
+               solo avviso ("Dichiarare lo stato cella, poi riprovare") l'azione
+               per dire QUALE pallet e' in pinza. Stessa funzione della
+               destinazione «A bordo del robot» di Attrezzaggi. -->
+          <UiTile v-if="!palletBranchEnabled && palletDisabledReason === 'robot.hint.palletUnknownOnBoard'"
+            :icon="RectangleHorizontal"
+            @click="openPalletDecl()">
+            <span>{{ $t('palletOnRobot.action') }}</span>
           </UiTile>
           <UiTile :icon="Archive" :disabled="!trayBranchEnabled"
             :class="{'btn-mission-running': missionRunning=='tray'}"
@@ -843,6 +855,37 @@
             </div>
           </div>
         </div>
+
+        <!-- (7/10) DICHIARA QUALE PALLET E' IN PINZA: si sceglie il pallet,
+             poi la dichiarazione al PLC col modulo condiviso
+             util/palletOnRobot.js (guardie rilette alla conferma; 41 se il
+             pallet e' in macchina, poi 35; eco attese). -->
+        <div v-if="palletDecl.open" class="mission-dialog-overlay">
+          <div class="mission-dialog">
+            <h3 class="command-section-title">{{ $t('palletOnRobot.title') }}</h3>
+            <select v-model.number="palletDecl.sel" class="decl-select" :disabled="palletDecl.waiting">
+              <option :value="0">{{ $t('palletOnRobot.pick') }}</option>
+              <option v-for="p in palletsList" :key="'pd'+p.ID" :value="p.ID">#{{ p.ID }} {{ (p.FAMILY || '').trim() }}</option>
+            </select>
+            <p class="decl-note">{{ $t('palletOnRobot.confirmText') }}</p>
+            <p v-if="palletDeclMachine" class="decl-note">{{ $t('palletOnRobot.confirmMachine', { mc: palletDeclMachine }) }}</p>
+            <p v-if="palletDecl.waiting" class="decl-note">{{ $t('palletOnRobot.waiting') }}</p>
+            <div class="pure-g">
+              <div class="pure-u-1-2">
+                <button style="width:100%" class="button_pressed"
+                  :class="[(palletDecl.sel>0 && !palletDecl.waiting)? 'pure-button-mission' : 'pure-button-disable']"
+                  @click="(palletDecl.sel>0 && !palletDecl.waiting)? confirmPalletDecl() : ''">
+                  {{ $t('robot.dialog.confirm') }}
+                </button>
+              </div>
+              <div class="pure-u-1-2">
+                <button style="width:100%" class="btn-ghost" :disabled="palletDecl.waiting" @click="closePalletDecl()">
+                  {{ $t('robot.dialog.cancel') }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
   </div>
 </template>
 
@@ -894,6 +937,9 @@ export default {
         selected: null    // riga selezionata; nessuna preselezione
       },
       unloadOpen: false,  // M: dialog conferma scarico pinza (blocco separato)
+      // (7/10) «Dichiara quale pallet e' in pinza»: sel = ID scelto,
+      // waiting = in attesa delle eco (41/35)
+      palletDecl: { open: false, sel: 0, waiting: false },
       // (chele) dialog conferma APERTURA: side 0 = chiuso, 1|2 = lato in conferma
       clawDialog: { side: 0 },
       // (244) dialog conferma preleva-finito/deposita-grezzo: nessuna
@@ -1563,6 +1609,52 @@ export default {
         this.unloadOpen = true;
       } else
         this.openDialog('gripper');
+    },
+    // (7/10) «Dichiara quale pallet e' in pinza»: un solo overlay alla volta
+    openPalletDecl() {
+      this.closeDialog();
+      this.unloadOpen = false;
+      this.closeTestDialog();
+      this.closeDeclDialog();
+      this.closeClawDialog();
+      this.closePickPlaceDialog();
+      this.getPalletsList();
+      this.palletDecl = { open: true, sel: 0, waiting: false };
+    },
+    closePalletDecl() {
+      if (this.palletDecl.waiting) return;   // i comandi sono gia' partiti
+      this.palletDecl.open = false;
+    },
+    // Guardie rilette adesso (con la missione appena mandata da questa
+    // pagina), poi 41 se il pallet e' in macchina, poi 35, ognuno con la
+    // sua eco: util/palletOnRobot.js. Il pannello NON scrive POS_PLANT.
+    async confirmPalletDecl() {
+      const id = this.palletDecl.sel;
+      if (!(id > 0) || this.palletDecl.waiting) return;
+      this.palletDecl.waiting = true;
+      let esito;
+      try {
+        esito = await dichiaraPalletABordo({
+          server: dataStored.server, socket: dataStored.WS.socket,
+          palletId: id, missioneInCorso: this.missionRunning !== '',
+        });
+      } finally {
+        this.palletDecl.waiting = false;
+      }
+      if (esito.ok) {
+        this.palletDecl.open = false;
+        const p = esito.piano && esito.piano.pallet;
+        dataStored.alert.title = 'INFO';
+        dataStored.alert.desc = this.$t('palletOnRobot.done', { name: p ? '#' + p.ID + ' ' + (p.FAMILY || '').trim() : '#' + id });
+        dataStored.alert.type = 'message';
+      } else {
+        const m = messaggioEsito(esito);
+        dataStored.alert.title = this.$t('WARNING');
+        dataStored.alert.desc = this.$t(m.chiave, m.parametri);
+        dataStored.alert.type = 'warning';
+      }
+      this.getRobotData();
+      this.getPalletsList();
     },
     // M2: dispatcher del bottone unico "Gestione cassetto". Nessuna
     // condizione propria (gate = trayBranchEnabled, come per la pinza).
@@ -2299,6 +2391,13 @@ export default {
     // una domanda da girare all'operatore.
     palletOnBoard() {
       return (this.palletsList || []).find(p => Number(p.POS_PLANT) === 1000) || null;
+    },
+    // (7/10) il pallet scelto in «Dichiara quale pallet e' in pinza» risulta
+    // in macchina (POS_PLANT 100+n): la conferma dice che prima parte il 41
+    palletDeclMachine() {
+      const p = (this.palletsList || []).find(x => x.ID === this.palletDecl.sel);
+      const m = p ? MACHINE_POSITIONS.find(x => x.n === Number(p.POS_PLANT) - 100) : null;
+      return m ? this.$t(m.labelKey) : '';
     },
     // CARICO: l'elenco dei pallet prelevabili. Qui la domanda "quale" e'
     // legittima — il robot ha le mani vuote — ma si offrono solo quelli di cui
