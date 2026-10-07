@@ -5,6 +5,24 @@
 > stato corretto sul momento. Gli interventi manuali da fare in impianto
 > stanno invece in `APPUNTI-CELLA.md`.
 
+## [ ] ensureSchema all'avvio del backend fallisce in cella: niente permessi per sp_refreshview
+
+**Cosa.** All'avvio il backend lancia `ensureSchema()` (`serverDati/server.js`):
+`ALTER TABLE VICE ADD PALLET_ID` se la colonna manca, poi
+`EXEC sp_refreshview 'VICES'`. In cella il 7/10 fallisce con «The user does
+not have permission»: `sp_refreshview` chiede permessi sulla vista che
+l'utente del backend non ha (in cella gli script con ALTER si lanciano a mano,
+APPUNTI-CELLA). La colonna `VICE.PALLET_ID` c'è già, quindi l'ALTER salta
+per la guardia; resta l'errore nel log a ogni avvio, e il backend non
+controlla davvero che la vista `VICES` esponga `PALLET_ID`.
+
+**Direzione.** Farne un controllo di sola lettura: nessun ALTER e nessun
+refresh dal backend; se `COL_LENGTH('VICES','PALLET_ID')` è NULL, un errore
+nel log che dice di rinfrescare la vista a mano. Il refresh, se serve, con
+lo script lanciato in cella da un utente che ha i permessi.
+
+**Trovato il** 2026-10-07, segnalato da Dario in cella.
+
 ## [ ] AllTrayInside (%I35.6) non cablato: un cassetto a metà corsa non lo vede nessuno
 
 **Cosa.** Limite dichiarato dalla consegna 34 (7/10). Le catene pinza

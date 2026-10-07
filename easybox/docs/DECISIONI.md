@@ -2,6 +2,8 @@
 
 Decisioni di Dario che vincolano codice, dati e procedure in cella; la più recente in alto. Il come (script, comandi, ordine degli interventi) sta in [APPUNTI-CELLA.md](APPUNTI-CELLA.md).
 
+**Velocità del robot su %QW650 (7/10).** `Sys_SetRobotspeed` è stato spostato da %QW512 a %QW650 (al posto di `spare_9`) da Dario e dal robotista; il lato robot è allineato e legge la velocità dalla parola nuova. Chiude il dubbio del commit 896cb8f. Il PLC la scrive da `FB_RobotEfort`, a ogni ciclo, col valore che il pannello manda col comando 100.
+
 **Uncino per i cassetti e pinze col cassetto fuori (7/10).** Consegna 34.
 1. L'uncino è fisso su certe pinze, quindi è un dato dell'anagrafica: `GRIPPER.HAS_HOOK`, che si scrive dalla pagina della pinza (casella «Uncino per cassetti»; su una pinza doppia vale per tutte e due le righe).
 2. Se si chiede di estrarre un cassetto senza una pinza adatta a bordo, il PLC va a prendersi la pinza con l'uncino.
