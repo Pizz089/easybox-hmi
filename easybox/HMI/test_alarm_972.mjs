@@ -18,7 +18,8 @@
 globalThis.window = { location: { hostname: 'localhost' }, performance: globalThis.performance };
 import { readFileSync, existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { robotAlarmCombiner, makePlcAlarmRobotHandler, ALARM_REJECT_ACTIVE, ALARM_PAIR_MS } from './src/util/robotAlarm.js';
+import { robotAlarmCombiner, makePlcAlarmRobotHandler, makePlcAlarmHandlers, codiciInDialog, codiceInDialog, codiceAllarme, ALARM_REJECT_ACTIVE, ALARM_PAIR_MS, DIALOG_GRACE_MS } from './src/util/robotAlarm.js';
+import { aspettaEco } from './src/util/palletMachine.js';
 const require = createRequire(import.meta.url);
 const { createI18n } = require('vue-i18n');
 
@@ -93,10 +94,55 @@ console.log('\n4) un punto solo');
 const menuPath = 'src/layout/StandardMenu.vue';
 const globPath = 'src/layout/plantGlobals.js';
 const punti = [menuPath, globPath].filter(existsSync).map(p => [p, readFileSync(p, 'utf8')]);
-check(punti.length >= 1 && punti.every(([, src]) => /makePlcAlarmRobotHandler\(dataStored, \{ t, te \}\)/.test(src) && /socket\.on\('PLC\/ALARM\/ROBOT', plcAlarmRobotHandler\)/.test(src) && !/'robot\.alarm_' \+ payload/.test(src)),
-	'handler di PLC/ALARM/ROBOT dalla util in ' + punti.map(([p]) => p).join(', '));
+check(punti.length >= 1 && punti.every(([, src]) => /makePlcAlarmHandlers\(dataStored, \{ t, te \}\)/.test(src) && /socket\.on\('PLC\/ALARM\/ROBOT', plcAlarmRobotHandler\)/.test(src)
+	&& /socket\.on\('ALARM\/MC1', alarmMc1Handler\)/.test(src) && /socket\.on\('ALARM\/BOX', alarmBoxHandler\)/.test(src) && /socket\.off\('ALARM\/BOX', alarmBoxHandler\)/.test(src) && !/'robot\.alarm_' \+ (payload|code)/.test(src)),
+	'handler di PLC/ALARM/ROBOT, ALARM/MC1 e ALARM/BOX dalla util in ' + punti.map(([p]) => p).join(', '));
 check(!existsSync(globPath) || !existsSync(menuPath) || !/PLC\/ALARM\/ROBOT/.test(readFileSync(menuPath, 'utf8')) || !/PLC\/ALARM\/ROBOT/.test(readFileSync(globPath, 'utf8')) || /usePlantGlobals/.test(readFileSync(menuPath, 'utf8')),
 	'un solo layout registra l\'handler');
+
+console.log('\n5) (7/10 sera) B60: il codice passa da parseInt');
+check(codiceAllarme('+900001') === 900001 && codiceAllarme(' 18 ') === 18 && Number.isNaN(codiceAllarme('Impossible to connect')), 'codiceAllarme: "+900001" -> 900001, " 18 " -> 18, testo -> NaN');
+d = robotAlarmCombiner({ t, te, now });
+check(d('+900001') === 'robot.alarm_900001' && d(' 18 ') === 'robot.alarm_18' && aVideo(d(' 18 ')) === it.robot.alarm_18, 'chiave col codice ripulito: robot.alarm_900001, robot.alarm_18 (e il 18 col suo testo)');
+
+console.log('\n6) B61: il 99 di ALARM/BOX ha un testo suo');
+let st = { alert: { title: '', desc: '', type: '' } };
+let hs = makePlcAlarmHandlers(st, { t, te, now });
+hs.robot('99');
+check(st.alert.desc === 'robot.alarm_99' && aVideo(st.alert.desc) === 'ALLARME GENERICO', '99 del robot (non da ALARM/BOX): "ALLARME GENERICO", come prima');
+hs.box('99'); ora += 2; hs.robot('99');
+check(st.alert.desc === 'robot.alarmBox_99' && /cassetto fuori intervallo/.test(aVideo(st.alert.desc)), '99 arrivato su ALARM/BOX: «' + aVideo(st.alert.desc) + '»');
+hs.box('996'); ora += 2; hs.robot('996');
+check(st.alert.desc === 'robot.alarm_996', '996 da ALARM/BOX senza testo box suo: robot.alarm_996');
+hs.box('99'); ora += ALARM_PAIR_MS + 1; hs.robot('99');
+check(st.alert.desc === 'robot.alarm_99', 'il 99 del robot arrivato oltre 1 s dopo quello del cassetto: testo del robot');
+check(['948', '951', '996', '997', '999'].every(c => te('robot.alarm_' + c) && t('robot.alarm_' + c) !== 'robot.alarm_' + c), '948, 951, 996, 997, 999: un testo nel namespace degli allarmi');
+
+console.log('\n7) B61: niente riquadro per un codice che un dialog aperto sta gia\' mostrando');
+st = { alert: { title: '', desc: '', type: '' } };
+hs = makePlcAlarmHandlers(st, { t, te, now });
+let rilascia = codiciInDialog([947, 944], { graziaMs: 0 });
+check(codiceInDialog(947) && codiceInDialog('944') && !codiceInDialog(948), 'codici registrati dal dialog');
+hs.mc1('947'); hs.robot('944');
+check(st.alert.title === '' && st.alert.desc === '', 'ALARM/MC1 947 e PLC/ALARM/ROBOT 944 col dialog che li mostra: il riquadro non compare');
+hs.mc1('948');
+check(st.alert.title === 'MC1' && st.alert.desc === 'robot.alarm_948', 'un codice che il dialog non mostra: riquadro come prima');
+rilascia();
+check(!codiceInDialog(947), 'dialog chiuso: i codici tornano al riquadro');
+hs.mc1('947');
+check(st.alert.desc === 'robot.alarm_947', '   e il 947 compare di nuovo');
+// aspettaEco registra i codici del rifiuto finche' aspetta, piu' il margine
+const asc = {}; const sock = { on: (e, f) => { asc[e] = f; }, off: (e) => { delete asc[e]; } };
+const att = aspettaEco(sock, { evento: 'DECLARE/MC1', allarme: 'ALARM/MC1', codici: [947], ms: 2000 });
+check(codiceInDialog(947), 'aspettaEco: mentre aspetta, il 947 lo mostra il dialog');
+asc['ALARM/MC1']('947');
+const esito = await att;
+check(esito.ok === false && esito.codice === 947 && codiceInDialog(947), '   rifiuto arrivato: l\'attesa finisce, il codice resta zitto ancora per il margine (l\'allarme al riquadro arriva un attimo dopo)');
+await new Promise(r => setTimeout(r, DIALOG_GRACE_MS + 50));
+check(!codiceInDialog(947), '   dopo ' + DIALOG_GRACE_MS + ' ms torna al riquadro');
+const rv = readFileSync('src/views/unit/robotView.vue', 'utf8');
+check(/'declDialog\.open'\(aperto\)/.test(rv) && /codiciInDialog\(DECL_CODICI\)/.test(rv) && /const DECL_CODICI = \[947, 948, 99, 996, 997, 999, 944, 945, 946, 968, 969, 20001, 20002, 20005, 20006\]/.test(rv),
+	'Reimposta stato cella aperta: i suoi codici (macchina, cassetto, robot, tasche) non vanno al riquadro');
 
 console.log('\n' + (failed ? failed + ' CHECK FALLITI' : 'TUTTI I CHECK PASSATI'));
 process.exit(failed ? 1 : 0);

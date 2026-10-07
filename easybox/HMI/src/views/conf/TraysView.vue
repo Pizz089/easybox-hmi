@@ -512,13 +512,15 @@ export default {
         //    if(this.polling)
         //        this.getDataTable()
         //}, 3000);
-        dataStored.WS.socket.on('BOX/STATUS', ()=>{
+        // (7/10 sera, B64) handler nominato, con l'off in unmounted
+        this.boxStatusHandler = () => {
           this.getDataTable()
-        })
+        };
+        dataStored.WS.socket.on('BOX/STATUS', this.boxStatusHandler)
     },
     unmounted(){
         //this.polling=false;
-        //dataStored.WS.socket.off('BOX/STATUS');
+        dataStored.WS.socket.off('BOX/STATUS', this.boxStatusHandler);
     }
 }
 </script>

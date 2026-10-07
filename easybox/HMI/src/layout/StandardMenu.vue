@@ -6,7 +6,7 @@ import sideMenu from '../components/menu.vue'
 import barraInAlto from '../components/barraInAlto.vue'
 import alert from '../components/Alerts/Alert.vue'
 import { dataStored } from '@/data'
-import { makePlcAlarmRobotHandler } from '../util/robotAlarm.js'
+import { makePlcAlarmHandlers } from '../util/robotAlarm.js'
 
 const { t, te } = useI18n()
 
@@ -14,8 +14,13 @@ const { t, te } = useI18n()
 // di robotView/units/productionTable, e4ab4e5): servono i riferimenti per
 // l'off specifico in onUnmounted.
 // (consegna 35, 7/10) robot.alarm_<codice> come prima; un 972 seguito entro
-// 1 s dal codice dell'errore attivo diventa un avviso unico (util/robotAlarm.js)
-const plcAlarmRobotHandler = makePlcAlarmRobotHandler(dataStored, { t, te })
+// 1 s dal codice dell'errore attivo diventa un avviso unico; (7/10 sera) il
+// codice ripulito con parseInt, il testo suo per il 99 di ALARM/BOX, nessun
+// riquadro per un codice che un dialog aperto sta gia' mostrando. Tutto in
+// util/robotAlarm.js, un punto solo.
+const allarmi = makePlcAlarmHandlers(dataStored, { t, te })
+const plcAlarmRobotHandler = allarmi.robot
+const alarmBoxHandler = allarmi.box
 
 // (AN 1-bis) precondizione ausiliari: stato globale in dataStored, un solo
 // listener per tutto il pannello (StandardMenu e' sempre montato).
@@ -26,12 +31,7 @@ const safetyAuxHandler = v => {
 
 // (fase B) ALARM/MC1 (es. 947: dichiarazione macchina rifiutata): toast
 // globale con chiave i18n robot.alarm_<codice> (fallback codice grezzo)
-const alarmMc1Handler = payload => {
-  const code = parseInt(payload, 10)
-  dataStored.alert.title = 'MC1'
-  dataStored.alert.desc = Number.isInteger(code) && code > 0 ? 'robot.alarm_' + code : String(payload)
-  dataStored.alert.type = 'warning'
-}
+const alarmMc1Handler = allarmi.mc1
 
 const plcAlarmGenericHandler = payload => {
   dataStored.alert.title = 'GENERIC_ERROR'
@@ -57,6 +57,7 @@ onMounted(() => {
     dataStored.WS.socket.on('PLC/ALARM/GENERIC', plcAlarmGenericHandler)
     dataStored.WS.socket.on('SAFETY/AUX', safetyAuxHandler)
     dataStored.WS.socket.on('ALARM/MC1', alarmMc1Handler)
+    dataStored.WS.socket.on('ALARM/BOX', alarmBoxHandler)
     dataStored.WS.socket.on('connect', requestOneShotStates)
     requestOneShotStates()
   }
@@ -70,6 +71,7 @@ onUnmounted(() => {
     dataStored.WS.socket.off('PLC/ALARM/GENERIC', plcAlarmGenericHandler)
     dataStored.WS.socket.off('SAFETY/AUX', safetyAuxHandler)
     dataStored.WS.socket.off('ALARM/MC1', alarmMc1Handler)
+    dataStored.WS.socket.off('ALARM/BOX', alarmBoxHandler)
     dataStored.WS.socket.off('connect', requestOneShotStates)
   }
 })

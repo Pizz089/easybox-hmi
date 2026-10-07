@@ -185,6 +185,59 @@ fetchFinto([[/tray\/show\/all/, [{ FLOOR_MAG: 8, EXTRACT: 1 }, { FLOOR_MAG: 2, E
 rv = robot(); rv.getTraysList(); await tick();
 check(rv.extractedTray && rv.extractedTray.FLOOR_MAG === 8 && rv.gripperBranchEnabled === false, 'il dato e\' quello che la pagina ha gia\' (vista dei cassetti, EXTRACT = 1)');
 
+console.log('\n3-bis) (7/10 sera, B2 e B8) «Gestione pallet» e collaudo 31/33 col cassetto fuori');
+check(C.palletCambiaPinza({ GripperREQ: 1 }, [26, 37]) === true && C.palletCambiaPinza({ GripperREQ: 37 }, [26, 37]) === false
+	&& C.palletCambiaPinza({ GripperREQ: 0 }, [26]) === false && C.palletCambiaPinza({}, [26]) === false,
+	'util: il pallet chiede un cambio pinza se GripperREQ non e\' una delle righe della pinza a bordo (0 o assente: no)');
+const PALLET = () => [{ ID: 5, FAMILY: 'Pallet A', MAG: 1, MAG_POS: 3, POS_PLANT: 0, GripperREQ: 1 }, { ID: 6, FAMILY: 'Pallet B', MAG: 1, MAG_POS: 4, POS_PLANT: 0, GripperREQ: 26 }];
+const palletRv = (tray, pallets) => {
+	const r = robot(tray);
+	r.palletsList = pallets || PALLET();
+	r.getGrippersList = () => {}; r.getPalletsList = () => {}; r.getTraysList = () => {}; r.getRobotData = () => {};
+	return r;
+};
+rv = palletRv();
+check(rv.palletBranchEnabled === true && rv.palletDisabledReason === '', 'cassetti dentro: «Gestione pallet» acceso');
+rv.dialog.type = 'palletLoad';
+check(!rv.palletItemBlocked(rv.palletsList[0]) && !rv.palletItemBlocked(rv.palletsList[1]), '   e nel dialog si sceglie qualunque pallet');
+rv = palletRv({ extractedTray: { FLOOR_MAG: 3, EXTRACT: 1 } });
+check(rv.palletBranchEnabled === true, 'cassetto fuori, un pallet usa la pinza a bordo (26): «Gestione pallet» resta acceso');
+rv.dialog.type = 'palletLoad';
+check(rv.palletItemBlocked(rv.palletsList[0]) === true && rv.palletItemBlocked(rv.palletsList[1]) === false && rv.palletTrayReason === 'robot.hint.trayOutGripper',
+	'   nel dialog il pallet che vuole la pinza 1 e\' spento, col motivo «Cassetto fuori: prima rientralo»');
+rv.dialog.selected = rv.palletsList[0];
+check(rv.dialogConfirmEnabled === false, '   e se era gia\' scelto non si conferma');
+rv.dialog.selected = rv.palletsList[1];
+check(rv.dialogConfirmEnabled === true, '   il pallet della pinza a bordo si conferma');
+rv = palletRv({ extractedTray: { FLOOR_MAG: 3, EXTRACT: 1 } }, [PALLET()[0]]);
+check(rv.palletBranchEnabled === false && rv.palletDisabledReason === 'robot.hint.trayOutGripper', 'cassetto fuori, ogni pallet vuole un\'altra pinza: «Gestione pallet» spento, «Cassetto fuori: prima rientralo»');
+rv = palletRv({ trayBusy: true }, [PALLET()[0]]);
+check(rv.palletBranchEnabled === false && rv.palletDisabledReason === 'robot.hint.trayBusy', '   cassetto in manovra: idem, col motivo della manovra');
+rv = palletRv({ extractedTray: { FLOOR_MAG: 3, EXTRACT: 1 } }, [PALLET()[0]]);
+rv.dataGripper = [{ ID: 26, STATUS: dataStored.status_raw }, { ID: 37, STATUS: 2 }];
+rv.palletsList.push({ ID: 9, FAMILY: 'Pallet a bordo', POS_PLANT: 1000, GripperREQ: 26 });
+check(rv.palletLoadAllBlocked === false, 'scarico (pinza col pallet): nessun cambio pinza, il cassetto fuori non lo spegne');
+// collaudo
+rv = palletRv({ extractedTray: { FLOOR_MAG: 3, EXTRACT: 1 } });
+rv.grippersList = [{ ID: 1, FAMILY: 'Pinza PALLET', SUB_POS: 0 }, { ID: 15, FAMILY: 'Gancio', SUB_POS: 1002 }];
+check(rv.testGripperChoices.length === 0 && rv.testGripperTrayReason === 'robot.hint.trayOutGripper', 'collaudo 31/33 col cassetto fuori: si offre solo la pinza a bordo, e si dice perche\'');
+rv = palletRv();
+rv.grippersList = [{ ID: 1, FAMILY: 'Pinza PALLET', SUB_POS: 0 }];
+check(rv.testGripperChoices.length === 1 && rv.testGripperTrayReason === '', '   cassetti dentro: l\'elenco completo, come prima');
+rv = palletRv({ extractedTray: { FLOOR_MAG: 3, EXTRACT: 1 } });
+rv.testDialog.type = 'pickTray'; rv.testDialog.subpos = 4; rv.testDialog.gripperSel = 1;
+nuovoAlert(); emessi.length = 0;
+rv.confirmTestDialog();
+check(!emessi.some(e => /TO_PLANT\/CMD\/ROBOT/.test(e)) && dataStored.alert.desc === 'robot.dialog.stateChanged', '   31 con un\'altra pinza scelta prima che il cassetto uscisse: non parte');
+rv = palletRv({ extractedTray: { FLOOR_MAG: 3, EXTRACT: 1 } });
+rv.testDialog.type = 'pickTray'; rv.testDialog.subpos = 4; rv.testDialog.gripperSel = 0;
+emessi.length = 0;
+rv.confirmTestDialog();
+check(emessi.some(e => e === 'TO_PLANT/CMD/ROBOT 31;4;0'), '   31 con la pinza a bordo: parte 31;4;0, come prima');
+const rvSrc = readFileSync('src/views/unit/robotView.vue', 'utf8');
+check(/v-for="g in testGripperChoices"/.test(rvSrc) && /:disabled="palletItemBlocked\(item\)"/.test(rvSrc) && /palletCambiaPinza/.test(rvSrc) && !/GripperREQ/.test(rvSrc.replace(/\/\/[^\n]*|<!--[\s\S]*?-->/g, '')),
+	'template: scelte del collaudo e pallet spenti; la regola sta in util/cassettoFuori.js, non ricalcolata nella pagina');
+
 console.log('\n4) lista pinze: «sposta» (11/12) spento col cassetto fuori');
 fetchFinto([[/tray\/show\/all/, [{ FLOOR_MAG: 8, EXTRACT: 1 }]]]);
 const gv = vmOf(GrippersView);

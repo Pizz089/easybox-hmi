@@ -282,7 +282,9 @@ export default {
     mounted(){
         this.getGripperData()
         this.getRigLists()
-        setInterval(() => {
+        // (7/10 sera, B64) anche questo si cancella in unmounted: senza
+        // riferimento restava a girare (a vuoto, con polling false) per sempre
+        this.gripperTimer = setInterval(() => {
             if(this.polling)
                 this.getGripperData()
         }, 3000);
@@ -306,6 +308,7 @@ export default {
     },
     unmounted(){
         this.polling=false;
+        clearInterval(this.gripperTimer);
         clearInterval(this.pollTimer);
         dataStored.WS.socket.off('connect', this.requestSnapshots);
         dataStored.WS.socket.off('DECLARE/MC1', this.mc1DeclHandler);

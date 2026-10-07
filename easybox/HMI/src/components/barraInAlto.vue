@@ -20,7 +20,8 @@ const userModalOpen = ref(false);
         <div class="topbar-logo">
             <img src="@/assets/logo.png" alt="ADMG Logo" />
         </div>
-        <h3 v-if="!dataStored.WS.connected">in attesa di connessione!!</h3>
+        <!-- (7/10 sera, B54) da scollegato i comandi non partono (util/socketCommands.js) -->
+        <h3 v-if="!dataStored.WS.connected" class="offline-warn" role="status">{{ $t('shell.offline') }}</h3>
         <div>
             <button
                 type="button"
@@ -86,6 +87,12 @@ const { isDark, toggleTheme, setTheme, theme } = useTheme();
 
 
 <style scoped>
+/* (7/10 sera, B54) pannello scollegato: i comandi non partono */
+.offline-warn {
+    color: var(--color-danger);
+    font-weight: var(--font-weight-bold);
+    margin: 0;
+}
 /* Logo ADMG nella TopBar (spostato da SideBar in UI-3.2).
    .topbar-logo riempie tutta l'altezza TopBar (64px), l'img dentro
    lascia 4px breathing top+bottom (height calc(100% - 8px) = 56px).

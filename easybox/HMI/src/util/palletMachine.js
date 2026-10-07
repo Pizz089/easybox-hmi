@@ -17,6 +17,7 @@
 // del Posiziona scrivevano solo il database, e il registro del PLC restava
 // com'era. Dal 7/10 sera anche «Casella» di un pallet in macchina.
 // ============================================================================
+import { codiciInDialog } from './robotAlarm.js';
 
 export const ECO_MC_MS = 3000;      // come la pagina Macchine dal 16/9
 export const RIFIUTI_MC = [947];    // FB204: ciclo macchina avviato / pallet gia' dichiarato
@@ -28,9 +29,13 @@ export const REGISTRO_MS = 1500;    // risposta allo snapshot del registro
 export function aspettaEco(socket, { evento, coerente, allarme, codici, ms }) {
 	return new Promise(resolve => {
 		let fatto = false;
+		// (7/10 sera, B61) il rifiuto lo mostra chi aspetta: il riquadro
+		// globale degli allarmi tace per questi codici (util/robotAlarm.js)
+		const rilascia = codiciInDialog(codici);
 		const fine = (esito) => {
 			if (fatto) return;
 			fatto = true;
+			rilascia();
 			clearTimeout(t);
 			socket.off(evento, suEco);
 			if (allarme) socket.off(allarme, suAllarme);
