@@ -2509,7 +2509,7 @@
       <SW.Tags.PlcTag ID="191" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Int</DataTypeName>
-          <LogicalAddress>%QW512</LogicalAddress>
+          <LogicalAddress>%QW650</LogicalAddress>
           <Name>Sys_SetRobotspeed</Name>
         </AttributeList>
         <ObjectList>
@@ -2859,8 +2859,8 @@
       <SW.Tags.PlcTag ID="1C9" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Int</DataTypeName>
-          <LogicalAddress>%QW650</LogicalAddress>
-          <Name>spare_9</Name>
+          <LogicalAddress>%QW652</LogicalAddress>
+          <Name>spare_10</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="1CA" CompositionName="Comment">
@@ -2884,8 +2884,8 @@
       <SW.Tags.PlcTag ID="1CD" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Int</DataTypeName>
-          <LogicalAddress>%QW652</LogicalAddress>
-          <Name>spare_10</Name>
+          <LogicalAddress>%QW654</LogicalAddress>
+          <Name>spare_11</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="1CE" CompositionName="Comment">
@@ -2909,8 +2909,8 @@
       <SW.Tags.PlcTag ID="1D1" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Int</DataTypeName>
-          <LogicalAddress>%QW654</LogicalAddress>
-          <Name>spare_11</Name>
+          <LogicalAddress>%QW656</LogicalAddress>
+          <Name>spare_12</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="1D2" CompositionName="Comment">
@@ -2934,8 +2934,8 @@
       <SW.Tags.PlcTag ID="1D5" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Int</DataTypeName>
-          <LogicalAddress>%QW656</LogicalAddress>
-          <Name>spare_12</Name>
+          <LogicalAddress>%QW658</LogicalAddress>
+          <Name>spare_13</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="1D6" CompositionName="Comment">
@@ -2959,8 +2959,8 @@
       <SW.Tags.PlcTag ID="1D9" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Int</DataTypeName>
-          <LogicalAddress>%QW658</LogicalAddress>
-          <Name>spare_13</Name>
+          <LogicalAddress>%QW660</LogicalAddress>
+          <Name>spare_14</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="1DA" CompositionName="Comment">
@@ -2984,8 +2984,8 @@
       <SW.Tags.PlcTag ID="1DD" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Int</DataTypeName>
-          <LogicalAddress>%QW660</LogicalAddress>
-          <Name>spare_14</Name>
+          <LogicalAddress>%QW662</LogicalAddress>
+          <Name>spare_15</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="1DE" CompositionName="Comment">
@@ -3009,8 +3009,8 @@
       <SW.Tags.PlcTag ID="1E1" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Int</DataTypeName>
-          <LogicalAddress>%QW662</LogicalAddress>
-          <Name>spare_15</Name>
+          <LogicalAddress>%QW664</LogicalAddress>
+          <Name>spare_16</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="1E2" CompositionName="Comment">
@@ -3034,8 +3034,8 @@
       <SW.Tags.PlcTag ID="1E5" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Int</DataTypeName>
-          <LogicalAddress>%QW664</LogicalAddress>
-          <Name>spare_16</Name>
+          <LogicalAddress>%QW666</LogicalAddress>
+          <Name>spare_17</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="1E6" CompositionName="Comment">
@@ -3058,9 +3058,9 @@
       </SW.Tags.PlcTag>
       <SW.Tags.PlcTag ID="1E9" CompositionName="Tags">
         <AttributeList>
-          <DataTypeName>Int</DataTypeName>
-          <LogicalAddress>%QW666</LogicalAddress>
-          <Name>spare_17</Name>
+          <DataTypeName>Bool</DataTypeName>
+          <LogicalAddress>%Q500.0</LogicalAddress>
+          <Name>sys_positionType</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="1EA" CompositionName="Comment">
@@ -3084,8 +3084,8 @@
       <SW.Tags.PlcTag ID="1ED" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Bool</DataTypeName>
-          <LogicalAddress>%Q500.0</LogicalAddress>
-          <Name>sys_positionType</Name>
+          <LogicalAddress>%Q500.4</LogicalAddress>
+          <Name>sys_ServoEnable</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="1EE" CompositionName="Comment">
@@ -3109,8 +3109,8 @@
       <SW.Tags.PlcTag ID="1F1" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Bool</DataTypeName>
-          <LogicalAddress>%Q500.4</LogicalAddress>
-          <Name>sys_ServoEnable</Name>
+          <LogicalAddress>%Q500.5</LogicalAddress>
+          <Name>sys_ServoDisable</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="1F2" CompositionName="Comment">
@@ -3124,7 +3124,7 @@
               <MultilingualTextItem ID="1F4" CompositionName="Items">
                 <AttributeList>
                   <Culture>it-IT</Culture>
-                  <Text />
+                  <Text>Disabilita i motori (va a 0 quando vedo servostate a 0)</Text>
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -3134,8 +3134,8 @@
       <SW.Tags.PlcTag ID="1F5" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Bool</DataTypeName>
-          <LogicalAddress>%Q500.5</LogicalAddress>
-          <Name>sys_ServoDisable</Name>
+          <LogicalAddress>%Q500.7</LogicalAddress>
+          <Name>sys_loadMapPrg</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="1F6" CompositionName="Comment">
@@ -3149,7 +3149,7 @@
               <MultilingualTextItem ID="1F8" CompositionName="Items">
                 <AttributeList>
                   <Culture>it-IT</Culture>
-                  <Text>Disabilita i motori (va a 0 quando vedo servostate a 0)</Text>
+                  <Text />
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -3159,8 +3159,8 @@
       <SW.Tags.PlcTag ID="1F9" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Bool</DataTypeName>
-          <LogicalAddress>%Q500.7</LogicalAddress>
-          <Name>sys_loadMapPrg</Name>
+          <LogicalAddress>%Q501.0</LogicalAddress>
+          <Name>sys_servoOn</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="1FA" CompositionName="Comment">
@@ -3174,7 +3174,7 @@
               <MultilingualTextItem ID="1FC" CompositionName="Items">
                 <AttributeList>
                   <Culture>it-IT</Culture>
-                  <Text />
+                  <Text>Abilitazione servo robot (va a 0 quando vedo servo state a 1)</Text>
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -3184,8 +3184,8 @@
       <SW.Tags.PlcTag ID="1FD" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Bool</DataTypeName>
-          <LogicalAddress>%Q501.0</LogicalAddress>
-          <Name>sys_servoOn</Name>
+          <LogicalAddress>%Q501.1</LogicalAddress>
+          <Name>sys_startProg</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="1FE" CompositionName="Comment">
@@ -3199,7 +3199,7 @@
               <MultilingualTextItem ID="200" CompositionName="Items">
                 <AttributeList>
                   <Culture>it-IT</Culture>
-                  <Text>Abilitazione servo robot (va a 0 quando vedo servo state a 1)</Text>
+                  <Text>Abilitaizone per la partenza (va a 0 quando vedo lo run state a 1)</Text>
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -3209,8 +3209,8 @@
       <SW.Tags.PlcTag ID="201" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Bool</DataTypeName>
-          <LogicalAddress>%Q501.1</LogicalAddress>
-          <Name>sys_startProg</Name>
+          <LogicalAddress>%Q501.2</LogicalAddress>
+          <Name>sys_pauseProgram</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="202" CompositionName="Comment">
@@ -3224,7 +3224,7 @@
               <MultilingualTextItem ID="204" CompositionName="Items">
                 <AttributeList>
                   <Culture>it-IT</Culture>
-                  <Text>Abilitaizone per la partenza (va a 0 quando vedo lo run state a 1)</Text>
+                  <Text>Stop di congelamento in ciclo (il robot si ferma ma è pronto a ripartire esattamente da dove era per concludere il ciclo) (segnale da abbassare quando vedo runstate che va a 0) </Text>
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -3234,8 +3234,8 @@
       <SW.Tags.PlcTag ID="205" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Bool</DataTypeName>
-          <LogicalAddress>%Q501.2</LogicalAddress>
-          <Name>sys_pauseProgram</Name>
+          <LogicalAddress>%Q501.3</LogicalAddress>
+          <Name>sys_resetAlarm</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="206" CompositionName="Comment">
@@ -3249,7 +3249,7 @@
               <MultilingualTextItem ID="208" CompositionName="Items">
                 <AttributeList>
                   <Culture>it-IT</Culture>
-                  <Text>Stop di congelamento in ciclo (il robot si ferma ma è pronto a ripartire esattamente da dove era per concludere il ciclo) (segnale da abbassare quando vedo runstate che va a 0) </Text>
+                  <Text>Reset degli allarmi (quando vedo il systemalamstate che va a 0 il segnale va a 0)</Text>
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -3259,8 +3259,8 @@
       <SW.Tags.PlcTag ID="209" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Bool</DataTypeName>
-          <LogicalAddress>%Q501.3</LogicalAddress>
-          <Name>sys_resetAlarm</Name>
+          <LogicalAddress>%Q501.4</LogicalAddress>
+          <Name>sys_loadProgram</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="20A" CompositionName="Comment">
@@ -3274,7 +3274,7 @@
               <MultilingualTextItem ID="20C" CompositionName="Items">
                 <AttributeList>
                   <Culture>it-IT</Culture>
-                  <Text>Reset degli allarmi (quando vedo il systemalamstate che va a 0 il segnale va a 0)</Text>
+                  <Text>NON UTILIZZATO</Text>
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -3284,8 +3284,8 @@
       <SW.Tags.PlcTag ID="20D" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Bool</DataTypeName>
-          <LogicalAddress>%Q501.4</LogicalAddress>
-          <Name>sys_loadProgram</Name>
+          <LogicalAddress>%Q501.5</LogicalAddress>
+          <Name>sys_resetProgram</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="20E" CompositionName="Comment">
@@ -3299,7 +3299,7 @@
               <MultilingualTextItem ID="210" CompositionName="Items">
                 <AttributeList>
                   <Culture>it-IT</Culture>
-                  <Text>NON UTILIZZATO</Text>
+                  <Text>PP to main del programma (va a 0 quando vedo on resetprogramstate)</Text>
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -3309,8 +3309,8 @@
       <SW.Tags.PlcTag ID="211" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Bool</DataTypeName>
-          <LogicalAddress>%Q501.5</LogicalAddress>
-          <Name>sys_resetProgram</Name>
+          <LogicalAddress>%Q501.6</LogicalAddress>
+          <Name>sys_plcAlarm</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="212" CompositionName="Comment">
@@ -3324,7 +3324,7 @@
               <MultilingualTextItem ID="214" CompositionName="Items">
                 <AttributeList>
                   <Culture>it-IT</Culture>
-                  <Text>PP to main del programma (va a 0 quando vedo on resetprogramstate)</Text>
+                  <Text>Segnale d'allarme da PLC</Text>
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -3334,8 +3334,8 @@
       <SW.Tags.PlcTag ID="215" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Bool</DataTypeName>
-          <LogicalAddress>%Q501.6</LogicalAddress>
-          <Name>sys_plcAlarm</Name>
+          <LogicalAddress>%Q501.7</LogicalAddress>
+          <Name>sys_remoteServoConfirm</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="216" CompositionName="Comment">
@@ -3349,7 +3349,7 @@
               <MultilingualTextItem ID="218" CompositionName="Items">
                 <AttributeList>
                   <Culture>it-IT</Culture>
-                  <Text>Segnale d'allarme da PLC</Text>
+                  <Text>Segnale di remote servo (va a 0 quando servoconfirmstate va a 1)</Text>
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -3359,8 +3359,8 @@
       <SW.Tags.PlcTag ID="219" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Bool</DataTypeName>
-          <LogicalAddress>%Q501.7</LogicalAddress>
-          <Name>sys_remoteServoConfirm</Name>
+          <LogicalAddress>%Q502.0</LogicalAddress>
+          <Name>cmd_ACK_Blowing</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="21A" CompositionName="Comment">
@@ -3374,7 +3374,7 @@
               <MultilingualTextItem ID="21C" CompositionName="Items">
                 <AttributeList>
                   <Culture>it-IT</Culture>
-                  <Text>Segnale di remote servo (va a 0 quando servoconfirmstate va a 1)</Text>
+                  <Text>Acknowladge della richiesta di soffio</Text>
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -3384,8 +3384,8 @@
       <SW.Tags.PlcTag ID="21D" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Bool</DataTypeName>
-          <LogicalAddress>%Q502.0</LogicalAddress>
-          <Name>cmd_ACK_Blowing</Name>
+          <LogicalAddress>%Q502.1</LogicalAddress>
+          <Name>cmd_ACK_Washing</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="21E" CompositionName="Comment">
@@ -3399,7 +3399,7 @@
               <MultilingualTextItem ID="220" CompositionName="Items">
                 <AttributeList>
                   <Culture>it-IT</Culture>
-                  <Text>Acknowladge della richiesta di soffio</Text>
+                  <Text>Acknowladge della richiesta di lavaggio</Text>
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -3409,8 +3409,8 @@
       <SW.Tags.PlcTag ID="221" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Bool</DataTypeName>
-          <LogicalAddress>%Q502.1</LogicalAddress>
-          <Name>cmd_ACK_Washing</Name>
+          <LogicalAddress>%Q502.4</LogicalAddress>
+          <Name>px_tray_in_position</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="222" CompositionName="Comment">
@@ -3424,7 +3424,7 @@
               <MultilingualTextItem ID="224" CompositionName="Items">
                 <AttributeList>
                   <Culture>it-IT</Culture>
-                  <Text>Acknowladge della richiesta di lavaggio</Text>
+                  <Text>Sensore di cassetto estratto</Text>
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -3434,8 +3434,8 @@
       <SW.Tags.PlcTag ID="225" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Bool</DataTypeName>
-          <LogicalAddress>%Q502.4</LogicalAddress>
-          <Name>px_tray_in_position</Name>
+          <LogicalAddress>%Q502.5</LogicalAddress>
+          <Name>cmd_status_free_3</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="226" CompositionName="Comment">
@@ -3449,7 +3449,7 @@
               <MultilingualTextItem ID="228" CompositionName="Items">
                 <AttributeList>
                   <Culture>it-IT</Culture>
-                  <Text>Sensore di cassetto estratto</Text>
+                  <Text />
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -3459,8 +3459,8 @@
       <SW.Tags.PlcTag ID="229" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Bool</DataTypeName>
-          <LogicalAddress>%Q502.5</LogicalAddress>
-          <Name>cmd_status_free_3</Name>
+          <LogicalAddress>%Q502.6</LogicalAddress>
+          <Name>cmd_status_Gripper_1_Ready</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="22A" CompositionName="Comment">
@@ -3474,7 +3474,7 @@
               <MultilingualTextItem ID="22C" CompositionName="Items">
                 <AttributeList>
                   <Culture>it-IT</Culture>
-                  <Text />
+                  <Text>Presenza delle ganasce nalla posizione 1 della pinza</Text>
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -3484,8 +3484,8 @@
       <SW.Tags.PlcTag ID="22D" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Bool</DataTypeName>
-          <LogicalAddress>%Q502.6</LogicalAddress>
-          <Name>cmd_status_Gripper_1_Ready</Name>
+          <LogicalAddress>%Q502.7</LogicalAddress>
+          <Name>cmd_status_Gripper_2_Ready</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="22E" CompositionName="Comment">
@@ -3499,7 +3499,7 @@
               <MultilingualTextItem ID="230" CompositionName="Items">
                 <AttributeList>
                   <Culture>it-IT</Culture>
-                  <Text>Presenza delle ganasce nalla posizione 1 della pinza</Text>
+                  <Text>Presenza delle ganasce nalla posizione 2 della pinza</Text>
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -3509,8 +3509,8 @@
       <SW.Tags.PlcTag ID="231" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Bool</DataTypeName>
-          <LogicalAddress>%Q502.7</LogicalAddress>
-          <Name>cmd_status_Gripper_2_Ready</Name>
+          <LogicalAddress>%I502.0</LogicalAddress>
+          <Name>Gripper_mounted</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="232" CompositionName="Comment">
@@ -3524,7 +3524,7 @@
               <MultilingualTextItem ID="234" CompositionName="Items">
                 <AttributeList>
                   <Culture>it-IT</Culture>
-                  <Text>Presenza delle ganasce nalla posizione 2 della pinza</Text>
+                  <Text>Pinza montata</Text>
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -3534,8 +3534,8 @@
       <SW.Tags.PlcTag ID="235" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Bool</DataTypeName>
-          <LogicalAddress>%I502.0</LogicalAddress>
-          <Name>Gripper_mounted</Name>
+          <LogicalAddress>%I502.1</LogicalAddress>
+          <Name>Gripper1_Closed</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="236" CompositionName="Comment">
@@ -3549,7 +3549,7 @@
               <MultilingualTextItem ID="238" CompositionName="Items">
                 <AttributeList>
                   <Culture>it-IT</Culture>
-                  <Text>Pinza montata</Text>
+                  <Text>Pinza 1 chiusa</Text>
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -3559,8 +3559,8 @@
       <SW.Tags.PlcTag ID="239" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Bool</DataTypeName>
-          <LogicalAddress>%I502.1</LogicalAddress>
-          <Name>Gripper1_Closed</Name>
+          <LogicalAddress>%I502.2</LogicalAddress>
+          <Name>Gripper2_Closed</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="23A" CompositionName="Comment">
@@ -3574,7 +3574,7 @@
               <MultilingualTextItem ID="23C" CompositionName="Items">
                 <AttributeList>
                   <Culture>it-IT</Culture>
-                  <Text>Pinza 1 chiusa</Text>
+                  <Text>Pinza 2 chiusa</Text>
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -3584,8 +3584,8 @@
       <SW.Tags.PlcTag ID="23D" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Bool</DataTypeName>
-          <LogicalAddress>%I502.2</LogicalAddress>
-          <Name>Gripper2_Closed</Name>
+          <LogicalAddress>%I504.1</LogicalAddress>
+          <Name>Robot_cmd_free2</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="23E" CompositionName="Comment">
@@ -3599,7 +3599,7 @@
               <MultilingualTextItem ID="240" CompositionName="Items">
                 <AttributeList>
                   <Culture>it-IT</Culture>
-                  <Text>Pinza 2 chiusa</Text>
+                  <Text />
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -3609,8 +3609,8 @@
       <SW.Tags.PlcTag ID="241" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Bool</DataTypeName>
-          <LogicalAddress>%I504.1</LogicalAddress>
-          <Name>Robot_cmd_free2</Name>
+          <LogicalAddress>%I504.2</LogicalAddress>
+          <Name>Robot_PushDepositoFatto_MC</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="242" CompositionName="Comment">
@@ -3634,8 +3634,8 @@
       <SW.Tags.PlcTag ID="245" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Bool</DataTypeName>
-          <LogicalAddress>%I504.2</LogicalAddress>
-          <Name>Robot_PushDepositoFatto_MC</Name>
+          <LogicalAddress>%I504.3</LogicalAddress>
+          <Name>Robot_PushInPos_MC</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="246" CompositionName="Comment">
@@ -3659,8 +3659,8 @@
       <SW.Tags.PlcTag ID="249" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Bool</DataTypeName>
-          <LogicalAddress>%I504.3</LogicalAddress>
-          <Name>Robot_PushInPos_MC</Name>
+          <LogicalAddress>%I504.4</LogicalAddress>
+          <Name>Robot_cmd_free5</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="24A" CompositionName="Comment">
@@ -3684,8 +3684,8 @@
       <SW.Tags.PlcTag ID="24D" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Bool</DataTypeName>
-          <LogicalAddress>%I504.4</LogicalAddress>
-          <Name>Robot_cmd_free5</Name>
+          <LogicalAddress>%I504.5</LogicalAddress>
+          <Name>Robot_cmd_free6</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="24E" CompositionName="Comment">
@@ -3709,8 +3709,8 @@
       <SW.Tags.PlcTag ID="251" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Bool</DataTypeName>
-          <LogicalAddress>%I504.5</LogicalAddress>
-          <Name>Robot_cmd_free6</Name>
+          <LogicalAddress>%I504.6</LogicalAddress>
+          <Name>Robot_cmd_free7</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="252" CompositionName="Comment">
@@ -3734,8 +3734,8 @@
       <SW.Tags.PlcTag ID="255" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Bool</DataTypeName>
-          <LogicalAddress>%I504.6</LogicalAddress>
-          <Name>Robot_cmd_free7</Name>
+          <LogicalAddress>%I504.7</LogicalAddress>
+          <Name>Robot_cmd_free8</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="256" CompositionName="Comment">
@@ -3759,8 +3759,8 @@
       <SW.Tags.PlcTag ID="259" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Bool</DataTypeName>
-          <LogicalAddress>%I504.7</LogicalAddress>
-          <Name>Robot_cmd_free8</Name>
+          <LogicalAddress>%I505.0</LogicalAddress>
+          <Name>Robot_cmd_LockPallet</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="25A" CompositionName="Comment">
@@ -3774,7 +3774,7 @@
               <MultilingualTextItem ID="25C" CompositionName="Items">
                 <AttributeList>
                   <Culture>it-IT</Culture>
-                  <Text />
+                  <Text>Richiesta di sblocco pallet da robot</Text>
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -3784,8 +3784,8 @@
       <SW.Tags.PlcTag ID="25D" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Bool</DataTypeName>
-          <LogicalAddress>%I505.0</LogicalAddress>
-          <Name>Robot_cmd_LockPallet</Name>
+          <LogicalAddress>%I505.1</LogicalAddress>
+          <Name>Robot_cmd_UnlockPallet</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="25E" CompositionName="Comment">
@@ -3799,7 +3799,7 @@
               <MultilingualTextItem ID="260" CompositionName="Items">
                 <AttributeList>
                   <Culture>it-IT</Culture>
-                  <Text>Richiesta di sblocco pallet da robot</Text>
+                  <Text>Richiesta di blocco pallet da robot</Text>
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -3809,8 +3809,8 @@
       <SW.Tags.PlcTag ID="261" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Bool</DataTypeName>
-          <LogicalAddress>%I505.1</LogicalAddress>
-          <Name>Robot_cmd_UnlockPallet</Name>
+          <LogicalAddress>%I505.2</LogicalAddress>
+          <Name>Robot_cmd_LockPart</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="262" CompositionName="Comment">
@@ -3824,7 +3824,7 @@
               <MultilingualTextItem ID="264" CompositionName="Items">
                 <AttributeList>
                   <Culture>it-IT</Culture>
-                  <Text>Richiesta di blocco pallet da robot</Text>
+                  <Text>Richiesta di chiusura morsa da robot</Text>
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -3834,8 +3834,8 @@
       <SW.Tags.PlcTag ID="265" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Bool</DataTypeName>
-          <LogicalAddress>%I505.2</LogicalAddress>
-          <Name>Robot_cmd_LockPart</Name>
+          <LogicalAddress>%I505.3</LogicalAddress>
+          <Name>Robot_cmd_UnlockPart</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="266" CompositionName="Comment">
@@ -3849,7 +3849,7 @@
               <MultilingualTextItem ID="268" CompositionName="Items">
                 <AttributeList>
                   <Culture>it-IT</Culture>
-                  <Text>Richiesta di chiusura morsa da robot</Text>
+                  <Text>richiesta di apertura morsa da robot</Text>
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -3859,8 +3859,8 @@
       <SW.Tags.PlcTag ID="269" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Bool</DataTypeName>
-          <LogicalAddress>%I505.3</LogicalAddress>
-          <Name>Robot_cmd_UnlockPart</Name>
+          <LogicalAddress>%I505.4</LogicalAddress>
+          <Name>Robot_cmd_OpenDoor</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="26A" CompositionName="Comment">
@@ -3874,7 +3874,7 @@
               <MultilingualTextItem ID="26C" CompositionName="Items">
                 <AttributeList>
                   <Culture>it-IT</Culture>
-                  <Text>richiesta di apertura morsa da robot</Text>
+                  <Text>richiesta di apertura porta da robot</Text>
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -3884,8 +3884,8 @@
       <SW.Tags.PlcTag ID="26D" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Bool</DataTypeName>
-          <LogicalAddress>%I505.4</LogicalAddress>
-          <Name>Robot_cmd_OpenDoor</Name>
+          <LogicalAddress>%I505.5</LogicalAddress>
+          <Name>Robot_cmd_CloseDoor</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="26E" CompositionName="Comment">
@@ -3899,7 +3899,7 @@
               <MultilingualTextItem ID="270" CompositionName="Items">
                 <AttributeList>
                   <Culture>it-IT</Culture>
-                  <Text>richiesta di apertura porta da robot</Text>
+                  <Text>richiesta di chiusura porta da robot</Text>
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -3909,8 +3909,8 @@
       <SW.Tags.PlcTag ID="271" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Bool</DataTypeName>
-          <LogicalAddress>%I505.5</LogicalAddress>
-          <Name>Robot_cmd_CloseDoor</Name>
+          <LogicalAddress>%I505.6</LogicalAddress>
+          <Name>Robot_cmd_BLOW</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="272" CompositionName="Comment">
@@ -3924,7 +3924,7 @@
               <MultilingualTextItem ID="274" CompositionName="Items">
                 <AttributeList>
                   <Culture>it-IT</Culture>
-                  <Text>richiesta di chiusura porta da robot</Text>
+                  <Text>richiesta di soffiaggio da robot</Text>
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -3934,8 +3934,8 @@
       <SW.Tags.PlcTag ID="275" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Bool</DataTypeName>
-          <LogicalAddress>%I505.6</LogicalAddress>
-          <Name>Robot_cmd_BLOW</Name>
+          <LogicalAddress>%I505.7</LogicalAddress>
+          <Name>Robot_cmd_WASHING</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="276" CompositionName="Comment">
@@ -3949,7 +3949,7 @@
               <MultilingualTextItem ID="278" CompositionName="Items">
                 <AttributeList>
                   <Culture>it-IT</Culture>
-                  <Text>richiesta di soffiaggio da robot</Text>
+                  <Text>richiesta di lavaggio da robot</Text>
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -3959,8 +3959,8 @@
       <SW.Tags.PlcTag ID="279" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Bool</DataTypeName>
-          <LogicalAddress>%I505.7</LogicalAddress>
-          <Name>Robot_cmd_WASHING</Name>
+          <LogicalAddress>%I511.7</LogicalAddress>
+          <Name>newQuotaReady</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="27A" CompositionName="Comment">
@@ -3974,7 +3974,7 @@
               <MultilingualTextItem ID="27C" CompositionName="Items">
                 <AttributeList>
                   <Culture>it-IT</Culture>
-                  <Text>richiesta di lavaggio da robot</Text>
+                  <Text>Da verificare</Text>
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -3983,9 +3983,9 @@
       </SW.Tags.PlcTag>
       <SW.Tags.PlcTag ID="27D" CompositionName="Tags">
         <AttributeList>
-          <DataTypeName>Bool</DataTypeName>
-          <LogicalAddress>%I511.7</LogicalAddress>
-          <Name>newQuotaReady</Name>
+          <DataTypeName>Real</DataTypeName>
+          <LogicalAddress>%ID540</LogicalAddress>
+          <Name>RobotPosition_J1X</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="27E" CompositionName="Comment">
@@ -3999,7 +3999,7 @@
               <MultilingualTextItem ID="280" CompositionName="Items">
                 <AttributeList>
                   <Culture>it-IT</Culture>
-                  <Text>Da verificare</Text>
+                  <Text>Quota asse J1</Text>
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -4009,8 +4009,8 @@
       <SW.Tags.PlcTag ID="281" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Real</DataTypeName>
-          <LogicalAddress>%ID540</LogicalAddress>
-          <Name>RobotPosition_J1X</Name>
+          <LogicalAddress>%ID544</LogicalAddress>
+          <Name>RobotPosition_J2Y</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="282" CompositionName="Comment">
@@ -4024,7 +4024,7 @@
               <MultilingualTextItem ID="284" CompositionName="Items">
                 <AttributeList>
                   <Culture>it-IT</Culture>
-                  <Text>Quota asse J1</Text>
+                  <Text>Quota asse J2</Text>
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -4034,8 +4034,8 @@
       <SW.Tags.PlcTag ID="285" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Real</DataTypeName>
-          <LogicalAddress>%ID544</LogicalAddress>
-          <Name>RobotPosition_J2Y</Name>
+          <LogicalAddress>%ID548</LogicalAddress>
+          <Name>RobotPosition_J3Z</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="286" CompositionName="Comment">
@@ -4049,7 +4049,7 @@
               <MultilingualTextItem ID="288" CompositionName="Items">
                 <AttributeList>
                   <Culture>it-IT</Culture>
-                  <Text>Quota asse J2</Text>
+                  <Text>Quota asse J3</Text>
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -4059,8 +4059,8 @@
       <SW.Tags.PlcTag ID="289" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Real</DataTypeName>
-          <LogicalAddress>%ID548</LogicalAddress>
-          <Name>RobotPosition_J3Z</Name>
+          <LogicalAddress>%ID552</LogicalAddress>
+          <Name>RobotPosition_J4A</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="28A" CompositionName="Comment">
@@ -4074,7 +4074,7 @@
               <MultilingualTextItem ID="28C" CompositionName="Items">
                 <AttributeList>
                   <Culture>it-IT</Culture>
-                  <Text>Quota asse J3</Text>
+                  <Text>Quota asse J4</Text>
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -4084,8 +4084,8 @@
       <SW.Tags.PlcTag ID="28D" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Real</DataTypeName>
-          <LogicalAddress>%ID552</LogicalAddress>
-          <Name>RobotPosition_J4A</Name>
+          <LogicalAddress>%ID556</LogicalAddress>
+          <Name>RobotPosition_J5B</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="28E" CompositionName="Comment">
@@ -4099,7 +4099,7 @@
               <MultilingualTextItem ID="290" CompositionName="Items">
                 <AttributeList>
                   <Culture>it-IT</Culture>
-                  <Text>Quota asse J4</Text>
+                  <Text>Quota asse J5</Text>
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -4109,8 +4109,8 @@
       <SW.Tags.PlcTag ID="291" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Real</DataTypeName>
-          <LogicalAddress>%ID556</LogicalAddress>
-          <Name>RobotPosition_J5B</Name>
+          <LogicalAddress>%ID560</LogicalAddress>
+          <Name>RobotPosition_J6C</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="292" CompositionName="Comment">
@@ -4124,7 +4124,7 @@
               <MultilingualTextItem ID="294" CompositionName="Items">
                 <AttributeList>
                   <Culture>it-IT</Culture>
-                  <Text>Quota asse J5</Text>
+                  <Text>Quota asse J6</Text>
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -4133,9 +4133,9 @@
       </SW.Tags.PlcTag>
       <SW.Tags.PlcTag ID="295" CompositionName="Tags">
         <AttributeList>
-          <DataTypeName>Real</DataTypeName>
-          <LogicalAddress>%ID560</LogicalAddress>
-          <Name>RobotPosition_J6C</Name>
+          <DataTypeName>Bool</DataTypeName>
+          <LogicalAddress>%Q500.1</LogicalAddress>
+          <Name>sys_connfirmReservProgram</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="296" CompositionName="Comment">
@@ -4149,7 +4149,7 @@
               <MultilingualTextItem ID="298" CompositionName="Items">
                 <AttributeList>
                   <Culture>it-IT</Culture>
-                  <Text>Quota asse J6</Text>
+                  <Text />
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -4159,8 +4159,8 @@
       <SW.Tags.PlcTag ID="299" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Bool</DataTypeName>
-          <LogicalAddress>%Q500.1</LogicalAddress>
-          <Name>sys_connfirmReservProgram</Name>
+          <LogicalAddress>%Q500.2</LogicalAddress>
+          <Name>sys_cancelReserveProgram</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="29A" CompositionName="Comment">
@@ -4184,8 +4184,8 @@
       <SW.Tags.PlcTag ID="29D" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Bool</DataTypeName>
-          <LogicalAddress>%Q500.2</LogicalAddress>
-          <Name>sys_cancelReserveProgram</Name>
+          <LogicalAddress>%Q500.3</LogicalAddress>
+          <Name>sys_reservProgramOnOff</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="29E" CompositionName="Comment">
@@ -4208,9 +4208,9 @@
       </SW.Tags.PlcTag>
       <SW.Tags.PlcTag ID="2A1" CompositionName="Tags">
         <AttributeList>
-          <DataTypeName>Bool</DataTypeName>
-          <LogicalAddress>%Q500.3</LogicalAddress>
-          <Name>sys_reservProgramOnOff</Name>
+          <DataTypeName>Int</DataTypeName>
+          <LogicalAddress>%QW532</LogicalAddress>
+          <Name>Y_Pick-Place_HIGH</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="2A2" CompositionName="Comment">
@@ -4234,8 +4234,8 @@
       <SW.Tags.PlcTag ID="2A5" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Int</DataTypeName>
-          <LogicalAddress>%QW532</LogicalAddress>
-          <Name>Y_Pick-Place_HIGH</Name>
+          <LogicalAddress>%QW528</LogicalAddress>
+          <Name>X_Pick-Place_HIGH</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="2A6" CompositionName="Comment">
@@ -4259,8 +4259,8 @@
       <SW.Tags.PlcTag ID="2A9" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Int</DataTypeName>
-          <LogicalAddress>%QW528</LogicalAddress>
-          <Name>X_Pick-Place_HIGH</Name>
+          <LogicalAddress>%QW536</LogicalAddress>
+          <Name>Z_Pick-Place_HIGH</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="2AA" CompositionName="Comment">
@@ -4284,8 +4284,8 @@
       <SW.Tags.PlcTag ID="2AD" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Int</DataTypeName>
-          <LogicalAddress>%QW536</LogicalAddress>
-          <Name>Z_Pick-Place_HIGH</Name>
+          <LogicalAddress>%QW540</LogicalAddress>
+          <Name>ZRot_Pick-Place_HIGH</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="2AE" CompositionName="Comment">
@@ -4309,8 +4309,8 @@
       <SW.Tags.PlcTag ID="2B1" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Int</DataTypeName>
-          <LogicalAddress>%QW540</LogicalAddress>
-          <Name>ZRot_Pick-Place_HIGH</Name>
+          <LogicalAddress>%QW544</LogicalAddress>
+          <Name>YRot_Pick-Place_HIGH</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="2B2" CompositionName="Comment">
@@ -4334,8 +4334,8 @@
       <SW.Tags.PlcTag ID="2B5" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Int</DataTypeName>
-          <LogicalAddress>%QW544</LogicalAddress>
-          <Name>YRot_Pick-Place_HIGH</Name>
+          <LogicalAddress>%QW548</LogicalAddress>
+          <Name>XRot_Pick-Place_HIGH</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="2B6" CompositionName="Comment">
@@ -4359,8 +4359,8 @@
       <SW.Tags.PlcTag ID="2B9" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Int</DataTypeName>
-          <LogicalAddress>%QW548</LogicalAddress>
-          <Name>XRot_Pick-Place_HIGH</Name>
+          <LogicalAddress>%QW554</LogicalAddress>
+          <Name>Gripper1_XDim_HIGH</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="2BA" CompositionName="Comment">
@@ -4384,8 +4384,8 @@
       <SW.Tags.PlcTag ID="2BD" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Int</DataTypeName>
-          <LogicalAddress>%QW554</LogicalAddress>
-          <Name>Gripper1_XDim_HIGH</Name>
+          <LogicalAddress>%QW558</LogicalAddress>
+          <Name>Gripper1_YDim_HIGH</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="2BE" CompositionName="Comment">
@@ -4409,8 +4409,8 @@
       <SW.Tags.PlcTag ID="2C1" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Int</DataTypeName>
-          <LogicalAddress>%QW558</LogicalAddress>
-          <Name>Gripper1_YDim_HIGH</Name>
+          <LogicalAddress>%QW562</LogicalAddress>
+          <Name>Gripper1_ZDim_HIGH</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="2C2" CompositionName="Comment">
@@ -4434,8 +4434,8 @@
       <SW.Tags.PlcTag ID="2C5" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Int</DataTypeName>
-          <LogicalAddress>%QW562</LogicalAddress>
-          <Name>Gripper1_ZDim_HIGH</Name>
+          <LogicalAddress>%QW566</LogicalAddress>
+          <Name>Gripper1_ZRotDim_HIGH</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="2C6" CompositionName="Comment">
@@ -4459,8 +4459,8 @@
       <SW.Tags.PlcTag ID="2C9" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Int</DataTypeName>
-          <LogicalAddress>%QW566</LogicalAddress>
-          <Name>Gripper1_ZRotDim_HIGH</Name>
+          <LogicalAddress>%QW570</LogicalAddress>
+          <Name>Gripper1_YRotDim_HIGH</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="2CA" CompositionName="Comment">
@@ -4484,8 +4484,8 @@
       <SW.Tags.PlcTag ID="2CD" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Int</DataTypeName>
-          <LogicalAddress>%QW570</LogicalAddress>
-          <Name>Gripper1_YRotDim_HIGH</Name>
+          <LogicalAddress>%QW574</LogicalAddress>
+          <Name>Gripper1_XRotDim_HIGH</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="2CE" CompositionName="Comment">
@@ -4509,8 +4509,8 @@
       <SW.Tags.PlcTag ID="2D1" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Int</DataTypeName>
-          <LogicalAddress>%QW574</LogicalAddress>
-          <Name>Gripper1_XRotDim_HIGH</Name>
+          <LogicalAddress>%QW578</LogicalAddress>
+          <Name>Gripper2_XDim_HIGH</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="2D2" CompositionName="Comment">
@@ -4534,8 +4534,8 @@
       <SW.Tags.PlcTag ID="2D5" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Int</DataTypeName>
-          <LogicalAddress>%QW578</LogicalAddress>
-          <Name>Gripper2_XDim_HIGH</Name>
+          <LogicalAddress>%QW582</LogicalAddress>
+          <Name>Gripper2_YDim_HIGH</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="2D6" CompositionName="Comment">
@@ -4559,8 +4559,8 @@
       <SW.Tags.PlcTag ID="2D9" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Int</DataTypeName>
-          <LogicalAddress>%QW582</LogicalAddress>
-          <Name>Gripper2_YDim_HIGH</Name>
+          <LogicalAddress>%QW586</LogicalAddress>
+          <Name>Gripper2_ZDim_HIGH</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="2DA" CompositionName="Comment">
@@ -4584,8 +4584,8 @@
       <SW.Tags.PlcTag ID="2DD" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Int</DataTypeName>
-          <LogicalAddress>%QW586</LogicalAddress>
-          <Name>Gripper2_ZDim_HIGH</Name>
+          <LogicalAddress>%QW590</LogicalAddress>
+          <Name>Gripper2_ZRotDim_HIGH</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="2DE" CompositionName="Comment">
@@ -4609,8 +4609,8 @@
       <SW.Tags.PlcTag ID="2E1" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Int</DataTypeName>
-          <LogicalAddress>%QW590</LogicalAddress>
-          <Name>Gripper2_ZRotDim_HIGH</Name>
+          <LogicalAddress>%QW594</LogicalAddress>
+          <Name>Gripper2_YRotDim_HIGH</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="2E2" CompositionName="Comment">
@@ -4634,8 +4634,8 @@
       <SW.Tags.PlcTag ID="2E5" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Int</DataTypeName>
-          <LogicalAddress>%QW594</LogicalAddress>
-          <Name>Gripper2_YRotDim_HIGH</Name>
+          <LogicalAddress>%QW598</LogicalAddress>
+          <Name>Gripper2_XRotDim_HIGH</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="2E6" CompositionName="Comment">
@@ -4659,8 +4659,8 @@
       <SW.Tags.PlcTag ID="2E9" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Int</DataTypeName>
-          <LogicalAddress>%QW598</LogicalAddress>
-          <Name>Gripper2_XRotDim_HIGH</Name>
+          <LogicalAddress>%QW602</LogicalAddress>
+          <Name>X_approach_HIGH</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="2EA" CompositionName="Comment">
@@ -4684,8 +4684,8 @@
       <SW.Tags.PlcTag ID="2ED" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Int</DataTypeName>
-          <LogicalAddress>%QW602</LogicalAddress>
-          <Name>X_approach_HIGH</Name>
+          <LogicalAddress>%QW606</LogicalAddress>
+          <Name>Y_approach_HIGH</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="2EE" CompositionName="Comment">
@@ -4709,8 +4709,8 @@
       <SW.Tags.PlcTag ID="2F1" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Int</DataTypeName>
-          <LogicalAddress>%QW606</LogicalAddress>
-          <Name>Y_approach_HIGH</Name>
+          <LogicalAddress>%QW610</LogicalAddress>
+          <Name>Z_approach_HIGH</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="2F2" CompositionName="Comment">
@@ -4734,8 +4734,8 @@
       <SW.Tags.PlcTag ID="2F5" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Int</DataTypeName>
-          <LogicalAddress>%QW610</LogicalAddress>
-          <Name>Z_approach_HIGH</Name>
+          <LogicalAddress>%QW614</LogicalAddress>
+          <Name>ZRot_approach_HIGH</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="2F6" CompositionName="Comment">
@@ -4759,8 +4759,8 @@
       <SW.Tags.PlcTag ID="2F9" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Int</DataTypeName>
-          <LogicalAddress>%QW614</LogicalAddress>
-          <Name>ZRot_approach_HIGH</Name>
+          <LogicalAddress>%QW618</LogicalAddress>
+          <Name>YRot_approach_HIGH</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="2FA" CompositionName="Comment">
@@ -4784,8 +4784,8 @@
       <SW.Tags.PlcTag ID="2FD" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Int</DataTypeName>
-          <LogicalAddress>%QW618</LogicalAddress>
-          <Name>YRot_approach_HIGH</Name>
+          <LogicalAddress>%QW622</LogicalAddress>
+          <Name>XRot_approach_HIGH</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="2FE" CompositionName="Comment">
@@ -4808,9 +4808,9 @@
       </SW.Tags.PlcTag>
       <SW.Tags.PlcTag ID="301" CompositionName="Tags">
         <AttributeList>
-          <DataTypeName>Int</DataTypeName>
-          <LogicalAddress>%QW622</LogicalAddress>
-          <Name>XRot_approach_HIGH</Name>
+          <DataTypeName>Bool</DataTypeName>
+          <LogicalAddress>%I503.4</LogicalAddress>
+          <Name>Area_output_1</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="302" CompositionName="Comment">
@@ -4824,7 +4824,7 @@
               <MultilingualTextItem ID="304" CompositionName="Items">
                 <AttributeList>
                   <Culture>it-IT</Culture>
-                  <Text />
+                  <Text>Area di lavoro del robot (lavora sempre a 1 e se il robot è spento va a 0)</Text>
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -4834,8 +4834,8 @@
       <SW.Tags.PlcTag ID="305" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Bool</DataTypeName>
-          <LogicalAddress>%I503.4</LogicalAddress>
-          <Name>Area_output_1</Name>
+          <LogicalAddress>%I502.3</LogicalAddress>
+          <Name>Robot_SwapPhase2Req</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="306" CompositionName="Comment">
@@ -4849,7 +4849,7 @@
               <MultilingualTextItem ID="308" CompositionName="Items">
                 <AttributeList>
                   <Culture>it-IT</Culture>
-                  <Text>Area di lavoro del robot (lavora sempre a 1 e se il robot è spento va a 0)</Text>
+                  <Text>Bit di passaggio a fase 2 della missione</Text>
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -4859,8 +4859,8 @@
       <SW.Tags.PlcTag ID="309" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Bool</DataTypeName>
-          <LogicalAddress>%I502.3</LogicalAddress>
-          <Name>Robot_SwapPhase2Req</Name>
+          <LogicalAddress>%I502.5</LogicalAddress>
+          <Name>Area_output_2</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="30A" CompositionName="Comment">
@@ -4874,7 +4874,7 @@
               <MultilingualTextItem ID="30C" CompositionName="Items">
                 <AttributeList>
                   <Culture>it-IT</Culture>
-                  <Text>Bit di passaggio a fase 2 della missione</Text>
+                  <Text>Fori ingombro dalla macchina</Text>
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -4884,8 +4884,8 @@
       <SW.Tags.PlcTag ID="30D" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Bool</DataTypeName>
-          <LogicalAddress>%I502.5</LogicalAddress>
-          <Name>Area_output_2</Name>
+          <LogicalAddress>%I503.6</LogicalAddress>
+          <Name>Area_output_3</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="30E" CompositionName="Comment">
@@ -4899,7 +4899,7 @@
               <MultilingualTextItem ID="310" CompositionName="Items">
                 <AttributeList>
                   <Culture>it-IT</Culture>
-                  <Text>Fori ingombro dalla macchina</Text>
+                  <Text>Area libera da configurare</Text>
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -4909,8 +4909,8 @@
       <SW.Tags.PlcTag ID="311" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Bool</DataTypeName>
-          <LogicalAddress>%I503.6</LogicalAddress>
-          <Name>Area_output_3</Name>
+          <LogicalAddress>%I503.7</LogicalAddress>
+          <Name>Area_output_4</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="312" CompositionName="Comment">
@@ -4934,8 +4934,8 @@
       <SW.Tags.PlcTag ID="315" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Bool</DataTypeName>
-          <LogicalAddress>%I503.7</LogicalAddress>
-          <Name>Area_output_4</Name>
+          <LogicalAddress>%I504.0</LogicalAddress>
+          <Name>Robot_Phase2Req_MC</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="316" CompositionName="Comment">
@@ -4949,7 +4949,7 @@
               <MultilingualTextItem ID="318" CompositionName="Items">
                 <AttributeList>
                   <Culture>it-IT</Culture>
-                  <Text>Area libera da configurare</Text>
+                  <Text />
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -4959,8 +4959,8 @@
       <SW.Tags.PlcTag ID="319" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Bool</DataTypeName>
-          <LogicalAddress>%I504.0</LogicalAddress>
-          <Name>Robot_Phase2Req_MC</Name>
+          <LogicalAddress>%Q504.1</LogicalAddress>
+          <Name>Q_PushEnable_MC</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="31A" CompositionName="Comment">
@@ -4984,8 +4984,8 @@
       <SW.Tags.PlcTag ID="31D" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Bool</DataTypeName>
-          <LogicalAddress>%Q504.1</LogicalAddress>
-          <Name>Q_PushEnable_MC</Name>
+          <LogicalAddress>%Q504.2</LogicalAddress>
+          <Name>Ok_PushSpinta_MC</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="31E" CompositionName="Comment">
@@ -5009,8 +5009,8 @@
       <SW.Tags.PlcTag ID="321" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Bool</DataTypeName>
-          <LogicalAddress>%Q504.2</LogicalAddress>
-          <Name>Ok_PushSpinta_MC</Name>
+          <LogicalAddress>%Q504.3</LogicalAddress>
+          <Name>Ok_PushArrivo_MC</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="322" CompositionName="Comment">
@@ -5034,8 +5034,8 @@
       <SW.Tags.PlcTag ID="325" CompositionName="Tags">
         <AttributeList>
           <DataTypeName>Bool</DataTypeName>
-          <LogicalAddress>%Q504.3</LogicalAddress>
-          <Name>Ok_PushArrivo_MC</Name>
+          <LogicalAddress>%Q503.6</LogicalAddress>
+          <Name>cmd_MC_auto</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="326" CompositionName="Comment">
@@ -5049,7 +5049,7 @@
               <MultilingualTextItem ID="328" CompositionName="Items">
                 <AttributeList>
                   <Culture>it-IT</Culture>
-                  <Text />
+                  <Text>segnale di macchina in automatico</Text>
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -5058,9 +5058,9 @@
       </SW.Tags.PlcTag>
       <SW.Tags.PlcTag ID="329" CompositionName="Tags">
         <AttributeList>
-          <DataTypeName>Bool</DataTypeName>
-          <LogicalAddress>%Q503.6</LogicalAddress>
-          <Name>cmd_MC_auto</Name>
+          <DataTypeName>Int</DataTypeName>
+          <LogicalAddress>%IW526</LogicalAddress>
+          <Name>Home_Speed</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="32A" CompositionName="Comment">
@@ -5072,31 +5072,6 @@
                 </AttributeList>
               </MultilingualTextItem>
               <MultilingualTextItem ID="32C" CompositionName="Items">
-                <AttributeList>
-                  <Culture>it-IT</Culture>
-                  <Text>segnale di macchina in automatico</Text>
-                </AttributeList>
-              </MultilingualTextItem>
-            </ObjectList>
-          </MultilingualText>
-        </ObjectList>
-      </SW.Tags.PlcTag>
-      <SW.Tags.PlcTag ID="32D" CompositionName="Tags">
-        <AttributeList>
-          <DataTypeName>Int</DataTypeName>
-          <LogicalAddress>%IW526</LogicalAddress>
-          <Name>Home_Speed</Name>
-        </AttributeList>
-        <ObjectList>
-          <MultilingualText ID="32E" CompositionName="Comment">
-            <ObjectList>
-              <MultilingualTextItem ID="32F" CompositionName="Items">
-                <AttributeList>
-                  <Culture>en-US</Culture>
-                  <Text />
-                </AttributeList>
-              </MultilingualTextItem>
-              <MultilingualTextItem ID="330" CompositionName="Items">
                 <AttributeList>
                   <Culture>it-IT</Culture>
                   <Text>Velocità da robot durante il ritorno in home</Text>
