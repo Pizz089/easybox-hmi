@@ -4,6 +4,8 @@
 // Vite ssrLoadModule: il DXF esce da buildGratingDxf (export nominato), l'SVG
 // di stampa/modello/download passa da applyCavityClearanceToSvg; anteprima,
 // listPz e coordinate robot devono restare NOMINALI in ogni caso.
+// (base-dxf 7/10) il DXF e' nel frame di Base.dxf: y_dxf = -y_svg (prima
+// H - y_svg), profilo e fori copiati dalla base letta.
 //
 // Uso:   node test_cavity_clearance.mjs     (dalla cartella easybox/HMI)
 // Exit code 0 = tutti i check passati, 1 = almeno un check fallito.
@@ -46,7 +48,9 @@ function dxfCavity(dxf, H) {
 }
 const H = 610;
 const pieces = [{ prisma: true, x: 100, y: 200, status: 2 }, { prisma: false, x: 300, y: 400, status: 2 }];
-const dxfWith = (um) => buildGratingDxf(Object.assign({ width: 820, height: H, pieces, dimX: 40, dimY: 70, radius: 20, flipY: true }, um === undefined ? {} : { clearanceUm: um }));
+// base sintetica: il rettangolo del cassetto 820 x 610 nel frame di Base.dxf
+const BASE = { profile: [{ x: 0, y: 0, bulge: 0 }, { x: 820, y: 0, bulge: 0 }, { x: 820, y: -H, bulge: 0 }, { x: 0, y: -H, bulge: 0 }], holes: [], texts: [] };
+const dxfWith = (um) => buildGratingDxf(Object.assign({ base: BASE, pieces, dimX: 40, dimY: 70, radius: 20 }, um === undefined ? {} : { clearanceUm: um }));
 
 console.log('0) costanti e conversione (un punto solo)');
 check(cc.CAVITY_CLEARANCE_UM === 100 && cc.CAVITY_CLEARANCE_MAX_UM === 2000, 'default 100 um, massimo 2000 um');
@@ -60,15 +64,15 @@ check(Number.isNaN(cc.clearanceMmToUm('abc')), 'testo -> NaN (rifiutato)');
 console.log('\n1) DXF col DEFAULT: identico a prima (cavita\' +100 um, centro fermo)');
 const d0 = dxfCavity(dxfWith(undefined), H);
 check(d0.n === 4 && near(d0.w, 40 + CL) && near(d0.h, 70 + CL), 'cavita\' 40.1 x 70.1 (' + d0.w + ' x ' + d0.h + ')');
-check(near(d0.cx, 120) && near(d0.cy, H - 235), 'centro = centro nominale (120, ' + (H - 235) + ')');
-check(near(d0.r, 20.05) && d0.ccx === 300 && d0.ccy === H - 400, 'cilindro r 20.05, centro fermo');
+check(near(d0.cx, 120) && near(d0.cy, -235), 'centro = centro nominale, frame di Base.dxf (120, -235)');
+check(near(d0.r, 20.05) && d0.ccx === 300 && d0.ccy === -400, 'cilindro r 20.05, centro fermo (300, -400)');
 check(dxfWith(undefined) === dxfWith(100), 'default esplicito 100 um = default implicito (byte-identico)');
 
 console.log('\n2) DXF con valore diverso: la cavita\' cambia, il centro no');
 for (const [um, w, h, r] of [[500, 40.5, 70.5, 20.25], [0, 40, 70, 20], [2000, 42, 72, 21]]) {
 	const d = dxfCavity(dxfWith(um), H);
 	check(near(d.w, w) && near(d.h, h) && near(d.r, r), um + ' um -> ' + w + ' x ' + h + ', r ' + r);
-	check(near(d.cx, 120) && near(d.cy, H - 235) && d.ccx === 300 && d.ccy === H - 400, um + ' um: centri invariati');
+	check(near(d.cx, 120) && near(d.cy, -235) && d.ccx === 300 && d.ccy === -400, um + ' um: centri invariati');
 }
 
 console.log('\n3) SVG serializzato: parametro applicato, default invariato');
@@ -77,7 +81,7 @@ const svgIn = '<svg id="trayLayout"><rect id="tray" x="0" y="0" width="820" heig
 	+ '<rect x="100" y="200" width="40" height="70" style="fill:lightgray;stroke:red;stroke-width:1"/>'
 	+ '<circle cx="120" cy="235" r="4" style="stroke:red;fill:red"/><text x="110" y="225"></text></g>'
 	+ '<g id="cylinder_obj"><circle cx="300" cy="400" r="20" style="fill:lightgray"/><circle cx="300" cy="400" r="4" style="stroke:red;fill:red"/></g>'
-	+ '<circle r="3" cx="18" cy="15" fill="none"/></svg>';
+	+ '<g id="base"><path d="M0 0 L820 0 L820 610 L0 610 Z"/><circle r="3" cx="18" cy="15" fill="none"/></g></svg>';
 const s0 = cc.applyCavityClearanceToSvg(svgIn);
 check(s0.includes('<rect x="99.95" y="199.95" width="40.1" height="70.1"') && s0.includes('<circle cx="300" cy="400" r="20.05"'), 'default: rect 40.1x70.1, cerchio 20.05');
 check(s0 === cc.applyCavityClearanceToSvg(svgIn, 100), 'default implicito = esplicito');
@@ -98,6 +102,7 @@ function makeVm() {
 	vm.grating.trayIndex = 1; vm.grating.pieceIndex = 1; vm.grating.gripperIndex = 1;
 	vm.grating.width = 820; vm.grating.height = 610; vm.grating.SAFEX = 20; vm.grating.SAFEY = 10;
 	vm.calculateData();
+	vm.base = BASE;     // (base-dxf) DXF e stampa vogliono la base letta
 	return vm;
 }
 const vm = makeVm();
@@ -105,7 +110,7 @@ check(vm.dim_x === 40 && vm.dim_y === 70 && vm.listPz.length === 91, 'dim 40x70 
 const p = drawingToRobot(vm.pocketCentersWH());
 check(p[0].X === 65000 && p[0].Y === 50000 && p[1].Y === 110000 && p[13].X === 145000 && p[90].X === 545000 && p[90].Y === 770000, 'coordinate robot [POSITION] = griglia TRAY_9 con origine angolo cassetto (origin-fix 14/9)');
 const before = JSON.stringify(vm.listPz);
-buildGratingDxf({ width: 820, height: 610, pieces: vm.listPz, dimX: vm.dim_x, dimY: vm.dim_y, radius: vm.radius, clearanceUm: 1500 });
+buildGratingDxf({ base: BASE, pieces: vm.listPz, dimX: vm.dim_x, dimY: vm.dim_y, radius: vm.radius, clearanceUm: 1500 });
 check(JSON.stringify(vm.listPz) === before && vm.dim_x === 40 && vm.dim_y === 70, 'dopo un DXF a 1.5 mm: listPz e dim invariati');
 
 console.log('\n5) dialog di export SOLO per DXF e stampa: un punto solo, default 0.1 a ogni pagina, range 0..2');

@@ -348,7 +348,43 @@
     "thickness": "Grid thickness",
     "thicknessHint": "mm; empty = not measured, no constraint. With a value, the part pick and release heights must be at least 1 mm above it.",
     "thicknessWarn": "Part below the thickness: minimum {min} mm (thickness + 1 clearance), requested pick {pick} mm and release {place} mm. Fix the part or the thickness: pocket generation will be refused.",
-    "thicknessBadge": "part below thickness"
+    "thicknessBadge": "part below thickness",
+    "base": {
+      "close": "Close the base warnings",
+      "loading": "Grating base not read yet: try again in a moment.",
+      "blocked": "DXF and PDF print blocked: a manufacturing file without the base must not go out. Generation, saving and the SVG model are still possible.",
+      "errLine": "Grating base missing or invalid: {msg} File searched: {path}",
+      "errLineNoPath": "Grating base missing or invalid: {msg}",
+      "info": "Base: {path} · modified {mtime} · holes: {holes}",
+      "conflictHoles": "Pockets {list}: too close to a hole (less than {web} mm of material)",
+      "conflictProfile": "Pockets {list}: too close to the outline (less than {web} mm of material)",
+      "conflictConfirm": "{detail}. Export anyway?",
+      "err": {
+        "binary": "it is a binary DXF: save it as ASCII DXF.",
+        "notDxf": "it is not a readable ASCII DXF (line {riga}).",
+        "extrusion": "non-planar extrusion ({dove}): draw the base in the XY plane.",
+        "profile3d": "the outline is a 3D polyline or a mesh: a 2D polyline is needed.",
+        "profileLoose": "loose lines or arcs on layer PROFILE ({n}): join the outline into one polyline.",
+        "profileMissing": "outline missing: a closed polyline on layer PROFILE is needed.",
+        "profileMany": "polylines on layer PROFILE: {n}, only one is allowed.",
+        "profileOpen": "the outline is an open polyline: close it (JOIN).",
+        "outOfTray": "Base.dxf does not fit the {w}×{h} tray: origin not at the top left or dimensions not in mm (box found: X {minX}..{maxX}, Y {minY}..{maxY}).",
+        "dirUnset": "Grating_model_dir is not set in the backend .env.",
+        "missing": "Base.dxf not found.",
+        "tooLarge": "Base.dxf is too large ({size} bytes, maximum 5 MB).",
+        "read": "the backend cannot read Base.dxf.",
+        "http": "unexpected backend response (HTTP {status}).",
+        "network": "backend unreachable ({msg})."
+      },
+      "warn": {
+        "units": "Base.dxf declares units in {unita} (INSUNITS {codice}): ignored, dimensions are read in mm.",
+        "closedByPoints": "outline closed by its points but without the closed flag: accepted.",
+        "holeLayer": "holes on layer «{layer}» ({n}): better on layer HOLES.",
+        "holeOutside": "holes outside the outline ({n}): {dove}.",
+        "pieces": "entities on layer PIECES ignored ({n}): the base must not contain pockets.",
+        "insert": "block not read ({n}): explode it."
+      }
+    }
   },
   "rowCmd": {
     "play": "Start",

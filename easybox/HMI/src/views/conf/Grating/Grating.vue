@@ -9,6 +9,8 @@
     import { cavityRect, cavityRadius, applyCavityClearanceToSvg,
              CAVITY_CLEARANCE_UM, CAVITY_CLEARANCE_MAX_UM, clearanceMmToUm, clearanceUmToMm, isValidClearanceUm } from '../../../util/cavityClearance.js'
     import { dedupeGrippers } from '../../../util/grippers.js'
+    // (base-dxf 7/10) profilo esterno e fori del grigliato letti da Base.dxf
+    import { parseBaseDxf, baseToSvg, pocketsVsBase, baseRouteError, BASE_WEB_MM } from '../../../util/baseDxf.js'
     import numericField from '../../../components/numericField.vue'
     import { ref, onMounted } from 'vue'
     //import layout from '../layoutView.vue'
@@ -272,6 +274,15 @@
                 {{ $t('grating.rowsCols', { rows: n_row, cols: n_cln, tot: n_row*n_cln }) }} 
             </h5>
         </div>
+        <!-- (base-dxf 7/10) base assente o non valida: riga rossa col messaggio
+             e il file cercato; DXF e stampa bloccati, il resto funziona -->
+        <div class="pure-u-1 base-line base-error" v-if="baseError" role="alert">{{ baseErrorText }}</div>
+        <div class="pure-u-1 base-line base-warn" v-if="baseWarnings.length && !baseWarningsClosed">
+            <span>{{ baseWarnings.map(w => $t(w.key, w.params)).join(' · ') }}</span>
+            <button type="button" class="base-close" @click="baseWarningsClosed = true"
+                :aria-label="$t('grating.base.close')" :title="$t('grating.base.close')">&times;</button>
+        </div>
+        <div class="pure-u-1 base-line base-conflict" v-if="pocketConflicts.length">{{ conflictText(pocketConflicts) }}</div>
         <div class="pure-u-1">
             <!-- @click="distribute()" RIMOSSO (fase 2b, ratificato): su touch panel
                  il contatto accidentale col disegno mutava SAFEX/SAFEY salvati;
@@ -281,26 +292,6 @@
                 <!-- vassoio -->
                 <rect id="tray" x="0" y="0" :width="grating.width" :height="grating.height" fill="#3A4A60" class="noPrint"/>
 
-                <!-- profilo esterno -->
-                <path d="M15 5 
-                        l112 0 l0 -4 l100 0 l0 4 
-                        l372 0 l0 -4 l100 0 l0 4
-                        l110 0
-                        l5 5
-                        l0 235 l6 0 l0 25 l-8 0 
-                        l0 70  l8 0 l0 25 l-6 0 
-                        l0 230 
-                        l-5 5
-                        l-117 0 l0 5 l-100 0 l0 -5 
-                        l-370 0 l0 5 l-100 0 l0 -5 
-                        l-111 0
-                        l-5 -5
-                        l0 -240 l-5 0 l0 -25 l8 0 
-                        l0 -70 l-8 0 l0 -25 l5 0 
-                        l0 -225
-                        Z" 
-                        fill="none" stroke="#B2BDCE" stroke-width="1"/>
-                              
                 <g v-for="(p, index) in listPz" :key="index" >
                     <prisma v-if="p.prisma"
                             :x="p.x" :y="p.y" 
@@ -316,18 +307,31 @@
                     </cylinder>
                 </g>
                 
-                <!-- fori -->
-                <circle r="3" cx="18"  cy="15" fill="none" stroke="#B2BDCE" stroke-width="1"/>
-                <circle r="3" cx="398" cy="15" fill="none" stroke="#B2BDCE" stroke-width="1"/>
-                <circle r="3" cx="802" cy="15" fill="none" stroke="#B2BDCE" stroke-width="1"/>
-                
-                <circle r="3" cx="18"  cy="300" fill="none" stroke="#B2BDCE" stroke-width="1"/>
-                <circle r="3" cx="398" cy="300" fill="none" stroke="#B2BDCE" stroke-width="1"/>
-                <circle r="3" cx="802" cy="300" fill="none" stroke="#B2BDCE" stroke-width="1"/>
-                
-                <circle r="3" cx="18"  cy="593" fill="none" stroke="#B2BDCE" stroke-width="1"/>
-                <circle r="3" cx="398" cy="593" fill="none" stroke="#B2BDCE" stroke-width="1"/>
-                <circle r="3" cx="802" cy="593" fill="none" stroke="#B2BDCE" stroke-width="1"/>
+                <!-- (base-dxf 7/10) base del grigliato da Base.dxf: profilo, fori
+                     e testi nel frame lato operatore, x_svg = x_dxf e
+                     y_svg = -y_dxf, nessuna rotazione. Niente id prisma_obj o
+                     cylinder_obj qui dentro: il franco cavita' della stampa
+                     (applyCavityClearanceToSvg) non deve allargare i fori. -->
+                <g id="base" v-if="baseSvg">
+                    <path :d="baseSvg.d" fill="none" stroke="#B2BDCE" stroke-width="1"/>
+                    <circle v-for="(h, i) in baseSvg.holes" :key="'h' + i"
+                        :r="h.r" :cx="h.cx" :cy="h.cy" fill="none" stroke="#B2BDCE" stroke-width="1"/>
+                    <text v-for="(t, i) in baseSvg.texts" :key="'t' + i"
+                        :x="t.x" :y="t.y" :font-size="t.size" :text-anchor="t.anchor"
+                        :dominant-baseline="t.baseline" fill="#8A94A6">{{ t.text }}</text>
+                </g>
+                <!-- tasche troppo vicine a un foro o al profilo: in rosso, solo a
+                     schermo (avviso, mai blocco); fuori dal modello SVG -->
+                <g id="baseConflicts" class="noPrint" v-if="pocketConflicts.length">
+                    <template v-for="c in pocketConflicts" :key="'c' + c.index">
+                        <rect v-if="listPz[c.index] && listPz[c.index].prisma"
+                            :x="listPz[c.index].x" :y="listPz[c.index].y" :width="dim_x" :height="dim_y"
+                            fill="#EF4444" fill-opacity="0.55" stroke="#EF4444" stroke-width="2"/>
+                        <circle v-else-if="listPz[c.index]"
+                            :cx="listPz[c.index].x" :cy="listPz[c.index].y" :r="radius"
+                            fill="#EF4444" fill-opacity="0.55" stroke="#EF4444" stroke-width="2"/>
+                    </template>
+                </g>
 
                 <!-- misure-->
                 <!--text :x="listPz[0].x:0" :y="listPz[0].y+10" fill="#2A3548" font-size="10">{{dim_x}}x{{dim_y}}</text-->
@@ -400,9 +404,11 @@
                     </text>
                 </g>
             </svg>
-            
+
         </div>
-        <div class="pure-u-1"> 
+        <!-- (base-dxf 7/10) quale Base.dxf sta disegnando il pannello -->
+        <div class="pure-u-1 base-info" v-if="base && baseFile">{{ baseInfoText }}</div>
+        <div class="pure-u-1">
             <!-- GR3 decaduta; img nuda -> bottone canonico touch (handler 1:1) -->
             <div class="pure-u-1 scene-actions">
                 <button type="button" class="btn-icon scene-iconbtn" @click="distribute()"
@@ -434,33 +440,27 @@
 // ai centri {w,h} (pocketCentersWH).
 // ============================================================================
 
-// DXF di fabbricazione (R12, mm). pieces/dimX/dimY/radius arrivano NOMINALI
-// (gli stessi dell'anteprima): il franco cavita' (util/cavityClearance.js,
-// clearanceUm scelto all'export, default la costante) viene applicato SOLO
-// qui, sul layer PIECES, a centro invariato.
-// Export nominato per il test (test_cavity_clearance.mjs).
-export function buildGratingDxf({ width, height, pieces, dimX, dimY, radius, flipY = true, profileD = null, holes = [], clearanceUm = CAVITY_CLEARANCE_UM }) {
-  const W = Number(width), H = Number(height);
-  const fy = (y) => (flipY ? H - Number(y) : Number(y));
+// DXF di fabbricazione (R12, mm) nel FRAME DI Base.dxf (7/10): vista lato
+// operatore, 0,0 in alto a sinistra, Y negativa verso il basso. Si sovrappone
+// 1:1 a Base.dxf; rispetto ai DXF esportati prima del 7/10 (y = H - y_svg) e'
+// solo traslato di H in Y, non ruotato.
+//   - profilo e fori: copiati dalla base letta (util/baseDxf.js), stesse
+//     coordinate e stessi bulge (codice 42 sul VERTEX), non dal DOM; i testi
+//     della base non si esportano (a chi taglia non servono);
+//   - tasche: x_dxf = x_svg, y_dxf = -y_svg.
+// pieces/dimX/dimY/radius arrivano NOMINALI (gli stessi dell'anteprima): il
+// franco cavita' (util/cavityClearance.js, clearanceUm scelto all'export,
+// default la costante) viene applicato SOLO qui, sul layer PIECES, a centro
+// invariato.
+// Export nominato per i test (test_cavity_clearance.mjs, test_base_dxf.mjs).
+export function buildGratingDxf({ base = null, pieces, dimX, dimY, radius, clearanceUm = CAVITY_CLEARANCE_UM }) {
+  const fy = (y) => -Number(y);
   // quote emesse arrotondate al micron: niente rumore binario (es. 40.10000000000001)
   const q = (v) => String(Math.round(Number(v) * 1e6) / 1e6);
+  // la base si copia com'e', senza arrotondare: i numeri vengono dal file
+  const raw = (v) => String(Number(v));
   const out = [];
   const e = (...v) => out.push(...v);
-  const pathToPts = (d) => {
-    const toks = d.match(/[MmLlZz]|-?\d*\.?\d+/g) || [];
-    const pts = []; let i = 0, x = 0, y = 0, cmd = null;
-    while (i < toks.length) {
-      const t = toks[i];
-      if (/^[MmLlZz]$/.test(t)) { cmd = t; i++; if (t === 'Z' || t === 'z') break; continue; }
-      const a = parseFloat(toks[i]), b = parseFloat(toks[i + 1]); i += 2;
-      if (cmd === 'M') { x = a; y = b; cmd = 'L'; }
-      else if (cmd === 'm') { x += a; y += b; cmd = 'l'; }
-      else if (cmd === 'L') { x = a; y = b; }
-      else if (cmd === 'l') { x += a; y += b; }
-      pts.push([x, y]);
-    }
-    return pts;
-  };
   e('0','SECTION','2','HEADER',
     '9','$ACADVER','1','AC1009',
     '9','$INSUNITS','70','4',
@@ -477,18 +477,24 @@ export function buildGratingDxf({ width, height, pieces, dimX, dimY, radius, fli
     '0','ENDTAB',
     '0','ENDSEC');
   e('0','SECTION','2','ENTITIES');
+  // pts gia' nel frame DXF e gia' scritti: [x, y] o [x, y, bulge]
   const polyClosed = (layer, pts) => {
     e('0','POLYLINE','8',layer,'66','1','70','1');
-    for (const [px, py] of pts) e('0','VERTEX','8',layer,'10',q(px),'20',q(fy(py)));
+    for (const [px, py, bulge] of pts) {
+      e('0','VERTEX','8',layer,'10',px,'20',py);
+      if (bulge) e('42', bulge);
+    }
     e('0','SEQEND','8',layer);
   };
+  // rettangolo in coordinate SVG -> frame DXF
   const polyRect = (layer, x, y, w, h) => {
     x = Number(x); y = Number(y); w = Number(w); h = Number(h);
-    polyClosed(layer, [[x, y], [x + w, y], [x + w, y + h], [x, y + h]]);
+    polyClosed(layer, [[x, fy(y)], [x + w, fy(y)], [x + w, fy(y + h)], [x, fy(y + h)]].map(([a, b]) => [q(a), q(b)]));
   };
-  if (profileD) polyClosed('PROFILE', pathToPts(profileD));
-  for (const hh of holes) {
-    e('0','CIRCLE','8','HOLES','10', q(hh.cx), '20', q(fy(hh.cy)), '40', q(hh.r));
+  // la base e' gia' nel frame DXF: si copia com'e', bulge compresi
+  if (base && base.profile) polyClosed('PROFILE', base.profile.map(v => [raw(v.x), raw(v.y), v.bulge ? raw(v.bulge) : '']));
+  for (const hh of (base && base.holes) || []) {
+    e('0','CIRCLE','8','HOLES','10', raw(hh.cx), '20', raw(hh.cy), '40', raw(hh.r));
   }
   for (const p of pieces) {
     if (p.prisma) {
@@ -500,6 +506,12 @@ export function buildGratingDxf({ width, height, pieces, dimX, dimY, radius, fli
   }
   e('0','ENDSEC','0','EOF');
   return out.join('\n') + '\n';
+}
+
+// (base-dxf 7/10) la sovrapposizione rossa delle tasche in conflitto e' solo
+// un avviso a schermo: non entra nel modello SVG di riferimento
+export function stripPreviewOnly(svgString) {
+  return String(svgString).replace(/<g id="baseConflicts"[^>]*>[\s\S]*?<\/g>/, '');
 }
 
 export default {
@@ -547,6 +559,15 @@ export default {
             // micron, default la costante a ogni apertura, mai persistito
             cavityUm: CAVITY_CLEARANCE_UM,
             cavityDialog: { open: false, action: null, value: '', error: '' }, 
+            // (base-dxf 7/10) base del grigliato letta da Base.dxf (loadBase):
+            // base = risultato di parseBaseDxf (coordinate DXF) o null;
+            // baseError = { key, params } per la riga rossa; baseFile = percorso,
+            // data di modifica e dimensione dagli header della route
+            base: null,
+            baseError: null,
+            baseFile: null,
+            baseWarnings: [],
+            baseWarningsClosed: false,
             readyToDownload:false   //activa il download del file di progetto svg
         }
     },
@@ -630,6 +651,45 @@ export default {
                 })
                 .catch(error => {
                     console.info(error);
+                });
+        },
+        // (base-dxf 7/10) la base del grigliato da Base.dxf, nella cartella
+        // Grating_model_dir del backend: a ogni apertura della pagina, senza
+        // cache del browser (un file sostituito vale subito). Servono W e H
+        // del cassetto di riferimento: si chiama dopo getTrayList.
+        loadBase() {
+            this.base = null;
+            this.baseError = null;
+            this.baseFile = null;
+            this.baseWarnings = [];
+            this.baseWarningsClosed = false;
+            return fetch( dataStored.server+'api/conf/grating/base',{ method: 'GET', cache: 'no-store' })
+                .then(async response => {
+                    if (!response.ok) {
+                        let body = {};
+                        try { body = await response.json(); } catch (e) { /* corpo non JSON */ }
+                        this.baseError = baseRouteError(response.status, body);
+                        return;
+                    }
+                    const text = await response.text();
+                    let path = '';
+                    try { path = decodeURIComponent(response.headers.get('X-Base-Path') || ''); } catch (e) { path = ''; }
+                    this.baseFile = {
+                        path: path || 'Base.dxf',
+                        mtime: response.headers.get('Last-Modified') || '',
+                        size: Number(response.headers.get('X-Base-Size')) || text.length,
+                    };
+                    const r = parseBaseDxf(text, { width: this.grating.width, height: this.grating.height });
+                    if (r.error) {
+                        this.baseError = { key: r.error.key, params: Object.assign({}, r.error.params, { path: this.baseFile.path }) };
+                        return;
+                    }
+                    this.base = r;
+                    this.baseWarnings = r.warnings || [];
+                })
+                .catch(error => {
+                    console.info(error);
+                    this.baseError = { key: 'grating.base.err.network', params: { msg: String(error && error.message || error) } };
                 });
         },
         getGratingList() {
@@ -823,6 +883,29 @@ export default {
             alert(this.$t('grating.outOfTray', { detail: detail.join(', ') }));
             return false;
         },
+        // (base-dxf 7/10) tasche contro la base, col franco `um`: cavita' in
+        // coordinate SVG, controllo in util/baseDxf.js pocketsVsBase. Solo
+        // avviso, mai blocco.
+        baseConflicts(um = this.cavityUm) {
+            if (!this.base || !this.listPz || this.listPz.length === 0) return [];
+            const cavities = this.listPz.map(p => {
+                if (p.prisma) {
+                    const c = cavityRect(p.x, p.y, this.dim_x, this.dim_y, um);
+                    return { tipo: 'rect', x: c.x, y: c.y, w: c.w, h: c.h };
+                }
+                return { tipo: 'circle', cx: Number(p.x), cy: Number(p.y), r: cavityRadius(this.radius, um) };
+            });
+            return pocketsVsBase(this.base, cavities, BASE_WEB_MM);
+        },
+        // «tasche N, M: troppo vicine a un foro / al profilo» (N = SUB_POS)
+        conflictText(list) {
+            const holes = list.filter(c => c.foro).map(c => c.index + 1);
+            const profile = list.filter(c => c.profilo).map(c => c.index + 1);
+            const parts = [];
+            if (holes.length) parts.push(this.$t('grating.base.conflictHoles', { list: holes.join(', '), web: BASE_WEB_MM }));
+            if (profile.length) parts.push(this.$t('grating.base.conflictProfile', { list: profile.join(', '), web: BASE_WEB_MM }));
+            return parts.join(' · ');
+        },
         // ===== (cavity-clearance) franco cavita' scelto all'export =====
         // Un solo dialog per le due uscite di FABBRICAZIONE (DXF, stampa PDF):
         // mostra il valore corrente in mm (default CAVITY_CLEARANCE_UM a ogni
@@ -831,6 +914,8 @@ export default {
         // vive SOLO in util/cavityClearance.js. Il modello SVG (createModelFile
         // / DownloadModel) e' di RIFERIMENTO e non passa di qui: nominale.
         askCavity(action) {
+            // (base-dxf 7/10) un file di fabbricazione senza base non esce
+            if (!this.base) { alert(this.baseBlockedText); return; }
             this.cavityDialog.action = action;
             this.cavityDialog.value = String(clearanceUmToMm(this.cavityUm));
             this.cavityDialog.error = '';
@@ -853,6 +938,10 @@ export default {
             this.runCavityAction(action, um);
         },
         runCavityAction(action, um) {
+            if (!this.base) { alert(this.baseBlockedText); return; }
+            // tasche troppo vicine a un foro o al profilo, col franco scelto
+            const conflicts = this.baseConflicts(um);
+            if (conflicts.length && !confirm(this.$t('grating.base.conflictConfirm', { detail: this.conflictText(conflicts) }))) return;
             switch (action) {
                 case 'dxf':      return this.esportaDXF(um);
                 case 'print':    return this.stampaDiv(um);
@@ -871,7 +960,7 @@ export default {
             const serializer = new XMLSerializer();
             // stesso modello SVG di createModelFile: file di RIFERIMENTO,
             // cavita' NOMINALI come nell'anteprima (niente franco)
-            let svgString = serializer.serializeToString(svgElement);
+            let svgString = stripPreviewOnly(serializer.serializeToString(svgElement));
 
             //Creazione di un Blob e un URL per il file.
             const blob = new Blob([svgString], { type: 'image/svg+xml' });
@@ -895,26 +984,14 @@ export default {
                 alert('Nessun pezzo distribuito: niente da esportare.');
                 return;
             }
-            const svg = document.getElementById('trayLayout');
-            const profEl = svg && svg.querySelector(':scope > path');
-            const profileD = profEl ? profEl.getAttribute('d') : null;
-            const holes = svg
-              ? Array.from(svg.querySelectorAll(':scope > circle')).map(c => ({
-                  cx: parseFloat(c.getAttribute('cx')),
-                  cy: parseFloat(c.getAttribute('cy')),
-                  r:  parseFloat(c.getAttribute('r')),
-                }))
-              : [];
+            if (!this.base) { alert(this.baseBlockedText); return; }
+            // (base-dxf 7/10) profilo e fori dalla base letta, non dal DOM
             const dxf = buildGratingDxf({
-              width: this.grating.width,
-              height: this.grating.height,
+              base: this.base,
               pieces: this.listPz,
               dimX: this.dim_x,
               dimY: this.dim_y,
               radius: this.radius,
-              flipY: true,
-              profileD,
-              holes,
               clearanceUm,
             });
             const blob = new Blob([dxf], { type: 'application/dxf' });
@@ -928,6 +1005,7 @@ export default {
             URL.revokeObjectURL(url);
         },
         stampaDiv(clearanceUm = CAVITY_CLEARANCE_UM) {
+            if (!this.base) { alert(this.baseBlockedText); return; }
             //aprendo la finestra di stampa, posso stampare il modello o salvarlo come PDF
             var contenutoOriginale = document.body.innerHTML;
             var contenutoStampa = document.getElementById('trayLayout');
@@ -956,7 +1034,7 @@ export default {
             // modello SVG in Grating_model_dir = file di RIFERIMENTO, non di
             // fabbricazione: cavita' NOMINALI, identiche all'anteprima (il
             // franco vale solo per DXF e stampa PDF — confermato dal cliente 1/9)
-            let svgString = serializer.serializeToString(contenutoStampa);
+            let svgString = stripPreviewOnly(serializer.serializeToString(contenutoStampa));
 
             document.body.innerHTML = svgString ;
 
@@ -1018,6 +1096,34 @@ export default {
             const c = pickClearance({ thickness: Math.round(Number(t) * 1000), zPick: piece.Z_PICK, zPlace: piece.Z_PLACE });
             return c.ok ? null : c;
         },
+        // (base-dxf 7/10) la base nelle coordinate dello SVG (y cambiata di
+        // segno, archi spezzati), o null se manca o non e' valida
+        baseSvg(){
+            return this.base ? baseToSvg(this.base) : null;
+        },
+        // riga rossa: messaggio della util o della route, e il file cercato
+        baseErrorText(){
+            const e = this.baseError;
+            if (!e) return '';
+            const msg = this.$t(e.key, e.params || {});
+            const path = e.params && e.params.path;
+            return path ? this.$t('grating.base.errLine', { msg, path }) : this.$t('grating.base.errLineNoPath', { msg });
+        },
+        // DXF e stampa senza base: lo stesso messaggio della riga rossa
+        baseBlockedText(){
+            const why = this.baseError ? this.baseErrorText : this.$t('grating.base.loading');
+            return why + '\n' + this.$t('grating.base.blocked');
+        },
+        baseInfoText(){
+            if (!this.base || !this.baseFile) return '';
+            const d = this.baseFile.mtime ? new Date(this.baseFile.mtime) : null;
+            const mtime = d && !isNaN(d) ? d.toLocaleString() : '?';
+            return this.$t('grating.base.info', { path: this.baseFile.path, mtime, holes: (this.base.holes || []).length });
+        },
+        // tasche in conflitto con la base, col franco corrente della pagina
+        pocketConflicts(){
+            return this.baseConflicts(this.cavityUm);
+        },
         pitchXLabel(){
             return this.pitchX!=null ? this.pitchX+' mm' : '\u2014';
         },
@@ -1025,23 +1131,22 @@ export default {
             return this.pitchY!=null ? this.pitchY+' mm' : '\u2014';
         },
         // ==================================================================
-        // CANTIERE AL — UNICA modifica script ammessa dal gate: viewBox
-        // reattivo sui bounds reali della scena. Bounds del profilo esterno
-        // hardcoded (path fisso, misurati una volta: x 1..820, y 1..605),
-        // uniti al vassoio dai dati (grating.width/height) e al cartiglio
-        // print (y 655). Margine di respiro uniforme. Centra la scena per
-        // qualunque cassetto: le deroghe GR3 decadono.
+        // CANTIERE AL — viewBox reattivo sui bounds reali della scena: il
+        // vassoio dai dati (grating.width/height), il riquadro della base
+        // letta da Base.dxf (base-dxf 7/10; prima era un PROF fisso misurato
+        // sul path scritto a mano) e il cartiglio print (y 655). Senza base
+        // si inquadra il solo cassetto. Margine di respiro uniforme.
         // ==================================================================
         sceneViewBox(){
-            const PROF = { minX: 1, minY: 1, maxX: 820, maxY: 605 };
             const CART_Y = 660;    // cartiglio di stampa a y 655
             const M = 25;          // margine di respiro uniforme
             const w = Number(this.grating.width) || 0;
             const h = Number(this.grating.height) || 0;
-            const minX = Math.min(0, PROF.minX) - M;
-            const minY = Math.min(0, PROF.minY) - M;
-            const maxX = Math.max(w, PROF.maxX) + M;
-            const maxY = Math.max(h, PROF.maxY, CART_Y) + M;
+            const b = this.baseSvg ? this.baseSvg.bbox : { minX: 0, minY: 0, maxX: w, maxY: h };
+            const minX = Math.min(0, b.minX) - M;
+            const minY = Math.min(0, b.minY) - M;
+            const maxX = Math.max(w, b.maxX) + M;
+            const maxY = Math.max(h, b.maxY, CART_Y) + M;
             return minX + ' ' + minY + ' ' + (maxX - minX) + ' ' + (maxY - minY);
         }
     },
@@ -1049,8 +1154,10 @@ export default {
         // (fase 2b) getGratingList parte SOLO a liste caricate: il vecchio
         // setTimeout(300) era una race — con trayList ancora vuota il forEach
         // esplodeva e la funzione moriva a meta'.
+        // (base-dxf 7/10) la base dopo getTrayList: il controllo contro il
+        // cassetto vuole W e H.
         Promise.all([this.getPiecesList(), this.getGripperList(), this.getTrayList()])
-            .then(() => { this.getGratingList(); });
+            .then(() => { this.loadBase(); this.getGratingList(); });
 
         if (this.$route.params.grating_ID>0){
             //faccio modifica di un grigliato gia creato
@@ -1104,6 +1211,44 @@ export default {
     padding: var(--space-2) var(--space-4);
     font-size: var(--font-size-md);
     text-align: right;
+}
+/* (base-dxf 7/10) righe della base sopra e sotto il disegno */
+.base-line {
+    box-sizing: border-box;
+    border-radius: var(--radius-md);
+    padding: var(--space-2) var(--space-4);
+    margin-bottom: var(--space-2);
+    font-size: var(--font-size-sm);
+}
+.base-error, .base-conflict {
+    background: var(--color-danger-bg);
+    color: var(--color-danger);
+    border: 1px solid var(--color-danger);
+    font-weight: var(--font-weight-semibold);
+}
+.base-warn {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    background: var(--color-warning-bg);
+    color: var(--color-warning);
+    border: 1px solid var(--color-warning);
+}
+.base-warn span { flex: 1; }
+.base-close {
+    min-width: 44px;
+    min-height: 44px;
+    background: transparent;
+    color: inherit;
+    border: none;
+    font-size: var(--font-size-md);
+    cursor: pointer;
+}
+.base-info {
+    color: var(--text-muted);
+    font-size: var(--font-size-xs);
+    margin-top: var(--space-1);
+    word-break: break-all;
 }
 .cavity-error {
     background: var(--color-danger-bg);
