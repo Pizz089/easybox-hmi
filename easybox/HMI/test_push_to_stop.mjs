@@ -120,10 +120,15 @@ check(/this\.piece\.PUSH_TO_STOP = this\.piece\.PUSH_TO_STOP \? 1 : 0;/.test(src
 check(/this\.piece\.PUSH_TO_STOP = !!this\.piece\.PUSH_TO_STOP;/.test(srcPiece), 'in lettura il bit torna booleano per la spunta');
 
 console.log('\n3) anagrafica morsa: dimensione fisica in mm, micron a DB');
-globalThis.fetch = async () => ({ ok: true, json: async () => [{ ID: 1, FAMILY: 'M', DESCR: '', X: 278000, Y: 278000, Z: 158000, Z_CLAW: 25000, Z_SINK_CLAW: 5000, MAG: 1, MAG_POS: 1, POS_PLANT: 1, STATUS: 2, CLAW_LENGTH: 150000 }] });
+const lettureVice = [];
+globalThis.fetch = async (url) => { lettureVice.push(String(url)); return { ok: true, json: async () => [{ ID: 1, FAMILY: 'M', DESCR: '', X: 278000, Y: 278000, Z: 158000, Z_CLAW: 25000, Z_SINK_CLAW: 5000, MAG: 1, MAG_POS: 1, POS_PLANT: 1, STATUS: 2, CLAW_LENGTH: 150000 }] }; };
 const vv = vmOf(Vice, { $route: { query: { viceID: 1 } }, $router: { push: () => {} } });
-vv.updatePreviewFromModel = () => {};
-vv.getDataTable(); await tick();
+// (6/10) niente stub di updatePreviewFromModel: quel metodo non e' mai
+// esistito, e lo stub nascondeva che in pagina la chiamata lanciava e gli
+// appoggi non si caricavano mai
+vv.getDataTable(); await tick(); await tick();
+check(lettureVice.some(u => /api\/conf\/vice\/stops\/1$/.test(u)) && lettureVice.some(u => /api\/conf\/piece\/show\/all$/.test(u)),
+	'Vice: letta la morsa, si leggono anche pezzi e appoggi (prima un metodo inesistente lo impediva)');
 check(vv.vice.CLAW_LENGTH === 150, 'in lettura: 150000 micron -> 150 mm nel campo');
 check(vv.editedFields().CLAW_LENGTH === 150000, 'in scrittura: 150 mm -> 150000 micron');
 vv.vice.CLAW_LENGTH = null;

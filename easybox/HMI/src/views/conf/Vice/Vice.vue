@@ -628,7 +628,11 @@ export default {
             row && row.CLAW_LENGTH !== null && row.CLAW_LENGTH !== undefined
               ? Number(row.CLAW_LENGTH) / 1000
               : null;
-          this.updatePreviewFromModel();
+          // (6/10) tolta la chiamata a this.updatePreviewFromModel(): metodo
+          // MAI esistito (c'era dal primo commit). Lanciava un'eccezione che
+          // il catch qui sotto mangiava, e da quando qui dopo c'e' loadStops
+          // (15/9) gli appoggi non si caricavano mai: la sezione avrebbe
+          // detto "nessun pezzo sporge" anche con dichiarazioni a DB.
           // le dichiarazioni si costruiscono DOPO aver letto la
           // ganascia: senza quella non si sa quali pezzi la eccedono
           this.loadStops();

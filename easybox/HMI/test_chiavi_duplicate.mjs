@@ -13,6 +13,13 @@
 //      Vue ne tiene una sola e l'altra e' morta.
 // watch e' controllato solo al suo interno: una chiave di watch che coincide
 // con una di data o computed e' il modo normale di osservarla, non un doppio.
+//   4. (6/10 sera) una chiamata this.nome() a un metodo che il componente non
+//      ha: Vice.vue chiamava this.updatePreviewFromModel(), MAI esistito, il
+//      catch mangiava l'eccezione e gli appoggi non si caricavano. Valgono
+//      come definiti methods, computed, props, inject, le chiavi di data() e
+//      di setup(), e i nomi assegnati con this.nome = ...; i commenti non
+//      contano (si legge l'AST). Le eccezioni stanno in CHIAMATE_AMMESSE, col
+//      motivo.
 //
 // Uso:   node test_chiavi_duplicate.mjs
 // ============================================================================
@@ -69,6 +76,25 @@ function opzioni(ast) {
 const BLOCCHI = ['data', 'props', 'computed', 'methods', 'watch'];
 const problemi = [];
 let componenti = 0;
+
+// (4) chiamate this.nome() e assegnazioni this.nome = ..., dall'AST
+function visita(n, fn) {
+	if (!n || typeof n.type !== 'string') return;
+	fn(n);
+	for (const k of Object.keys(n)) {
+		if (k === 'loc' || k === 'start' || k === 'end' || k === 'leadingComments' || k === 'trailingComments') continue;
+		const v = n[k];
+		if (Array.isArray(v)) v.forEach(x => visita(x, fn));
+		else if (v && typeof v.type === 'string') visita(v, fn);
+	}
+}
+const suThis = m => m && (m.type === 'MemberExpression' || m.type === 'OptionalMemberExpression') && m.object.type === 'ThisExpression' && !m.computed && m.property.type === 'Identifier';
+// eccezioni dichiarate: pagina e nome, col motivo
+const CHIAMATE_AMMESSE = [
+	{ file: 'views/conf/Grating/GratingTest.vue', nome: 'calculateCylinder',
+		motivo: 'pagina di prova senza rotta, tenuta apposta (router: "rotta /conf/Gratingtest RIMOSSA"); la definizione e\' commentata. Dal pannello non ci si arriva' },
+];
+const chiamateMancanti = [];
 for (const f of files(SRC)) {
 	const testo = readFileSync(f, 'utf8');
 	let script = testo, scarto = 0;
@@ -109,6 +135,23 @@ for (const f of files(SRC)) {
 			else if (!dove1[k]) dove1[k] = { b, line };
 		}
 	}
+	// (4) chiamate a metodi che non esistono
+	const definiti = new Set(Object.keys(dove1));
+	for (const p of o.properties) {
+		const b = p.key && nome(p.key);
+		if (b === 'inject') (p.value.type === 'ArrayExpression' ? p.value.elements.filter(e => e && e.type === 'StringLiteral').map(e => e.value) : chiavi(p.value).map(x => x.k)).forEach(k => definiti.add(k));
+		if (b === 'setup') chiaviData(p).forEach(x => definiti.add(x.k));
+	}
+	const chiamate = [];
+	visita(ast.program, n => {
+		if (n.type === 'AssignmentExpression' && suThis(n.left)) definiti.add(n.left.property.name);
+		if ((n.type === 'CallExpression' || n.type === 'OptionalCallExpression') && suThis(n.callee)) chiamate.push({ k: n.callee.property.name, line: n.loc.start.line });
+	});
+	for (const { k, line } of chiamate) {
+		// $t, $router, $emit, $nextTick...: proprieta' dell'istanza Vue
+		if (k.startsWith('$') || definiti.has(k) || CHIAMATE_AMMESSE.some(a => a.file === dove && a.nome === k)) continue;
+		chiamateMancanti.push(`${dove}: this.${k}() alla riga ${line}, ma il componente non ha "${k}"`);
+	}
 }
 
 for (const p of problemi) console.log('       ' + p);
@@ -117,6 +160,9 @@ for (const p of problemi) console.log('       ' + p);
 // D-bis ha tolto la shell vecchia): 50 il 6/10.
 check(componenti >= 30, 'letti ' + componenti + ' componenti con l\'oggetto di opzioni');
 check(problemi.length === 0, 'nessuna chiave ripetuta fra computed, methods, data, props (e watch al suo interno)');
+for (const p of chiamateMancanti) console.log('       ' + p);
+check(chiamateMancanti.length === 0, 'nessuna chiamata this.nome() a un metodo che il componente non ha'
+	+ (CHIAMATE_AMMESSE.length ? ' (eccezioni dichiarate: ' + CHIAMATE_AMMESSE.map(a => a.file.split('/').pop() + ' ' + a.nome).join(', ') + ')' : ''));
 
 // controprova: il caso del 6/10 il test lo vede davvero
 {
@@ -124,6 +170,15 @@ check(problemi.length === 0, 'nessuna chiave ripetuta fra computed, methods, dat
 	const o = opzioni(parseJs(caso, { sourceType: 'module', errorRecovery: true }));
 	const n = o.properties.filter(p => nome(p.key) === 'computed').length;
 	check(n === 2, 'controprova: due blocchi computed nello stesso oggetto si vedono (Vice.vue fino al 6/10)');
+}
+// controprova della (4): una chiamata a un metodo assente si vede, una
+// commentata no, una a un nome assegnato a runtime no
+{
+	const caso = 'export default { methods: { a() { this.b(); /* this.c(); */ this.d = () => 1; this.d(); } } }';
+	const ast = parseJs(caso, { sourceType: 'module', errorRecovery: true });
+	const viste = [];
+	visita(ast.program, n => { if (n.type === 'CallExpression' && suThis(n.callee)) viste.push(n.callee.property.name); });
+	check(viste.join() === 'b,d', 'controprova: si vedono this.b() e this.d(), non la chiamata nel commento (' + viste.join() + ')');
 }
 
 console.log(failed ? `\n${failed} CHECK FALLITI` : '\nTUTTI I CHECK PASSATI');
