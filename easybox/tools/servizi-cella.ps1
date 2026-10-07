@@ -130,6 +130,9 @@ $PORTE = @(8080, 3000, 5173)
 $PORTA_SERVIZIO = @{ 8080 = $S_B; 3000 = $S_B; 5173 = $S_P }
 # (7/10) cosa fa pensare a un avvio di backend o pannello fuori dai servizi
 $AVVIO_SOSPETTO = '(?i)start_server|start_hmi|serverDati|\bnode(\.exe)?\b|\bnpm|nodemon|vite|easybox'
+# (7/10) i browser che aprono il pannello all'accesso: non sono avvii di
+# backend o pannello (EBrowser)
+$BROWSER_PANNELLO = '(?i)(^|\\)(chrome|chrome_proxy|msedge)(\.exe)?$'
 
 function Scrivi([string]$testo, [string]$colore = 'Gray') { Write-Host $testo -ForegroundColor $colore }
 function Fermati([string]$perche, [string]$cosaFare) {
@@ -302,9 +305,10 @@ function AvviiAutomatici {
 		if (-not (Test-Path -LiteralPath $c)) { continue }
 		foreach ($f in @(Get-ChildItem -LiteralPath $c -File -ErrorAction SilentlyContinue)) {
 			$cosa = $f.FullName
-			if ($f.Extension -eq '.lnk' -and $shell) { $l = $shell.CreateShortcut($f.FullName); $cosa = $f.FullName + ' -> ' + $l.TargetPath + ' ' + $l.Arguments + ' (in ' + $l.WorkingDirectory + ')' }
+			$browser = $false
+			if ($f.Extension -eq '.lnk' -and $shell) { $l = $shell.CreateShortcut($f.FullName); $cosa = $f.FullName + ' -> ' + $l.TargetPath + ' ' + $l.Arguments + ' (in ' + $l.WorkingDirectory + ')'; $browser = EBrowser $l.TargetPath }
 			elseif ($f.Extension -match '^\.(bat|cmd)$') { $cosa = $f.FullName + ' : ' + ((Get-Content -LiteralPath $f.FullName -ErrorAction SilentlyContinue) -join ' ; ') }
-			if ($cosa -match $AVVIO_SOSPETTO) { $trovati += [pscustomobject]@{ Dove = 'Esecuzione automatica'; Cosa = $cosa } }
+			if ($cosa -match $AVVIO_SOSPETTO) { $trovati += [pscustomobject]@{ Dove = 'Esecuzione automatica'; Cosa = $cosa; Browser = $browser } }
 		}
 	}
 	$chiavi = @('HKLM:\Software\Microsoft\Windows\CurrentVersion\Run', 'HKLM:\Software\Microsoft\Windows\CurrentVersion\RunOnce',
@@ -318,7 +322,11 @@ function AvviiAutomatici {
 		if (-not $valori) { continue }
 		foreach ($v in $valori.PSObject.Properties) {
 			if ($v.Name -like 'PS*') { continue }
-			if ([string]$v.Value -match $AVVIO_SOSPETTO) { $trovati += [pscustomobject]@{ Dove = $k; Cosa = $v.Name + ' = ' + $v.Value } }
+			if ([string]$v.Value -match $AVVIO_SOSPETTO) {
+				# il programma e' il primo pezzo della riga, fra virgolette o fino allo spazio
+				$m = [regex]::Match([string]$v.Value, '^\s*(?:"([^"]+)"|(\S+))')
+				$trovati += [pscustomobject]@{ Dove = $k; Cosa = $v.Name + ' = ' + $v.Value; Browser = (EBrowser ($m.Groups[1].Value + $m.Groups[2].Value)) }
+			}
 		}
 	}
 	return ,$trovati
@@ -328,24 +336,44 @@ function AvviiAutomatici {
 # server.js), \ServerDati (start_server.bat), \EasyBox HMI (cmd /k ... npm run
 # dev) e \HMI (start_hmi.bat) partivano all'accesso a Windows, prima dei
 # servizi. Si guarda il nome e le azioni (programma, argomenti, cartella).
+# Browser = $true se tutte le azioni lanciano un browser (EBrowser): e' il
+# pannello che si apre nel browser, non un avvio di backend o pannello.
 function OperazioniSospette {
 	$trovate = @()
 	foreach ($t in @(Get-ScheduledTask -ErrorAction SilentlyContinue)) {
 		$azioni = (@($t.Actions | ForEach-Object { ([string]$_.Execute + ' ' + [string]$_.Arguments + $(if ($_.WorkingDirectory) { ' (in ' + $_.WorkingDirectory + ')' } else { '' })).Trim() }) -join ' | ')
 		if (($t.TaskName + ' ' + $azioni) -match $AVVIO_SOSPETTO) {
-			$trovate += [pscustomobject]@{ Percorso = $t.TaskPath; Nome = $t.TaskName; Stato = [string]$t.State; Azioni = $azioni }
+			$programmi = @($t.Actions | ForEach-Object { [string]$_.Execute })
+			$browser = $programmi.Count -gt 0 -and @($programmi | Where-Object { -not (EBrowser $_) }).Count -eq 0
+			$trovate += [pscustomobject]@{ Percorso = $t.TaskPath; Nome = $t.TaskName; Stato = [string]$t.State; Azioni = $azioni; Browser = $browser }
 		}
 	}
 	return ,$trovate
 }
+# (7/10) il programma e' un browser (chrome, chrome_proxy, msedge)? In cella
+# l'operazione pianificata \EasyBox Browser (chrome_proxy.exe --app-id=...
+# --start-maximized) apre il pannello nel browser all'accesso: non prende porte
+# e deve restare attiva. Non e' un avvio di backend o pannello.
+function EBrowser([string]$programma) {
+	return ($programma.Trim().Trim('"') -match $BROWSER_PANNELLO)
+}
 # Elenca gli avvii automatici. soloAttive: le operazioni pianificate solo se
 # NON disabilitate (stato); altrimenti tutte, col loro stato (installa, prova).
-# Ritorna le operazioni attive.
+# I browser del pannello si elencano a parte, "ok", senza avviso. Ritorna le
+# operazioni attive che avviano backend o pannello (mai quelle dei browser).
 function MostraAvvii([bool]$soloAttive = $false) {
-	$altri = AvviiAutomatici
-	$operazioni = OperazioniSospette
+	$tutti = AvviiAutomatici
+	$tutteOp = OperazioniSospette
+	$altri = @($tutti | Where-Object { -not $_.Browser })
+	$operazioni = @($tutteOp | Where-Object { -not $_.Browser })
 	$attive = @($operazioni | Where-Object { $_.Stato -ne 'Disabled' })
 	$elenco = @($(if ($soloAttive) { $attive } else { $operazioni }))
+	$browser = @(@($tutti | Where-Object { $_.Browser } | ForEach-Object { '[' + $_.Dove + '] ' + $_.Cosa }) +
+		@($tutteOp | Where-Object { $_.Browser -and (-not $soloAttive -or $_.Stato -ne 'Disabled') } | ForEach-Object { '[operazione pianificata ' + $_.Percorso + $_.Nome + ', ' + $_.Stato + '] ' + $_.Azioni }))
+	if ($browser.Count -gt 0) {
+		Scrivi 'Browser del pannello all''accesso (ok: non prendono porte, restano attivi):' 'Green'
+		$browser | ForEach-Object { Scrivi ('  ' + $_) 'Green' }
+	}
 	if ($altri.Count -eq 0 -and $elenco.Count -eq 0) {
 		Scrivi ('Avvii automatici di backend o pannello fuori dai servizi: nessuno' + $(if ($soloAttive -and $operazioni.Count -gt 0) { ' attivo (operazioni pianificate trovate: ' + $operazioni.Count + ', tutte disabilitate)' } else { '' }) + ' (Esecuzione automatica, chiavi Run, operazioni pianificate).') 'Green'
 		return ,$attive

@@ -188,6 +188,16 @@ $prove = @{ 'cmd /k cd /d D:\Prog\easybox\serverDati && npx nodemon server.js' =
 $regex = Invoke-Expression $pattern
 $sbagliate = @($prove.Keys | Where-Object { ($_ -match $regex) -ne $prove[$_] })
 Check ($sbagliate.Count -eq 0) ('   il pattern riconosce le quattro operazioni del 7/10 (nodemon, start_server, npm run dev, start_hmi) e node; non defrag ne'' un nome che contiene solo "nodejs" (' + ($sbagliate -join ' | ') + ')')
+# (7/10) i browser che aprono il pannello (\EasyBox Browser: chrome_proxy.exe
+# --app-id=...) non sono avvii di backend o pannello: elencati a parte, mai
+# fra le operazioni da disabilitare
+$patBrowser = Invoke-Expression ((& $assegna '$BROWSER_PANNELLO')[0].Right.Extent.Text)
+$proveBrowser = @{ 'C:\Program Files\Google\Chrome\Application\chrome_proxy.exe' = $true; 'C:\Program Files\Google\Chrome\Application\chrome.exe' = $true
+	'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe' = $true; 'chrome.exe' = $true; 'C:\Program Files\nodejs\node.exe' = $false; 'cmd.exe' = $false; 'C:\Prog\notchrome.exe' = $false }
+$sbagliateB = @($proveBrowser.Keys | Where-Object { ($_ -match $patBrowser) -ne $proveBrowser[$_] })
+Check ($sbagliateB.Count -eq 0) ('   browser: chrome, chrome_proxy e msedge si riconoscono; node, cmd e un nome che finisce solo per "chrome" no (' + ($sbagliateB -join ' | ') + ')')
+$tMostra = $funzioni['MostraAvvii'].Body.Extent.Text
+Check ($sospette.Body.Extent.Text -match 'Browser = \$browser' -and $sospette.Body.Extent.Text -match 'EBrowser \$_' -and $tMostra -match '\$operazioni = @\(\$tutteOp \| Where-Object \{ -not \$_\.Browser \}\)' -and $tMostra -match "\`$attive = @\(\`$operazioni \| Where-Object \{ \`$_\.Stato -ne 'Disabled' \}\)" -and $tMostra -match 'Browser del pannello') '   un''operazione e'' "browser" se tutte le sue azioni lanciano un browser; MostraAvvii li elenca a parte e non li mette fra le attive da disabilitare'
 $disabilita = @(& $chiamate 'Disable-ScheduledTask')
 $proponi = $funzioni['ProponiDisabilita']
 Check ($disabilita.Count -eq 1 -and $null -ne $proponi -and (& $dentro $disabilita[0] $proponi)) ('   Disable-ScheduledTask una volta sola, dentro ProponiDisabilita (' + $disabilita.Count + ')')
