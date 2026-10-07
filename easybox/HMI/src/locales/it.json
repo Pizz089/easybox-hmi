@@ -1190,5 +1190,28 @@
     "confirmZPushClear": "Altezza di spinta di {obj} per {piece}: da {from} a vuoto, cioè alla quota di presa, come il deposito.",
     "zPushRangeServer": "Il server ha rifiutato l'altezza di spinta: è oltre la quota di presa del pezzo. Ricarica la pagina e controlla il pezzo.",
     "qZDrop": "Discesa della chela in spinta"
+  },
+  "palletOnRobot": {
+    "dest": "A bordo del robot",
+    "confirmText": "Il pannello dichiara al PLC che il pallet è sul lato 1 della pinza a bordo (comando 35): il PLC aggiorna pinza, chele e database. Il comando ANNULLA le missioni in corso del robot: si usa a cella in HOLD.",
+    "confirmMachine": "Il pallet risulta in macchina {mc}: prima lo si toglie dalla macchina (comando 41, la macchina risulta vuota), poi lo si dichiara a bordo.",
+    "waiting": "In attesa della conferma del PLC…",
+    "done": "Pallet {name} dichiarato a bordo del robot",
+    "action": "Dichiara quale pallet è in pinza",
+    "title": "Quale pallet è in pinza?",
+    "pick": "Scegli il pallet",
+    "err": {
+      "palletGone": "Il pallet #{id} non è più in elenco: ricaricare e riprovare.",
+      "notHold": "Cella non in HOLD: la dichiarazione si fa a cella ferma, perché il comando annulla le missioni in corso del robot.",
+      "mission": "C'è una missione del robot appena mandata da questa pagina: attendere che finisca, poi ripetere.",
+      "noGripperSensor": "Il sensore non vede una pinza montata sul robot: senza pinza non c'è un pallet in mano.",
+      "noGripperDb": "Nel database nessuna pinza risulta a bordo del robot: dichiarare prima la pinza con «Reimposta stato cella».",
+      "gripperMismatch": "La pinza registrata dal PLC ({registered}) non è fra quelle a bordo nel database ({db}): sistemare con «Reimposta stato cella».",
+      "clawsOpen": "Chele del lato 1 aperte: con le chele aperte non c'è niente in mano. Chiudere le chele sul pallet, poi ripetere.",
+      "otherOnBoard": "Risulta già a bordo il pallet {name}: un solo pallet alla volta. Sistemare prima quello.",
+      "side2Unknown": "Il lato 2 della pinza (riga #{id}) ha uno stato che la dichiarazione non sa ripetere ({status}): usare «Reimposta stato cella».",
+      "read": "Impossibile leggere lo stato attuale dal server: nessun comando inviato. Riprovare.",
+      "noEcho41": "Nessuna conferma dalla macchina entro 3 secondi: il pallet non è stato tolto dalla macchina e la dichiarazione non è partita."
+    }
   }
 }

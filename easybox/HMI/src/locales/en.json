@@ -1190,5 +1190,28 @@
     "confirmZPushClear": "Push height of {obj} for {piece}: from {from} to empty, that is at the pick height, as the load.",
     "zPushRangeServer": "The server refused the push height: it is above the part's pick height. Reload the page and check the part.",
     "qZDrop": "Finger drop during the push"
+  },
+  "palletOnRobot": {
+    "dest": "On board the robot",
+    "confirmText": "The panel declares to the PLC that the pallet is on side 1 of the gripper on board (command 35): the PLC updates gripper, fingers and database. The command CANCELS the robot missions in progress: use it with the cell in HOLD.",
+    "confirmMachine": "The pallet is in machine {mc}: first it is removed from the machine (command 41, the machine becomes empty), then it is declared on board.",
+    "waiting": "Waiting for the PLC confirmation…",
+    "done": "Pallet {name} declared on board the robot",
+    "action": "Declare which pallet is in the gripper",
+    "title": "Which pallet is in the gripper?",
+    "pick": "Choose the pallet",
+    "err": {
+      "palletGone": "Pallet #{id} is no longer in the list: reload and retry.",
+      "notHold": "Cell not in HOLD: the declaration is made with the cell stopped, because the command cancels the robot missions in progress.",
+      "mission": "A robot mission has just been sent from this page: wait for it to finish, then retry.",
+      "noGripperSensor": "The sensor sees no gripper mounted on the robot: without a gripper there is no pallet in hand.",
+      "noGripperDb": "In the database no gripper is on board the robot: first declare the gripper with \"Reset cell state\".",
+      "gripperMismatch": "The gripper registered by the PLC ({registered}) is not among those on board in the database ({db}): fix it with \"Reset cell state\".",
+      "clawsOpen": "Side 1 fingers open: with open fingers nothing is in hand. Close the fingers on the pallet, then retry.",
+      "otherOnBoard": "Pallet {name} is already on board: one pallet at a time. Fix that one first.",
+      "side2Unknown": "Gripper side 2 (row #{id}) has a state the declaration cannot repeat ({status}): use \"Reset cell state\".",
+      "read": "Cannot read the current state from the server: no command sent. Retry.",
+      "noEcho41": "No confirmation from the machine within 3 seconds: the pallet was not removed from the machine and the declaration was not sent."
+    }
   }
 }
