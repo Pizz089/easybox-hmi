@@ -582,7 +582,7 @@
     },
     {
      "id": "button@click rvTab='claw'",
-     "etichetta": "Chele",
+     "etichetta": "Chele pinza",
      "evento": "click",
      "handler": "rvTab='claw'",
      "disabled": "",

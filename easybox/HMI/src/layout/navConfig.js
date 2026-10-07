@@ -1,17 +1,23 @@
 // ============================================================================
 // layout/navConfig.js — navigazione del pannello v3 (UI-DESIGN-SYSTEM v3 §13)
 //
-// Sette voci nella barra a sinistra; ogni voce raggruppa rotte di OGGI in
-// schede. Le rotte NON cambiano nome (test, link, preferiti del tablet):
-// qui si dice solo in che voce e in che scheda stanno.
+// Nove voci nella barra a sinistra (fase E1.7, decisione di Dario del 7/10:
+// Pinze e Spinta in battuta escono da Attrezzaggio e diventano voci); ogni
+// voce raggruppa rotte di OGGI in schede. Le rotte NON cambiano nome (test,
+// link, preferiti del tablet): qui si dice solo in che voce e in che scheda
+// stanno.
 //   match     prefissi di rotta che accendono la voce/scheda (senza
 //             distinguere maiuscole: il router del pannello non le distingue)
 //   level     livello utente minimo: sotto, la scheda NON si mostra
 //             (all'operatore nessuna voce che dice "non abilitato")
 //   machine   la scheda esiste solo se quella macchina e' configurata
 //             (stessa regola della sidebar di oggi, util/machineBrands)
+//   short     etichetta corta della barra in compatto
+//   dropWhenShort  la voce esce dalla barra quando le nove non ci stanno a
+//             52 px l'una (schermi bassi, fase E1.4): solo Allarmi, che
+//             resta raggiungibile dalla campanella della striscia, col numero
 // ============================================================================
-import { House, SlidersHorizontal, List, Layers, Wrench, Bell, Settings } from 'lucide-vue-next';
+import { House, SlidersHorizontal, List, Layers, Wrench, Grab, ArrowRightToLine, Bell, Settings } from 'lucide-vue-next';
 
 export const NAV = [
 	{ id: 'home', label: 'nav.home', icon: House, tabs: [
@@ -31,15 +37,21 @@ export const NAV = [
 		{ to: '/conf/Gratings', label: 'menu.gratings', match: ['/conf/Gratings', '/conf/Grating', '/conf/importGrating'] },
 		{ to: '/conf/Parts', label: 'menu.parts', match: ['/conf/Parts', '/conf/piece'] },
 	] },
+	// la scheda «Chele morsa», fra Morse e Attrezzature, la aggiunge il
+	// prompt 5 di 5
 	{ id: 'tooling', label: 'nav.tooling', short: 'nav.short.tooling', icon: Wrench, tabs: [
 		{ to: '/conf/Attrezzaggi', label: 'menu.attrezzaggi', match: ['/conf/Attrezzaggi', '/conf/Attrezzaggio'] },
 		{ to: '/conf/Pallets', label: 'menu.pallets', match: ['/conf/Pallets', '/conf/pallet'] },
 		{ to: '/conf/Vices', label: 'menu.vices', match: ['/conf/Vices', '/conf/vice'] },
 		{ to: '/conf/Fixtures', label: 'menu.fixtures', match: ['/conf/Fixtures', '/conf/Fixture', '/conf/FixtureOnPallet'] },
+	] },
+	{ id: 'grippers', label: 'nav.grippers', icon: Grab, tabs: [
 		{ to: '/conf/Grippers', label: 'menu.grippers', match: ['/conf/Grippers', '/conf/Gripper'] },
+	] },
+	{ id: 'push', label: 'nav.push', short: 'nav.short.push', icon: ArrowRightToLine, tabs: [
 		{ to: '/sim/push', label: 'menu.pushSim', match: ['/sim/push'] },
 	] },
-	{ id: 'alarms', label: 'nav.alarms', icon: Bell, badge: true, tabs: [
+	{ id: 'alarms', label: 'nav.alarms', icon: Bell, badge: true, dropWhenShort: true, tabs: [
 		{ to: '/alarms', label: 'nav.alarms', match: ['/alarms'] },
 		{ to: '/diag/mqtt', label: 'menu.mqttDiag', match: ['/diag/mqtt'], level: 1 },
 	] },

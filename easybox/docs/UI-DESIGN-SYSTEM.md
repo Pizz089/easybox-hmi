@@ -112,9 +112,11 @@ La scala storica (`--font-size-xs` … `-2xl`, `-display`) resta per le pagine d
 
 ## 5. Shell (`layout/v3/`)
 
-- **Barra di navigazione** a sinistra, `--rail-width` 104 (84 in compatto). Sette voci con icona ed etichetta, nell'ordine: Home, Controlli, Produzione, Magazzino, Attrezzaggio, Allarmi (badge rosso col numero degli allarmi attivi) e, in fondo, Impostazioni. Voce attiva: icona e testo nell'accento su `--bg-raised`. In compatto alcune etichette si accorciano ("Attrezz.", "Impost.") e il marchio "EB" non c'è.
-- **Striscia di stato** in alto, sempre visibile, `--status-strip-height` 76 (64 in compatto): stato cella (dal robot: HOLD ambra, ALLARME rosso), Robot, MC1 (MC2 se configurata), EasyBox col cassetto fuori, collegamento col server, campanella degli allarmi, livello utente, lingua, ora, e a destra **HOLD / Riprendi / START**. In compatto restano stato cella, MC1, collegamento (solo il pallino), campanella, ora e pulsante.
-  - **HOLD / Riprendi / START** = stesso comando e stessa logica del pulsante della pagina Robot: `sendToRobot(17)`; testo "HOLD" se il robot non è né in HOLD né spento, "Riprendi" in HOLD, "START" da spento con la stessa animazione (`blinker`). La golden lo verifica stato per stato.
+- **Barra di navigazione** a sinistra, `--rail-width` 104 (84 in compatto). Nove voci con icona ed etichetta (fase E1.7, decisione di Dario del 7/10), nell'ordine: Home, Controlli, Produzione, Magazzino, Attrezzaggio, Pinze, Spinta in battuta, Allarmi (badge rosso col numero degli allarmi attivi) e, in fondo, Impostazioni. Voce attiva: icona e testo nell'accento su `--bg-raised`. In compatto alcune etichette si accorciano ("Attrezz.", "Spinta", "Impost."). Niente marchio "EB": il logo aziendale sta nella striscia.
+  - **Schermi bassi** (fase E1.4, tablet 16:10): la barra non scorre fino a 400 px CSS di altezza, Impostazioni sempre visibile. Le voci scalano con l'altezza (`--app-h`: `100dvh`, o `innerHeight` dove il browser non conosce `dvh`), fino a 66 px in compatto e 78 in largo, mai sotto i 44. Sotto i 508 px le nove voci non stanno a 52 px l'una e **Allarmi esce dalla barra** (decisione di Dario del 7/10): resta la campanella della striscia, col numero. Con otto voci, sotto i 454 px le etichette spariscono e restano l'icona e l'`aria-label`.
+- **Striscia di stato** in alto, sempre visibile, `--status-strip-height` 76 (64 in compatto). Da sinistra: logo aziendale (40 px in largo, 28 in compatto), stato cella (dal robot: HOLD ambra, ALLARME rosso), Robot, MC1 (MC2 se configurata), EasyBox o «cassetto N fuori», collegamento col server, campanella degli allarmi, utente (icona del livello: `HardHat` operatore, `Wrench` manutentore, `GraduationCap` ingegnere, con l'etichetta in largo; apre il cambio utente), lingua, ora, e a destra **HOLD / Riprendi / START**.
+  - **In compatto** (fase E1.3) la chip Robot prende il posto di quella della cella, col suo tono; restano MC, EasyBox, il pallino del collegamento, campanella, utente e HOLD; la lingua sta in Impostazioni › Utente e lingua. Se non ci sta tutto la striscia ripiega a passi: prima toglie l'ora, poi il logo (che passa nell'intestazione della Home), poi passa ai testi brevi `strip.short.*`. Mai Robot, MC, EasyBox, campanella, utente e HOLD; niente a capo, niente scorrimento, niente «…».
+  - **HOLD / Riprendi / START** = stesso comando e stessa logica del pulsante della pagina Robot: `sendToRobot(17)`; testo "HOLD" se il robot non è né in HOLD né spento, "Riprendi" in HOLD, "START" da spento con la stessa animazione (`blinker`). La golden lo verifica stato per stato. **Antirimbalzo** (fase E1.3): il 17 è un interruttore nel PLC e due tocchi rimettono in moto la cella; dopo un tocco il pulsante resta spento finché lo STATUS del robot non cambia, al massimo 5 s, poi avviso «HOLD non confermato dal PLC» (`util/holdGuard.js`).
   - **Solo dati esistenti** (`stores/plantStatus.js`): eventi `ROBOT/STATUS`, `MC1/STATUS`, `MC2/STATUS`, `BOX/STATUS`, `ROBOT/DESCR`, `TRAY/EXTRACT`; lettura iniziale di `api/unit/show/all` e `api/conf/tray/show/all`; replay della cache del backend con `UNIT/STATUS/REQUEST`. Lo store non manda comandi.
   - **Allarmi attivi** = unità con `STATUS` = allarme. È l'unico "attivo" che il pannello conosce: `api/alarm/show/all` è uno storico (ultime righe di LOG), senza un "risolto".
   - **Non mostrati, senza fonte:** percentuale e tempo residuo del ciclo MC1, stato del PLC (il backend non ha un battito del PLC; c'è solo il collegamento col server).
@@ -126,7 +128,9 @@ La scala storica (`--font-size-xs` … `-2xl`, `-display`) resta per le pagine d
 | Controlli | Robot `/unit/robot` · Macchina MC1 `/unit/CNC1` · (MC2 `/unit/CNC2` se configurata) · EasyBox `/unit/smallbox` |
 | Produzione | `/production` + il wizard del nuovo ordine (`/selectRig` … `/lastData`) |
 | Magazzino | Cassetti (`/conf/Trays`, `/conf/tray`, `/layout/...`) · Grigliati (`/conf/Gratings`, `/conf/Grating/:id`, `/conf/importGrating`) · Pezzi (`/conf/Parts`, `/conf/piece/piece`) |
-| Attrezzaggio | Attrezzaggi · Pallet · Morse · Attrezzature · Pinze · Spinta in battuta |
+| Attrezzaggio | Attrezzaggi · Pallet · Morse · Attrezzature (la scheda Chele morsa, fra Morse e Attrezzature, arriva col prompt 5 di 5) |
+| Pinze | `/conf/Grippers` (e `/conf/Gripper/...`) |
+| Spinta in battuta | `/sim/push` |
 | Allarmi | `/alarms` · Diagnostica MQTT `/diag/mqtt` (livello 1) |
 | Impostazioni | Posizioni (livello 1) · Macchine (livello 2) · Magazzini (livello 1). Per l'operatore la voce apre il cambio utente |
 
@@ -139,7 +143,9 @@ La scala storica (`--font-size-xs` … `-2xl`, `-display`) resta per le pagine d
 
 - **Largo** ≥ 1600 px (verificato a 1920×1080, il kiosk di cella); **compatto** < 1600 px (verificato a 1024×768, schermi 4:3, e 1280×800, tablet). Punto di rottura in `design-tokens.css` (`@media (max-width: 1599px)`, solo misure) e in `util/breakpoints.js` (`useCompact()`, per cambiare struttura).
 - Home e Controlli: **nessuno scroll di pagina** sia a 1920×1080 sia a 1024×768 (fase B). Le pagine di configurazione scorrono dentro l'area del contenuto.
-- Compatto: Home su una colonna (ordine, tre tile, banner dell'allarme); Controlli robot con i comandi in schede Movimenti / Missioni / Chele; Magazzino con la cassettiera in una colonna stretta.
+- Compatto: Home su una colonna (ordine, tre tile, banner dell'allarme); Controlli robot con i comandi in schede Movimenti / Missioni / Chele pinza, sulla riga delle schede della sezione, a destra, larghe quanto la colonna dei comandi (fase E1.5: `#section-extra` in `AppShell` e `<Teleport>` solo in compatto); Magazzino con la cassettiera in una colonna stretta.
+- Largo anche a **1920×970**, la finestra massimizzata di Windows con cui si apre la cella (fase E1.6): Home, Controlli · Robot, Produzione e Magazzino · Cassetti senza scorrimento di pagina.
+- La card «Schermo» di Impostazioni › Utente e lingua (fase E1.1) mostra la finestra in px CSS, il `devicePixelRatio` e la misura di layout: serve a leggere i numeri veri della cella prima di decidere sul punto di rottura.
 - Contenitore di pagina fluido (grid/flex e `gap`), niente larghezze fisse sul contenitore.
 
 ---
@@ -147,6 +153,8 @@ La scala storica (`--font-size-xs` … `-2xl`, `-display`) resta per le pagine d
 ## 7. Dialog di conferma (`dialogs.css`, `UiConfirmDialog`)
 
 Sede unica dalla fase 0 (v2), aspetto della tavola Conferma: `--bg-dialog`, angoli 24, l'unica ombra del pannello, velo `--bg-backdrop`, larghezza 720 (`--wide` 800, `--narrow` 560), 14 px fra Conferma e Annulla. Il comando pericoloso è **rosso pieno**, Annulla in contorno. Testo: cosa fa e cosa NON fa; sotto, le precondizioni verificate. Ogni dialog nuovo usa queste classi o `UiConfirmDialog`: niente CSS di dialog scoped nei `.vue`.
+
+**Riquadro globale degli allarmi** (`components/Alerts/Alert.vue`, fase E1.2): stessa scatola, sopra a tutto. Superficie sempre piena `--bg-dialog`, **mai un `--color-*-bg` come fondo** (sono trasparenti al 14-16 %: la pagina si leggeva attraverso). Il tono (allarme rosso, avviso ambra) sta in icona, titolo e bordo. Codice in un badge accanto al titolo (`robot.alarm_<n>`; «972 → codice» per l'avviso unito della consegna 35). Testo a `--font-size-md`. Si chiude solo con OK (56 px, a tutta larghezza in compatto) o con la X: il tocco sul velo non chiude. Gli esiti positivi (`message`) sono un avviso breve senza velo, in alto a destra sotto la striscia, che si chiude da sé dopo 4 s o al tocco. Allineati allo stesso aspetto il cambio utente (`ChangeUserModal`) e `RelaunchDialog`.
 
 ---
 

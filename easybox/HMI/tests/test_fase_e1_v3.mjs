@@ -14,6 +14,8 @@
 //    etichette nascoste sotto i 400 px di altezza.
 // 5. Schede del Robot (E1.5): in compatto sulla riga delle schede.
 // 6. Largo basso (E1.6): Controlli · Robot senza scorrere a 1920x970.
+// 7. Menu (E1.7): Pinze e Spinta voci della barra, «Chele pinza» nella
+//    pagina Robot (l'ordine delle voci e le rotte: tests/test_shell_v3.mjs).
 // Le misure a schermo (scorrimento, ripiego per misura) sono nel report
 // della fase E1: qui le regole che le rendono vere.
 //
@@ -100,7 +102,9 @@ check(/data-strip="user"/.test(tSs) && !/v-if="[^"]*"[^>]*data-strip="user"/.tes
 check(/<component :is="iconaLivello\(livello\)"/.test(tSs) && /<span v-if="!compact">\{\{ t\('changeUser\.levelLabel\.' \+ livello\) \}\}<\/span>/.test(tSs), 'utente: icona del livello, etichetta solo nel largo');
 check(/<UiChip v-if="!compact" clickable :aria-label="t\('strip\.lang'\)"/.test(tSs), 'lingua solo nel largo');
 const { RIPIEGHI } = await import('../src/util/stripLayout.js').catch(() => ({ RIPIEGHI: null }));
-check(RIPIEGHI && RIPIEGHI.tutto < RIPIEGHI.senzaOra && RIPIEGHI.senzaOra < RIPIEGHI.senzaLogo && RIPIEGHI.senzaLogo < RIPIEGHI.brevi, 'ripiego: prima l\'ora, poi il logo, poi i testi brevi');
+check(RIPIEGHI && RIPIEGHI.tutto < RIPIEGHI.senzaOra && RIPIEGHI.senzaOra < RIPIEGHI.senzaLogo && RIPIEGHI.senzaLogo < RIPIEGHI.brevi && RIPIEGHI.brevi < RIPIEGHI.stretta, 'ripiego: prima l\'ora, poi il logo, poi i testi brevi, infine gli spazi stretti');
+check(/while \(sfora\(\) && ripiego\.value < RIPIEGHI\.stretta\)/.test(ss) && /scrollWidth > striscia\.value\.clientWidth;/.test(ss), 'ripiega finche\' sfora, anche di 1 px, fino all\'ultimo passo');
+check(/\.strip--stretta \{ gap: 4px;/.test(ss) && !/\.strip--stretta[^{]*\{[^}]*(height|min-height)/.test(ss), 'il passo stretto riduce spazi e margini, non i bersagli');
 check(/const mostraOra = computed\(\(\) => ripiego\.value < RIPIEGHI\.senzaOra\);/.test(ss) && /const mostraLogo = computed\(\(\) => ripiego\.value < RIPIEGHI\.senzaLogo\);/.test(ss), 'ora e logo seguono il ripiego');
 for (const k of ['robot', 'mc1', 'easybox', 'user', 'hold'])
 	check(new RegExp('data-strip="' + k + '"|:data-strip="\'mc\' \\+ m\\.n"').test(tSs), 'mai tolto: ' + k);
@@ -118,8 +122,17 @@ const tok = leggi('src/assets/css/design-tokens.css');
 check(/--app-h:\s+100vh;/.test(tok) && /@supports \(height: 100dvh\) \{\s*:root \{ --app-h: 100dvh; \}/.test(tok), '--app-h: 100dvh dove esiste, altrimenti 100vh');
 const sh = leggi('src/layout/v3/AppShell.vue');
 check(/\.shell \{[\s\S]*?height: var\(--app-h\);/.test(sh) && /installAppHeight\(\)/.test(sh), 'la shell e\' alta --app-h, ripiego da innerHeight');
-check(/--rail-item-h: clamp\(48px,/.test(nr) && /--rail-item-max: 66px|--rail-item-max:\s*66px/.test(nr) && /--rail-item-max: 78px|--rail-item-max:\s*78px/.test(nr), 'voci in scala: da 66 (78 nel largo) fino a 48');
-check(/@media \(max-height: 399px\) \{\s*\.rail__label \{/.test(nr), 'etichette nascoste sotto i 400 px di altezza');
+check(/--rail-item-h: clamp\(44px, calc\(\(var\(--app-h\) - 2 \* var\(--rail-pad\) - \(var\(--rail-n\) - 1\) \* var\(--rail-gap\)\) \/ var\(--rail-n\)\), var\(--rail-item-max\)\);/.test(nr), 'voci in scala con l\'altezza, mai sotto i 44 px');
+check(/--rail-n: 9;/.test(nr) && /--rail-item-max: 66px/.test(nr) && /--rail-item-max: 78px/.test(nr), 'nove voci, fino a 66 px in compatto e 78 nel largo');
+// le soglie vengono dai conti: margini 12, spazi 2 (compatto e schermi bassi)
+const pad = 12, gap = 2, alta = (n, h) => (h - 2 * pad - (n - 1) * gap) / n;
+check(alta(9, 508) >= 52 && alta(9, 507) < 52, 'Allarmi esce sotto i 508 px: li\' le nove voci scendono sotto i 52 px');
+check(/@media \(max-height: 507\.98px\) \{\s*\.rail \{ --rail-n: 8; \}\s*\.rail__item--drop \{ display: none; \}/.test(nr), 'sotto i 508 px: otto voci, Allarmi fuori');
+check(alta(8, 454) >= 52 && alta(8, 453) < 52, 'con otto voci le etichette spariscono sotto i 454 px');
+check(/@media \(max-height: 453\.98px\) \{\s*\.rail__label \{/.test(nr), 'etichette nascoste sotto i 454 px (resta l\'aria-label)');
+check(alta(8, 400) >= 44, 'a 400 px di altezza le otto voci stanno a ' + alta(8, 400).toFixed(1) + ' px: nessuno scorrimento');
+check(/@media \(max-height: 551\.98px\) \{\s*\.rail \{ --rail-pad: 12px; --rail-gap: 2px; \}/.test(nr), 'sotto i 552 px anche il largo usa i margini del compatto (le soglie valgono per tutti)');
+check(/'rail__item--drop': s\.dropWhenShort/.test(nr), 'la voce che esce la dice navConfig (dropWhenShort)');
 // appHeight con una finestra finta
 const ascolti = {};
 const finto = sup => ({ innerHeight: 533, CSS: { supports: () => sup }, document: { documentElement: { style: { setProperty(k, v) { this[k] = v; } } } },
@@ -141,6 +154,19 @@ check(/<Teleport to="#section-extra" defer :disabled="!compact">/.test(rv), 'rob
 
 console.log('\n6) largo basso');
 check(/@media \(min-width: 1600px\) and \(max-height: 1040px\) \{[\s\S]*?\.rv-grid \.ui-tile \{ min-height: 88px;/.test(rv), 'Controlli · Robot: tile piu\' basse nel largo con poca altezza (1920x970)');
+
+console.log('\n7) menu a nove voci');
+const nc = leggi('src/layout/navConfig.js');
+check(/import \{[^}]*\bGrab\b[^}]*\bArrowRightToLine\b[^}]*\} from 'lucide-vue-next';/.test(nc), 'icone lucide Grab (Pinze, gia\' usata in robotView) e ArrowRightToLine (Spinta)');
+check(/id: 'grippers', label: 'nav\.grippers', icon: Grab,/.test(nc) && /id: 'push', label: 'nav\.push', short: 'nav\.short\.push', icon: ArrowRightToLine,/.test(nc), 'voci Pinze e Spinta in navConfig');
+check(it.nav.grippers === 'Pinze' && it.nav.push === 'Spinta in battuta' && it.nav.short.push === 'Spinta', 'testi it: Pinze, Spinta in battuta, «Spinta» in compatto');
+check(en.nav.grippers === 'Grippers' && en.nav.push === 'Push to stop' && en.nav.short.push === 'Push', 'testi en');
+check(it.robot.section.claws === 'Chele pinza' && en.robot.section.claws === 'Gripper claws', 'Controlli · Robot: «Chele pinza» nel selettore e nel titolo della card');
+check((rv.match(/\$t\('robot\.section\.claws'\)/g) || []).length >= 2, 'stessa chiave per il selettore e per la card');
+check(![it.nav.grippers, it.nav.push, it.nav.short.push, it.robot.section.claws].some(v => /ganasc/i.test(v)), 'nessun testo nuovo con «ganascia»');
+check(/Nove voci/.test(nr) && !/Sette voci/.test(nr), 'commento di NavRail aggiornato (nove voci)');
+const uds = leggi('../docs/UI-DESIGN-SYSTEM.md');
+check(/Nove voci con icona ed etichetta/.test(uds) && /\| Pinze \| `\/conf\/Grippers`/.test(uds) && /Allarmi esce dalla barra/.test(uds), 'UI-DESIGN-SYSTEM §5: barra a nove voci e regola degli schermi bassi');
 
 console.log('\n' + (failed ? failed + ' CHECK FALLITI' : 'TUTTI I CHECK PASSATI'));
 process.exit(failed ? 1 : 0);

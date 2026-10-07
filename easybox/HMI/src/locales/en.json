@@ -69,9 +69,12 @@
     "production": "Production",
     "warehouse": "Warehouse",
     "tooling": "Tooling",
+    "grippers": "Grippers",
+    "push": "Push to stop",
     "alarms": "Alarms",
     "settings": "Settings",
     "short": {
+      "push": "Push",
       "tooling": "Tooling",
       "settings": "Settings"
     },
@@ -979,7 +982,7 @@
     "section": {
       "critical": "Critical commands",
       "restore": "Recovery",
-      "claws": "Claws",
+      "claws": "Gripper claws",
       "restoreHint": "Use after an alarm or a block, not to resume a stopped cycle.",
       "movement": "Movements",
       "destination": "Destinations",

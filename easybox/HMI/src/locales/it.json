@@ -69,9 +69,12 @@
     "production": "Produzione",
     "warehouse": "Magazzino",
     "tooling": "Attrezzaggio",
+    "grippers": "Pinze",
+    "push": "Spinta in battuta",
     "alarms": "Allarmi",
     "settings": "Impostazioni",
     "short": {
+      "push": "Spinta",
       "tooling": "Attrezz.",
       "settings": "Impost."
     },
@@ -979,7 +982,7 @@
     "section": {
       "critical": "Comandi critici",
       "restore": "Ripristino",
-      "claws": "Chele",
+      "claws": "Chele pinza",
       "restoreHint": "Da usare dopo un allarme o un blocco, non per riprendere un ciclo fermo.",
       "movement": "Movimenti",
       "destination": "Punti di destinazione",

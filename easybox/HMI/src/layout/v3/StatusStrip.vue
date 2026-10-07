@@ -39,7 +39,7 @@
          lo mostra l'intestazione della Home (util/stripLayout.js).
      ========================================================================== -->
 <template>
-  <header ref="striscia" class="strip" :class="{ 'strip--compact': compact }" :data-ripiego="ripiego">
+  <header ref="striscia" class="strip" :class="{ 'strip--compact': compact, 'strip--stretta': stretta }" :data-ripiego="ripiego">
     <img v-if="mostraLogo" src="@/assets/logo.png" class="strip__logo" alt="ADMG" @load="misura" />
 
     <!-- largo: stato cella; compatto: Robot col tono della cella -->
@@ -157,13 +157,15 @@ watch(() => plant.robot, v => holdGuard.stato(v));
 const premi = () => { holdGuard.premi(() => sendToRobot(17)); };
 
 // ---- ripiego quando non ci sta tutto: 0 tutto, 1 senza ora, 2 senza ora e
-// logo, 3 anche testi brevi (util/stripLayout.js)
+// logo, 3 anche testi brevi, 4 anche spazi stretti (util/stripLayout.js)
 const striscia = ref(null);
 const ripiego = ref(0);
 const mostraOra = computed(() => ripiego.value < RIPIEGHI.senzaOra);
 const mostraLogo = computed(() => ripiego.value < RIPIEGHI.senzaLogo);
 const brevi = computed(() => ripiego.value >= RIPIEGHI.brevi);
-const sfora = () => !!striscia.value && striscia.value.scrollWidth > striscia.value.clientWidth + 1;
+const stretta = computed(() => ripiego.value >= RIPIEGHI.stretta);
+// nessuna tolleranza: anche 1 px fuori taglia il bordo del pulsante HOLD
+const sfora = () => !!striscia.value && striscia.value.scrollWidth > striscia.value.clientWidth;
 let misurando = false;
 let ancora = false;    // richiesta arrivata a misura in corso: si rifa' dopo
 async function misura() {
@@ -173,7 +175,7 @@ async function misura() {
 	try {
 		ripiego.value = 0;
 		await nextTick();
-		while (sfora() && ripiego.value < RIPIEGHI.brevi) {
+		while (sfora() && ripiego.value < RIPIEGHI.stretta) {
 			ripiego.value++;
 			await nextTick();
 		}
@@ -320,4 +322,10 @@ onUnmounted(() => {
   .strip__user svg { width: 22px; height: 22px; }
   .strip__hold { min-height: 48px; padding: 0 18px; font-size: var(--font-size-base); }
 }
+/* ultimo passo del ripiego: spazi e margini interni stretti (bersagli
+   invariati: utente, campanella e HOLD restano alti 48) */
+.strip--stretta { gap: 4px; padding: 0 8px 0 10px; }
+.strip--stretta :deep(.ui-chip) { padding: 0 8px; gap: 5px; }
+.strip--stretta .strip__user { padding: 0 8px; }
+.strip--stretta .strip__hold { padding: 0 12px; }
 </style>

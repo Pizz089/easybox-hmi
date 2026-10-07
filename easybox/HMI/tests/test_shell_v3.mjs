@@ -46,13 +46,20 @@ check(!/StandardMenu/.test(router.replace(/\/\/.*$/gm, '')), 'nessuna rotta usa 
 
 console.log('\n2) navigazione e livelli');
 const { NAV, sectionOf, visibleTabs } = await server.ssrLoadModule('/src/layout/navConfig.js');
-check(NAV.map(s => s.id).join(',') === 'home,controls,production,warehouse,tooling,alarms,settings', 'sette voci nell\'ordine delle tavole');
+// (fase E1.7, decisione di Dario del 7/10) Pinze e Spinta in battuta escono
+// da Attrezzaggio e diventano voci: nove voci
+check(NAV.map(s => s.id).join(',') === 'home,controls,production,warehouse,tooling,grippers,push,alarms,settings', 'nove voci: Home, Controlli, Produzione, Magazzino, Attrezzaggio, Pinze, Spinta, Allarmi, Impostazioni');
 check(NAV.find(s => s.id === 'settings').bottom === true && NAV.find(s => s.id === 'alarms').badge === true, 'Impostazioni in fondo, badge su Allarmi');
+check(NAV.filter(s => s.dropWhenShort).map(s => s.id).join() === 'alarms', 'sugli schermi bassi esce solo Allarmi (resta la campanella della striscia)');
+check(NAV.find(s => s.id === 'tooling').tabs.map(t => t.to).join() === '/conf/Attrezzaggi,/conf/Pallets,/conf/Vices,/conf/Fixtures', 'Attrezzaggio: Attrezzaggi, Pallet, Morse, Attrezzature');
+const pinze = NAV.find(s => s.id === 'grippers'), spinta = NAV.find(s => s.id === 'push');
+check(pinze.tabs.length === 1 && pinze.tabs[0].to === '/conf/Grippers' && pinze.tabs[0].match.join() === '/conf/Grippers,/conf/Gripper' && !pinze.tabs[0].level, 'Pinze: /conf/Grippers, stesso match di prima, nessun livello');
+check(spinta.tabs.length === 1 && spinta.tabs[0].to === '/sim/push' && !spinta.tabs[0].level && spinta.short === 'nav.short.push', 'Spinta: /sim/push, nessun livello, etichetta corta in compatto');
 const esempi = { '/': 'home', '/dashboard': 'home', '/production': 'production', '/selectRig': 'production', '/lastData': 'production',
 	'/unit/robot': 'controls', '/unit/CNC1': 'controls', '/unit/smallbox': 'controls',
 	'/conf/Trays': 'warehouse', '/conf/tray': 'warehouse', '/layout/22/1/8': 'warehouse', '/conf/Gratings': 'warehouse', '/conf/Grating/2095': 'warehouse', '/conf/importGrating': 'warehouse', '/conf/Parts': 'warehouse', '/conf/piece/piece': 'warehouse',
 	'/conf/Attrezzaggi': 'tooling', '/conf/Attrezzaggio': 'tooling', '/conf/Pallets': 'tooling', '/conf/pallet': 'tooling', '/conf/Vices': 'tooling', '/conf/vice': 'tooling',
-	'/conf/Fixtures': 'tooling', '/conf/Fixture': 'tooling', '/conf/FixtureOnPallet': 'tooling', '/conf/Grippers': 'tooling', '/conf/Gripper/gripper': 'tooling', '/sim/push': 'tooling',
+	'/conf/Fixtures': 'tooling', '/conf/Fixture': 'tooling', '/conf/FixtureOnPallet': 'tooling', '/conf/Grippers': 'grippers', '/conf/Gripper/gripper': 'grippers', '/sim/push': 'push',
 	'/alarms': 'alarms', '/diag/mqtt': 'alarms', '/conf/Position': 'settings', '/conf/Machines': 'settings', '/conf/Warehouses': 'settings', '/settings/user': 'settings' };
 const sbagliate = Object.entries(esempi).filter(([p, id]) => (sectionOf(p) || {}).id !== id).map(([p, id]) => p + ' -> ' + ((sectionOf(p) || {}).id || 'nessuna') + ' (attesa ' + id + ')');
 check(sbagliate.length === 0, 'ogni rotta accende la sua voce (' + Object.keys(esempi).length + ' rotte)' + (sbagliate.length ? ': ' + sbagliate.join('; ') : ''));
