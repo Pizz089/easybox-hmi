@@ -94,6 +94,8 @@ console.log('\n4) nominale invariato in ogni caso: listPz, dim_x/dim_y, coordina
 function makeVm() {
 	const vm = Object.assign({}, comp.data.call({}));
 	for (const [k, f] of Object.entries(comp.methods)) vm[k] = f.bind(vm);
+	// (verso 7/10 sera) i computed servono: export e controllo fori usano pocketsView
+	for (const [k, f] of Object.entries(comp.computed)) Object.defineProperty(vm, k, { get: () => f.call(vm), configurable: true });
 	vm.$route = { params: { grating_ID: 0 } };
 	vm.$t = k => k;
 	vm.trayList = [{ ID: 30, FLOOR_MAG: 9, X: 820000, Y: 610000, MAG: 1 }];

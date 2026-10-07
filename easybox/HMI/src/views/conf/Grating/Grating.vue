@@ -296,19 +296,29 @@
                 <!-- vassoio -->
                 <rect id="tray" x="0" y="0" :width="grating.width" :height="grating.height" fill="#3A4A60" class="noPrint"/>
 
-                <g v-for="(p, index) in listPz" :key="index" >
+                <!-- (base-dxf, verso 7/10 sera) tasche nella vista LATO OPERATORE,
+                     come la pagina Cassetti (TrayPockets) e Base.dxf: centro in
+                     (w, h) di gridCenters, tasca 1 in alto a sinistra vicino
+                     all'origine del work object. Coordinate ricalcolate, nessuna
+                     transform: i numeri restano dritti. -->
+                <g v-for="(p, index) in pocketsView" :key="index" >
                     <prisma v-if="p.prisma"
-                            :x="p.x" :y="p.y" 
-                            :width="dim_x" :height="dim_y" 
+                            :x="p.x" :y="p.y"
+                            :width="dim_x" :height="dim_y"
                             :status="p.status"
                             hideCenter="false">
                     </prisma>
                     <cylinder v-if="!p.prisma"
-                            :x="p.x" :y="p.y" 
+                            :x="p.x" :y="p.y"
                             :width="radius"
                             :status="p.status"
                             hideCenter="true">
                     </cylinder>
+                </g>
+                <!-- origine del work object (0,0), come in TrayPockets -->
+                <g id="origin">
+                    <circle cx="0" cy="0" r="9" fill="#FFFFFF" stroke="#111111" stroke-width="1.5"/>
+                    <path d="M0 0 L9 0 A9 9 0 0 1 0 9 Z M0 0 L-9 0 A9 9 0 0 1 0 -9 Z" fill="#111111"/>
                 </g>
                 
                 <!-- (base-dxf 7/10) base del grigliato da Base.dxf: profilo, fori
@@ -328,36 +338,39 @@
                      schermo (avviso, mai blocco); fuori dal modello SVG -->
                 <g id="baseConflicts" class="noPrint" v-if="pocketConflicts.length">
                     <template v-for="c in pocketConflicts" :key="'c' + c.index">
-                        <rect v-if="listPz[c.index] && listPz[c.index].prisma"
-                            :x="listPz[c.index].x" :y="listPz[c.index].y" :width="dim_x" :height="dim_y"
+                        <rect v-if="pocketsView[c.index] && pocketsView[c.index].prisma"
+                            :x="pocketsView[c.index].x" :y="pocketsView[c.index].y" :width="dim_x" :height="dim_y"
                             fill="#EF4444" fill-opacity="0.55" stroke="#EF4444" stroke-width="2"/>
-                        <circle v-else-if="listPz[c.index]"
-                            :cx="listPz[c.index].x" :cy="listPz[c.index].y" :r="radius"
+                        <circle v-else-if="pocketsView[c.index]"
+                            :cx="pocketsView[c.index].x" :cy="pocketsView[c.index].y" :r="radius"
                             fill="#EF4444" fill-opacity="0.55" stroke="#EF4444" stroke-width="2"/>
                     </template>
                 </g>
+                <!-- numeri delle tasche (SUB_POS), sopra anche alla sovrapposizione rossa -->
+                <g id="pocketNumbers">
+                    <text v-for="p in pocketsView" :key="'n' + p.n"
+                        :x="p.w" :y="p.h" :font-size="pocketNumberSize"
+                        text-anchor="middle" dominant-baseline="central" fill="#2A3548">{{ p.n }}</text>
+                </g>
 
-                <!-- misure-->
-                <!--text :x="listPz[0].x:0" :y="listPz[0].y+10" fill="#2A3548" font-size="10">{{dim_x}}x{{dim_y}}</text-->
+                <!-- misure (solo stampa), vicino alla tasca 1. (verso 7/10 sera) la
+                     tasca 1 sta in alto a sinistra: distanze fra le tasche a
+                     destra (SAFEX) e sotto (SAFEY), margini dal bordo a sinistra
+                     e sopra. I valori sono quelli di prima. -->
                 <g v-if="listPz.length>0" class="noScreen">
-                    <text :x="listPz[0].x-20" :y="listPz[0].y+dim_y/2" fill="#2A3548" font-size="10">{{ grating.SAFEX }}</text>
-                    
-                    <text :x="listPz[0].x+dim_x/2" :y="listPz[0].y-17"  fill="#2A3548" font-size="10" rotate="-90" v-if="grating.SAFEY.toString()[2]>0">{{ grating.SAFEY.toString()[2] }}</text>
-                    <text :x="listPz[0].x+dim_x/2" :y="listPz[0].y-11"  fill="#2A3548" font-size="10" rotate="-90" v-if="grating.SAFEY.toString()[1]>=0">{{ grating.SAFEY.toString()[1] }}</text>
-                    <text :x="listPz[0].x+dim_x/2" :y="listPz[0].y-6"   fill="#2A3548" font-size="10" rotate="-90">{{ grating.SAFEY.toString()[0] }}</text>
-                    
-                    <text :x="listPz[0].x+dim_x/2" :y="listPz[0].y+dim_y+8" fill="#2A3548" font-size="10" rotate="-90">
-                        {{ (grating.height-listPz[0].y-dim_y).toString()[1] }}
-                    </text>
-                    <text :x="listPz[0].x+dim_x/2" :y="listPz[0].y+dim_y+14" fill="#2A3548" font-size="10" rotate="-90">
-                        {{ (grating.height-listPz[0].y-dim_y).toString()[0] }}
-                    </text>
-                    
-                    <text :x="listPz[0].x+dim_x+10" :y="listPz[0].y+dim_y/2" fill="#2A3548" font-size="10" rotate="0">
+                    <text :x="pocketsView[0].x+dim_x+3" :y="pocketsView[0].y+dim_y/2" fill="#2A3548" font-size="10">{{ grating.SAFEX }}</text>
+
+                    <text v-for="(c, i) in cifreSotto(grating.SAFEY)" :key="'sy' + i"
+                        :x="pocketsView[0].x+dim_x/2" :y="pocketsView[0].y+dim_y+c.dy" fill="#2A3548" font-size="10" rotate="-90">{{ c.ch }}</text>
+
+                    <text v-for="(c, i) in cifreSopra(grating.height-listPz[0].y-dim_y)" :key="'my' + i"
+                        :x="pocketsView[0].x+dim_x/2" :y="pocketsView[0].y+c.dy" fill="#2A3548" font-size="10" rotate="-90">{{ c.ch }}</text>
+
+                    <text :x="pocketsView[0].x-3" :y="pocketsView[0].y+dim_y/2" fill="#2A3548" font-size="10" text-anchor="end">
                         {{ grating.width-listPz[0].x-dim_x }}
                     </text>
 
-                    <text :x="listPz[0].x+dim_x/2-15" :y="listPz[0].y+dim_y/2" fill="#2A3548" font-size="10" rotate="0">
+                    <text :x="pocketsView[0].x+dim_x/2-15" :y="pocketsView[0].y+dim_y/2" fill="#2A3548" font-size="10" rotate="0">
                         {{dim_x}}x{{dim_y}}
                     </text>
                 </g>
@@ -406,6 +419,8 @@
                     <text x="680" y="655" 	fill="#2A3548" font-size="14" rotate="0">
                             {{ $t('grating.generatedOn') }} {{new Date().toLocaleDateString()}}
                     </text>
+                    <!-- (verso 7/10 sera) la vista del disegno -->
+                    <text x="20" y="675" fill="#2A3548" font-size="12">{{ $t('grating.viewNote') }}</text>
                 </g>
             </svg>
 
@@ -445,13 +460,15 @@
 // ============================================================================
 
 // DXF di fabbricazione (R12, mm) nel FRAME DI Base.dxf (7/10): vista lato
-// operatore, 0,0 in alto a sinistra, Y negativa verso il basso. Si sovrappone
-// 1:1 a Base.dxf; rispetto ai DXF esportati prima del 7/10 (y = H - y_svg) e'
-// solo traslato di H in Y, non ruotato.
+// operatore, 0,0 in alto a sinistra (origine del work object), Y negativa
+// verso il basso. Si sovrappone 1:1 a Base.dxf. Rispetto ai DXF esportati
+// prima del 7/10 (vista lato robot, y = H - y_svg) e' ruotato di 180 gradi.
 //   - profilo e fori: copiati dalla base letta (util/baseDxf.js), stesse
 //     coordinate e stessi bulge (codice 42 sul VERTEX), non dal DOM; i testi
 //     della base non si esportano (a chi taglia non servono);
-//   - tasche: x_dxf = x_svg, y_dxf = -y_svg.
+//   - tasche: pieces nella vista lato operatore (pocketsOperatorView),
+//     x_dxf = x_svg, y_dxf = -y_svg: una tasca robot (X, Y) cade in
+//     (Y/1000, -X/1000).
 // pieces/dimX/dimY/radius arrivano NOMINALI (gli stessi dell'anteprima): il
 // franco cavita' (util/cavityClearance.js, clearanceUm scelto all'export,
 // default la costante) viene applicato SOLO qui, sul layer PIECES, a centro
@@ -510,6 +527,21 @@ export function buildGratingDxf({ base = null, pieces, dimX, dimY, radius, clear
   }
   e('0','ENDSEC','0','EOF');
   return out.join('\n') + '\n';
+}
+
+// (base-dxf, verso 7/10 sera) le tasche nella vista LATO OPERATORE, la stessa
+// della pagina Cassetti (TrayPockets: centro in (w, h) di robotToDrawing) e
+// di Base.dxf: centro in (w, h) di gridCenters, quindi tasca 1 in alto a
+// sinistra, vicino all'origine del work object (0,0). listPz di buildGrid e'
+// nella vista lato robot (tasca 1 in basso a destra) e resta com'e': e' il dato
+// da cui nascono le quote del robot (gridCenters -> drawingToRobot). Qui cambia
+// solo dove si disegna: x, y come in listPz (spigolo del prisma, centro del
+// cilindro), n = SUB_POS.
+export function pocketsOperatorView(listPz, { width, height, dim_x, dim_y }) {
+  const c = gridCenters(listPz, { width, height, dim_x, dim_y });
+  return (listPz || []).map((p, i) => p.prisma
+    ? { prisma: true, status: p.status, n: i + 1, w: c[i].w, h: c[i].h, x: c[i].w - dim_x / 2, y: c[i].h - dim_y / 2 }
+    : { prisma: false, status: p.status, n: i + 1, w: c[i].w, h: c[i].h, x: c[i].w, y: c[i].h });
 }
 
 // (base-dxf 7/10) la sovrapposizione rossa delle tasche in conflitto e' solo
@@ -892,7 +924,7 @@ export default {
         // avviso, mai blocco.
         baseConflicts(um = this.cavityUm) {
             if (!this.base || !this.listPz || this.listPz.length === 0) return [];
-            const cavities = this.listPz.map(p => {
+            const cavities = this.pocketsView.map(p => {
                 if (p.prisma) {
                     const c = cavityRect(p.x, p.y, this.dim_x, this.dim_y, um);
                     return { tipo: 'rect', x: c.x, y: c.y, w: c.w, h: c.h };
@@ -900,6 +932,17 @@ export default {
                 return { tipo: 'circle', cx: Number(p.x), cy: Number(p.y), r: cavityRadius(this.radius, um) };
             });
             return pocketsVsBase(this.base, cavities, BASE_WEB_MM);
+        },
+        // cifre in colonna per le quote di stampa (ruotate di -90, si leggono dal
+        // basso): la prima cifra in fondo, come le quote di prima
+        cifreSopra(valore) {
+            const ch = String(valore).split('');
+            const dy = [-6, -11, -17, -23];
+            return ch.map((c, k) => ({ ch: c, dy: dy[k] !== undefined ? dy[k] : -23 - 6 * (k - 3) }));
+        },
+        cifreSotto(valore) {
+            const ch = String(valore).split('');
+            return ch.map((c, k) => ({ ch: c, dy: 8 + 6 * (ch.length - 1 - k) }));
         },
         // «tasche N, M: troppo vicine a un foro / al profilo» (N = SUB_POS)
         conflictText(list) {
@@ -990,9 +1033,11 @@ export default {
             }
             if (!this.base) { alert(this.baseBlockedText); return; }
             // (base-dxf 7/10) profilo e fori dalla base letta, non dal DOM
+            // (verso 7/10 sera) tasche nella vista lato operatore: nel DXF una
+            // tasca robot (X, Y) cade in (Y/1000, -X/1000)
             const dxf = buildGratingDxf({
               base: this.base,
-              pieces: this.listPz,
+              pieces: this.pocketsView,
               dimX: this.dim_x,
               dimY: this.dim_y,
               radius: this.radius,
@@ -1100,6 +1145,15 @@ export default {
             const c = pickClearance({ thickness: Math.round(Number(t) * 1000), zPick: piece.Z_PICK, zPlace: piece.Z_PLACE });
             return c.ok ? null : c;
         },
+        // (verso 7/10 sera) le tasche come si disegnano: vista lato operatore
+        pocketsView(){
+            return pocketsOperatorView(this.listPz, { width: Number(this.grating.width), height: Number(this.grating.height), dim_x: this.dim_x, dim_y: this.dim_y });
+        },
+        // numero della tasca: in proporzione alla tasca, leggibile
+        pocketNumberSize(){
+            const lato = this.prismatic ? Math.min(this.dim_x, this.dim_y) : 2 * this.radius;
+            return Math.max(6, Math.min(24, Math.round((Number(lato) || 0) * 0.4)));
+        },
         // (base-dxf 7/10) la base nelle coordinate dello SVG (y cambiata di
         // segno, archi spezzati), o null se manca o non e' valida
         baseSvg(){
@@ -1138,11 +1192,11 @@ export default {
         // CANTIERE AL — viewBox reattivo sui bounds reali della scena: il
         // vassoio dai dati (grating.width/height), il riquadro della base
         // letta da Base.dxf (base-dxf 7/10; prima era un PROF fisso misurato
-        // sul path scritto a mano) e il cartiglio print (y 655). Senza base
+        // sul path scritto a mano) e il cartiglio print (y 655 e 675). Senza base
         // si inquadra il solo cassetto. Margine di respiro uniforme.
         // ==================================================================
         sceneViewBox(){
-            const CART_Y = 660;    // cartiglio di stampa a y 655
+            const CART_Y = 680;    // cartiglio di stampa a y 655 e 675
             const M = 25;          // margine di respiro uniforme
             const w = Number(this.grating.width) || 0;
             const h = Number(this.grating.height) || 0;
@@ -1205,10 +1259,18 @@ export default {
     margin-bottom: var(--space-2);
     font-size: var(--font-size-sm);
 }
-.base-error, .base-conflict {
+.base-error {
     background: var(--color-danger-bg);
     color: var(--color-danger);
     border: 1px solid var(--color-danger);
+    font-weight: var(--font-weight-semibold);
+}
+/* (verso 7/10 sera) le tasche in conflitto sono un avviso: giallo. Il rosso
+   resta per «base assente o non valida» */
+.base-conflict {
+    background: var(--color-warning-bg);
+    color: var(--color-warning);
+    border: 1px solid var(--color-warning);
     font-weight: var(--font-weight-semibold);
 }
 .base-warn {

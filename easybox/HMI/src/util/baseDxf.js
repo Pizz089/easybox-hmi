@@ -8,17 +8,19 @@
 // GET /api/conf/grating/base): se cambia il disegno si sostituisce il file,
 // niente codice e niente build.
 //
-// IL FRAME DEL FILE (decisione di Dario del 7/10). Il DXF e' il grigliato
-// come lo inserisce l'operatore nel cassetto, VISTO DAL LATO OPERATORE: 0,0
-// in alto a sinistra del rettangolo del cassetto, X verso destra, Y NEGATIVA
-// verso il basso; la scritta "Robot" sta sul lato lontano dall'operatore. E'
-// la stessa vista dell'anteprima di Grating.vue, quindi:
+// IL FRAME DEL FILE (decisione di Dario del 7/10, verso verificato sul
+// cassetto 8 la sera del 7/10). Il DXF e' il grigliato come lo inserisce
+// l'operatore nel cassetto, VISTO DAL LATO OPERATORE: 0,0 in alto a sinistra
+// del rettangolo del cassetto, X verso destra, Y NEGATIVA verso il basso; la
+// scritta "Robot" sta sul lato lontano dall'operatore, in alto. Lo 0,0 e'
+// l'origine del work object del robot, e la tasca 1 ci sta vicino. E' la
+// stessa vista della pagina Cassetti (TrayPockets) e dell'anteprima di
+// Grating.vue, quindi:
 //   SVG di Grating.vue:   x_svg = x_dxf,  y_svg = -y_dxf   (nessuna rotazione)
 //   tasca in coordinate robot (X, Y) micron (util/gratingAxes.js
-//   drawingToRobot, X = H - y_svg, Y = W - x_svg):
-//                          x_dxf = W - Y/1000,  y_dxf = X/1000 - H
-//   origine del work object del robot: (W, -H) nel DXF, l'angolo in basso a
-//   destra dell'anteprima (dove nasce la tasca 1).
+//   drawingToRobot, X = h, Y = w di gridCenters; il disegno la mette in
+//   (w, h)):            x_dxf = Y/1000,  y_dxf = -X/1000
+// Il robot sta dal lato opposto: per lui la tasca 1 e' in basso a destra.
 // Le quote sono in mm: $INSUNITS e $EXTMIN/$EXTMAX non si usano (nel file di
 // Dario del 7/10 $INSUNITS dice pollici e gli EXT sono vecchi).
 //

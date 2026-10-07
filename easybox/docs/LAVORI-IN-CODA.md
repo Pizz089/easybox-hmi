@@ -31,11 +31,19 @@
 
 ## [ ] BASE_WEB_MM da confermare (base dei grigliati, 7/10)
 
-**Cosa.** `HMI/src/util/baseDxf.js`, `BASE_WEB_MM = 3`: il materiale minimo fra una cavità (col franco scelto) e un foro o il profilo di `Base.dxf`. Sotto, la tasca è in rosso nell'anteprima e DXF e stampa chiedono conferma; non blocca niente. Il valore è stato messo d'ufficio, non è una decisione. Col file del 7/10 e una griglia d'esempio (pezzo 60×40, distanze 20 e 15) due tasche cadono sui fori centrali: il controllo serve.
+**Cosa.** `HMI/src/util/baseDxf.js`, `BASE_WEB_MM = 3`: il materiale minimo fra una cavità (col franco scelto) e il bordo di un foro o il profilo di `Base.dxf`. Sotto, la tasca è in rosso nel disegno, l'elenco in giallo, e DXF e stampa chiedono conferma; non blocca niente. Deciso il 7/10 sera: resta 3 finché Dario non dice la misura delle viti. `BASE_MIN_FILL = 0.5` va bene.
 
-**Direzione.** Dario conferma o corregge il valore. È una costante sola; `test_base_dxf.mjs` controlla le soglie (r + 3,01 mm pulito, r + 2,99 conflitto) e va aggiornato col valore nuovo. Nella stessa util `BASE_MIN_FILL = 0.5` (un profilo sotto metà cassetto su un asse è un disegno non in mm): anche questo da confermare.
+**Direzione.** Con la misura delle viti si corregge la costante; `test_base_dxf.mjs` controlla le soglie (r + 3,01 mm pulito, r + 2,99 conflitto) e va aggiornato col valore nuovo.
 
 **Trovato il** 2026-10-07.
+
+## [ ] Fori di fissaggio della piastra contro le tasche della colonna centrale
+
+**Cosa.** Nella base del 7/10 i fori di fissaggio della piastra stanno in due gruppi al centro dei lati corti, oltre i 20 mm del bordo minimo della griglia. Con una griglia d'esempio (pezzo 60×40, distanze 20 e 15) le tasche 5 e 86, della colonna centrale, cadono sui fori. Oggi è solo l'avviso (tasche in rosso, elenco in giallo, conferma su DXF e stampa).
+
+**Direzione.** Regola da decidere con Dario: per esempio lasciare libera la colonna centrale vicino ai fori, o spostare la griglia. Finché non c'è, resta l'avviso.
+
+**Trovato il** 2026-10-07, schermate della base.
 
 ## [ ] GratingTest.vue e ImportGrating.vue non usano la base di `Base.dxf`
 
