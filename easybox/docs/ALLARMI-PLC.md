@@ -62,18 +62,26 @@ del robot. Dal PLC 33 (consegna del 7/10) arrivano davvero su `ALARM/ROBOT`,
 e la sezione robot del dialog, come la dichiarazione del pallet a bordo
 (`util/palletOnRobot.js`), mostra il testo del rifiuto.
 
-## Rifiuti dei comandi dal pannello (970, 971, 972)
+## Rifiuti dei comandi dal pannello (970, 971, 972, 973)
 
 | codice | canale | quando | testo |
 |---|---|---|---|
 | 970 | `Error` | deposito manuale in MC1: nessun ordine di MC1 per il pezzo prelevato. Dal PLC 33 l'ordine si cerca nella vista `MAN_ORDER_MC1` 7/10: prima quello **avviato e non completo** (STATUS 3, PRODUCTED < QUANTITY), poi in coda o in pausa (4, 6), il piu' recente. Prima valeva solo in coda o in pausa | `robot.alarm_970` |
 | 971 | `Error` | deposito manuale in MC1: non si sa da quale tasca viene il pezzo in pinza. Col PLC 33 esce solo se in piu' **non c'e' un ordine avviato di MC1**: «oppure avvia l'ordine» torna vero | `robot.alarm_971` |
-| 972 | `ALARM/ROBOT`, come il 968 | (PLC 33) comando dal pannello rifiutato perche' il robot ha un **errore attivo**: prima veniva accettato e partiva da solo quando l'errore si azzerava (simulazione del 7/10, problema 9). RESET e si ripete; col 938 prima la dichiarazione dello stato cella | `robot.alarm_972` |
+| 972 | `ALARM/ROBOT`, come il 968 | (PLC 33) comando dal pannello rifiutato perche' il robot ha un **errore attivo**: prima veniva accettato e partiva da solo quando l'errore si azzerava (simulazione del 7/10, problema 9). RESET e si ripete; col 938 prima la dichiarazione dello stato cella. **Dal PLC 35** subito dopo il 972, nello stesso ciclo, arriva su `ALARM/ROBOT` il codice dell'errore attivo | `robot.alarm_972`; col codice dopo, `robot.alarm972Code` |
+| 973 | `ALARM/ROBOT` | (PLC 35) comando di missione rifiutato perche' c'e' una **missione in corso** (master diverso da 0) **o sospesa** (`MissionCode` diverso da 0). In HOLD una missione di FB204 puo' restare in `MissionCode`: il pannello la sovrascriveva e FB204 leggeva la missione del pannello come la propria (simulazione bis, B5). Il comando e' consumato e `MissionCode` resta com'era. Si esce con CONTINUA (la missione sospesa riprende), con la procedura dopo una missione interrotta (RESTART MAIN PROGRAM, HOME, Reimposta stato cella) o col RESET. Home, manutenzione, posizionamenti, dichiarazioni e reset restano ammessi | `robot.alarm_973` |
 
-Il 972 lo mostra il toast globale come gli altri `robot.alarm_<codice>`: nel
-pannello non c'e' una logica dedicata (il 968, l'altro rifiuto su
-`ALARM/ROBOT`, chiude solo le attese delle dichiarazioni 35, non quelle dei
-comandi di missione).
+**972 seguito dal codice (PLC 35).** Il riquadro degli allarmi e' uno solo e
+mostra l'ultimo codice arrivato: da soli, a video sarebbe rimasto il codice
+dell'errore, senza dire che il comando era stato rifiutato. Il pannello li
+mette insieme in un punto solo, `HMI/src/util/robotAlarm.js` (handler di
+`PLC/ALARM/ROBOT`, usato dal layout: `StandardMenu.vue` sul ramo
+`ui-lifting`, `layout/plantGlobals.js` su `ui-v3`): un 972 seguito **entro
+1 s** da un altro codice diventa «Comando rifiutato: c'e' un errore attivo,
+<codice> <testo del codice>. Premi RESET e ripeti il comando.». Un 972 senza
+seguito (PLC 33, o un codice arrivato dopo 1 s) resta il testo del 972. Il
+968, l'altro rifiuto su `ALARM/ROBOT`, chiude solo le attese delle
+dichiarazioni 35, non quelle dei comandi di missione.
 
 ## Uncino per i cassetti e pinza col cassetto fuori (consegna 34, 7/10)
 
@@ -83,16 +91,42 @@ PLC: file `34_FB7_uncino_e_cassetto_fuori.scl`; il come sta in APPUNTI-CELLA.md,
 
 | codice | dove | quando | cosa fare |
 |---|---|---|---|
-| 1419 | Gripper_TRAY_to_Robot, stato 10 | carico pinza rifiutato: c'e' un cassetto fuori (registro `ExtractedTray`, sensori `I_OUT_TRAY1..12`, estrazione o rilascio in corso) | chiudere il cassetto e premere RESET |
-| 1519 | Gripper_Robot_to_TRAY, stato 10 | deposito pinza rifiutato (anche il cambio pinza, che comincia col deposito): c'e' un cassetto fuori | chiudere il cassetto e premere RESET |
+| 1419 | Gripper_TRAY_to_Robot, stato 10; dal PLC 35 anche master 0, 1010, 1310 | carico pinza rifiutato: c'e' un cassetto fuori (registro `ExtractedTray`, sensori `I_OUT_TRAY1..12`, estrazione o rilascio in corso) | premere RESET, rientrare il cassetto (Gestione cassetto), ripetere il comando |
+| 1519 | Gripper_Robot_to_TRAY, stato 10; dal PLC 35 anche master 0, 1010, 1100, 1200, 1310 | deposito pinza rifiutato: c'e' un cassetto fuori. **Il cambio pinza (swap, master 970) lo copre la consegna 35, non la 34**: lo swap non passa dalle catene pinza, e col PLC 34 andava allo scaffale lo stesso | premere RESET, rientrare il cassetto (Gestione cassetto), ripetere il comando |
 | 19005 | TRAY_extact, stato 30; master 700 | estrazione rifiutata: la pinza a bordo non ha l'uncino (`GRIPPER.HAS_HOOK = 0`). In automatico la pinza dell'ordine non si cambia | dare l'uncino in anagrafica solo se la pinza lo ha davvero |
 | 19006 | Gripper_Hook_Search | nessuna pinza con l'uncino, ne' a bordo ne' a scaffale | controllare `HAS_HOOK` in anagrafica |
 | 19007 | master 700 | per prendere la pinza con l'uncino quella a bordo deve essere vuota | scaricare prima il contenuto della pinza |
-| 20011 | TRAY_release, stato 30 | rilascio rifiutato: la pinza a bordo non ha l'uncino. Col cassetto fuori la pinza non si cambia | il cassetto si rientra a mano |
+| 20011 | TRAY_release, stato 30 | rilascio rifiutato: la pinza a bordo non ha l'uncino. Col cassetto fuori la pinza non si cambia | il cassetto si rientra a mano, poi Reimposta stato cella con cassetto 0 |
+
+**Prima RESET, poi il cassetto** (simulazione bis, B8). Con un errore attivo
+anche il rilascio del cassetto e' un comando di missione, e il PLC lo
+rifiuta col 972 finche' l'errore resta: per questo i testi del 1419 e del
+1519 dicono «Premi RESET, rientra il cassetto (Gestione cassetto), poi
+ripeti il comando», e non piu' il contrario.
 
 Il pannello prova a non arrivarci: i comandi pinza sono spenti col cassetto
 fuori (1419, 1519) e Produzione avvisa quando la pinza di un ordine non ha
 l'uncino (19005). Il controllo vero resta quello del PLC.
+
+## Consegna 35 (7/10): guardie e spinta
+
+Dove li scrive il PLC: file `35_FB7_guardie_e_spinta.scl` (FB_Robot) e
+`35_FB_easyBox_cassetti_da_pannello.scl` (FB_easyBox); il come sta in
+APPUNTI-CELLA.md, «Consegna 35». Origine: seconda simulazione del 7/10
+(sigle B).
+
+| codice | dove | cosa cambia |
+|---|---|---|
+| 973 | Manager CMD from HMI | nuovo: comando di missione con una missione in corso o sospesa (tabella dei rifiuti qui sopra) |
+| 972 | Manager CMD from HMI | subito dopo, nello stesso ciclo, il codice dell'errore attivo (vedi «972 seguito dal codice») |
+| 949 | anche master 0 (swap, carico e scarico pinza), 1010, 1100, 1200, 1310 | porta EasyBox non abilitata al robot (`DB_BOX_1.Robot_enabled_to_work`): prima lo alzavano solo le catene pinza e i master restavano appesi; adesso la missione si chiude subito |
+| 1419, 1519 | anche master 0 (swap, carico e scarico pinza), 1010, 1100, 1200, 1310 | cassetto fuori: la missione si chiude subito, il robot non si muove. Lo swap a flangia nuda da' 1419 (sarebbe un carico), con una pinza a bordo 1519 |
+| 1722 | 1010 e 1310 | `_Gripper4Pallet_Search` (17) errore 22, pinza del pallet non trovata: adesso **chiude la missione**. Prima `GripperRequested` restava col valore vecchio e il master cambiava pinza verso una pinza che col pallet non c'entra |
+| 691 | Part_Robot_to_TRAY, stato 10 | catena 6 errore 91, zero righe dalla query della tasca. Dal PLC 35 vuol dire **«tasca di destinazione non trovata o non vuota a database»**: nei depositi a tasca fissa (finito in automatico, grezzo che torna, posizione scelta dal pannello) la query vuole `STATUS=2`. Il robot non si muove: si controlla la tasca, la si dichiara (39), RESET e si ripete. La catena resta a 691 fino al RESET, e intanto i comandi di missione danno 972 |
+
+Testi nel pannello (it ed en): `robot.alarm_973`, `robot.alarm_691`,
+`robot.alarm972Code`; 1419, 1519 e 20011 aggiornati. Il 949 e il 1722 non
+hanno ancora un testo: a video esce la chiave grezza.
 
 ## Se manca una chiave
 

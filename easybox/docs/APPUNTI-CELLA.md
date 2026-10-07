@@ -140,6 +140,63 @@ Nel working tree di cella ci sono file non tracciati che il `.gitignore` non esc
    - stato del robot che si aggiorna;
    - `DB_executeQuery.readyForNextQuery` TRUE.
 
+## [ ] 2026-10-07 — Consegna 35 (7/10 sera): cassetto fuori anche su swap e pallet, spinta con quote NULL, 973
+
+**Cosa.** PLC, la scarica Dario: due file, da scaricare **insieme, nella stessa finestra**:
+- `35_FB7_guardie_e_spinta.scl` (FB_Robot), base l'export 8c9da6a, uguale al PLC dopo le consegne 33 e 34;
+- `35_FB_easyBox_cassetti_da_pannello.scl` (FB_easyBox), base il FB_easyBox del repo al commit 7007bb8.
+
+Le intestazioni dei due file dicono blocco per blocco cosa cambia, i codici e i limiti. Origine: la seconda simulazione del 7/10 (sigle B). Decisioni in DECISIONI.md, codici in ALLARMI-PLC.md («Consegna 35»), limiti in LAVORI-IN-CODA.md.
+
+**Pannello** (si può aggiornare prima del download: senza la 35 i testi nuovi non escono, e il 972 arriva da solo come oggi): testi del 973 e del 691; 1419 e 1519 con l'ordine giusto dei passi (prima RESET, poi il cassetto, poi il comando); 20011 con la Reimposta stato cella a cassetto 0; il 972 seguito dal codice dell'errore attivo diventa un avviso unico.
+
+**Prima di incollare i blocchi, in TIA:** la variabile Temp `cassettoFuori` (Bool) va aggiunta **a mano** in fondo alla sezione Temp della tabella dell'interfaccia di FB_Robot (nell'editor l'interfaccia è una tabella e non si incolla). Poi i blocchi, come dicono le intestazioni (FB_Robot: A interfaccia, B..R le region e gli stati; FB_easyBox: S la region Manager CMD from HMI).
+
+**Precondizioni di download, verificate in watch** (non dichiarate a voce), con la cella in HOLD dal pannello e il robot fermo:
+- `"DB_Robot".Dispatcher[0..31]` tutti a 0;
+- `"DB_Robot".MissionCode` = 0;
+- `"DB_MC1".Dispatcher[0]` in {0, 5, 97, 9999}.
+
+Gli stati nuovi (215, 1030, 1040, 1335) nella versione di oggi non esistono: con i master a 0 nessuna catena cambia significato a metà.
+
+**Download in RUN senza reinizializzazione.** Interfaccia: solo una Temp in più, nessuna statica nuova, nessun retain toccato; FB_easyBox invariato. **Se TIA chiede di reinizializzare DB_Robot, ci si ferma**: si perderebbero `Dispatcher`, `Gripper_ID` e `GripperOccuped` (ritentivi). Si riporta a Dario cosa propone TIA.
+
+**Test di accettazione** (watch: `"DB_Robot".Error`, `"DB_Robot".MissionCode`, `"DB_Robot".Dispatcher[0]`, `"DB_Robot".Gripper_ID[1]`, `"DB_BOX_1".ExtractedTray`; pannello aperto su MqttDiag; cella in HOLD dal pannello).
+
+FB_Robot, senza robot (bastano PLC e pannello):
+1. **973.** Da tabella di controllo `"DB_Robot".MissionCode := 140` (il master non fa niente con quel codice). Dal pannello «Chiudi chela». Atteso: su ALARM/ROBOT 973, `MissionCode` resta 140; a video il testo del 973. Poi RESET: `MissionCode` 0.
+2. **972 col codice.** Da tabella di controllo `"DB_Robot".Error := 999`. Dal pannello «Chiudi chela». Atteso: su ALARM/ROBOT prima 972, poi 999; a video l'avviso unico «Comando rifiutato: c'è un errore attivo, 999 …». RESET.
+3. **Spinta**, da PowerShell sul database (sola lettura):
+   ```
+   cd D:\Backup; sqlcmd -S .\SQLEXPRESS -E -d ADMG -W -Q "select ORDER_ID, PUSH_STATUS, isnull(X_PUSH,0) as XP, isnull(X_STOP,0) as XS, X_STOP - X_PUSH as CORSA, Z_PUSH_DROP from COORDINATES_PUSH_MC where MC=1 order by ORDER_ID desc"
+   ```
+   Atteso: 0 e 0 sulle righe con PUSH_STATUS diverso da OK; sull'ordine di riferimento dell'intestazione gli stessi valori di prima; CORSA sempre sotto 200000 (sopra, la spinta di quell'ordine si spegnerebbe senza allarme).
+
+FB_Robot, col robot a velocità ridotta:
+
+4. cassetto fuori, DOPPIA a bordo: cambio pinza verso la PALLET (il pannello col cassetto fuori lo spegne: il comando va mandato senza il pannello, come nel test 2 della consegna 34). Atteso: 1519, il master resta a 0, il robot non si muove;
+5. cassetto fuori, DOPPIA a bordo: «Carica pallet» dal magazzino. Atteso: 1519 al 1010, nessun comando 13 al robot;
+6. cassetti chiusi, DOPPIA a bordo: «Carica pallet». Atteso: 1010 → 1020 (scarico) → 1030 (carico della PALLET) → 1040 (TCP) → 1050 → 1060;
+7. pezzo di prova a bordo (lato 1, dichiarato). Una tasca vuota per davvero segnata piena a database (39;p;4), poi «deposita in tasca p». Atteso: 691, il robot non si muove. Ripristino: 39;p;2 e RESET (la catena resta a 691 fino al RESET, e intanto i comandi di missione danno 972);
+8. automatico con cambio pallet: lo scarico pallet arriva al 240 e il ciclo prosegue (prima si fermava al 230); al 215 parte il TCP;
+9. HOLD di 2 minuti a metà swap: nessun 943, e CONTINUA riprende;
+10. HAAS in ciclo a vuoto, porta chiusa, HOLD, RESET. Atteso: DISPATCH/MC1/0 resta 95 e va a 100 a fine ciclo. A HAAS ferma con la porta aperta, al 95: RESET porta FB204 a 0.
+
+FB_easyBox:
+1. cella in HOLD, nessun errore, pinza con uncino a bordo: «sposta» per estrarre un cassetto dalla pagina Cassetti. Atteso: estrazione come dalla pagina Robot (master 700 → 705 → 730 → 750);
+2. cella in HOLD, da tabella di controllo `"DB_Robot".Error := 999`: «sposta». Atteso: su ALARM/ROBOT 972 e poi 999, `"DB_Robot".MissionCode` resta 0 (niente resta in attesa, quindi niente può partire più tardi). RESET;
+3. cella non in HOLD: «sposta». Atteso: nessun movimento, `MissionCode` 0.
+
+**Regole operative nuove** (dopo il download):
+- **cambio pinza col cassetto fuori: mai**, da nessun percorso (pannello, swap, master pallet, automatico). In automatico il ciclo si ferma col 952 (FB204 in 9999) invece di andare allo scaffale: si rientra il cassetto e si dà RESET;
+- **973 in pausa:** in HOLD durante una produzione i comandi di missione dal pannello danno 973. O CONTINUA, o la procedura dopo una missione interrotta (RESTART MAIN PROGRAM, HOME, Reimposta stato cella);
+- **pagina Cassetti solo in HOLD:** «sposta» estrae e ripone passando dal manager di FB_Robot, con gli stessi rifiuti della pagina Robot (972, 973, 968 sotto pendant). In automatico il comando non fa niente;
+- **RESET con la HAAS in lavorazione:** a porta chiusa FB204 aspetta il fine ciclo (resta al 95) invece di tornare a 0. Se la HAAS si ferma a ciclo interrotto con la porta chiusa, FB204 resta al 95: si apre la porta dalla HAAS e si dà RESET (oppure AUX);
+- i timeout di swap (943) e cassetto (19003) non contano in HOLD;
+- deposito in tasca a posizione fissa solo su tasca vuota a database: altrimenti 691 (si controlla la tasca, la si dichiara con il 39, RESET, si ripete).
+
+**Dopo il download** (su richiesta di Dario): tia-export, `--compare-online` e diff con 8c9da6a per FB_Robot e FB_easyBox, blocco per blocco; poi si toglie la regola provvisoria della voce «Consegna 34» qui sotto.
+
 ## [ ] 2026-10-07 — Base dei grigliati: `Base.dxf` nella cartella dei modelli
 
 **Cosa.** Dal 7/10 la pagina Grigliato non disegna più una base scritta nel codice: profilo esterno, fori e testi vengono da `Base.dxf`, nella cartella `Grating_model_dir` del `.env` del backend (la stessa dei modelli SVG del pannello). Il file **non sta nel repo**: il repo è pubblico, e in cella `git pull` sovrascriverebbe un file non tracciato allo stesso percorso. Decisione in DECISIONI.md.
@@ -185,7 +242,9 @@ Il DXF esportato dalla pagina sta nello stesso frame e si sovrappone 1:1 a `Base
 
 **In automatico** la pinza a bordo all'estrazione è quella dell'ordine e non si cambia: senza uncino 19005 e il ciclo si ferma. Quindi ogni pinza che preleva pezzi dai cassetti deve avere `HAS_HOOK = 1` (oggi la doppia ce l'ha). Produzione lo avvisa, senza bloccare, quando si crea o si avvia un ordine con una pinza senza uncino.
 
-**Pinze col cassetto fuori.** Catene pinza (scaffale → robot e robot → scaffale), stato 10: con un cassetto fuori (registro `ExtractedTray`, sensori `I_OUT_TRAY1..12`, catene di estrazione o rilascio attive) la pinza non si muove: **1419** (carico) o **1519** (deposito, e quindi anche il cambio pinza). Vale per tutti i percorsi: comandi dal pannello, swap, master automatici. I master automatici e gli swap restano in attesa con l'errore alzato, come col 949: si chiude il cassetto e si preme RESET. Solo il 700 chiude da sé la missione. Nel pannello i comandi pinza (pagina Robot e «sposta» della lista pinze) sono spenti col cassetto fuori o in manovra, con «Cassetto fuori: prima rientralo».
+**Pinze col cassetto fuori.** Catene pinza (scaffale → robot e robot → scaffale), stato 10: con un cassetto fuori (registro `ExtractedTray`, sensori `I_OUT_TRAY1..12`, catene di estrazione o rilascio attive) la pinza non si muove: **1419** (carico) o **1519** (deposito). **Correzione del 7/10 sera (consegna 35):** qui c'era scritto che il divieto valeva per tutti i percorsi, swap e master automatici compresi. Era sbagliato: con la 34 lo copre solo chi passa dalle catene pinza; lo swap (master 970) andava allo scaffale col cassetto fuori, e i master 1020/1050 andavano avanti dopo il rifiuto. **Lo swap e i master pallet li copre la consegna 35**, voce qui sopra. Con la 34 i master che passano dalle catene restano in attesa con l'errore alzato, come col 949: RESET, si rientra il cassetto, si ripete. Solo il 700 chiude da sé la missione.
+
+**REGOLA PROVVISORIA, da togliere quando Dario conferma il download della 35:** finché in PLC c'è la 34, con un cassetto fuori niente automatico, niente cambio pinza e niente «Carica pallet» o pallet da MC1: il PLC 34 non li ferma e il robot può andare allo scaffale pinze col cassetto aperto. Dal pannello i comandi pinza sono già spenti col cassetto fuori; l'automatico (FB204 cambia pinza con lo swap) e i master pallet no. Nel pannello i comandi pinza (pagina Robot e «sposta» della lista pinze) sono spenti col cassetto fuori o in manovra, con «Cassetto fuori: prima rientralo».
 
 **Codici** (tutti in `Error`, testi `robot.alarm_<codice>`, vedi ALLARMI-PLC.md): 1419 carico pinza rifiutato, cassetto fuori; 1519 deposito pinza rifiutato, cassetto fuori; 19005 estrazione rifiutata, pinza a bordo senza uncino; 19006 nessuna pinza con uncino, né a bordo né a scaffale; 19007 per prendere la pinza con l'uncino quella a bordo deve essere vuota; 20011 rilascio rifiutato, pinza a bordo senza uncino.
 
