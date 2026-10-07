@@ -2,6 +2,15 @@
 
 Decisioni di Dario che vincolano codice, dati e procedure in cella; la più recente in alto. Il come (script, comandi, ordine degli interventi) sta in [APPUNTI-CELLA.md](APPUNTI-CELLA.md).
 
+**Catalogo delle chele della morsa (7/10).** Il cliente vuole un punto dove dichiarare le chele della morsa con le loro misure, e ritrovarle quando le rimonta.
+1. **Catalogo per riferimento.** Le misure della chela (lunghezza sull'asse di battuta, altezza, affondo) stanno in un catalogo di tipi di chele (`VICE_JAW`); la morsa punta al tipo montato (`VICE.JAW_ID`) e le viste lette dal PLC prendono le misure dal catalogo. Dato unico: le colonne della morsa restano solo per il ritorno indietro.
+2. **Il «punto di appoggio» è la battuta dei pezzi più lunghi della chela.** Resta per coppia morsa + pezzo in `PIECE_ON_VICE`: il riferimento sta sulla morsa, non sulla chela. Ne segue che la battuta va corretta quando cambiano le chele: chi la dichiara la misura dalla fine della chela montata in quel momento (`CLAW_LENGTH_REF`), e le viste usano dichiarata + `CLAW_LENGTH_REF`/2 − montata/2. Geometria data per confermata: chele centrate sulla morsa, battuta fissa sulla morsa.
+3. **Nomi.** «Chele morsa» e «Chele pinza». Chele della morsa e ganasce sono la stessa cosa: a video una parola sola per oggetto, «chela della morsa» / «chele morsa» e «chela della pinza» / «chele pinza»; «ganascia» non compare più.
+4. **Menu.** Attrezzaggio con le schede Attrezzaggi | Pallet | Morse | Chele morsa | Attrezzature.
+5. **Blocco chele nella vista.** In `COORDINATES_Z_MC` la riga di un ordine esce solo se l'ordine non ha chele confermate (`WORKORDER.JAW_ID` vuoto) o se sono quelle montate: con chele diverse il PLC si ferma col 799 prima di muovere. Serve anche nella vista, non solo nel pannello, perché il PLC prende gli ordini a STATUS 3 e un ordine può arrivarci senza passare dalla conferma.
+
+Da decidere: la variante «morsa sul pallet ma senza tipo di chele = nessuna riga» invece di misure a zero (LAVORI-IN-CODA.md). Il come: APPUNTI-CELLA.md, «Catalogo delle chele della morsa».
+
 **Consegna 35: guardie del PLC (7/10).** Dalla seconda simulazione del 7/10.
 1. **I timeout non contano in HOLD.** I timeout di swap (943) e del cassetto (19003) si fermano in HOLD: l'HOLD è una pausa, e CONTINUA riprende.
 2. **Il RESET non abbandona un ciclo HAAS in corso a porta chiusa.** Con la macchina in lavorazione (FB204 al 95, porta chiusa) FB204 aspetta il fine ciclo invece di tornare a 0 e rileggere l'ordine col pezzo in lavorazione. Con la porta aperta va a 0 come prima.
