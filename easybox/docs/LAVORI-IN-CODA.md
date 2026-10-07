@@ -5,6 +5,29 @@
 > stato corretto sul momento. Gli interventi manuali da fare in impianto
 > stanno invece in `APPUNTI-CELLA.md`.
 
+## [ ] Pannello v3: pagine non rifatte e voci aperte
+
+**Cosa.** Sul ramo `ui-v3` restano fuori dal pannello nuovo:
+- **pagine non rifatte:** il wizard dell'ordine (`views/workOrder/selectRig.vue`, `selectPiece.vue`, `selectGripper.vue`, `selectMC.vue`, `components/workOrder_step.vue`), che si fa nella fase E; il Grigliato (`views/conf/Grating/Grating.vue`); Importa grigliato (`ImportGrating.vue`); `views/layoutView.vue`, rifatta a metà;
+- **decisioni aperte:**
+  - «Estrai/Rilascia» in Cassetti: tolto nella fase C-bis perché non ha mai mandato il comando (la guardia di `ComandsRows` vuole `RobotInLocalMode`, che non scrive nessuno). Da decidere se ricollegarlo con quell'interblocco o senza;
+  - porta MC2: `MC2_PORTA_CABLATA = false` in `views/unit/CNC2View.vue`, i comandi della porta restano nascosti finché non è cablata;
+  - testi «Cosa fare» degli allarmi: la pagina Allarmi li mostra solo se esiste la chiave `robot.alarm_<codice>_fix`; oggi nessuna, i testi li scrive Dario;
+  - «Riconosci» negli Allarmi: nessun endpoint lo fa, quindi il pulsante non c'è;
+- **file orfani:** `components/units.vue`, che nel v3 non monta più nessuno ma è ancora nella golden dei comandi e in `test_oneshot_refresh.mjs`; `views/AboutView.vue`, senza rotta.
+
+**Direzione.** Le pagine nella fase E; le decisioni con Dario; gli orfani si tolgono insieme ai loro test, dopo il merge di `ui-v3` in `ui-lifting`.
+
+**Trovato il** 2026-10-07, rilievo in sola lettura del pannello v3.
+
+## [x] `pannello.ps1` col pannello compilato non ricompila
+
+**Cosa.** Col pannello compilato (`EasyBoxPannello` in modo `preview`), `pannello.ps1 -Versione v3` e `-Versione stabile` cambiavano ramo e riavviavano il pannello sulla `dist` di prima, senza dirlo. Non si sapeva nemmeno da che commit veniva il pannello servito (B59).
+
+**Stato.** chiuso con 541c26d (7/10 sera). In modo `preview`, dopo pull e `npm install`, `pannello.ps1` lancia la stessa build di `servizi-cella.ps1 -Azione aggiorna`; se fallisce si ferma, la `dist` e il servizio restano com'erano e lo dice. La build scrive `easybox\HMI\dist\build.txt` (ramo, commit, data); `servizi-cella.ps1 -Azione stato` (o `-Azione servito`) e `pannello.ps1 -Versione stato` lo confrontano con l'ultimo commit che tocca `easybox/HMI`, riga rossa «pannello servito non aggiornato: -Azione aggiorna». Test in `tools/test_pannello_servizi.ps1` e `tools/test_servizi_cella.ps1`. Procedura in APPUNTI-CELLA.md.
+
+**Trovato il** 2026-10-07, rilievo in sola lettura del pannello v3.
+
 ## [ ] Registro della tasca del finito, congelato al prelievo dalla macchina
 
 **Cosa.** Limite dichiarato dalla consegna 35 (7/10). `PartSubPosMC` si riscrive alla fine di Part_Robot_to_MC prima che il finito a bordo sia depositato, nei giri di FB204 che passano dal 55/57 (ripartenza col pezzo in macchina, errore DB al 95/4). Al giro dopo il deposito del finito trova la tasca già a 5: con la 35 si ferma col 691 (prima posava su una tasca piena, problema 4 della simulazione).
@@ -589,24 +612,32 @@ della spinta in battuta.
 
 ## [ ] Bersagli touch sotto il minimo, e viste non responsive
 
-**Cosa.** La classe base `.pure-button` (`HMI/src/assets/pure.css`) dichiara
+**Cosa.** Nel pannello di prima la classe base `.pure-button` (`HMI/src/assets/pure.css`) dichiara
 `padding: .5em 1em` e nessun `min-height`: l'altezza risultante sta intorno ai
 30 px, contro i 44 raccomandati per il tocco. La usano 46 file `.vue`.
 
-**Perche' conta adesso.** Finche' il pannello girava solo sul touch fisso della
-cella, appoggiato e sempre alla stessa distanza, era un fastidio. Dal momento
-in cui si usa un tablet **portato in giro intorno alla cella**, in piedi e in
-movimento, sbagliare bersaglio diventa normale.
+**Stato (7/10).** Il pannello v3 (ramo `ui-v3`) la risolve sulle pagine rifatte:
+bersagli a `--touch-target` e viste che si adattano alla finestra. Restano:
+- le pagine non rifatte della voce «Pannello v3: pagine non rifatte e voci
+  aperte» (wizard dell'ordine, Grigliato, Importa grigliato, `layoutView.vue`
+  a metà);
+- i dialog `mission-dialog`: dalla fase E1 (4cae76a, solo `ui-v3`) i pulsanti
+  nelle righe `.pure-g` dei dialog e i `.button_pressed` stanno a
+  `--touch-target`, il resto del contenuto va guardato dialog per dialog.
 
-**Nella stessa famiglia**, tutto censito il 15/9 e descritto in
-`PWA-TABLET.md`: disegni a dimensione fissa in `views/layoutView.vue`, due
-anteprime 3D a 360x360 in `conf/Vice/Vice.vue` e `conf/Gripper/Gripper.vue`,
-la tabella cassetti a 16 colonne, 6 viste responsive su 25, e 62 regole
-`:hover` che sul touch non hanno senso.
+**Perche' conta.** Col tablet **portato in giro intorno alla cella**, in piedi e
+in movimento, sbagliare bersaglio diventa normale.
+
+**Nella stessa famiglia**, censito il 15/9 in `PWA-TABLET.md` per il pannello di
+prima: disegni a dimensione fissa in `views/layoutView.vue`, due anteprime 3D a
+360x360 in `conf/Vice/Vice.vue` e `conf/Gripper/Gripper.vue`, la tabella
+cassetti a 16 colonne, 6 viste responsive su 25, e 62 regole `:hover` che sul
+touch non hanno senso.
 
 **Perche' NON e' una sostituzione meccanica.** Alzare `.pure-button` a 44 px
 sposta il layout di ogni pagina che la usa, comprese quelle dense di comandi
 che oggi entrano in una schermata. Va fatto guardando le pagine, non con una
 regola globale.
 
-**Trovato il** 2026-09-15, aggiungendo il supporto PWA per il tablet.
+**Trovato il** 2026-09-15, aggiungendo il supporto PWA per il tablet;
+riscritta il 2026-10-07 col pannello v3.
