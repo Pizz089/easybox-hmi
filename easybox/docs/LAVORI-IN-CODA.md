@@ -5,6 +5,59 @@
 > stato corretto sul momento. Gli interventi manuali da fare in impianto
 > stanno invece in `APPUNTI-CELLA.md`.
 
+## [ ] Pezzo in macchina non ritentivo
+
+**Cosa.** In FB_Robot (export `plc/FB/FB_Robot.scl`) quattro variabili che
+descrivono il pezzo in macchina stanno nella sezione `VAR` senza `RETAIN`
+(righe 34-75 dell'export):
+- `xPushOffsetMC`: la corsa della spinta, che il prelievo da MC somma alla
+  X del deposito (al 30 di `Part_MC_to_Robot` e nel master);
+- `TrayIdMC`, `PartSubPosMC`: cassetto e tasca del grezzo entrato in
+  macchina, dove torna il finito;
+- `OrderIdMC`: l'ordine che ha lavorato il pezzo, scritto nella tasca del
+  finito.
+Nello stesso blocco `Dispatcher`, `communication_OK`, `Gripper_ID` e
+`GripperOccuped` sono invece in `VAR RETAIN`.
+
+**Perche' conta.** Uno STOP -> RUN con un pezzo in morsa azzera le quattro
+variabili: si perde la corsa della spinta (il prelievo torna alla X del
+deposito, spostato della corsa) e anche tasca, cassetto e ordine del finito.
+
+**Proposta.** Un DB globale ritentivo nuovo per il pezzo in macchina, che si
+scarica in RUN senza reinizializzare DB_Robot (spostarle in `VAR RETAIN`
+vorrebbe dire cambiare l'interfaccia di FB_Robot, col rischio di dover
+reinizializzare l'istanza).
+
+**Da verificare (IPOTESI, non provata).** Cosa fa oggi il ritorno del finito
+con `TrayIdMC` = 0 (e `PartSubPosMC` = 0). I punti dove si leggono:
+- REGION `updatePartOnTray`, stato 15, ramo automatico:
+  `UPDATE [POSITION] SET STATUS=5, Order_ID=... WHERE PARENT='TRAY_<TrayIdMC>' AND SUB_POS=<PartSubPosMC>`;
+- il deposito del finito in tasca (automatico, lato 2): la query delle
+  coordinate usa `SUB_POS=<PartSubPosMC>`.
+Con gli zeri le due query potrebbero non trovare la tasca: da verificare
+sul PLC (o in simulazione) prima di decidere.
+
+**Trovato il** 2026-10-06, analizzando il prelievo da MC1 dopo la spinta.
+
+## [ ] Dichiarazione dell'attrezzatura a bordo del robot
+
+**Cosa.** Dario (6/10 sera): manca la possibilita' di dichiarare
+l'attrezzatura a bordo del robot.
+
+**Cosa c'e' oggi.** «Reimposta stato cella» (pagina Robot, comando 35)
+dichiara la pinza montata e il contenuto delle chele dei due lati: vuoto,
+grezzo, finito o «Pallet». Con le chele aperte il lato 1 e' forzato vuoto.
+Per «Pallet» il dialog fa scegliere il pallet da un elenco e il 35 porta il
+suo ID (`35;pinza;c1;id1;c2;id2`, id solo col pallet), che il PLC usa. Nel
+messaggio di Dario c'era «Pallet, ma senza quale»: nel codice di oggi il
+pallet si sceglie; anche questo e' da chiarire.
+
+**Da chiarire con Dario** cosa manca esattamente: per esempio l'attrezzatura
+o la morsa montata sul pallet che il robot ha in pinza, oppure un caso che
+l'elenco dei pallet non copre.
+
+**Trovato il** 2026-10-06 sera.
+
 ## [ ] Nuova attrezzatura dal pannello: l'inserimento non puo' riuscire
 
 **Cosa.** «Nuova attrezzatura» (FixturesView, livello 2) apre `Fixture.vue`
