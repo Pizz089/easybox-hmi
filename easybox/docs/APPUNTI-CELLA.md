@@ -12,7 +12,7 @@
 
 Sul disco vengono scritti solo i file della radice e la cartella `easybox/`: `tools/` e `plc/` in cella non ci sono. **Tutto quello che deve arrivare in cella sta sotto `easybox/`** (per questo `pannello.ps1` sta in `easybox/tools/`).
 
-**Avvio: servizi Windows** (decisione di Dario, 6/10). Installati in cella il 6/10 alle 15:16. Verificato subito dopo: tutti e due accesi, avvio automatico ritardato, utente di sistema, porte 8080, 3000 e 5173 in ascolto, Vite in HTTPS su 172.20.70.80 e 192.168.1.152. **Da fare: la prova del riavvio del PC.**
+**Avvio: servizi Windows** (decisione di Dario, 6/10). Installati in cella il 6/10 alle 15:16. Verificato subito dopo: tutti e due accesi, avvio automatico ritardato, utente di sistema, porte 8080, 3000 e 5173 in ascolto, Vite in HTTPS su 172.20.70.80 e 192.168.1.152. **Da fare: la prova del riavvio del PC**, con la verifica scritta più sotto («Verifica al riavvio del PC»: il 7/10 quattro operazioni pianificate avviavano ancora le vecchie finestre).
 
 Backend e pannello partono da soli all'accensione, come servizi nssm creati da `easybox/tools/servizi-cella.ps1`:
 - `EasyBoxBackend`: `node --max-old-space-size=1024 server.js` in `easybox\serverDati`;
@@ -32,15 +32,32 @@ powershell -ExecutionPolicy Bypass -File D:\Prog\easybox\tools\servizi-cella.ps1
 powershell -ExecutionPolicy Bypass -File D:\Prog\easybox\tools\servizi-cella.ps1 -Azione rimuovi
 ```
 
-- `stato`: servizi (per uno in Paused, il motivo dagli ultimi eventi nssm), chi tiene le porte 8080/3000/5173 e se è il processo del servizio giusto (8080 e 3000 il backend, 5173 il pannello), avvii automatici delle vecchie finestre, ultime righe dei log. Non cambia niente; non serve l'amministratore (ma senza, la riga di comando dei processi può mancare).
+- `stato`: servizi (per uno in Paused, il motivo dagli ultimi eventi nssm), chi tiene le porte 8080/3000/5173 e se è il processo del servizio giusto (8080 e 3000 il backend, 5173 il pannello), avvii automatici delle vecchie finestre (le operazioni pianificate solo se attive), ultime righe dei log. Non cambia niente; non serve l'amministratore (ma senza, la riga di comando dei processi può mancare).
 - `prova`: tutti i controlli di `installa` e i 34 comandi nssm che eseguirebbe (17 per servizio), senza eseguirli. Non cambia niente.
-- `installa`: copia nssm, crea i due servizi, li avvia e aspetta le porte. Si ferma se non e' amministratore, se i servizi esistono gia', se c'e' un altro servizio nssm o se le porte sono occupate (prima: cella in HOLD, Ctrl+C nelle due finestre). Se un passo fallisce toglie quello che ha creato. Segnala (non tocca) gli avvii automatici delle vecchie finestre.
+- `installa`: copia nssm, crea i due servizi, li avvia e aspetta le porte. Si ferma se non e' amministratore, se i servizi esistono gia', se c'e' un altro servizio nssm o se le porte sono occupate (prima: cella in HOLD, Ctrl+C nelle due finestre). Se un passo fallisce toglie quello che ha creato. Prima di ogni altro controllo (quindi anche coi servizi già installati) segnala gli avvii automatici delle vecchie finestre e, per le operazioni pianificate attive, propone di disabilitarle: lo fa solo con una «s», dopo averne salvato la definizione in `D:\EasyBox_backup\task_<data e ora>`. `prova` dice soltanto che lo proporrebbe.
 - `riavvia`: ferma i due servizi, aspetta che le porte si liberino, chiude **solo** i node rimasti sulle tre porte (ne scrive pid, ora di avvio e riga di comando), riavvia i servizi e controlla che siano Running e che le porte siano loro. Altrimenti esce in errore. Un processo sulle porte che non è node non lo chiude: si ferma, coi servizi fermi.
 - `rimuovi`: ferma e toglie **solo** `EasyBoxBackend` ed `EasyBoxPannello`.
 
 Dopo un pull i servizi si riavviano con `-Azione riavvia`, oppure li riavvia `pannello.ps1` (procedura qui sotto).
 
-**7/10: servizi in Paused, le porte tenute dalle vecchie finestre.** Dagli eventi nssm i due servizi uscivano con codice 1 (EADDRINUSE) almeno dalle 13:02. Le porte le tenevano i node avviati dalle vecchie finestre cmd (`start_server.bat`, `start_hmi.bat`), che partono ancora all'accesso a Windows. Le finestre partono prima dei servizi, che hanno l'avvio ritardato: i loro node prendono 8080, 3000 e 5173. nssm rilancia node, node esce subito, e nssm mette il servizio in **Paused**. Sistemato a mano chiudendo quei node e riavviando i servizi. **Da fare con Dario: togliere l'avvio automatico delle finestre**, altrimenti si ripete a ogni accesso a Windows. Dove guardare: le cartelle Esecuzione automatica (comune e di ogni utente), le chiavi `Run`/`RunOnce`, le operazioni pianificate; `-Azione stato` e `-Azione installa` le elencano.
+**7/10: servizi in Paused, le porte tenute dalle vecchie finestre.** Dagli eventi nssm i due servizi uscivano con codice 1 (EADDRINUSE) almeno dalle 13:02. Le porte le tenevano i node avviati dalle vecchie finestre cmd (`start_server.bat`, `start_hmi.bat`), che partono ancora all'accesso a Windows. Le finestre partono prima dei servizi, che hanno l'avvio ritardato: i loro node prendono 8080, 3000 e 5173. nssm rilancia node, node esce subito, e nssm mette il servizio in **Paused**. Sistemato a mano chiudendo quei node e riavviando i servizi.
+
+**Causa trovata (7/10, in cella): quattro operazioni pianificate** avviavano ancora backend e pannello all'accesso a Windows:
+- `\EasyBox Server`: `cmd /k ... npx nodemon server.js`;
+- `\ServerDati`: `start_server.bat`;
+- `\EasyBox HMI`: `cmd /k ... npm run dev`;
+- `\HMI`: `start_hmi.bat`.
+
+Dario le ha **disabilitate** (non cancellate) e ne ha esportato la definizione in `D:\EasyBox_backup\task_2026-10-07`. In più `nodemon` riavviava il backend **a ogni git pull** (guarda i file e riparte quando cambiano). Lo script ora cerca nelle operazioni pianificate le azioni che contengono `start_server`, `start_hmi`, `node`, `npm`, `nodemon`, `vite` o `easybox`: `stato` elenca quelle attive, `installa` le segnala e propone di disabilitarle.
+
+**Verifica al riavvio del PC** (è anche la prova del riavvio rimasta da fare dal 6/10):
+1. cella in HOLD, riavvio di Windows, accesso come al solito;
+2. **nessuna finestra cmd** di backend o pannello deve aprirsi all'accesso;
+3. aspettare circa 3 minuti: i servizi hanno l'avvio ritardato (circa 2 minuti dopo l'accensione);
+4. `-Azione stato`. Atteso: `EasyBoxBackend` ed `EasyBoxPannello` **Running**; porte 8080, 3000 e 5173 «del servizio»; «nessuno attivo» fra gli avvii automatici (le quattro operazioni risultano trovate ma tutte disabilitate);
+5. Ctrl+F5 sul touch e sul tablet, stato del robot che si aggiorna, `INIT` nuovo in `access.log`.
+
+Se un servizio è in Paused o una porta è di un altro processo: la procedura qui sotto, e riportare a Dario l'uscita di `stato`, cioè gli eventi nssm e i proprietari delle porte.
 
 Procedura, se i servizi sono in Paused o le porte non sono loro:
 1. cella in HOLD;
