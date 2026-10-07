@@ -13524,7 +13524,7 @@
      }
     },
     {
-     "id": "button@click saveStop(row)",
+     "id": "UiButton@click saveStop(row)",
      "etichetta": "Salva",
      "evento": "click",
      "handler": "saveStop(row)",
@@ -13572,7 +13572,7 @@
      }
     },
     {
-     "id": "button@click removeStop(row)",
+     "id": "UiButton@click removeStop(row)",
      "etichetta": "Cancella",
      "evento": "click",
      "handler": "removeStop(row)",

@@ -157,23 +157,28 @@
                     @keydown.enter.prevent
                   />
                   <span class="unit" aria-hidden="true">mm</span>
-                  <button
-                    type="button"
-                    class="pure-button button_pressed"
+                  <!-- (v3 fase D-bis) la sezione compare dal 6/10: pulsanti v3
+                       da 48 (prima quelli del pannello vecchio, 44), Cancella
+                       rosso e staccato come nei comandi di riga. Stessi
+                       :disabled e @click. -->
+                  <UiButton
+                    variant="secondary"
+                    size="min"
                     :disabled="!stopValueValid(row) || stopBusy || !canDeclareStop"
                     @click="saveStop(row)"
                   >
                     {{ $t("vice.stopsSave") }}
-                  </button>
-                  <button
-                    type="button"
-                    class="pure-button button_pressed del"
+                  </UiButton>
+                  <UiButton
+                    variant="danger"
+                    size="min"
+                    class="stop-del"
                     v-if="row.declared"
                     :disabled="stopBusy || !canDeclareStop"
                     @click="removeStop(row)"
                   >
                     {{ $t("vice.stopsDelete") }}
-                  </button>
+                  </UiButton>
                 </div>
               </div>
             </div>
@@ -240,9 +245,10 @@ import { GLTFFileLoader } from "@babylonjs/loaders/glTF";
 import viceModelUrl from "@/assets/models/vice_1.glb?url";
 import { dataStored } from "../../../data.js";
 import optionStatus from "@/components/optionStatus.vue";
+import UiButton from "@/components/ui/UiButton.vue";
 
 export default {
-  components: { optionStatus },
+  components: { optionStatus, UiButton },
 
   data() {
     const defaultVice = () => ({
@@ -1014,10 +1020,12 @@ h2 {
 }
 .stop-edit input {
   width: 110px;
-  min-height: 44px;
+  min-height: var(--touch-target-min);
 }
-.stop-edit .pure-button {
-  min-height: 44px;
+/* (v3 fase D-bis) Cancella e' l'unico irreversibile della riga: staccato,
+   come nei comandi di riga (ComandsRows .cmd-destructive) */
+.stop-edit .stop-del {
+  margin-left: var(--space-5);
 }
 @media (max-width: 700px) {
   .stop-edit input {
