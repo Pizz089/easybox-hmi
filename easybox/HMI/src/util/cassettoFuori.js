@@ -3,9 +3,11 @@
 //
 // Decisione di Dario del 7/10: con un cassetto aperto niente deposito ne'
 // prelievo di pinze dallo scaffale (rischio d'urto). Dalla consegna 34 il PLC
-// rifiuta: 1419 il carico (11), 1519 il deposito (12, e il cambio pinza 27,
-// che comincia col deposito). Il pannello spegne prima i comandi pinza, con
-// la ragione scritta, cosi' l'operatore non ci arriva.
+// rifiuta 1419 il carico (11) e 1519 il deposito (12), nelle catene pinza. Il
+// cambio pinza (27, swap) non passa dalle catene: lo copre la consegna 35
+// (7/10 sera), non la 34 come si era scritto qui; dalla 35 anche i master
+// pallet. Il pannello spegne prima i comandi pinza, cambio compreso, con la
+// ragione scritta, cosi' l'operatore non ci arriva.
 //
 // Il dato e' quello che il pannello ha gia' per il cassetto estratto, dalla
 // vista dei cassetti (api/conf/tray/show/all), con le stesse regole della

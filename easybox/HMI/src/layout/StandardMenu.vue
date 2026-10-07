@@ -6,17 +6,16 @@ import sideMenu from '../components/menu.vue'
 import barraInAlto from '../components/barraInAlto.vue'
 import alert from '../components/Alerts/Alert.vue'
 import { dataStored } from '@/data'
+import { makePlcAlarmRobotHandler } from '../util/robotAlarm.js'
 
-const { t } = useI18n()
+const { t, te } = useI18n()
 
 // Handler nominati (equivalente composition-API del pattern this.<nome>Handler
 // di robotView/units/productionTable, e4ab4e5): servono i riferimenti per
 // l'off specifico in onUnmounted.
-const plcAlarmRobotHandler = payload => {
-  dataStored.alert.title = 'PLC_Error'
-  dataStored.alert.desc = 'robot.alarm_' + payload
-  dataStored.alert.type = 'warning'
-}
+// (consegna 35, 7/10) robot.alarm_<codice> come prima; un 972 seguito entro
+// 1 s dal codice dell'errore attivo diventa un avviso unico (util/robotAlarm.js)
+const plcAlarmRobotHandler = makePlcAlarmRobotHandler(dataStored, { t, te })
 
 // (AN 1-bis) precondizione ausiliari: stato globale in dataStored, un solo
 // listener per tutto il pannello (StandardMenu e' sempre montato).

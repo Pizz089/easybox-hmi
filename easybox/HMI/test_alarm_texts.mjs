@@ -53,8 +53,9 @@ function duplicateKeys(text) {
 
 const CODES = {
 	// 970/971 dalla consegna 30 (6/10), 972 dalla consegna 33 (7/10),
-	// 1419/1519/19005/19006/19007/20011 dalla consegna 34 (7/10, uncino)
-	robot: [961, 962, 964, 967, 19004, 20009, 2205, 970, 971, 972, 1419, 1519, 19005, 19006, 19007, 20011],
+	// 1419/1519/19005/19006/19007/20011 dalla consegna 34 (7/10, uncino),
+	// 973 e 691 (tasca non vuota) dalla consegna 35 (7/10)
+	robot: [961, 962, 964, 967, 19004, 20009, 2205, 970, 971, 972, 1419, 1519, 19005, 19006, 19007, 20011, 973, 691],
 	mc1: [952, 953, 954, 955, 956, 957, 958, 959, 947],
 };
 const raw = { it: readFileSync('src/locales/it.json', 'utf8'), en: readFileSync('src/locales/en.json', 'utf8') };
@@ -85,13 +86,26 @@ check(/avviato, in coda o in pausa/.test(loc.it.robot.alarm_970) && /non serve a
 check(/errore attivo/.test(loc.it.robot.alarm_972) && /938/.test(loc.it.robot.alarm_972) && /active error/.test(loc.en.robot.alarm_972),
 	'972: comando rifiutato con un errore attivo; con il 938 prima la dichiarazione dello stato cella');
 // (7/10, consegna 34) uncino per i cassetti e pinza ferma col cassetto fuori
-check([1419, 1519].every(c => /cassetto fuori/.test(loc.it.robot['alarm_' + c]) && /Chiudi il cassetto e premi RESET/.test(loc.it.robot['alarm_' + c])
-	&& /tray is out/.test(loc.en.robot['alarm_' + c]) && /press RESET/.test(loc.en.robot['alarm_' + c]))
-	&& /Carico/.test(loc.it.robot.alarm_1419) && /Deposito/.test(loc.it.robot.alarm_1519),
-	'1419 (carico) e 1519 (deposito): cassetto fuori, «chiudi il cassetto e premi RESET»');
+// (consegna 35, simulazione bis B8) l'ordine giusto: prima RESET (col 972 il
+// rientro sarebbe rifiutato finche' l'errore resta), poi il cassetto, poi il comando
+check([1419, 1519].every(c => /cassetto fuori/.test(loc.it.robot['alarm_' + c])
+	&& /Premi RESET, rientra il cassetto \(Gestione cassetto\), poi ripeti il comando\.$/.test(loc.it.robot['alarm_' + c])
+	&& /tray is out/.test(loc.en.robot['alarm_' + c]) && /Press RESET, put the tray back \(Tray handling\), then repeat the command\.$/.test(loc.en.robot['alarm_' + c]))
+	&& /Carico/.test(loc.it.robot.alarm_1419) && /Deposito/.test(loc.it.robot.alarm_1519) && [1419, 1519].every(c => /cambio pinza/.test(loc.it.robot['alarm_' + c])),
+	'1419 (carico) e 1519 (deposito), anche dal cambio pinza: «Premi RESET, rientra il cassetto (Gestione cassetto), poi ripeti il comando»');
+check(!/Chiudi il cassetto e premi RESET/.test(loc.it.robot.alarm_1419 + loc.it.robot.alarm_1519), '   l\'ordine vecchio (prima il cassetto, poi RESET) non c\'e\' piu\'');
 check(/non ha l'uncino/.test(loc.it.robot.alarm_19005) && /né a bordo né a scaffale/.test(loc.it.robot.alarm_19006)
 	&& /deve essere vuota/.test(loc.it.robot.alarm_19007) && /non ha l'uncino/.test(loc.it.robot.alarm_20011) && /si rientra a mano/.test(loc.it.robot.alarm_20011),
 	'19005, 19006, 19007, 20011: i testi della consegna 34');
+// (consegna 35, 7/10)
+check(/Rientrato il cassetto a mano: Reimposta stato cella con cassetto 0\.$/.test(loc.it.robot.alarm_20011) && /Reset cell state with tray 0\.$/.test(loc.en.robot.alarm_20011),
+	'20011: in fondo «Rientrato il cassetto a mano: Reimposta stato cella con cassetto 0»');
+check(loc.it.robot.alarm_973 === "Comando rifiutato: c'è una missione in corso o in pausa. CONTINUA per riprenderla, oppure RESET (o la procedura dopo una missione interrotta)."
+	&& /mission is running or paused/.test(loc.en.robot.alarm_973) && /CONTINUE/.test(loc.en.robot.alarm_973), '973: missione in corso o in pausa, CONTINUA oppure RESET');
+check(loc.it.robot.alarm_691 === 'Tasca di destinazione non trovata o non vuota a database: controlla la tasca e dichiarala (39), poi RESET e ripeti.'
+	&& /not empty in the database/.test(loc.en.robot.alarm_691), '691: tasca non trovata o non vuota a database, dichiarala (39)');
+check(loc.it.robot.alarm972Code === "Comando rifiutato: c'è un errore attivo, {errore}. Premi RESET e ripeti il comando." && /\{errore\}/.test(loc.en.robot.alarm972Code),
+	'972 + codice: «Comando rifiutato: c\'è un errore attivo, <codice> <testo>. Premi RESET e ripeti il comando.»');
 let head = null;
 try { head = { it: JSON.parse(execSync('git show HEAD:easybox/HMI/src/locales/it.json', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })) }; } catch (e) { head = null; }
 if (head) {
@@ -108,7 +122,10 @@ check(loc.en.robot.alarm_18 === 'Gripper not empty' && loc.en.robot.alarm_18 !==
 console.log('\n4) la famiglia e\' quella che il pannello usa davvero');
 const menu = readFileSync('src/layout/StandardMenu.vue', 'utf8');
 check(/'robot\.alarm_' \+ code/.test(menu) && /socket\.on\('ALARM\/MC1'/.test(menu), 'allarmi MC1: evento ALARM/MC1 -> robot.alarm_<codice>');
-check(/'robot\.alarm_' \+ payload/.test(menu), 'errori robot: robot.alarm_<codice>');
+// (consegna 35) l'handler di PLC/ALARM/ROBOT sta in util/robotAlarm.js (972 + codice)
+const robotAlarm = readFileSync('src/util/robotAlarm.js', 'utf8');
+check(/makePlcAlarmRobotHandler\(dataStored/.test(menu) && /socket\.on\('PLC\/ALARM\/ROBOT', plcAlarmRobotHandler\)/.test(menu)
+	&& /'robot\.alarm_' \+ payload/.test(robotAlarm), 'errori robot: robot.alarm_<codice> (util/robotAlarm.js)');
 
 console.log('\n' + (failed ? failed + ' CHECK FALLITI' : 'TUTTI I CHECK PASSATI'));
 process.exit(failed ? 1 : 0);
