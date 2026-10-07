@@ -54,3 +54,5 @@ exports.audit = function (descr, source, target) {
 // sorgenti conosciute, cosi' il valore non viene scritto a mano in giro
 exports.SRC_PUSH_SIM = 'PUSH_SIM';
 exports.SRC_CONF = 'CONF';
+// (7/10) chele dell'ordine confermate (catalogo delle chele della morsa)
+exports.SRC_ORDER = 'ORDER';

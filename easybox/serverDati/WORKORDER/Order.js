@@ -425,13 +425,19 @@ router.get('/insertOrder', (req, res) => {
         // La dichiarazione segue la MORSA, non il pallet: se la morsa si sposta
         // si porta dietro la sua battuta.
         // I termini sono gli stessi della vista COORDINATES_PUSH_MC.
+        // (7/10, prompt 5 di 5) come nella vista: la lunghezza della chela
+        // della morsa viene dal tipo montato (VICE_JAW via VICE.JAW_ID) e la
+        // battuta e' quella CORRETTA per le chele montate
+        // (dichiarata + CLAW_LENGTH_REF/2 - montata/2, viceJawSql).
         let query = `SET NOCOUNT ON;
 					DECLARE @push int = ISNULL((SELECT CASE WHEN PUSH_TO_STOP = 1 THEN ${pushQuotes.PUSH_BIT} ELSE 0 END FROM PIECE WHERE ID=${pieceID}), 0);
-					DECLARE @claw int = (SELECT TOP 1 CLAW_LENGTH FROM VICE WHERE PALLET_ID=${palletID});
+					DECLARE @viceID int, @claw int;
+					SELECT TOP 1 @viceID = v.ID, @claw = j.CLAW_LENGTH FROM VICE v LEFT JOIN VICE_JAW j ON j.ID = v.JAW_ID WHERE v.PALLET_ID=${palletID};
 					DECLARE @tool int = (SELECT TOP 1 CLAW_LENGTH FROM GRIPPER WHERE ID=${gripperID});
 					DECLARE @pieceY int = (SELECT TOP 1 Y FROM PIECE WHERE ID=${pieceID});
-					DECLARE @viceID int = (SELECT TOP 1 ID FROM VICE WHERE PALLET_ID=${palletID});
-					DECLARE @stop int = (SELECT TOP 1 STOP_BEYOND_CLAW FROM PIECE_ON_VICE WHERE VICE_ID=@viceID AND PIECE_ID=${pieceID});
+					DECLARE @stop int, @ref int;
+					SELECT TOP 1 @stop = STOP_BEYOND_CLAW, @ref = CLAW_LENGTH_REF FROM PIECE_ON_VICE WHERE VICE_ID=@viceID AND PIECE_ID=${pieceID};
+					IF @stop IS NOT NULL AND @ref IS NOT NULL AND ISNULL(@claw, 0) > 0 SET @stop = @stop + @ref/2 - @claw/2;
 					DECLARE @travel int = (@claw - @pieceY)/2 + CASE WHEN @pieceY > @claw THEN ISNULL(@stop,0) ELSE 0 END;
 					IF NOT EXISTS (SELECT 1 FROM FIXTURE WHERE ID=${fixtureID}) SELECT '${errorCodes.KO_NO_FIXTURE}' AS ris;
 					ELSE IF @push <> 0 AND (ISNULL(@claw,0) <= 0 OR ISNULL(@tool,0) <= 0 OR ISNULL(@pieceY,0) <= 0) SELECT '${errorCodes.KO_PUSH_NO_DATA}' AS ris;

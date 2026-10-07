@@ -1,6 +1,27 @@
 -- ===========================================================================
 -- coordinates-push-mc.sql — vista COORDINATES_PUSH_MC (ciclo di SPINTA IN
--- BATTUTA, cantiere push-to-stop 15/9; compensazione semilavorati 17/9)
+-- BATTUTA, cantiere push-to-stop 15/9; compensazione semilavorati 17/9;
+-- chele dal catalogo e battuta corretta 7/10)
+--
+-- (7/10, prompt 5 di 5) CHELE DELLA MORSA DAL CATALOGO. La lunghezza della
+-- chela viene dal tipo montato sulla morsa (VICE_JAW via VICE.JAW_ID), non
+-- piu' dalla riga della morsa: dato unico. E la BATTUTA SI CORREGGE quando
+-- cambiano le chele. STOP_BEYOND_CLAW e' misurata dalla FINE della chela, ma
+-- il riferimento della battuta sta sulla MORSA, a distanza fissa R dal
+-- centro: con le chele centrate R = lunghezza_dichiarazione/2 + dichiarata.
+-- Montate chele lunghe M invece di REF (PIECE_ON_VICE.CLAW_LENGTH_REF, la
+-- chela con cui la battuta e' stata dichiarata), la fine della chela si
+-- sposta e la battuta va riportata a R:
+--   battuta corretta = STOP_BEYOND_CLAW + REF/2 - M/2
+-- scritta cosi' (e non (REF - M)/2) perche' con le divisioni intere il PLC
+-- ricava X_Support = M/2 + battuta corretta = REF/2 + STOP_BEYOND_CLAW
+-- ESATTAMENTE, al micron, qualunque chela sia montata (COORDINATES_BLOW_MC).
+-- CLAW_LENGTH_REF NULL (battuta dichiarata a chela non misurata) o chela
+-- montata non misurata: nessuna correzione, come prima. La colonna in uscita
+-- resta STOP_BEYOND_CLAW: il PLC non cambia. La scelta fra pezzo dentro e
+-- pezzo oltre la chela usa la lunghezza MONTATA.
+-- Con la migrazione di vice-jaw.sql REF = lunghezza montata e la correzione
+-- vale zero: le righe restano identiche al micron.
 --
 -- *** NASCE IN CHIARO, DEFINIZIONE VERSIONATA QUI. ***
 -- Le viste 4Robot e WORKORDERS erano CIFRATE e questo e' costato ore quando
@@ -173,9 +194,11 @@
 -- ORDINE DI DEPLOY: DOPO piece-push-to-stop.sql, vice-claw-length.sql,
 -- gripper-claw-length.sql e piece-on-vice.sql (li nomina tutti), piu' la
 -- colonna PIECE_ON_VICE.COMP_PUSH (int NULL, micron) e, dal 6/10,
--- piece-on-vice-z-push.sql (colonna PIECE_ON_VICE.Z_PUSH), a cella ferma con
--- -E. "-f 65001": il file e' UTF-8 (trattini lunghi nei commenti della vista).
---   sqlcmd -S .\SQLEXPRESS -E -d ADMG -f 65001 -i coordinates-push-mc.sql
+-- piece-on-vice-z-push.sql (colonna PIECE_ON_VICE.Z_PUSH); dal 7/10 DOPO
+-- vice-jaw.sql (VICE_JAW, VICE.JAW_ID, PIECE_ON_VICE.CLAW_LENGTH_REF). A
+-- cella ferma con -E. "-f 65001": il file e' UTF-8 (trattini lunghi nei
+-- commenti della vista). "-y 0": la definizione trovata si stampa intera.
+--   cd D:\Prog\easybox\serverDati\scripts; sqlcmd -S .\SQLEXPRESS -E -d ADMG -f 65001 -y 0 -i coordinates-push-mc.sql -o D:\Backup\coordinates-push-mc_esito.txt; Get-Content D:\Backup\coordinates-push-mc_esito.txt
 -- ===========================================================================
 SET NOCOUNT ON;
 
@@ -185,8 +208,11 @@ IF COL_LENGTH('dbo.PIECE', 'PUSH_TO_STOP') IS NULL
    OR OBJECT_ID('dbo.PIECE_ON_VICE') IS NULL
    OR COL_LENGTH('dbo.PIECE_ON_VICE', 'COMP_PUSH') IS NULL
    OR COL_LENGTH('dbo.PIECE_ON_VICE', 'Z_PUSH') IS NULL
+   OR OBJECT_ID('dbo.VICE_JAW') IS NULL
+   OR COL_LENGTH('dbo.VICE', 'JAW_ID') IS NULL
+   OR COL_LENGTH('dbo.PIECE_ON_VICE', 'CLAW_LENGTH_REF') IS NULL
 BEGIN
-	PRINT 'MANCANO colonne o tabelle: eseguire prima piece-push-to-stop.sql, vice-claw-length.sql, gripper-claw-length.sql, piece-on-vice.sql, la colonna PIECE_ON_VICE.COMP_PUSH (int NULL, micron) e piece-on-vice-z-push.sql (colonna PIECE_ON_VICE.Z_PUSH).';
+	PRINT 'MANCANO colonne o tabelle: eseguire prima piece-push-to-stop.sql, vice-claw-length.sql, gripper-claw-length.sql, piece-on-vice.sql, la colonna PIECE_ON_VICE.COMP_PUSH (int NULL, micron), piece-on-vice-z-push.sql (colonna PIECE_ON_VICE.Z_PUSH) e vice-jaw.sql (VICE_JAW, VICE.JAW_ID, PIECE_ON_VICE.CLAW_LENGTH_REF).';
 	SET NOEXEC ON;
 END
 GO
@@ -201,8 +227,11 @@ DECLARE @norm NVARCHAR(MAX) = REPLACE(REPLACE(REPLACE(ISNULL(@def, N''),
 WHILE CHARINDEX(N'  ', @norm) > 0
 	SET @norm = REPLACE(@norm, N'  ', N' ');
 
--- (6/10) CINQUE VARIANTI: la nuova, con la quota Z della spinta, e le
--- quattro della compensazione qui sotto, che ora vanno tutte aggiornate.
+-- (7/10) SEI VARIANTI: la nuova, con le chele dal catalogo e la battuta
+-- corretta; quella del 6/10 (quota Z della spinta), che si aggiorna; e le
+-- quattro della compensazione qui sotto, che si aggiornano anch'esse.
+--
+-- (6/10) le varianti della quota Z della spinta e della compensazione:
 --
 -- QUATTRO VARIANTI DELLA COMPENSAZIONE, e vanno distinte tutte.
 --
@@ -212,15 +241,37 @@ WHILE CHARINDEX(N'  ', @norm) > 0
 -- meno uscirebbe dicendo "c'e' gia" e lascerebbe la vista senza l'esito che
 -- impedisce la spinta rovesciata — cioe' proprio il caso che si sta chiudendo.
 -- Per questo il ramo "esci" chiedeva DUE cose: il segno giusto E il NO_COMP.
--- (6/10) Ora ne chiede tre: anche la quota Z della spinta con la sua formula.
+-- (6/10) Ne chiedeva tre: anche la quota Z della spinta con la sua formula.
+-- (7/10) Ne chiede cinque: anche le chele dal catalogo e la battuta corretta.
+-- Prima dell'ALTER si stampa la definizione trovata, per il ritorno.
+DECLARE @altera bit = 0;
 IF @def IS NULL
+BEGIN
 	PRINT 'coordinates-push-mc: la vista non esiste, la creo.';
+	SET @altera = 1;
+END
+ELSE IF @norm LIKE N'%q.X_PUSH_RAW + q.TRAVEL_RAW - q.COMP_PUSH end as X_STOP%'
+	 AND @norm LIKE N'%then ''NO_COMP''%'
+	 AND @norm LIKE N'%when pv.Z_PUSH > pz.Z_PICK then 0 else pz.Z_PICK - pv.Z_PUSH end as Z_PUSH_DROP%'
+	 AND @norm LIKE N'%left join VICE_JAW j on j.ID = v.JAW_ID%'
+	 AND @norm LIKE N'%else pv.STOP_BEYOND_CLAW + pv.CLAW_LENGTH_REF/2 - j.CLAW_LENGTH/2 end as STOP_BEYOND_CLAW) s%'
+BEGIN
+	PRINT 'coordinates-push-mc: conforme (chele dal catalogo, battuta corretta, quota Z della spinta, segno giusto e ramo NO_COMP gia'' presenti), nessuna modifica.';
+	SET NOEXEC ON;
+END
+-- c'e' il catalogo ma non com'e' qui: e' qualcosa che non conosco
+ELSE IF @norm LIKE N'%VICE_JAW%' OR @norm LIKE N'%CLAW_LENGTH_REF%'
+BEGIN
+	PRINT 'coordinates-push-mc: la vista legge gia'' il catalogo delle chele ma non e'' la variante attesa. FERMO.';
+	PRINT 'Leggerla con: SELECT definition FROM sys.sql_modules WHERE object_id = OBJECT_ID(''dbo.COORDINATES_PUSH_MC'');';
+	SET NOEXEC ON;
+END
 ELSE IF @norm LIKE N'%q.X_PUSH_RAW + q.TRAVEL_RAW - q.COMP_PUSH end as X_STOP%'
 	 AND @norm LIKE N'%then ''NO_COMP''%'
 	 AND @norm LIKE N'%when pv.Z_PUSH > pz.Z_PICK then 0 else pz.Z_PICK - pv.Z_PUSH end as Z_PUSH_DROP%'
 BEGIN
-	PRINT 'coordinates-push-mc: conforme (segno giusto, ramo NO_COMP e quota Z della spinta gia'' presenti), nessuna modifica.';
-	SET NOEXEC ON;
+	PRINT 'coordinates-push-mc: variante del 6/10 (quota Z della spinta): la porto alle chele dal catalogo con la battuta corretta.';
+	SET @altera = 1;
 END
 -- c'e' Z_PUSH_DROP ma non com'e' qui: e' qualcosa che non conosco
 ELSE IF @norm LIKE N'%as Z_PUSH_DROP%'
@@ -231,21 +282,36 @@ BEGIN
 END
 ELSE IF @norm LIKE N'%q.X_PUSH_RAW + q.TRAVEL_RAW - q.COMP_PUSH end as X_STOP%'
 	 AND @norm LIKE N'%then ''NO_COMP''%'
-	PRINT 'coordinates-push-mc: variante completa della compensazione (segno giusto e NO_COMP), senza la quota Z della spinta: aggiungo Z_PUSH, Z_PUSH_REF e Z_PUSH_DROP.';
+BEGIN
+	PRINT 'coordinates-push-mc: variante completa della compensazione (segno giusto e NO_COMP), senza la quota Z della spinta: aggiungo Z_PUSH, Z_PUSH_REF e Z_PUSH_DROP, con le chele dal catalogo.';
+	SET @altera = 1;
+END
 ELSE IF @norm LIKE N'%q.X_PUSH_RAW + q.TRAVEL_RAW - q.COMP_PUSH end as X_STOP%'
-	PRINT 'coordinates-push-mc: segno giusto ma MANCA il ramo NO_COMP: lo aggiungo, con la quota Z della spinta.';
+BEGIN
+	PRINT 'coordinates-push-mc: segno giusto ma MANCA il ramo NO_COMP: lo aggiungo, con la quota Z della spinta e le chele dal catalogo.';
+	SET @altera = 1;
+END
 ELSE IF @norm LIKE N'%q.X_PUSH_RAW + q.TRAVEL_RAW + q.COMP_PUSH end as X_STOP%'
+BEGIN
 	PRINT 'coordinates-push-mc: trovata la variante col PIU'' (arrivo oltre la battuta): la correggo.';
+	SET @altera = 1;
+END
 ELSE IF @norm LIKE N'%then q.X_PUSH_RAW + q.TRAVEL_RAW end as X_STOP%'
+BEGIN
 	PRINT 'coordinates-push-mc: versione senza compensazione, la aggiungo.';
--- nessuna delle quattro: la vista in cella e' qualcosa che non conosco
+	SET @altera = 1;
+END
+-- nessuna delle sei: la vista in cella e' qualcosa che non conosco
 ELSE
 BEGIN
-	PRINT 'coordinates-push-mc: la vista in cella non e'' nessuna delle cinque varianti note. FERMO.';
+	PRINT 'coordinates-push-mc: la vista in cella non e'' nessuna delle sei varianti note. FERMO.';
 	PRINT 'Leggerla con: SELECT definition FROM sys.sql_modules WHERE object_id = OBJECT_ID(''dbo.COORDINATES_PUSH_MC'');';
 	PRINT 'e riconciliare a mano: il testo qui sotto sovrascriverebbe modifiche che non conosco.';
 	SET NOEXEC ON;
 END
+-- la definizione che sta per essere sostituita, intera (sqlcmd -y 0)
+IF @altera = 1 AND @def IS NOT NULL
+	SELECT @def AS definizione_trovata;
 GO
 
 IF OBJECT_ID('dbo.COORDINATES_PUSH_MC') IS NULL
@@ -266,6 +332,7 @@ select	q.ORDER_ID,
 		case when q.PUSH_STATUS = 'OK' then q.X_PUSH_RAW + q.TRAVEL_RAW - q.COMP_PUSH end	as X_STOP,
 		case when q.PUSH_STATUS = 'OK' then q.TRAVEL_RAW end				as CLEARANCE,
 		q.STOP_REF,
+		-- (7/10) la battuta CORRETTA per le chele montate (vedi la subquery)
 		q.STOP_BEYOND_CLAW,
 		q.COMP_PUSH,
 		q.PUSH_ENABLED,
@@ -281,40 +348,41 @@ from (
 			p.Y														as Y_PLACE,
 			p.Z + pz.Z_PLACE + f.Z									as Z_PLACE,
 			p.X - pz.Y/2 - g.CLAW_LENGTH/2							as X_PUSH_RAW,
-			-- corsa TEORICA: fino alla fine della ganascia, piu' il tratto
-			-- dichiarato SOLO quando il pezzo la eccede. La compensazione non
-			-- entra qui: si toglie dall'arrivo, non da questo numero
-			(v.CLAW_LENGTH - pz.Y)/2
-				+ case when pz.Y > v.CLAW_LENGTH
-					   then ISNULL(pv.STOP_BEYOND_CLAW, 0) else 0 end	as TRAVEL_RAW,
-			pv.STOP_BEYOND_CLAW										as STOP_BEYOND_CLAW,
+			-- corsa TEORICA: fino alla fine della chela della morsa, piu' il
+			-- tratto dichiarato SOLO quando il pezzo la eccede. La
+			-- compensazione non entra qui: si toglie dall'arrivo, non da
+			-- questo numero. (7/10) chela dal catalogo (j), battuta corretta (s)
+			(j.CLAW_LENGTH - pz.Y)/2
+				+ case when pz.Y > j.CLAW_LENGTH
+					   then ISNULL(s.STOP_BEYOND_CLAW, 0) else 0 end	as TRAVEL_RAW,
+			s.STOP_BEYOND_CLAW										as STOP_BEYOND_CLAW,
 			-- ISNULL obbligatorio: NULL sui pezzi non tarati, e il ponte SQL
 			-- non lo converte in zero (restituisce valori casuali)
 			ISNULL(pv.COMP_PUSH, 0)									as COMP_PUSH,
 			case when (ISNULL(w.OPTION2,0) & 2) = 0					then null
 				 when v.ID is null									then null
-				 when ISNULL(v.CLAW_LENGTH,0) <= 0
+				 when ISNULL(j.CLAW_LENGTH,0) <= 0
 				   or ISNULL(g.CLAW_LENGTH,0) <= 0
 				   or ISNULL(pz.Y,0) <= 0							then null
-				 when pz.Y > v.CLAW_LENGTH							then 'DECLARED'
+				 when pz.Y > j.CLAW_LENGTH							then 'DECLARED'
 				 else 'CLAW' end									as STOP_REF,
 			case when (ISNULL(w.OPTION2,0) & 2) <> 0 then 1 else 0 end		as PUSH_ENABLED,
 			case when (ISNULL(w.OPTION2,0) & 2) = 0					then 'DISABLED'
 				 when v.ID is null									then 'NO_VICE'
-				 when ISNULL(v.CLAW_LENGTH,0) <= 0
+				 when ISNULL(j.CLAW_LENGTH,0) <= 0
 				   or ISNULL(g.CLAW_LENGTH,0) <= 0
 				   or ISNULL(pz.Y,0) <= 0							then 'NO_DATA'
-				 when pz.Y > v.CLAW_LENGTH
+				 when pz.Y > j.CLAW_LENGTH
 				  and pv.VICE_ID is null							then 'NO_FIT'
-				 when (v.CLAW_LENGTH - pz.Y)/2
-					  + case when pz.Y > v.CLAW_LENGTH
-							 then ISNULL(pv.STOP_BEYOND_CLAW, 0) else 0 end < 0
+				 when (j.CLAW_LENGTH - pz.Y)/2
+					  + case when pz.Y > j.CLAW_LENGTH
+							 then ISNULL(s.STOP_BEYOND_CLAW, 0) else 0 end < 0
 																	then 'NO_ROOM'
 				 -- la compensazione supera la corsa: l'arrivo finirebbe dietro
 				 -- la partenza e il robot spingerebbe nel verso opposto
-				 when (v.CLAW_LENGTH - pz.Y)/2
-					  + case when pz.Y > v.CLAW_LENGTH
-							 then ISNULL(pv.STOP_BEYOND_CLAW, 0) else 0 end
+				 when (j.CLAW_LENGTH - pz.Y)/2
+					  + case when pz.Y > j.CLAW_LENGTH
+							 then ISNULL(s.STOP_BEYOND_CLAW, 0) else 0 end
 					  - ISNULL(pv.COMP_PUSH, 0) < 0
 																	then 'NO_COMP'
 				 else 'OK' end										as PUSH_STATUS,
@@ -334,10 +402,19 @@ from (
 	inner join PIECE pz		on pz.ID = w.PIECE_ID
 	inner join FIXTURE f	on f.ID = w.FIXTURE_ID
 	left  join VICE v		on v.PALLET_ID = w.PALLET_ID
+	-- (7/10) le misure della chela dal tipo montato sulla morsa
+	left  join VICE_JAW j	on j.ID = v.JAW_ID
 	left  join GRIPPER g	on g.ID = w.GRIPPER_ID
 	-- la dichiarazione segue la MORSA (v.ID), non il pallet: se la morsa si
 	-- sposta su un altro pallet si porta dietro la sua battuta
 	left  join PIECE_ON_VICE pv	on pv.VICE_ID = v.ID and pv.PIECE_ID = w.PIECE_ID
+	-- (7/10) BATTUTA CORRETTA per le chele montate: il riferimento sta sulla
+	-- morsa, la dichiarazione e' misurata dalla fine della chela con cui e'
+	-- stata fatta (CLAW_LENGTH_REF). Senza REF o con la chela montata non
+	-- misurata: nessuna correzione, come prima
+	cross apply (select case when pv.CLAW_LENGTH_REF is null or ISNULL(j.CLAW_LENGTH, 0) <= 0
+							 then pv.STOP_BEYOND_CLAW
+							 else pv.STOP_BEYOND_CLAW + pv.CLAW_LENGTH_REF/2 - j.CLAW_LENGTH/2 end as STOP_BEYOND_CLAW) s
 ) q;
 GO
 SET NOEXEC OFF;
@@ -404,6 +481,10 @@ GO
 -- ===========================================================================
 
 -- ===========================================================================
+-- ROLLBACK (7/10) alla versione del 6/10, senza catalogo delle chele:
+-- vice-jaw-views-rollback.sql (stampa la definizione trovata, riporta la
+-- vista com'era e si ferma su una definizione che non conosce).
+--
 -- ROLLBACK alla versione senza compensazione: rilanciare lo stesso ALTER VIEW
 -- qui sopra con
 --   X_STOP:     q.X_PUSH_RAW + q.TRAVEL_RAW - q.COMP_PUSH  ->  q.X_PUSH_RAW + q.TRAVEL_RAW

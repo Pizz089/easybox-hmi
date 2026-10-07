@@ -23,6 +23,8 @@ var gripperRouter 	= require('./CONF/Gripper');
 var trayRouter 		= require('./CONF/Tray');
 var pieceRouter 	= require('./CONF/Piece');
 var viceRouter 		= require('./CONF/Vice');
+// (7/10, prompt 5 di 5) catalogo delle chele della morsa
+var viceJawRouter 	= require('./CONF/ViceJaw');
 var fixtureRouter 	= require('./CONF/Fixture');
 var palletRouter 	= require('./CONF/Pallet');
 var gratingRouter 	= require('./CONF/Grating');
@@ -86,6 +88,7 @@ app.use('/api/order'		, orderRouter);
 app.use('/api/conf/tray'	, trayRouter);
 app.use('/api/conf/piece'	, pieceRouter);
 app.use('/api/conf/vice'	, viceRouter);
+app.use('/api/conf/viceJaw'	, viceJawRouter);
 app.use('/api/conf/fixture'	, fixtureRouter);
 app.use('/api/conf/pallet'	, palletRouter);
 app.use('/api/conf/grating' , gratingRouter);
