@@ -12,7 +12,17 @@
 #      diverso dai due;
 #   5. solo ASCII;
 #   6. nessuna variabile assegnata con un nome che differisce da un altro
-#      solo per maiuscole e minuscole (per PowerShell e' la stessa).
+#      solo per maiuscole e minuscole (per PowerShell e' la stessa);
+#   (7/10, servizi in Paused per i node delle vecchie finestre)
+#   7. Stop-Process solo in ChiudiNodeSullePorte, solo sui node che non sono
+#      dei servizi, e chiamata solo da "riavvia", a servizi fermi;
+#   8. "riavvia": Stop-Service, porte libere, Start-Service, verifica
+#      (Running e proprietari delle porte), uscita in errore altrimenti;
+#      niente Restart-Service;
+#   9. avvii automatici in sola lettura (nessuna scrittura su registro e
+#      operazioni pianificate, nessun Remove-Item), segnalati da stato e da
+#      prova / installa;
+#  10. "stato": proprietari delle porte e motivo di un Paused dagli eventi nssm.
 # Uso: powershell -ExecutionPolicy Bypass -File easybox\tools\test_servizi_cella.ps1
 # Exit code = numero di controlli falliti.
 # ============================================================================
@@ -117,6 +127,46 @@ $nomiAssegnati = New-Object 'System.Collections.Generic.HashSet[string]' ([Strin
 foreach ($a in $assegnati) { [void]$nomiAssegnati.Add($a) }
 $stessa = @($nomiAssegnati | Group-Object { $_.ToLowerInvariant() } | Where-Object { $_.Count -gt 1 } | ForEach-Object { ($_.Group | ForEach-Object { '$' + $_ }) -join ' = ' })
 Check ($stessa.Count -eq 0) ('6. nessuna variabile assegnata con un nome che differisce da un altro solo per maiuscole/minuscole (' + $nomiAssegnati.Count + ' nomi' + $(if ($stessa.Count) { '; stessa variabile: ' + ($stessa -join ', ') } else { '' }) + ')')
+
+# funzioni del file e chiamate per nome
+$funzioni = @{}
+foreach ($f in @($ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $true))) { $funzioni[$f.Name] = $f }
+$chiamate = { param($chi) @($comandi | Where-Object { (& $nome $_) -eq $chi }) }
+$ifRiavvia = & $ramo '$Azione -eq ''riavvia'''
+$ifStato = & $ramo '$Azione -eq ''stato'''
+Check ($null -ne $ifRiavvia -and $null -ne $ifStato) '   trovati i rami "riavvia" e "stato"'
+
+# 7. Stop-Process
+$stopProcess = @(& $chiamate 'Stop-Process')
+$chiudi = $funzioni['ChiudiNodeSullePorte']
+Check ($null -ne $chiudi -and $stopProcess.Count -eq 1 -and (& $dentro $stopProcess[0] $chiudi)) ('7. Stop-Process una volta sola, dentro ChiudiNodeSullePorte (' + $stopProcess.Count + ')')
+Check ($null -ne $chiudi -and $chiudi.Body.Extent.Text -match "\`$_\.Nome -eq 'node' -and -not \`$_\.Servizio") '   solo sui processi node che non sono di un servizio'
+$usiChiudi = @(& $chiamate 'ChiudiNodeSullePorte')
+$stopInRiavvia = @(& $chiamate 'Stop-Service' | Where-Object { & $dentro $_ $ifRiavvia })
+Check ($usiChiudi.Count -eq 1 -and (& $dentro $usiChiudi[0] $ifRiavvia) -and $stopInRiavvia.Count -eq 1 -and $stopInRiavvia[0].Extent.StartOffset -lt $usiChiudi[0].Extent.StartOffset) '   chiamata solo da "riavvia", dopo lo Stop-Service dei due servizi'
+
+# 8. riavvia: l'ordine dei passi e l'uscita in errore
+$pos = { param($chi) $c = @(& $chiamate $chi | Where-Object { & $dentro $_ $ifRiavvia }); if ($c.Count) { $c[0].Extent.StartOffset } else { -1 } }
+$oStop = & $pos 'Stop-Service'; $oLibere = & $pos 'AspettaPorteLibere'; $oStart = & $pos 'Start-Service'; $oPorte = & $pos 'AspettaPorte'
+$verifica = @(& $chiamate 'MostraProprietari' | Where-Object { (& $dentro $_ $ifRiavvia) -and $_.Extent.StartOffset -gt $oStart })
+Check ($oStop -ge 0 -and $oStop -lt $oLibere -and $oLibere -lt $oStart -and $oStart -lt $oPorte -and $verifica.Count -ge 1) '8. riavvia: Stop-Service, AspettaPorteLibere, Start-Service, AspettaPorte, poi MostraProprietari'
+$ultimoFermati = @(& $chiamate 'Fermati' | Where-Object { (& $dentro $_ $ifRiavvia) -and $_.Extent.StartOffset -gt $verifica[0].Extent.StartOffset })
+Check ($ultimoFermati.Count -ge 1 -and $ifRiavvia.Clauses[0].Item2.Extent.Text -match "if \(-not \`$ok\) \{[\s\S]*?Fermati") '   dopo la verifica: Fermati (exit 1) se non tutto Running o porte non dei servizi'
+Check ((& $chiamate 'Restart-Service').Count -eq 0) '   nessun Restart-Service (non aspetta le porte ne'' chiude i node rimasti)'
+
+# 9. avvii automatici in sola lettura
+$scrive = @('Remove-Item', 'Remove-ItemProperty', 'Set-ItemProperty', 'New-ItemProperty', 'Unregister-ScheduledTask', 'Disable-ScheduledTask', 'Stop-ScheduledTask', 'Set-ScheduledTask')
+$scritture = @($comandi | Where-Object { $scrive -contains (& $nome $_) })
+Check ($scritture.Count -eq 0) ('9. nessuna scrittura su registro, Esecuzione automatica o operazioni pianificate (' + (($scritture | ForEach-Object { & $nome $_ }) -join ', ') + ')')
+$avvii = $funzioni['AvviiAutomatici']
+Check ($null -ne $avvii -and $avvii.Body.Extent.Text -match 'Start Menu\\Programs\\StartUp' -and $avvii.Body.Extent.Text -match 'CurrentVersion\\Run' -and $avvii.Body.Extent.Text -match 'Get-ScheduledTask') '   AvviiAutomatici guarda Esecuzione automatica, chiavi Run e operazioni pianificate'
+$mostraAvvii = @(& $chiamate 'MostraAvvii')
+Check (@($mostraAvvii | Where-Object { & $dentro $_ $ifStato }).Count -eq 1 -and @($mostraAvvii | Where-Object { $_.Extent.StartOffset -gt $oltreAdmin -and $_.Extent.StartOffset -lt $ifProva.Extent.StartOffset -and -not (& $dentro $_ $ifRiavvia) -and -not (& $dentro $_ $ifRimuovi) }).Count -eq 1) '   segnalati da "stato" e, prima del ramo "prova", da prova e installa'
+
+# 10. stato
+Check (@(& $chiamate 'MostraProprietari' | Where-Object { & $dentro $_ $ifStato }).Count -eq 1 -and @(& $chiamate 'MostraEventi' | Where-Object { & $dentro $_ $ifStato }).Count -eq 1 -and $ifStato.Clauses[0].Item2.Extent.Text -match "'Pause'") '10. stato: proprietari delle porte e, per un servizio non Running (Paused), gli eventi nssm'
+Check ($funzioni['MostraEventi'].Body.Extent.Text -match "ProviderName = 'nssm'" -and $funzioni['ServizioDelProcesso'].Body.Extent.Text -match 'Win32_Service' -and $funzioni['ServizioDelProcesso'].Body.Extent.Text -match 'ParentProcessId') '    eventi dal provider nssm; il servizio di un processo si trova risalendo i padri fino al processo del servizio'
+Check (@($stopProcess + @(& $chiamate 'Stop-Service') + @(& $chiamate 'Start-Service') | Where-Object { & $dentro $_ $ifStato }).Count -eq 0) '    stato non avvia, non ferma e non chiude niente'
 
 Write-Host ''
 Write-Host $(if ($script:falliti) { "$($script:falliti) CHECK FALLITI" } else { 'TUTTI I CHECK PASSATI' })
