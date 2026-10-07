@@ -48,11 +48,27 @@ Instradati per sezione dal codice, perche' i canali `ALARM/MC1`, `ALARM/BOX` e
 | 947, 948 | `ALARM/MC1` | macchina (36/37) |
 | 99, 996, 997, 999 | `ALARM/BOX` | cassetto (38) |
 | 944, 945, 946 | `ALARM/ROBOT` (dal PLC 33; prima solo in `Error`) | robot (35) |
-| 20001, 20002, 20005, 20006 | `ALARM/ROBOT` | tasche (39) |
+| 20001, 20002, 20005 | solo `Error`: **non arrivano su `ALARM/ROBOT`** | tasche (39) |
+
+**20001, 20002 e 20005 restano in `Error`** (verificato il 7/10 sera su
+FB_Robot.scl, righe 267-281 e 448-468, e 4355 per il 20001 del rilascio):
+il PLC non li pubblica su `ALARM/ROBOT`, quindi il dialog delle tasche non li
+riceve e l'attesa dell'eco del 39 finisce per timeout («Nessuna conferma dal
+PLC»); il motivo si legge solo come errore del robot. **Il 20006 nel PLC non
+esiste**: il pannello lo aspetta ancora fra i rifiuti del 39, senza effetto.
 
 Il PLC pubblica l'allarme quando rifiuta, ma **non pubblica niente per dire
 "ora e' a posto"**: manda solo l'eco del comando riuscito. Per questo nel
 dialog l'eco vale anche come cancellazione dell'errore di quella sezione.
+
+**Il riquadro globale tace se il dialog mostra il codice** (7/10 sera,
+simulazione bis B61). Con la Reimposta stato cella aperta, e mentre un
+dialog aspetta un eco (`palletMachine.aspettaEco`: anche i pallet in
+macchina e a bordo), i codici che il dialog mostra non aprono anche il
+riquadro degli allarmi (`util/robotAlarm.js`, `codiciInDialog`). Il 99 su
+`ALARM/BOX` ha un testo suo, `robot.alarmBox_99` («numero di cassetto fuori
+intervallo»): `robot.alarm_99` resta «ALLARME GENERICO» del robot. 948, 951,
+996, 997 e 999 hanno un testo anche nel riquadro (`robot.alarm_<codice>`).
 
 **944, 945, 946 prima del PLC 33.** Il rifiuto del 35 (REGION Declare_State
 di FB_Robot) li scriveva solo in `Error`, senza pubblicarli su `ALARM/ROBOT`:
@@ -92,7 +108,7 @@ PLC: file `34_FB7_uncino_e_cassetto_fuori.scl`; il come sta in APPUNTI-CELLA.md,
 | codice | dove | quando | cosa fare |
 |---|---|---|---|
 | 1419 | Gripper_TRAY_to_Robot, stato 10; dal PLC 35 anche master 0, 1010, 1310 | carico pinza rifiutato: c'e' un cassetto fuori (registro `ExtractedTray`, sensori `I_OUT_TRAY1..12`, estrazione o rilascio in corso) | premere RESET, rientrare il cassetto (Gestione cassetto), ripetere il comando |
-| 1519 | Gripper_Robot_to_TRAY, stato 10; dal PLC 35 anche master 0, 1010, 1100, 1200, 1310 | deposito pinza rifiutato: c'e' un cassetto fuori. **Il cambio pinza (swap, master 970) lo copre la consegna 35, non la 34**: lo swap non passa dalle catene pinza, e col PLC 34 andava allo scaffale lo stesso | premere RESET, rientrare il cassetto (Gestione cassetto), ripetere il comando |
+| 1519 | Gripper_Robot_to_TRAY, stato 10; dal PLC 35 anche master 0, 1010, 1100, 1200, 1310 | deposito pinza rifiutato: c'e' un cassetto fuori. **Il 1519 della 34 non copre lo swap 970** (il cambio pinza 27 non passa dalle catene pinza, e col PLC 34 andava allo scaffale lo stesso): lo copre la consegna 35. Fino al suo download vale la regola provvisoria di APPUNTI-CELLA («Consegna 34») | premere RESET, rientrare il cassetto (Gestione cassetto), ripetere il comando |
 | 19005 | TRAY_extact, stato 30; master 700 | estrazione rifiutata: la pinza a bordo non ha l'uncino (`GRIPPER.HAS_HOOK = 0`). In automatico la pinza dell'ordine non si cambia | dare l'uncino in anagrafica solo se la pinza lo ha davvero |
 | 19006 | Gripper_Hook_Search | nessuna pinza con l'uncino, ne' a bordo ne' a scaffale | controllare `HAS_HOOK` in anagrafica |
 | 19007 | master 700 | per prendere la pinza con l'uncino quella a bordo deve essere vuota | scaricare prima il contenuto della pinza |
