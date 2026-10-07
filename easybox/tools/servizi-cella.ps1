@@ -8,6 +8,9 @@
 #
 #   EasyBoxBackend   node --max-old-space-size=1024 server.js   in easybox\serverDati
 #   EasyBoxPannello  node node_modules\vite\bin\vite.js         in easybox\HMI
+#                    (server di sviluppo), oppure dal 7/10
+#                    node node_modules\vite\bin\vite.js preview --port 5173 --strictPort
+#                    (pannello COMPILATO in easybox\HMI\dist: -Azione preview)
 #
 # Uso, da PowerShell COME AMMINISTRATORE:
 #   powershell -ExecutionPolicy Bypass -File D:\Prog\easybox\tools\servizi-cella.ps1 -Azione stato
@@ -15,6 +18,10 @@
 #   powershell -ExecutionPolicy Bypass -File D:\Prog\easybox\tools\servizi-cella.ps1 -Azione installa
 #   powershell -ExecutionPolicy Bypass -File D:\Prog\easybox\tools\servizi-cella.ps1 -Azione riavvia
 #   powershell -ExecutionPolicy Bypass -File D:\Prog\easybox\tools\servizi-cella.ps1 -Azione rimuovi
+#   powershell -ExecutionPolicy Bypass -File D:\Prog\easybox\tools\servizi-cella.ps1 -Azione preview
+#   powershell -ExecutionPolicy Bypass -File D:\Prog\easybox\tools\servizi-cella.ps1 -Azione aggiorna
+#   powershell -ExecutionPolicy Bypass -File D:\Prog\easybox\tools\servizi-cella.ps1 -Azione ripristina
+#   powershell -ExecutionPolicy Bypass -File D:\Prog\easybox\tools\servizi-cella.ps1 -Azione dev
 #
 #   stato     servizi (se uno e' in Paused, il motivo dagli ultimi eventi
 #             nssm), chi tiene le porte 8080/3000/5173 e se e' il processo del
@@ -36,6 +43,27 @@
 #             rilegge i file da solo.
 #   rimuovi   ferma e toglie SOLO EasyBoxBackend e EasyBoxPannello. Dopo si
 #             torna alle finestre lanciando a mano start_server.bat e start_hmi.bat.
+#
+# (7/10, decisione di Dario) PANNELLO COMPILATO. Il server di sviluppo compila
+# i moduli alla prima richiesta e il primo caricamento dopo un avvio e' lento;
+# il pacchetto compilato (vite build -> HMI\dist) lo serve vite preview, con lo
+# stesso proxy e lo stesso HTTPS (vite.config.js), sulla stessa porta 5173.
+#   preview   passaggio dal server di sviluppo al compilato, una volta: build
+#             in dist_build, che diventa dist (la dist di prima, se c'e', va
+#             in dist_prev), AppParameters del pannello a "preview", riavvio
+#             del solo pannello e verifica. Se la build fallisce non cambia
+#             niente.
+#   aggiorna  dopo ogni git pull, col pannello compilato: build in
+#             dist_build; se fallisce si ferma e dist e servizio restano come
+#             sono; se riesce dist -> dist_prev, dist_build -> dist, riavvio
+#             del solo pannello, attesa della porta, stato.
+#   ripristina scambia dist e dist_prev (torna alla build di prima; lanciato
+#             di nuovo, torna a quella nuova) e riavvia il pannello.
+#   dev       ritorno al server di sviluppo: AppParameters di nuovo vite.js,
+#             riavvio del pannello. dist resta su disco, non si usa.
+# Le quattro azioni riavviano il pannello con le cautele di riavvia (porta
+# tenuta da un altro processo, servizio in Paused) e segnalano le operazioni
+# pianificate attive. Il backend non lo toccano.
 #
 # (7/10) PERCHE' STATO E RIAVVIA GUARDANO I PROPRIETARI DELLE PORTE. In cella i
 # due servizi uscivano con codice 1 (EADDRINUSE) almeno dalle 13:02: le porte
@@ -70,7 +98,7 @@
 # ============================================================================
 param(
 	[Parameter(Mandatory = $true)]
-	[ValidateSet('stato', 'prova', 'installa', 'riavvia', 'rimuovi')]
+	[ValidateSet('stato', 'prova', 'installa', 'riavvia', 'rimuovi', 'preview', 'aggiorna', 'ripristina', 'dev')]
 	[string]$Azione
 )
 
@@ -86,6 +114,14 @@ $LogB      = Join-Path $Backend 'log\servizio_backend.log'
 $LogP      = Join-Path $Pannello 'log\servizio_pannello.log'
 $AccessLog = Join-Path $Backend 'log\access.log'
 $ViteJs    = Join-Path $Pannello 'node_modules\vite\bin\vite.js'
+# (7/10) pannello compilato: la dist servita, quella di prima, la build nuova
+$Dist      = Join-Path $Pannello 'dist'
+$DistPrev  = Join-Path $Pannello 'dist_prev'
+$DistBuild = Join-Path $Pannello 'dist_build'
+$LogBuild  = Join-Path $Pannello 'log\build_pannello.log'
+$ChiavePannello = 'HKLM:\SYSTEM\CurrentControlSet\Services\EasyBoxPannello\Parameters'
+$PAR_DEV     = 'node_modules\vite\bin\vite.js'
+$PAR_PREVIEW = 'node_modules\vite\bin\vite.js preview --port 5173 --strictPort'
 $ServerJs  = Join-Path $Backend 'server.js'
 $S_B = 'EasyBoxBackend'
 $S_P = 'EasyBoxPannello'
@@ -127,23 +163,42 @@ function Coda([string]$file, [int]$righe = 8) {
 		Get-Content -LiteralPath $file -Tail $righe | ForEach-Object { Scrivi ('  ' + $_) }
 	} else { Scrivi ('--- ' + $file + ': non ancora creato') 'Cyan' }
 }
-function AspettaPorte([int]$secondi = 90) {
+# $quali: le porte da aspettare (di default tutte e tre; il solo pannello: 5173)
+function AspettaPorte([int]$secondi = 90, [int[]]$quali = $PORTE) {
 	$fine = (Get-Date).AddSeconds($secondi)
 	do {
 		$su = @(PorteInAscolto | ForEach-Object { $_.Porta })
-		if (($PORTE | Where-Object { $su -notcontains $_ }).Count -eq 0) { return $true }
+		if (@($quali | Where-Object { $su -notcontains $_ }).Count -eq 0) { return $true }
 		Start-Sleep -Seconds 3
 	} while ((Get-Date) -lt $fine)
 	return $false
 }
-# (7/10) il contrario: nessuna delle tre porte in ascolto
-function AspettaPorteLibere([int]$secondi = 20) {
+# (7/10) il contrario: nessuna di quelle porte in ascolto
+function AspettaPorteLibere([int]$secondi = 20, [int[]]$quali = $PORTE) {
 	$fine = (Get-Date).AddSeconds($secondi)
 	do {
-		if ((PorteInAscolto).Count -eq 0) { return $true }
+		if (@(PorteInAscolto | Where-Object { $quali -contains $_.Porta }).Count -eq 0) { return $true }
 		Start-Sleep -Seconds 2
 	} while ((Get-Date) -lt $fine)
 	return $false
+}
+# (7/10) come gira il pannello: 'preview' (compilato), 'dev' (server di
+# sviluppo), 'altro' (parametri diversi) o '' (non installato). Si legge dal
+# registro, dove nssm tiene AppParameters.
+function ModoPannello {
+	$v = Get-ItemProperty -Path $ChiavePannello -ErrorAction SilentlyContinue
+	if (-not $v) { return '' }
+	$p = [string]$v.AppParameters
+	if ($p -eq $PAR_PREVIEW) { return 'preview' }
+	if ($p -eq $PAR_DEV) { return 'dev' }
+	return 'altro'
+}
+# (7/10) una dist e' servibile se ha index.html; si scrive anche quando e'
+# stata compilata (data di index.html)
+function DescriviDist([string]$cartella) {
+	$idx = Join-Path $cartella 'index.html'
+	if (-not (Test-Path -LiteralPath $idx)) { return $(if (Test-Path -LiteralPath $cartella) { 'presente ma SENZA index.html' } else { 'assente' }) }
+	return ('compilata il ' + (Get-Item -LiteralPath $idx).LastWriteTime.ToString('dd/MM HH:mm'))
 }
 
 # (7/10) di quale dei due servizi e' un processo: si risale dai padri fino al
@@ -340,7 +395,7 @@ function ComandiNssm([string]$node) {
 	foreach ($s in @(
 		@{ Nome = $S_B; Par = '--max-old-space-size=1024 server.js'; Dir = $Backend; Log = $LogB;
 		   Vis = 'EasyBox backend (serverDati)'; Desc = 'Backend della cella EasyBox (node server.js). Installato da easybox\tools\servizi-cella.ps1.' },
-		@{ Nome = $S_P; Par = 'node_modules\vite\bin\vite.js'; Dir = $Pannello; Log = $LogP;
+		@{ Nome = $S_P; Par = $PAR_DEV; Dir = $Pannello; Log = $LogP;
 		   Vis = 'EasyBox pannello (Vite)'; Desc = 'Pannello della cella EasyBox (Vite, porta 5173). Installato da easybox\tools\servizi-cella.ps1.' })) {
 		$c += ,@('install', $s.Nome, $node)
 		$c += ,@('set', $s.Nome, 'AppParameters', $s.Par)
@@ -379,6 +434,13 @@ if ($Azione -eq 'stato') {
 			}
 		} else { Scrivi ($n + ': non installato') 'Yellow' }
 	}
+	# (7/10) pannello compilato o server di sviluppo, e le due dist
+	$modo = ModoPannello
+	if ($modo) {
+		$testoModo = $(if ($modo -eq 'preview') { 'COMPILATO (vite preview, cartella dist)' } elseif ($modo -eq 'dev') { 'server di sviluppo (vite)' } else { 'parametri non riconosciuti: ' + (Get-ItemProperty -Path $ChiavePannello).AppParameters })
+		Scrivi ('Pannello: ' + $testoModo + '. dist: ' + (DescriviDist $Dist) + '; dist_prev: ' + (DescriviDist $DistPrev)) 'Cyan'
+		if ($modo -eq 'preview' -and -not (Test-Path -LiteralPath (Join-Path $Dist 'index.html'))) { Scrivi '  ATTENZIONE: compilato ma senza dist\index.html, il pannello non parte (nel log: The directory "dist" does not exist). Rimedio: -Azione aggiorna, oppure -Azione dev.' 'Red' }
+	}
 	# (7/10) chi tiene le porte, e se e' il processo del servizio
 	if (-not (MostraProprietari)) {
 		Scrivi 'Se una porta e'' tenuta da un processo che non e'' del servizio, e'' un node avviato fuori dai servizi (le vecchie finestre dei .bat?): il servizio non riesce a prenderla. Con la cella in HOLD: -Azione riavvia (chiude solo i node rimasti sulle porte).' 'Yellow'
@@ -391,6 +453,104 @@ if ($Azione -eq 'stato') {
 
 # ---------------------------------------------------------------- controlli comuni
 if (-not (Amministratore)) { Fermati 'serve PowerShell come amministratore.' 'chiudere questa finestra, aprire PowerShell con "Esegui come amministratore" e rilanciare.' }
+
+# ---------------------------------------------------------------- pannello compilato: funzioni (7/10)
+# Qui, dopo il controllo da amministratore, perche' fermano e avviano il servizio.
+
+# Build del pannello in dist_build: la dist servita non si tocca. E' la build
+# di "npm run build" (vite build), lanciata con node e vite.js come il
+# servizio. L'uscita completa va in log\build_pannello.log. Legge il .env
+# della cella: VITE_DARK_MODE finisce nel pacchetto. Ritorna $true se in
+# dist_build c'e' index.html.
+function CompilaPannello {
+	$node = (Get-Command node.exe -ErrorAction SilentlyContinue | Select-Object -First 1).Source
+	if (-not $node) { Scrivi 'node.exe non trovato.' 'Red'; return $false }
+	if (-not (Test-Path -LiteralPath $ViteJs)) { Scrivi ('manca ' + $ViteJs + ': dipendenze del pannello non installate (pannello.ps1, o npm install in easybox\HMI).') 'Red'; return $false }
+	New-Item -ItemType Directory -Path (Split-Path $LogBuild) -Force | Out-Null
+	Scrivi ('Build del pannello in ' + $DistBuild + ' (la dist servita adesso non si tocca)...') 'Cyan'
+	$inizio = Get-Date
+	Push-Location -LiteralPath $Pannello
+	try { & $node $ViteJs build --outDir dist_build --emptyOutDir *> $LogBuild; $codice = $LASTEXITCODE }
+	finally { Pop-Location }
+	$secondi = [int]((Get-Date) - $inizio).TotalSeconds
+	if ($codice -ne 0 -or -not (Test-Path -LiteralPath (Join-Path $DistBuild 'index.html'))) {
+		Scrivi ('BUILD NON RIUSCITA (codice ' + $codice + ', ' + $secondi + ' s). Ultime righe di ' + $LogBuild + ':') 'Red'
+		Get-Content -LiteralPath $LogBuild -Tail 30 -ErrorAction SilentlyContinue | ForEach-Object { Scrivi ('  ' + $_) 'Red' }
+		return $false
+	}
+	Scrivi ('Build riuscita in ' + $secondi + ' s.') 'Green'
+	return $true
+}
+
+# Riavvia SOLO EasyBoxPannello con le cautele di riavvia: fermo, porta 5173
+# libera (chiude solo un node rimasto che non e' di un servizio), poi
+# $daFermo se c'e' (lo scambio delle dist, a pannello fermo), avvio e
+# verifica: Running e porta 5173 del servizio; se no, eventi nssm e log.
+# Ritorna $true se tutto e' a posto. Se $daFermo fallisce il pannello si
+# riavvia lo stesso (sulla dist che c'e'), e il risultato e' $false.
+function RiavviaPannello([scriptblock]$daFermo = $null) {
+	$esito = $true
+	Stop-Service -Name $S_P -Force -ErrorAction SilentlyContinue
+	try { (Servizio $S_P).WaitForStatus('Stopped', [TimeSpan]::FromSeconds(30)) }
+	catch { Scrivi ($S_P + ' non si ferma (stato ' + (Servizio $S_P).Status + ').') 'Red'; return $false }
+	if (-not (AspettaPorteLibere 20 @(5173))) {
+		$rimasti = @(ProcessiSullePorte | Where-Object { $_.Porta -eq 5173 })
+		if (@($rimasti | Where-Object { $_.Nome -ne 'node' -or $_.Servizio }).Count -gt 0) {
+			$null = MostraProprietari
+			Scrivi 'Sulla 5173 c''e'' un processo che non e'' un node delle vecchie finestre: non lo chiudo, e il pannello resta FERMO.' 'Red'
+			return $false
+		}
+		Scrivi 'Pannello fermo, ma la 5173 e'' ancora tenuta da un node avviato fuori dai servizi:' 'Yellow'
+		ChiudiNodeSullePorte $rimasti
+		if (-not (AspettaPorteLibere 20 @(5173))) { $null = MostraProprietari; Scrivi 'La 5173 e'' ancora occupata: il pannello resta FERMO.' 'Red'; return $false }
+	}
+	if ($daFermo -and -not (& $daFermo)) { $esito = $false }
+	Start-Service -Name $S_P
+	$su = AspettaPorte 90 @(5173)
+	$s = Servizio $S_P
+	$suo = @(ProcessiSullePorte | Where-Object { $_.Porta -eq 5173 -and $_.Servizio -eq $S_P }).Count -gt 0
+	if ($su -and $s.Status -eq 'Running' -and $suo) { Scrivi ($S_P + ': Running, porta 5173 del servizio.') 'Green' }
+	else {
+		$esito = $false
+		Scrivi ($S_P + ': ' + $s.Status + ', porta 5173 ' + $(if ($suo) { 'del servizio' } elseif ($su) { 'di un ALTRO processo' } else { 'non in ascolto' }) + '. Ultimi eventi nssm:') 'Red'
+		MostraEventi $S_P
+		Coda $LogP
+	}
+	return $esito
+}
+
+# Scambi delle dist, da fare a pannello fermo (dentro RiavviaPannello).
+# $ruota: la build nuova va in servizio. dist -> dist_prev (la dist_prev di
+# prima si butta), dist_build -> dist.
+$ruota = {
+	try {
+		if (Test-Path -LiteralPath $DistPrev) { Remove-Item -LiteralPath $DistPrev -Recurse -Force -ErrorAction Stop }
+		if (Test-Path -LiteralPath $Dist) { Rename-Item -LiteralPath $Dist -NewName 'dist_prev' -ErrorAction Stop }
+		Rename-Item -LiteralPath $DistBuild -NewName 'dist' -ErrorAction Stop
+		Scrivi ('dist nuova in servizio; quella di prima in ' + $DistPrev) 'Green'
+		return $true
+	} catch {
+		Scrivi ('Scambio delle cartelle non riuscito: ' + $_.Exception.Message) 'Red'
+		if (-not (Test-Path -LiteralPath $Dist) -and (Test-Path -LiteralPath $DistPrev)) { Rename-Item -LiteralPath $DistPrev -NewName 'dist' -ErrorAction SilentlyContinue }
+		return $false
+	}
+}
+# $scambia: dist e dist_prev si scambiano (ripristina; lanciato di nuovo torna
+# indietro). Passa per dist_build, che e' solo una build lasciata li'.
+$scambia = {
+	try {
+		if (Test-Path -LiteralPath $DistBuild) { Remove-Item -LiteralPath $DistBuild -Recurse -Force -ErrorAction Stop }
+		Rename-Item -LiteralPath $Dist -NewName 'dist_build' -ErrorAction Stop
+		Rename-Item -LiteralPath $DistPrev -NewName 'dist' -ErrorAction Stop
+		Rename-Item -LiteralPath $DistBuild -NewName 'dist_prev' -ErrorAction Stop
+		Scrivi ('dist e dist_prev scambiate: in servizio la build di prima.') 'Green'
+		return $true
+	} catch {
+		Scrivi ('Scambio delle cartelle non riuscito: ' + $_.Exception.Message) 'Red'
+		if (-not (Test-Path -LiteralPath $Dist) -and (Test-Path -LiteralPath $DistBuild)) { Rename-Item -LiteralPath $DistBuild -NewName 'dist' -ErrorAction SilentlyContinue }
+		return $false
+	}
+}
 
 # ---------------------------------------------------------------- riavvia
 if ($Azione -eq 'riavvia') {
@@ -454,6 +614,66 @@ if ($Azione -eq 'rimuovi') {
 	Scrivi 'Fatto. Per rimettere su la cella con le finestre: doppio clic su' 'Green'
 	Scrivi ('  ' + (Join-Path $Backend 'start_server.bat')) 'Green'
 	Scrivi ('  ' + (Join-Path $Pannello 'start_hmi.bat')) 'Green'
+	exit 0
+}
+
+# ---------------------------------------------------------------- pannello compilato: azioni (7/10)
+if (@('preview', 'aggiorna', 'ripristina', 'dev') -contains $Azione) {
+	if (-not (Servizio $S_P)) { Fermati ($S_P + ' non installato.') 'installarlo con -Azione installa.' }
+	if (-not (Test-Path -LiteralPath $Nssm)) { Fermati ('nssm non trovato in ' + $Nssm) 'chiamare Dario.' }
+	Scrivi ('Pannello adesso: ' + (ModoPannello) + '. dist: ' + (DescriviDist $Dist) + '; dist_prev: ' + (DescriviDist $DistPrev)) 'Cyan'
+	$null = MostraAvvii $true
+}
+
+# preview: dal server di sviluppo al compilato, una volta
+if ($Azione -eq 'preview') {
+	if ((ModoPannello) -eq 'preview') { Scrivi 'Il pannello gira gia'' compilato: per una build nuova -Azione aggiorna.' 'Green'; exit 0 }
+	Scrivi 'Passaggio al pannello COMPILATO (la cella deve essere in HOLD)...' 'Cyan'
+	if (-not (CompilaPannello)) { Fermati 'build non riuscita: il pannello resta col server di sviluppo, niente e'' cambiato.' 'leggere l''errore qui sopra (log completo in log\build_pannello.log) e mandarlo a Dario.' }
+	& $Nssm set $S_P AppParameters $PAR_PREVIEW
+	if ($LASTEXITCODE -ne 0 -or (ModoPannello) -ne 'preview') { Fermati 'nssm set AppParameters non riuscito: il pannello resta col server di sviluppo.' 'chiamare Dario con questa finestra.' }
+	if (-not (RiavviaPannello $ruota)) { Fermati 'il pannello compilato non e'' ripartito come atteso.' 'per tornare al server di sviluppo: -Azione dev. Mandare a Dario questa finestra.' }
+	Scrivi 'Pannello COMPILATO in servizio. Sui client: Ctrl+F5. Dopo ogni git pull: -Azione aggiorna. Per tornare indietro: -Azione dev.' 'Green'
+	exit 0
+}
+
+# aggiorna: dopo ogni git pull, col pannello compilato
+if ($Azione -eq 'aggiorna') {
+	$modo = ModoPannello
+	if ($modo -ne 'preview') { Fermati ('il pannello non gira compilato (' + $modo + '): aggiorna serve solo al pannello compilato.') 'col server di sviluppo, dopo un git pull basta -Azione riavvia; per passare al compilato, -Azione preview.' }
+	Scrivi 'Aggiornamento del pannello compilato (la cella deve essere in HOLD)...' 'Cyan'
+	if (-not (CompilaPannello)) { Fermati 'build non riuscita: dist e servizio restano come sono, il pannello servito e'' quello di prima.' 'leggere l''errore qui sopra (log completo in log\build_pannello.log); se mancano dipendenze, pannello.ps1. Poi mandarlo a Dario.' }
+	$ok = RiavviaPannello $ruota
+	Scrivi ('dist: ' + (DescriviDist $Dist) + '; dist_prev: ' + (DescriviDist $DistPrev)) 'Cyan'
+	$null = MostraProprietari
+	if (-not $ok) { Fermati 'il pannello non e'' ripartito come atteso.' 'per tornare alla build di prima: -Azione ripristina. Mandare a Dario questa finestra.' }
+	Scrivi 'Pannello aggiornato. Sui client: Ctrl+F5.' 'Green'
+	Scrivi 'Se il git pull ha cambiato anche serverDati: -Azione riavvia (riavvia anche il backend).' 'Yellow'
+	exit 0
+}
+
+# ripristina: torna alla build di prima (scambia dist e dist_prev)
+if ($Azione -eq 'ripristina') {
+	if (-not (Test-Path -LiteralPath (Join-Path $DistPrev 'index.html'))) { Fermati 'non c''e'' una dist_prev con index.html: niente da ripristinare.' 'chiamare Dario.' }
+	if (-not (Test-Path -LiteralPath (Join-Path $Dist 'index.html'))) { Fermati 'la dist in servizio non ha index.html: lo scambio non e'' sicuro.' 'chiamare Dario.' }
+	if ((ModoPannello) -ne 'preview') { Scrivi 'ATTENZIONE: il pannello non gira compilato, lo scambio delle dist non cambia quello che si vede.' 'Yellow' }
+	Scrivi 'Ripristino della build di prima (la cella deve essere in HOLD)...' 'Cyan'
+	$ok = RiavviaPannello $scambia
+	Scrivi ('dist: ' + (DescriviDist $Dist) + '; dist_prev: ' + (DescriviDist $DistPrev)) 'Cyan'
+	if (-not $ok) { Fermati 'ripristino non riuscito come atteso.' 'mandare a Dario questa finestra.' }
+	Scrivi 'Build di prima in servizio. Sui client: Ctrl+F5. Per tornare a quella nuova: di nuovo -Azione ripristina.' 'Green'
+	exit 0
+}
+
+# dev: ritorno al server di sviluppo
+if ($Azione -eq 'dev') {
+	if ((ModoPannello) -eq 'dev') { Scrivi 'Il pannello gira gia'' col server di sviluppo.' 'Green'; exit 0 }
+	if (-not (Test-Path -LiteralPath $ViteJs)) { Fermati ('manca ' + $ViteJs) 'le dipendenze del pannello non sono installate: pannello.ps1.' }
+	Scrivi 'Ritorno al server di sviluppo (la cella deve essere in HOLD)...' 'Cyan'
+	& $Nssm set $S_P AppParameters $PAR_DEV
+	if ($LASTEXITCODE -ne 0 -or (ModoPannello) -ne 'dev') { Fermati 'nssm set AppParameters non riuscito.' 'chiamare Dario con questa finestra.' }
+	if (-not (RiavviaPannello)) { Fermati 'il pannello non e'' ripartito come atteso.' 'mandare a Dario questa finestra.' }
+	Scrivi 'Pannello col server di sviluppo. La dist resta su disco e non si usa; il primo caricamento sui client e'' di nuovo lento.' 'Green'
 	exit 0
 }
 
@@ -545,4 +765,5 @@ Coda $AccessLog 5
 Scrivi ''
 Scrivi 'Controlli: Ctrl+F5 sul touch e sul tablet, stato del robot che si aggiorna, DB_executeQuery.readyForNextQuery TRUE.' 'Green'
 Scrivi 'D''ora in poi: niente finestre dei .bat. Dopo un git pull si usa -Azione riavvia.' 'Green'
+Scrivi 'Il pannello e'' installato col server di sviluppo. Per il pannello compilato (decisione del 7/10): -Azione preview.' 'Green'
 exit 0

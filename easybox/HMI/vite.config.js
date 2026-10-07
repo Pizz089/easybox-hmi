@@ -100,6 +100,12 @@ export default defineConfig(({ mode }) => {
     // compilato si comporta come il pannello vero. NB: servire dist/ con un
     // server statico qualunque NON avrebbe il proxy, e le chiamate dati
     // finirebbero a vuoto: il pannello va servito da Vite, come oggi.
+    // (7/10, decisione di Dario) in cella il servizio EasyBoxPannello serve
+    // cosi' il pannello compilato: `vite.js preview --port 5173 --strictPort`
+    // (tools/servizi-cella.ps1 -Azione preview / aggiorna). La porta della
+    // cella la da' la riga di comando; il 4173 qui resta per le prove sul
+    // portatile. Senza dist/ vite preview esce con "The directory "dist" does
+    // not exist", e l'errore resta nel log del servizio.
     preview: {
       host: true,
       port: 4173,

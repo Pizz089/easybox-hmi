@@ -26,7 +26,13 @@
 #      installa (non da prova ne' da stato), dopo una "s" esplicita e dopo
 #      averne salvato la definizione; stato elenca solo le attive; installa
 #      le controlla prima di fermarsi per servizi gia' installati;
-#  10. "stato": proprietari delle porte e motivo di un Paused dagli eventi nssm.
+#  10. "stato": proprietari delle porte e motivo di un Paused dagli eventi nssm;
+#   (7/10, pannello compilato)
+#  11. preview / aggiorna / ripristina / dev: parametri del servizio
+#      ("vite.js preview --port 5173 --strictPort" e "vite.js"); la build va
+#      in dist_build e se fallisce ci si ferma prima di toccare dist e
+#      servizio; lo scambio delle dist a pannello fermo; solo il pannello si
+#      ferma e riparte, il backend no; dist_build e dist_prev ignorate da git.
 # Uso: powershell -ExecutionPolicy Bypass -File easybox\tools\test_servizi_cella.ps1
 # Exit code = numero di controlli falliti.
 # ============================================================================
@@ -63,8 +69,13 @@ $ifRimuovi = & $ramo '$Azione -eq ''rimuovi'''
 Check ($null -ne $ifProva -and $ifProva.Clauses[0].Item2.Extent.Text -match '\bexit 0\b') '2. il ramo "prova" esiste e finisce con exit 0'
 Check ($null -ne $ifRimuovi -and $ifRimuovi.Clauses[0].Item2.Extent.Text -match '\bexit 0\b') '   il ramo "rimuovi" esiste e finisce con exit 0'
 $dentro = { param($n, $blocco) $n.Extent.StartOffset -ge $blocco.Extent.StartOffset -and $n.Extent.EndOffset -le $blocco.Extent.EndOffset }
-$primaDiProva = @($nssm | Where-Object { $_.Extent.StartOffset -lt $ifProva.Extent.EndOffset -and -not (& $dentro $_ $ifRimuovi) })
-Check ($primaDiProva.Count -eq 0) '2. "prova" esce prima di qualunque esecuzione di nssm (prima della sua uscita solo il ramo rimuovi, che esce a sua volta)'
+# (7/10) anche "preview" e "dev" eseguono nssm (set AppParameters) prima di
+# "prova": sono rami che escono, come "rimuovi"
+$ifPreview = & $ramo '$Azione -eq ''preview'''
+$ifDev = & $ramo '$Azione -eq ''dev'''
+$ramiEscono = @($ifRimuovi, $ifPreview, $ifDev) | Where-Object { $_ }
+$primaDiProva = @($nssm | Where-Object { $n0 = $_; $_.Extent.StartOffset -lt $ifProva.Extent.EndOffset -and -not @($ramiEscono | Where-Object { & $dentro $n0 $_ }).Count })
+Check ($primaDiProva.Count -eq 0 -and $ramiEscono.Count -eq 3 -and @($ramiEscono | Where-Object { $_.Clauses[0].Item2.Extent.Text -notmatch '\bexit 0\b' }).Count -eq 0) '2. "prova" esce prima di qualunque esecuzione di nssm (prima della sua uscita solo i rami rimuovi, preview e dev, che escono a loro volta)'
 Check (@($servizi | Where-Object { $_.Extent.StartOffset -gt $ifProva.Extent.StartOffset -and $_.Extent.EndOffset -lt $ifProva.Extent.EndOffset }).Count -eq 0) '   "prova" non avvia ne'' ferma servizi'
 
 # 3. rimuovi: il ciclo e' sui due nomi, e nssm remove usa la variabile del ciclo
@@ -146,8 +157,12 @@ $chiudi = $funzioni['ChiudiNodeSullePorte']
 Check ($null -ne $chiudi -and $stopProcess.Count -eq 1 -and (& $dentro $stopProcess[0] $chiudi)) ('7. Stop-Process una volta sola, dentro ChiudiNodeSullePorte (' + $stopProcess.Count + ')')
 Check ($null -ne $chiudi -and $chiudi.Body.Extent.Text -match "\`$_\.Nome -eq 'node' -and -not \`$_\.Servizio") '   solo sui processi node che non sono di un servizio'
 $usiChiudi = @(& $chiamate 'ChiudiNodeSullePorte')
-$stopInRiavvia = @(& $chiamate 'Stop-Service' | Where-Object { & $dentro $_ $ifRiavvia })
-Check ($usiChiudi.Count -eq 1 -and (& $dentro $usiChiudi[0] $ifRiavvia) -and $stopInRiavvia.Count -eq 1 -and $stopInRiavvia[0].Extent.StartOffset -lt $usiChiudi[0].Extent.StartOffset) '   chiamata solo da "riavvia", dopo lo Stop-Service dei due servizi'
+$riavviaPannello = $funzioni['RiavviaPannello']
+# (7/10) chiamata da "riavvia" e da RiavviaPannello (pannello compilato): in
+# tutti e due i posti dopo uno Stop-Service nello stesso blocco
+$dopoStop = { param($uso, $blocco) @(& $chiamate 'Stop-Service' | Where-Object { (& $dentro $_ $blocco) -and $_.Extent.StartOffset -lt $uso.Extent.StartOffset }).Count -ge 1 }
+$usiBuoni = @($usiChiudi | Where-Object { ((& $dentro $_ $ifRiavvia) -and (& $dopoStop $_ $ifRiavvia)) -or ($riavviaPannello -and (& $dentro $_ $riavviaPannello) -and (& $dopoStop $_ $riavviaPannello)) })
+Check ($usiChiudi.Count -eq 2 -and $usiBuoni.Count -eq 2) ('   chiamata solo da "riavvia" e da RiavviaPannello, dopo lo Stop-Service (' + $usiChiudi.Count + ' chiamate)')
 
 # 8. riavvia: l'ordine dei passi e l'uscita in errore
 $pos = { param($chi) $c = @(& $chiamate $chi | Where-Object { & $dentro $_ $ifRiavvia }); if ($c.Count) { $c[0].Extent.StartOffset } else { -1 } }
@@ -159,9 +174,12 @@ Check ($ultimoFermati.Count -ge 1 -and $ifRiavvia.Clauses[0].Item2.Extent.Text -
 Check ((& $chiamate 'Restart-Service').Count -eq 0) '   nessun Restart-Service (non aspetta le porte ne'' chiude i node rimasti)'
 
 # 9. avvii automatici
-$scrive = @('Remove-Item', 'Remove-ItemProperty', 'Set-ItemProperty', 'New-ItemProperty', 'Unregister-ScheduledTask', 'Stop-ScheduledTask', 'Set-ScheduledTask', 'Register-ScheduledTask')
+$scrive = @('Remove-ItemProperty', 'Set-ItemProperty', 'New-ItemProperty', 'Unregister-ScheduledTask', 'Stop-ScheduledTask', 'Set-ScheduledTask', 'Register-ScheduledTask')
 $scritture = @($comandi | Where-Object { $scrive -contains (& $nome $_) })
-Check ($scritture.Count -eq 0) ('9. nessuna scrittura su registro ed Esecuzione automatica, nessun Remove-Item, nessuna operazione pianificata cancellata o cambiata (' + (($scritture | ForEach-Object { & $nome $_ }) -join ', ') + ')')
+Check ($scritture.Count -eq 0) ('9. nessuna scrittura su registro ed Esecuzione automatica, nessuna operazione pianificata cancellata o cambiata (' + (($scritture | ForEach-Object { & $nome $_ }) -join ', ') + ')')
+# (7/10) Remove-Item solo su dist_prev e dist_build (pannello compilato)
+$rimozioni = @(& $chiamate 'Remove-Item')
+Check (@($rimozioni | Where-Object { $_.Extent.Text -notmatch '^Remove-Item -LiteralPath \$(DistPrev|DistBuild) -Recurse -Force -ErrorAction Stop$' }).Count -eq 0) ('   Remove-Item solo -LiteralPath $DistPrev / $DistBuild (' + $rimozioni.Count + ')')
 $avvii = $funzioni['AvviiAutomatici']; $sospette = $funzioni['OperazioniSospette']
 Check ($null -ne $avvii -and $avvii.Body.Extent.Text -match 'Start Menu\\Programs\\StartUp' -and $avvii.Body.Extent.Text -match 'CurrentVersion\\Run' -and $null -ne $sospette -and $sospette.Body.Extent.Text -match 'Get-ScheduledTask') '   Esecuzione automatica e chiavi Run in AvviiAutomatici, operazioni pianificate in OperazioniSospette'
 $pattern = (& $assegna '$AVVIO_SOSPETTO')[0].Right.Extent.Text
@@ -182,12 +200,42 @@ Check ($usiProponi.Count -eq 1 -and $ifProvaAvvii.Count -eq 1 -and (& $dentro $u
 $mostraAvvii = @(& $chiamate 'MostraAvvii')
 $gia = (& $assegna '$gia')[0]
 Check (@($mostraAvvii | Where-Object { (& $dentro $_ $ifStato) -and $_.Extent.Text -eq 'MostraAvvii $true' }).Count -eq 1) '   stato: MostraAvvii $true (le operazioni pianificate solo se attive)'
-Check (@($mostraAvvii | Where-Object { $_.Extent.StartOffset -gt $oltreAdmin -and $_.Extent.StartOffset -lt $gia.Extent.StartOffset -and -not (& $dentro $_ $ifRiavvia) -and -not (& $dentro $_ $ifRimuovi) }).Count -eq 1) '   prova e installa: prima del controllo "servizi gia'' installati" (in cella i servizi ci sono)'
+$attiveInstalla = @($ast.EndBlock.Statements | Where-Object { $_ -is [System.Management.Automation.Language.AssignmentStatementAst] -and $_.Extent.Text -eq '$attive = MostraAvvii' })
+Check ($attiveInstalla.Count -eq 1 -and $attiveInstalla[0].Extent.StartOffset -gt $oltreAdmin -and $attiveInstalla[0].Extent.StartOffset -lt $gia.Extent.StartOffset) '   prova e installa: prima del controllo "servizi gia'' installati" (in cella i servizi ci sono)'
 
 # 10. stato
 Check (@(& $chiamate 'MostraProprietari' | Where-Object { & $dentro $_ $ifStato }).Count -eq 1 -and @(& $chiamate 'MostraEventi' | Where-Object { & $dentro $_ $ifStato }).Count -eq 1 -and $ifStato.Clauses[0].Item2.Extent.Text -match "'Pause'") '10. stato: proprietari delle porte e, per un servizio non Running (Paused), gli eventi nssm'
 Check ($funzioni['MostraEventi'].Body.Extent.Text -match "ProviderName = 'nssm'" -and $funzioni['ServizioDelProcesso'].Body.Extent.Text -match 'Win32_Service' -and $funzioni['ServizioDelProcesso'].Body.Extent.Text -match 'ParentProcessId') '    eventi dal provider nssm; il servizio di un processo si trova risalendo i padri fino al processo del servizio'
 Check (@($stopProcess + @(& $chiamate 'Stop-Service') + @(& $chiamate 'Start-Service') | Where-Object { & $dentro $_ $ifStato }).Count -eq 0) '    stato non avvia, non ferma e non chiude niente'
+
+# 11. pannello compilato
+$ifAggiorna = & $ramo '$Azione -eq ''aggiorna'''
+$ifRipristina = & $ramo '$Azione -eq ''ripristina'''
+Check ($null -ne $ifPreview -and $null -ne $ifAggiorna -and $null -ne $ifRipristina -and $null -ne $ifDev -and $testo -match "ValidateSet\('stato', 'prova', 'installa', 'riavvia', 'rimuovi', 'preview', 'aggiorna', 'ripristina', 'dev'\)") '11. azioni preview, aggiorna, ripristina e dev'
+$parPreview = (& $assegna '$PAR_PREVIEW')[0]; $parDev = (& $assegna '$PAR_DEV')[0]
+Check ($parPreview.Right.Extent.Text -eq "'node_modules\vite\bin\vite.js preview --port 5173 --strictPort'" -and $parDev.Right.Extent.Text -eq "'node_modules\vite\bin\vite.js'") '    parametri: preview sulla 5173 con --strictPort (porta di oggi), dev come prima'
+Check ($funzioni['ComandiNssm'].Body.Extent.Text -match 'Nome = \$S_P; Par = \$PAR_DEV;') '    installa crea il pannello come prima, col server di sviluppo'
+$compila = $funzioni['CompilaPannello']
+Check ($null -ne $compila -and $compila.Body.Extent.Text -match '& \$node \$ViteJs build --outDir dist_build --emptyOutDir \*> \$LogBuild' -and $compila.Body.Extent.Text -notmatch '\$Dist\b' -and $compila.Body.Extent.Text -match "Join-Path \`$DistBuild 'index.html'") '    CompilaPannello: build in dist_build (log in build_pannello.log), non tocca dist, vuole index.html'
+# in aggiorna e preview: la build fallita ferma tutto PRIMA di nssm e del riavvio
+foreach ($coppia in @(@('aggiorna', $ifAggiorna), @('preview', $ifPreview))) {
+	$t = $coppia[1].Clauses[0].Item2.Extent.Text
+	$iBuild = $t.IndexOf('if (-not (CompilaPannello)) { Fermati'); $iNssm = $t.IndexOf('& $Nssm set'); $iRiavvio = $t.IndexOf('RiavviaPannello $ruota')
+	Check ($iBuild -ge 0 -and $iRiavvio -gt $iBuild -and ($iNssm -lt 0 -or ($iNssm -gt $iBuild -and $iNssm -lt $iRiavvio))) ('    ' + $coppia[0] + ': build fallita -> Fermati, prima di cambiare parametri e di riavviare; poi RiavviaPannello $ruota')
+}
+Check ($ifAggiorna.Clauses[0].Item2.Extent.Text -match "if \(\`$modo -ne 'preview'\) \{ Fermati") '    aggiorna solo col pannello compilato'
+Check ($ifPreview.Clauses[0].Item2.Extent.Text -match '& \$Nssm set \$S_P AppParameters \$PAR_PREVIEW' -and $ifDev.Clauses[0].Item2.Extent.Text -match '& \$Nssm set \$S_P AppParameters \$PAR_DEV' -and $ifDev.Clauses[0].Item2.Extent.Text -match 'RiavviaPannello\)') '    preview e dev: nssm set AppParameters del solo pannello, poi RiavviaPannello'
+Check ($ifRipristina.Clauses[0].Item2.Extent.Text -match 'RiavviaPannello \$scambia' -and $ifRipristina.Clauses[0].Item2.Extent.Text -match "Join-Path \`$DistPrev 'index.html'") '    ripristina: solo con una dist_prev con index.html, scambio a pannello fermo'
+$ruotaAst = (& $assegna '$ruota')[0]
+$tr = $ruotaAst.Right.Extent.Text
+Check ($tr.IndexOf('Remove-Item -LiteralPath $DistPrev') -ge 0 -and $tr.IndexOf('Remove-Item -LiteralPath $DistPrev') -lt $tr.IndexOf("Rename-Item -LiteralPath `$Dist -NewName 'dist_prev'") -and $tr.IndexOf("Rename-Item -LiteralPath `$Dist -NewName 'dist_prev'") -lt $tr.IndexOf("Rename-Item -LiteralPath `$DistBuild -NewName 'dist'")) '    $ruota: via la dist_prev vecchia, dist -> dist_prev, dist_build -> dist'
+$tRiavviaP = $riavviaPannello.Body.Extent.Text
+$iStopP = $tRiavviaP.IndexOf('Stop-Service -Name $S_P'); $iDaFermo = $tRiavviaP.IndexOf('& $daFermo'); $iStartP = $tRiavviaP.IndexOf('Start-Service -Name $S_P')
+Check ($iStopP -ge 0 -and $iStopP -lt $iDaFermo -and $iDaFermo -lt $iStartP -and $tRiavviaP -match 'AspettaPorte 90 @\(5173\)' -and $tRiavviaP -match '\$_\.Servizio -eq \$S_P') '    RiavviaPannello: fermo, scambio delle dist, avvio; poi porta 5173 del servizio'
+$nuovi = @($ifPreview, $ifAggiorna, $ifRipristina, $ifDev, $riavviaPannello, $compila)
+Check (@(@(& $chiamate 'Stop-Service') + @(& $chiamate 'Start-Service') | Where-Object { $n1 = $_; @($nuovi | Where-Object { & $dentro $n1 $_ }).Count -gt 0 -and $_.Extent.Text -notmatch '-Name \$S_P\b' }).Count -eq 0) '    le azioni nuove fermano e avviano solo il pannello, mai il backend'
+$gitignoreHmi = [IO.File]::ReadAllText((Join-Path (Split-Path $PSScriptRoot) 'HMI\.gitignore'))
+Check ($gitignoreHmi -match '(?m)^dist_build\s*$' -and $gitignoreHmi -match '(?m)^dist_prev\s*$' -and $gitignoreHmi -match '(?m)^dist\s*$') '    dist, dist_build e dist_prev ignorate da git (easybox\HMI\.gitignore)'
 
 Write-Host ''
 Write-Host $(if ($script:falliti) { "$($script:falliti) CHECK FALLITI" } else { 'TUTTI I CHECK PASSATI' })

@@ -37,8 +37,43 @@ powershell -ExecutionPolicy Bypass -File D:\Prog\easybox\tools\servizi-cella.ps1
 - `installa`: copia nssm, crea i due servizi, li avvia e aspetta le porte. Si ferma se non e' amministratore, se i servizi esistono gia', se c'e' un altro servizio nssm o se le porte sono occupate (prima: cella in HOLD, Ctrl+C nelle due finestre). Se un passo fallisce toglie quello che ha creato. Prima di ogni altro controllo (quindi anche coi servizi già installati) segnala gli avvii automatici delle vecchie finestre e, per le operazioni pianificate attive, propone di disabilitarle: lo fa solo con una «s», dopo averne salvato la definizione in `D:\EasyBox_backup\task_<data e ora>`. `prova` dice soltanto che lo proporrebbe.
 - `riavvia`: ferma i due servizi, aspetta che le porte si liberino, chiude **solo** i node rimasti sulle tre porte (ne scrive pid, ora di avvio e riga di comando), riavvia i servizi e controlla che siano Running e che le porte siano loro. Altrimenti esce in errore. Un processo sulle porte che non è node non lo chiude: si ferma, coi servizi fermi.
 - `rimuovi`: ferma e toglie **solo** `EasyBoxBackend` ed `EasyBoxPannello`.
+- (7/10, pannello compilato, voce qui sotto) `preview`: passaggio dal server di sviluppo al pannello compilato; `aggiorna`: ricompila il pannello dopo un git pull; `ripristina`: torna alla build di prima; `dev`: ritorno al server di sviluppo. Toccano solo il pannello, mai il backend.
 
-Dopo un pull i servizi si riavviano con `-Azione riavvia`, oppure li riavvia `pannello.ps1` (procedura qui sotto).
+Dopo un pull i servizi si riavviano con `-Azione riavvia`, oppure li riavvia `pannello.ps1` (procedura qui sotto). **Col pannello compilato serve in più `-Azione aggiorna`**: senza, il pannello resta quello compilato prima del pull.
+
+**Pannello compilato (decisione di Dario, 7/10).** Il servizio `EasyBoxPannello` serviva il pannello col server di sviluppo di Vite (`node node_modules\vite\bin\vite.js`), che compila i moduli alla prima richiesta: dopo un avvio il primo caricamento è lento. Ora il pannello si compila **in cella** (`vite build` → `easybox\HMI\dist`) e il servizio lo serve con `node node_modules\vite\bin\vite.js preview --port 5173 --strictPort`. Restano uguali la porta 5173, gli indirizzi, il certificato e il proxy (`/api/` alla 8080, `/socket.io/` alla 3000 con websocket): il blocco `preview` di `vite.config.js` ha lo stesso proxy e lo stesso HTTPS, e la porta 5173 la dà la riga di comando (il blocco resta su 4173 per le prove sul portatile). Il touch e il tablet non cambiano niente.
+- **Perché in cella e non sul portatile:** la build legge il `.env` di `easybox\HMI` e ci scrive dentro `VITE_DARK_MODE`, l'unica variabile `VITE_` che il pannello usa. Se si cambia il `.env` della cella, serve `-Azione aggiorna`. `dist`, `dist_build` e `dist_prev` sono ignorate da git e non vanno nel repo.
+- **Cache:** `vite preview` manda `index.html` e i file con `Cache-Control: no-cache` ed ETag. Il browser chiede ogni volta se sono cambiati: dopo un aggiornamento prende l'`index.html` nuovo, e i file nuovi hanno un altro hash nel nome. Nessun service worker, solo `manifest.webmanifest`. Ctrl+F5 sui client resta buona abitudine.
+- **Senza `dist`** il servizio non parte vuoto: node esce subito con «The directory "dist" does not exist. Did you build your project?» in `HMI\log\servizio_pannello.log`, e `-Azione stato` lo segnala.
+- **Tempi misurati sul portatile il 7/10** (Chrome con la cache vuota, dal lancio del server al pannello montato):
+  - server di sviluppo: 2,1-2,3 s con la cache delle dipendenze di Vite già pronta, **29,6 s** senza (la prima volta dopo un aggiornamento delle dipendenze), 187 richieste;
+  - pannello compilato: **1,3-1,4 s**, 13 richieste;
+  - build: 13 s, `dist` di 23 MB in 163 file.
+
+  In cella il PC è più lento: i tempi veri vanno presi lì.
+- **L'avvio ritardato dei servizi resta** e costa circa 2,5 minuti dall'accensione. Il 7/10 il PC è stato acceso alle 13:35:55, `EasyBoxBackend` è partito alle 13:38:20 ed `EasyBoxPannello` alle 13:38:30. In quel tempo il browser mostra il pannello dalla cache, ma senza server. Il pannello compilato non toglie questi minuti: toglie solo la compilazione al primo caricamento. Se cambiare l'avvio ritardato lo decide Dario a parte.
+
+**La prima volta in cella** (cella in HOLD, PowerShell **come amministratore**):
+1. il codice nuovo, con lo script nuovo:
+   ```
+   powershell -ExecutionPolicy Bypass -File D:\Prog\easybox\tools\pannello.ps1 -Versione stabile
+   ```
+   (oppure `-Versione v3`, quella in uso);
+2. lo stato di partenza, che deve dire «Pannello: server di sviluppo»:
+   ```
+   powershell -ExecutionPolicy Bypass -File D:\Prog\easybox\tools\servizi-cella.ps1 -Azione stato
+   ```
+3. il passaggio, un comando:
+   ```
+   powershell -ExecutionPolicy Bypass -File D:\Prog\easybox\tools\servizi-cella.ps1 -Azione preview
+   ```
+   Fa la build in `dist_build`; se fallisce si ferma e il pannello resta col server di sviluppo. Poi mette `dist_build` al posto di `dist`, cambia i parametri del servizio (`nssm set EasyBoxPannello AppParameters ...`), riavvia il solo pannello e controlla che sia Running e che la 5173 sia sua;
+4. di nuovo `-Azione stato`: «Pannello: COMPILATO», `dist` compilata adesso, porta 5173 del servizio;
+5. Ctrl+F5 sul touch e sul tablet, stato del robot che si aggiorna.
+
+**Dopo ogni git pull** (cella in HOLD): `servizi-cella.ps1 -Azione aggiorna`. Fa la build in `dist_build`. Se fallisce si ferma e `dist` e servizio restano come sono, col pannello di prima in servizio, e stampa l'errore (completo in `HMI\log\build_pannello.log`). Se riesce: `dist` → `dist_prev`, `dist_build` → `dist`, riavvia solo il pannello, aspetta la porta e stampa lo stato. Se il pull cambia anche `serverDati`, in più `-Azione riavvia`.
+
+**Se la build nuova non va:** `servizi-cella.ps1 -Azione ripristina` scambia `dist` e `dist_prev` e riavvia il pannello (lanciato di nuovo torna alla build nuova). **Ritorno al server di sviluppo:** `servizi-cella.ps1 -Azione dev` rimette i parametri di prima e riavvia il pannello; `dist` resta su disco e non si usa. Il comando a mano equivalente è `& "C:\Program Files\nssm\nssm.exe" set EasyBoxPannello AppParameters node_modules\vite\bin\vite.js`, poi `-Azione riavvia`.
 
 **7/10: servizi in Paused, le porte tenute dalle vecchie finestre.** Dagli eventi nssm i due servizi uscivano con codice 1 (EADDRINUSE) almeno dalle 13:02. Le porte le tenevano i node avviati dalle vecchie finestre cmd (`start_server.bat`, `start_hmi.bat`), che partono ancora all'accesso a Windows. Le finestre partono prima dei servizi, che hanno l'avvio ritardato: i loro node prendono 8080, 3000 e 5173. nssm rilancia node, node esce subito, e nssm mette il servizio in **Paused**. Sistemato a mano chiudendo quei node e riavviando i servizi.
 
@@ -85,9 +120,10 @@ Nel working tree di cella ci sono file non tracciati che il `.gitignore` non esc
    ```
    `-Versione stato` dice su che versione si è e lo stato dei servizi, senza cambiare niente; `-Versione stabile` (ramo `ui-lifting`) o `-Versione v3` (ramo `ui-v3`) aggiorna o cambia versione: fetch, cambio di ramo, pull solo in avanti, `npm install` se serve.
    - **Con i servizi** ferma `EasyBoxPannello` prima di toccare i file, alla fine riavvia `EasyBoxBackend`, avvia `EasyBoxPannello` e aspetta le porte (al massimo 90 secondi). Se qualcosa fallisce dopo aver fermato il pannello, lo rimette su comunque, sulla versione che c'è.
+   - **Col pannello compilato** (7/10) `pannello.ps1` non ricompila: riavvia il pannello sulla `dist` di prima. Subito dopo: `servizi-cella.ps1 -Azione aggiorna`.
    - **Senza servizi** (le finestre): nella finestra di `start_server.bat` Ctrl+C, poi rilanciare il `.bat`; rilanciare `start_hmi.bat` solo se sono cambiati `package.json`, `package-lock.json` o `vite.config.js`, altrimenti basta Ctrl+F5 sui client.
 
-   In alternativa `cd D:\Prog`, `git pull` e poi `servizi-cella.ps1 -Azione riavvia` (se il pull cambia `package-lock.json` serve `npm install`: meglio lo script).
+   In alternativa `cd D:\Prog`, `git pull` e poi `servizi-cella.ps1 -Azione riavvia` (se il pull cambia `package-lock.json` serve `npm install`: meglio lo script), e col pannello compilato `-Azione aggiorna`.
 3. Controlli:
    - porte 5173, 8080 e 3000 in ascolto;
    - `INIT` nuovo in `access.log`;
@@ -97,7 +133,7 @@ Nel working tree di cella ci sono file non tracciati che il `.gitignore` non esc
 
 ## [ ] 2026-10-07 — Consegna 34 (7/10): uncino per i cassetti e pinza ferma col cassetto fuori
 
-**Cosa.** PLC, la scarica Dario: file `34_FB7_uncino_e_cassetto_fuori.scl`, solo FB_Robot, sulla base della consegna 33 (i blocchi non si sovrappongono, si può scaricare nella stessa finestra). Decisioni di Dario del 7/10 in DECISIONI.md: l'uncino è un dato dell'anagrafica (`GRIPPER.HAS_HOOK`); senza una pinza adatta a bordo il PLC va a prendersi quella con l'uncino; anche il rilascio vuole l'uncino; con un cassetto aperto niente pinze dallo scaffale.
+**Cosa.** PLC, la scarica Dario (scaricata il 7/10 verso le 13:45, insieme alla 33): file `34_FB7_uncino_e_cassetto_fuori.scl`, solo FB_Robot, sulla base della consegna 33 (i blocchi non si sovrappongono, si può scaricare nella stessa finestra). Decisioni di Dario del 7/10 in DECISIONI.md: l'uncino è un dato dell'anagrafica (`GRIPPER.HAS_HOOK`); senza una pinza adatta a bordo il PLC va a prendersi quella con l'uncino; anche il rilascio vuole l'uncino; con un cassetto aperto niente pinze dallo scaffale.
 
 **`HAS_HOOK` in cella** (verificato il 7/10): bit, esiste già. Vale 1 sulla pinza doppia (righe 26 e 37), 0 sulla pinza pallet (1) e sulle vecchie righe «gancio» 15 e 24 (SUB_POS 1002). Il PLC lo legge dalla tabella `GRIPPER`; la vista `GRIPPERS`, da cui legge il pannello, non lo esponeva: lo aggiunge `gripper-has-hook.sql`.
 
@@ -127,7 +163,7 @@ Nel working tree di cella ci sono file non tracciati che il `.gitignore` non esc
    4. rilascio del cassetto con la doppia a bordo: rientra come prima;
    5. doppia a bordo e cassetto fuori, togli l'uncino alla doppia in anagrafica, comando di rilascio. Atteso: 20011, il robot non si muove. Rimetti l'uncino, RESET, rilascia: il cassetto rientra;
    6. automatico, un ciclo completo: identico a prima;
-6. tia-export e confronto con le consegne 33 e 34, blocco per blocco (parte 5, dopo il download). Fatto il 7/10 sul **progetto del portatile** salvato alle 12:21 (commit 8c9da6a), non ancora scaricato nel PLC: dopo il download si rifà l'export, e se non cambia niente il confronto vale. Esito:
+6. tia-export e confronto con le consegne 33 e 34, blocco per blocco (parte 5, dopo il download). Fatto il 7/10 sul **progetto del portatile** salvato alle 12:21 (commit 8c9da6a). **Download delle consegne 33 e 34 fatto il 7/10 verso le 13:45**, da quel progetto. Export rilanciato dopo il download, a progetto chiuso: identico a 8c9da6a, e il file del progetto è ancora quello delle 12:21. Quindi **il confronto vale anche per il PLC**. Un confronto diretto col PLC si può avere con `tia-export.exe --compare-online` (sola lettura, serve il portatile collegato al PLC). Esito:
    - blocchi A, C, D, E1, E2, F1 e F2 identici; fuori dai blocchi niente cambia, compresi i blocchi della 33;
    - il blocco B (Gripper_Hook_Search) ha lo stesso codice, ma è stato incollato **dentro** la region esistente: `REGION Gripper_Hook_Search` compare due volte, una dentro l'altra. Il comportamento non cambia; la region esterna va tolta in TIA alla prossima modifica.
 
@@ -153,7 +189,7 @@ Dettagli del problema: [SIMULAZIONE-2026-10-07.md](SIMULAZIONE-2026-10-07.md), p
 
 ## [ ] 2026-10-07 — Consegna 33 (7/10): correzioni della simulazione, vista `MAN_ORDER_MC1` **prima** del download
 
-**Cosa corregge** (PLC, la scarica Dario; file `33_FB7_correzioni_simulazione.scl`; dal 7/10 è nel progetto TIA del portatile, export nel commit 80a414b, **non ancora scaricato nel PLC**): quattro problemi della [simulazione del 7/10](SIMULAZIONE-2026-10-07.md):
+**Cosa corregge** (PLC, la scarica Dario; file `33_FB7_correzioni_simulazione.scl`; dal 7/10 è nel progetto TIA del portatile, export nel commit 80a414b; **scaricata nel PLC il 7/10 verso le 13:45**, insieme alla 34): quattro problemi della [simulazione del 7/10](SIMULAZIONE-2026-10-07.md):
 - 2: registro del pallet in macchina (`DB_MC1.pallet`) sbagliato dopo un deposito manuale del pallet;
 - 3: il manuale usava l'ordine chiuso (`DB_MC1.order.ID`, che FB204 non azzera a fine produzione);
 - 9: comandi accettati con un errore attivo, che poi partivano da soli;
@@ -186,7 +222,7 @@ Per l'operatore cambia questo: carico, scarico e cambio pinza e i comandi pallet
    3. *problema 9*: in HOLD, da tabella di controllo `"DB_Robot".Error` = 999, poi «estrai cassetto» dal pannello. Atteso: il pannello mostra 972, il robot non si muove, `MissionCode` resta 0. RESET dal pannello e di nuovo «estrai cassetto»: parte;
    4. *problema 14*: da tabella di controllo `"DB_Robot".Dispatcher[31]` = 944. Atteso, al ciclo dopo: `Dispatcher[31]` = 0 e il pannello mostra il 944. Se il pannello lo permette, anche una dichiarazione vera che il PLC rifiuta (pinza dichiarata contro il sensore, 945). Atteso: rifiuto a video subito, non dopo il timeout; `Error` = 945 fino al RESET. Dopo il RESET, se la pinza è davvero incoerente col registro, il 938 torna dopo 2 s (supervisione attiva);
    5. *automatico*: un ciclo completo con deposito, prelievo (o missione 16) e cambio pallet. Atteso: tutto come prima, `DB_MC1.pallet` giusto, `OrderIdMC` = ordine attivo;
-5. tia-export e confronto con la consegna, blocco per blocco. Fatto il 7/10 sul progetto salvato alle 10:37 (commit 80a414b). Blocchi B-F identici; in A cambiano solo gli spazi di 21 righe di continuazione; fuori dai blocchi niente. È il **progetto del portatile** con la consegna 33, non ancora scaricato nel PLC. **Dopo il download si rifà l'export**: se non cambia niente, la parte 4 è confermata.
+5. tia-export e confronto con la consegna, blocco per blocco. Fatto il 7/10 sul progetto salvato alle 10:37 (commit 80a414b). Blocchi B-F identici; in A cambiano solo gli spazi di 21 righe di continuazione; fuori dai blocchi niente. È il **progetto del portatile** con la consegna 33. Download delle consegne 33 e 34 il 7/10 verso le 13:45; export rilanciato dopo il download, identico a 8c9da6a (export della 34, che contiene la 33): **la parte 4 è confermata anche per il PLC** (vedi il passo dell'export nella voce «Consegna 34»).
 
 **Nello stesso export, fuori dalla consegna:** in `tags/Robot_Efort.xml` il tag `Sys_SetRobotspeed` passa da %QW512 a %QW650 (al posto di `spare_9`, commit 896cb8f). Il codice non cambia, perché lo usa per nome. **Confermato il 7/10** (DECISIONI.md): lo spostamento l'hanno fatto Dario e il robotista, e il lato robot è allineato, cioè legge la velocità dalla parola nuova. Dalla storia del repo:
 - compare per la prima volta a %QW650 nell'export del progetto salvato il 7/10 alle 10:37 (commit 896cb8f). Nell'export delle 9:22 (47ca223) era ancora a %QW512;
