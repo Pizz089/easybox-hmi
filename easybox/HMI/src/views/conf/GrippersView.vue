@@ -7,6 +7,8 @@
     import { ref, onMounted } from 'vue'
     import { dataStored } from '../../data';
     import { dedupeGrippers, isTwinGripper } from '../../util/grippers.js';
+    // (7/10, consegna 34) cassetto fuori: niente carica / scarica pinza
+    import { statoCassetti, motivoPinzaCassetto } from '../../util/cassettoFuori.js';
     const el = ref()
 </script>
 
@@ -25,6 +27,9 @@
             {{$t('gripper.add_gripper')}}
           </UiButton>
         </div>
+        <!-- (7/10, consegna 34) carica / scarica pinza spenti col cassetto
+             fuori: il motivo si scrive, non si lascia un bottone muto -->
+        <p class="tray-hint" v-if="motivoPinza">{{ $t(motivoPinza) }}</p>
         <div class="cat-list">
           <template v-for="(dt, index) in datiTab" :key="dt.ID" >
             <!-- (gripper-twins) UNA card per pinza fisica (util/grippers.js,
@@ -56,7 +61,7 @@
                            modify=true                      @cmdModify="modifyGripper(dt.ID)"
                            del=true                         @cmdDel="deleteGripper(dt.ID)"
                            :move="dt.POS_PLANT>=0 && (!gripperOnRobot || (gripperOnRobot && dt.POS_PLANT==1000))"   @cmdMove="PickReleaseGripper(dt.ID)"
-                           :moveDisable="!dataStored.cmdActive" >
+                           :moveDisable="!dataStored.cmdActive || motivoPinza !== ''" >
                            <!--:move="dt.POS_PLANT!=1000 || !gripperOnRobot"   @cmdMove="PickReleaseGripper(dt.ID)"-->
                 </buttonsCMD>
               </div>
@@ -73,6 +78,8 @@ export default {
             popup:false,
             datiTab:[],
             statusList:[],
+            // (7/10) cassetto fuori / in manovra (util/cassettoFuori.js)
+            cassetti: { estratto: null, manovra: false },
             polling:true
         }
     },
@@ -103,6 +110,18 @@ export default {
                     console.info("-------------")
                     console.info(error);
                 });
+            this.getTrays();
+        },
+        // (7/10, consegna 34) i cassetti, con le regole della pagina Robot: con
+        // un cassetto fuori il PLC rifiuta carico (1419) e deposito (1519)
+        getTrays() {
+            fetch(dataStored.server+'api/conf/tray/show/all',{ method: 'GET'})
+                .then(response => {
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    return response.json()
+                })
+                .then(trays => { this.cassetti = statoCassetti(trays); })
+                .catch(error => { console.info(error); });
         },
         CreateGripper(){
             this.$router.push('/conf/Gripper/Gripper');
@@ -127,6 +146,8 @@ export default {
             return this.datiTab[i].POS_MAG;
         },
         PickReleaseGripper(ID){
+            // (7/10) il bottone e' gia' spento: difesa in piu'
+            if (this.motivoPinza) return;
             for(let i=0; i<this.datiTab.length; i++){
                 if (this.datiTab[i].POS_PLANT==1000){    
                     //c'e' almeno una pinza montata su robot => la scarico
@@ -160,6 +181,10 @@ export default {
         }
     },
     computed:{
+        // (7/10) '' se il cassetto non c'entra, altrimenti la chiave del motivo
+        motivoPinza(){
+            return motivoPinzaCassetto(this.cassetti);
+        },
         gripperOnRobot(){
             for(let i=0; i<this.datiTab.length; i++){
                 if (this.datiTab[i].POS_PLANT==1000)
@@ -233,5 +258,11 @@ export default {
     }
     .cell-pos {
         max-width: 30px;
+    }
+    /* (7/10) motivo dei comandi pinza spenti, come .cmd-hint della pagina Robot */
+    .tray-hint {
+        font-size: var(--font-size-xs);
+        color: var(--text-muted);
+        margin: 0 0 8px 0;
     }
 </style>

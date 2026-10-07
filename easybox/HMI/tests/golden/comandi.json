@@ -1253,36 +1253,9 @@
        ]
       },
       "HOLD liv2 cassetto 8 fuori": {
-       "abilitato": true,
+       "abilitato": false,
        "effetti": [],
-       "stato": [
-        "vm.unloadOpen = true"
-       ],
-       "conferme": [
-        {
-         "controllo": "button@click startSwapSelection()",
-         "etichetta": "Deposita e cambia",
-         "abilitato": true,
-         "effetti": []
-        },
-        {
-         "controllo": "button@click confirmUnload()",
-         "etichetta": "Conferma",
-         "abilitato": true,
-         "effetti": [
-          "emit TO_PLANT/CMD/ROBOT 12",
-          "fetch GET api/conf/gripper/show/all",
-          "fetch GET api/conf/pallet/show/all",
-          "fetch GET api/conf/tray/show/all"
-         ]
-        },
-        {
-         "controllo": "button@click unloadOpen=false",
-         "etichetta": "Annulla",
-         "abilitato": true,
-         "effetti": []
-        }
-       ]
+       "stato": []
       },
       "AUTO liv2": {
        "abilitato": false,
@@ -4190,7 +4163,8 @@
        {
         "abilitato": true,
         "effetti": [
-         "emit TO_PLANT/CMD/ORDER {\"id\":101,\"status\":3,\"pieceID\":1}"
+         "emit TO_PLANT/CMD/ORDER {\"id\":101,\"status\":3,\"pieceID\":1}",
+         "fetch GET api/conf/gripper/show/all"
         ],
         "stato": []
        },
@@ -4201,7 +4175,8 @@
        {
         "abilitato": true,
         "effetti": [
-         "emit TO_PLANT/CMD/ORDER {\"id\":101,\"status\":3,\"pieceID\":1}"
+         "emit TO_PLANT/CMD/ORDER {\"id\":101,\"status\":3,\"pieceID\":1}",
+         "fetch GET api/conf/gripper/show/all"
         ],
         "stato": []
        },
@@ -4212,7 +4187,8 @@
        {
         "abilitato": true,
         "effetti": [
-         "emit TO_PLANT/CMD/ORDER {\"id\":101,\"status\":3,\"pieceID\":1}"
+         "emit TO_PLANT/CMD/ORDER {\"id\":101,\"status\":3,\"pieceID\":1}",
+         "fetch GET api/conf/gripper/show/all"
         ],
         "stato": []
        },
@@ -4223,7 +4199,8 @@
        {
         "abilitato": true,
         "effetti": [
-         "emit TO_PLANT/CMD/ORDER {\"id\":101,\"status\":3,\"pieceID\":1}"
+         "emit TO_PLANT/CMD/ORDER {\"id\":101,\"status\":3,\"pieceID\":1}",
+         "fetch GET api/conf/gripper/show/all"
         ],
         "stato": []
        },
@@ -4234,7 +4211,8 @@
        {
         "abilitato": true,
         "effetti": [
-         "emit TO_PLANT/CMD/ORDER {\"id\":101,\"status\":3,\"pieceID\":1}"
+         "emit TO_PLANT/CMD/ORDER {\"id\":101,\"status\":3,\"pieceID\":1}",
+         "fetch GET api/conf/gripper/show/all"
         ],
         "stato": []
        },
@@ -4245,7 +4223,8 @@
        {
         "abilitato": true,
         "effetti": [
-         "emit TO_PLANT/CMD/ORDER {\"id\":101,\"status\":3,\"pieceID\":1}"
+         "emit TO_PLANT/CMD/ORDER {\"id\":101,\"status\":3,\"pieceID\":1}",
+         "fetch GET api/conf/gripper/show/all"
         ],
         "stato": []
        },
@@ -4256,7 +4235,8 @@
        {
         "abilitato": true,
         "effetti": [
-         "emit TO_PLANT/CMD/ORDER {\"id\":101,\"status\":3,\"pieceID\":1}"
+         "emit TO_PLANT/CMD/ORDER {\"id\":101,\"status\":3,\"pieceID\":1}",
+         "fetch GET api/conf/gripper/show/all"
         ],
         "stato": []
        },
@@ -4267,7 +4247,8 @@
        {
         "abilitato": true,
         "effetti": [
-         "emit TO_PLANT/CMD/ORDER {\"id\":101,\"status\":3,\"pieceID\":1}"
+         "emit TO_PLANT/CMD/ORDER {\"id\":101,\"status\":3,\"pieceID\":1}",
+         "fetch GET api/conf/gripper/show/all"
         ],
         "stato": []
        },
@@ -4751,7 +4732,8 @@
        {
         "abilitato": true,
         "effetti": [
-         "emit TO_PLANT/CMD/ORDER {\"id\":102,\"status\":3,\"pieceID\":2}"
+         "emit TO_PLANT/CMD/ORDER {\"id\":102,\"status\":3,\"pieceID\":2}",
+         "fetch GET api/conf/gripper/show/all"
         ],
         "stato": []
        },
@@ -4762,7 +4744,8 @@
        {
         "abilitato": true,
         "effetti": [
-         "emit TO_PLANT/CMD/ORDER {\"id\":102,\"status\":3,\"pieceID\":2}"
+         "emit TO_PLANT/CMD/ORDER {\"id\":102,\"status\":3,\"pieceID\":2}",
+         "fetch GET api/conf/gripper/show/all"
         ],
         "stato": []
        },
@@ -4774,7 +4757,8 @@
        {
         "abilitato": true,
         "effetti": [
-         "emit TO_PLANT/CMD/ORDER {\"id\":103,\"status\":3,\"pieceID\":3}"
+         "emit TO_PLANT/CMD/ORDER {\"id\":103,\"status\":3,\"pieceID\":3}",
+         "fetch GET api/conf/gripper/show/all"
         ],
         "stato": []
        }
@@ -4785,7 +4769,8 @@
        {
         "abilitato": true,
         "effetti": [
-         "emit TO_PLANT/CMD/ORDER {\"id\":103,\"status\":3,\"pieceID\":3}"
+         "emit TO_PLANT/CMD/ORDER {\"id\":103,\"status\":3,\"pieceID\":3}",
+         "fetch GET api/conf/gripper/show/all"
         ],
         "stato": []
        }
@@ -15627,7 +15612,7 @@
       "modifica 941 liv2": {
        "abilitato": true,
        "effetti": [
-        "fetch GET api/conf/gripper/updateGripper?ID=941&FAMILY=PINZA-PROVA&DESCR=pinza+prova+A&X_BODY=60000&Y_BODY=80000&Z_BODY=100000&X_CLAW=20000&Y_CLAW=30000&Z_CLAW=40000&STROKE_CLAW=10000&TICKNESS_CLAW=5000&CLAW_LENGTH=20000&STATUS=2&POS_MAG=1&SUB_POS=1&POS_PLANT=1&X_CHELE=20000&Y_CHELE=30000&Z_CHELE=40000",
+        "fetch GET api/conf/gripper/updateGripper?ID=941&FAMILY=PINZA-PROVA&DESCR=pinza+prova+A&X_BODY=60000&Y_BODY=80000&Z_BODY=100000&X_CLAW=20000&Y_CLAW=30000&Z_CLAW=40000&STROKE_CLAW=10000&TICKNESS_CLAW=5000&CLAW_LENGTH=20000&HAS_HOOK=&STATUS=2&POS_MAG=1&SUB_POS=1&POS_PLANT=1&X_CHELE=20000&Y_CHELE=30000&Z_CHELE=40000",
         "router \"/conf/Grippers\""
        ],
        "stato": []
@@ -15635,7 +15620,7 @@
       "modifica 941 liv0": {
        "abilitato": true,
        "effetti": [
-        "fetch GET api/conf/gripper/updateGripper?ID=941&FAMILY=PINZA-PROVA&DESCR=pinza+prova+A&X_BODY=60000&Y_BODY=80000&Z_BODY=100000&X_CLAW=20000&Y_CLAW=30000&Z_CLAW=40000&STROKE_CLAW=10000&TICKNESS_CLAW=5000&CLAW_LENGTH=20000&STATUS=2&POS_MAG=1&SUB_POS=1&POS_PLANT=1&X_CHELE=20000&Y_CHELE=30000&Z_CHELE=40000",
+        "fetch GET api/conf/gripper/updateGripper?ID=941&FAMILY=PINZA-PROVA&DESCR=pinza+prova+A&X_BODY=60000&Y_BODY=80000&Z_BODY=100000&X_CLAW=20000&Y_CLAW=30000&Z_CLAW=40000&STROKE_CLAW=10000&TICKNESS_CLAW=5000&CLAW_LENGTH=20000&HAS_HOOK=&STATUS=2&POS_MAG=1&SUB_POS=1&POS_PLANT=1&X_CHELE=20000&Y_CHELE=30000&Z_CHELE=40000",
         "router \"/conf/Grippers\""
        ],
        "stato": []
@@ -15643,7 +15628,7 @@
       "nuova pinza": {
        "abilitato": true,
        "effetti": [
-        "fetch GET api/conf/gripper/insertGripper?ID=0&FAMILY=PINZA-PROVA&DESCR=pinza+nuova&X_BODY=60000&Y_BODY=80000&Z_BODY=100000&X_CLAW=20000&Y_CLAW=30000&Z_CLAW=40000&STROKE_CLAW=10000&TICKNESS_CLAW=5000&CLAW_LENGTH=20000&STATUS=2&POS_MAG=3&SUB_POS=0&POS_PLANT=3&X_CHELE=20000&Y_CHELE=30000&Z_CHELE=40000",
+        "fetch GET api/conf/gripper/insertGripper?ID=0&FAMILY=PINZA-PROVA&DESCR=pinza+nuova&X_BODY=60000&Y_BODY=80000&Z_BODY=100000&X_CLAW=20000&Y_CLAW=30000&Z_CLAW=40000&STROKE_CLAW=10000&TICKNESS_CLAW=5000&CLAW_LENGTH=20000&HAS_HOOK=&STATUS=2&POS_MAG=3&SUB_POS=0&POS_PLANT=3&X_CHELE=20000&Y_CHELE=30000&Z_CHELE=40000",
         "router \"/conf/Grippers\""
        ],
        "stato": []

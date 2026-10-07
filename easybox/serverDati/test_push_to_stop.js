@@ -239,7 +239,8 @@ r = call('GET /updateGripper', { ID: '26', FAMILY: 'P', DESCR: 'D', X_BODY: '1',
 check(/Stroke_CLAW=Stroke_CLAW/.test(r.q[0]) && /Tickness_CLAW=Tickness_CLAW/.test(r.q[0]), 'pinza: client che non manda i campi NON azzera il dato a DB');
 check(/CLAW_LENGTH=CLAW_LENGTH/.test(r.q[0]), 'pinza: nemmeno la lunghezza chela viene azzerata da un client vecchio');
 r = call('GET /insertGripper', { FAMILY: 'P', DESCR: 'D', X_BODY: '1', Y_BODY: '1', Z_BODY: '1', X_CLAW: '1', Y_CLAW: '1', Z_CLAW: '1', STATUS: '2', POS_MAG: '0', POS_PLANT: '0' }, [{ rowsAffected: [1] }]);
-check(/, Stroke_CLAW, Tickness_CLAW, CLAW_LENGTH\)/.test(r.q[0]) && /10000,\s*10000,/.test(r.q[0]), 'pinza: in INSERT..SELECT il fallback e\' il default di schema, non il nome colonna');
+// (7/10, consegna 34) dopo CLAW_LENGTH c'e' HAS_HOOK (test_gripper_hook_route.js)
+check(/, Stroke_CLAW, Tickness_CLAW, CLAW_LENGTH, HAS_HOOK\)/.test(r.q[0]) && /10000,\s*10000,/.test(r.q[0]), 'pinza: in INSERT..SELECT il fallback e\' il default di schema, non il nome colonna');
 check(/10000,\s*NULL/.test(r.q[0]), 'pinza: lunghezza chela assente -> NULL, cioe\' non misurata (0 direbbe misurata e nulla)');
 r = call('GET /insertGripper', { FAMILY: 'P', DESCR: 'D', X_BODY: '1', Y_BODY: '1', Z_BODY: '1', X_CLAW: '1', Y_CLAW: '1', Z_CLAW: '1', STATUS: '2', POS_MAG: '0', POS_PLANT: '0', CLAW_LENGTH: '30000' }, [{ rowsAffected: [1] }]);
 check(/10000,\s*30000/.test(r.q[0]), 'pinza: lunghezza chela salvata anche in creazione');

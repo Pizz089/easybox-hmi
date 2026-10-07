@@ -5,6 +5,42 @@
 > stato corretto sul momento. Gli interventi manuali da fare in impianto
 > stanno invece in `APPUNTI-CELLA.md`.
 
+## [ ] AllTrayInside (%I35.6) non cablato: un cassetto a metà corsa non lo vede nessuno
+
+**Cosa.** Limite dichiarato dalla consegna 34 (7/10). Le catene pinza
+riconoscono un cassetto fuori dal registro `ExtractedTray`, dai sensori
+`I_OUT_TRAY1..12` e dalle catene di estrazione o rilascio attive. Un cassetto
+fermo a metà corsa non accende nessuno dei tre, e la pinza si muoverebbe.
+
+**Direzione.** Se il sensore `AllTrayInside` (%I35.6) esiste sull'impianto,
+cablarlo chiude il buco. Da verificare in cella se c'è. Nel PLC è già
+l'ingresso `AllTrayInside` di FB_easyBox (tag `All_trays_Inside`, in Main).
+
+**Trovato il** 2026-10-07, limiti della consegna 34.
+
+## [ ] Righe 15 e 24 di GRIPPER, i vecchi «ganci» a scaffale: esistono ancora?
+
+**Cosa.** Le righe 15 e 24 (SUB_POS 1002, POS_MAG 2, `HAS_HOOK = 0`) sono le
+vecchie righe «gancio»: fino alla consegna 34 la ricerca dell'uncino del PLC
+cercava le righe con SUB_POS > 1000. Dal PLC 34 l'uncino è `HAS_HOOK` e quelle
+righe non le usa più nessuno: la vista `GRIPPERS` non le mostra e l'anagrafica
+le esclude (SUB_POS < 1000).
+
+**Direzione.** Decidere con Dario se quei ganci esistono ancora fisicamente.
+Le righe non si toccano finché non è deciso.
+
+**Trovato il** 2026-10-07, consegna 34.
+
+## [ ] FB_Robot: `currentGripperHasHook` dichiarata e mai usata
+
+**Cosa.** Variabile dell'interfaccia di FB_Robot, dichiarata e mai letta né
+scritta. La consegna 34 non la usa e la lascia com'è, per non cambiare
+l'interfaccia (download senza reinizializzazione).
+
+**Direzione.** Toglierla alla prossima modifica dell'interfaccia di FB_Robot.
+
+**Trovato il** 2026-10-07, consegna 34.
+
 ## [ ] Il 244 in manuale usa ancora DB_MC1.order.ID
 
 **Cosa.** Limite dichiarato dalla consegna 33 (7/10). La consegna corregge la

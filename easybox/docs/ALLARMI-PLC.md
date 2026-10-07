@@ -75,6 +75,25 @@ pannello non c'e' una logica dedicata (il 968, l'altro rifiuto su
 `ALARM/ROBOT`, chiude solo le attese delle dichiarazioni 35, non quelle dei
 comandi di missione).
 
+## Uncino per i cassetti e pinza col cassetto fuori (consegna 34, 7/10)
+
+Tutti in `Error`, testi `robot.alarm_<codice>` (it e en). Dove li scrive il
+PLC: file `34_FB7_uncino_e_cassetto_fuori.scl`; il come sta in APPUNTI-CELLA.md,
+«Consegna 34».
+
+| codice | dove | quando | cosa fare |
+|---|---|---|---|
+| 1419 | Gripper_TRAY_to_Robot, stato 10 | carico pinza rifiutato: c'e' un cassetto fuori (registro `ExtractedTray`, sensori `I_OUT_TRAY1..12`, estrazione o rilascio in corso) | chiudere il cassetto e premere RESET |
+| 1519 | Gripper_Robot_to_TRAY, stato 10 | deposito pinza rifiutato (anche il cambio pinza, che comincia col deposito): c'e' un cassetto fuori | chiudere il cassetto e premere RESET |
+| 19005 | TRAY_extact, stato 30; master 700 | estrazione rifiutata: la pinza a bordo non ha l'uncino (`GRIPPER.HAS_HOOK = 0`). In automatico la pinza dell'ordine non si cambia | dare l'uncino in anagrafica solo se la pinza lo ha davvero |
+| 19006 | Gripper_Hook_Search | nessuna pinza con l'uncino, ne' a bordo ne' a scaffale | controllare `HAS_HOOK` in anagrafica |
+| 19007 | master 700 | per prendere la pinza con l'uncino quella a bordo deve essere vuota | scaricare prima il contenuto della pinza |
+| 20011 | TRAY_release, stato 30 | rilascio rifiutato: la pinza a bordo non ha l'uncino. Col cassetto fuori la pinza non si cambia | il cassetto si rientra a mano |
+
+Il pannello prova a non arrivarci: i comandi pinza sono spenti col cassetto
+fuori (1419, 1519) e Produzione avvisa quando la pinza di un ordine non ha
+l'uncino (19005). Il controllo vero resta quello del PLC.
+
 ## Se manca una chiave
 
 1. si decodifica il numero con la regola qui sopra;

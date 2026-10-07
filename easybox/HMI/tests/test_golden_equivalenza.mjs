@@ -78,8 +78,22 @@ export const AMMESSE = [
 		motivo: '«Casella» non scrive piu\' subito il database: prima legge il registro della macchina e, se il pallet e\' in macchina, manda il 41 con la stessa guardia di «Rimuovi» (guardia41) e ne aspetta l\'eco. Poi la stessa scrittura di prima, con gli stessi valori (MAG_POS = casella, POS_PLANT 0, occupy della casella, free della provenienza). Pallet a magazzino: nessun 41, la stessa scrittura dopo la lettura del registro. Coperto da test_pallet_machine.mjs' },
 	{ pagina: 'smallboxView', tipo: 'tolto', firma: /^emit TO_PLANT\/CMD\/ROBOT 26$/,
 		motivo: '"Inserisci cassetto" tolto dai Controlli EasyBox (decisione di Dario): era sempre spento, perche\' la sua condizione RobotInLocalMode non la scrive nessuno (le assegnazioni in robotView sono commentate). Il cassetto si rilascia da Robot -> Gestione cassetto' },
+	// ---- consegna 34: uncino per i cassetti, pinza ferma col cassetto fuori (7/10, da ui-lifting 1687c2b e 9650792)
+	// (scenario: la deroga vale solo negli scenari che corrispondono)
+	{ pagina: 'robotView', tipo: 'cambiato', scenario: /cassetto \d+ fuori/, firma: /^conferma: emit TO_PLANT\/CMD\/ROBOT 12 \+ /,
+		motivo: 'con un cassetto fuori «Gestione pinza» e\' spento (decisione di Dario del 7/10: niente pinze dallo scaffale col cassetto aperto; il PLC 34 rifiuta con 1419 / 1519), col motivo «Cassetto fuori: prima rientralo». Solo negli scenari col cassetto fuori; coperto da test_gripper_hook.mjs' },
+	{ pagina: 'Gripper', tipo: 'cambiato', firma: /^fetch GET api\/conf\/gripper\/(updateGripper|insertGripper)\?ID=\d+&.*&CLAW_LENGTH=\d*(&HAS_HOOK=[01]?)?&STATUS=\d+&.*$/,
+		motivo: 'stessa scrittura della pinza con in piu\' HAS_HOOK, la casella «Uncino per cassetti»: 1/0 quando il valore e\' noto, vuoto quando la vista non lo espone o la pinza non e\' ancora letta (il backend lascia la colonna, o mette 0 in creazione). Su una pinza doppia la gemella si allinea dopo, con setHasHook. Coperto da test_gripper_hook.mjs e test_gripper_hook_route.js' },
+	// (parte: il pezzo aggiunto alla firma. Il controllo 2c lo toglie dalle
+	// firme di oggi prima del confronto, quindi verifica anche che il comando
+	// di avvio sia rimasto identico)
+	{ pagina: 'productionTable', tipo: 'cambiato', parte: ' | fetch GET api/conf/gripper/show/all', firma: /^emit TO_PLANT\/CMD\/ORDER \{"id":\d+,"status":3,"pieceID":\d+\} \| fetch GET api\/conf\/gripper\/show\/all$/,
+		motivo: 'Avvia: stesso comando di prima, poi la lettura delle pinze per l\'AVVISO (non blocca) quando la pinza dell\'ordine non ha l\'uncino e il ciclo si fermerebbe all\'estrazione del cassetto (19005). Coperto da test_gripper_hook.mjs' },
 ];
-const ammessa = (pagina, firma) => AMMESSE.find(a => (!a.pagina || a.pagina === pagina) && a.firma.test(firma));
+const ammessa = (pagina, firma, scenario) => AMMESSE.find(a => (!a.pagina || a.pagina === pagina) && a.firma.test(firma)
+	&& (!a.scenario || (scenario !== undefined && a.scenario.test(scenario))));
+// (consegna 34) firma di oggi senza le parti aggiunte dichiarate in AMMESSE
+const senzaParti = (pagina, f) => AMMESSE.filter(a => a.parte && a.pagina === pagina && a.firma.test(f)).reduce((x, a) => x.split(a.parte).join(''), f);
 
 // firma di un esito: i comandi che partono, piu' quelli delle conferme
 function firma(r) {
@@ -138,8 +152,8 @@ for (const [nome, rp] of Object.entries(RIF.pagine)) {
 	const diff = [];
 	for (const s of comuni) {
 		const abR = [...mr[s]].filter(([, ab]) => ab).map(([f]) => f), abO = [...mo[s]].filter(([, ab]) => ab).map(([f]) => f);
-		for (const f of abR) if (!abO.includes(f) && !ammessa(nome, f)) diff.push(s + ': non piu\' abilitato -> ' + f);
-		for (const f of abO) if (!abR.includes(f) && !ammessa(nome, f)) diff.push(s + ': abilitato in piu\' -> ' + f);
+		for (const f of abR) if (!abO.includes(f) && !ammessa(nome, f, s)) diff.push(s + ': non piu\' abilitato -> ' + f);
+		for (const f of abO) if (!abR.includes(f) && !ammessa(nome, f, s)) diff.push(s + ': abilitato in piu\' -> ' + f);
 	}
 	const mancanti = rp.scenari.filter(s => !op.scenari.includes(s));
 	check(diff.length === 0 && mancanti.length === 0, nome + ' (' + comuni.length + ' scenari)' + (mancanti.length ? ' scenari spariti: ' + mancanti.join(', ') : '') + (diff.length ? ':\n       ' + diff.join('\n       ') : ''));
@@ -184,7 +198,7 @@ function unioneUguale(pagina, base, da) {
 	const unione = new Map();
 	for (const s of da) {
 		if (!mo[s]) { diff.push('scenario mancante: ' + s); continue; }
-		for (const [f, ab] of mo[s]) unione.set(f, (unione.get(f) || false) || ab);
+		for (const [f0, ab] of mo[s]) { const f = senzaParti(pagina, f0); unione.set(f, (unione.get(f) || false) || ab); }
 	}
 	const atteso = new Map([...mr[base]].filter(([f]) => !AMMESSE.some(a => a.pagina === pagina && a.tipo === 'tolto' && a.firma.test(f))));
 	for (const [f, ab] of atteso) {
@@ -215,7 +229,7 @@ console.log('       destinazioni: ' + nA.size + ' nel riferimento, ' + nB.size +
 
 if (AMMESSE.length) {
 	console.log('\n   differenze volute dichiarate:');
-	for (const a of AMMESSE) console.log('     [' + a.tipo + '] ' + (a.pagina || '*') + ' ' + a.firma + ' — ' + a.motivo);
+	for (const a of AMMESSE) console.log('     [' + a.tipo + '] ' + (a.pagina || '*') + ' ' + a.firma + (a.scenario ? ' (scenari ' + a.scenario + ')' : '') + ' — ' + a.motivo);
 }
 console.log('\n' + (failed ? failed + ' CHECK FALLITI' : 'TUTTI I CHECK PASSATI'));
 process.exit(failed ? 1 : 0);

@@ -262,7 +262,11 @@
     "stroke_claw": "Jaw stroke",
     "tickness_claw": "Jaw thickness",
     "claw_length": "Claw: length along the direction it pushes the part",
-    "claw_lengthHint": "Physical measurement with a caliper, in mm. Needed by the push-to-stop cycle: empty = not measured, the cycle stays disabled."
+    "claw_lengthHint": "Physical measurement with a caliper, in mm. Needed by the push-to-stop cycle: empty = not measured, the cycle stays disabled.",
+    "hasHook": "Hook for trays",
+    "hasHookHint": "Fixed on some grippers: the PLC extracts and releases trays only with a gripper that has it. On a double gripper it is written on both rows.",
+    "hasHookUnknown": "Hook not editable here: the GRIPPERS view does not expose it yet (script gripper-has-hook.sql). The database value is left as it is.",
+    "hasHookTwinFailed": "Gripper saved, but the hook was not written on the other row of the double gripper: the two rows now differ. Save again."
   },
   "tray": {
     "dbId": "Database ID {id}",
@@ -648,7 +652,8 @@
       "aborted": "Cancelled"
     },
     "moreActions": "More order actions",
-    "pageMenu": "More page commands"
+    "pageMenu": "More page commands",
+    "noHookWarning": "The order's gripper has no hook: the cycle will stop at tray extraction (19005)"
   },
   "normal": "Normal",
   "cmd": {
@@ -706,6 +711,7 @@
       "palletUnknownOnBoard": "The pallet gripper is busy but no pallet is recorded on board: the system does not know which one to unload. Declare the cell state, then try again.",
       "palletNoDest": "No reachable destination for this pallet: neither a configured and free warehouse position nor a machine. Configure the warehouse position, then try again.",
       "trayBusy": "Tray operation in progress",
+      "trayOutGripper": "Tray out: put it back in first",
       "noTrayExtracted": "No tray extracted: extract a tray first"
     },
     "coherence": {
@@ -783,6 +789,12 @@
     "alarm_2205": "On-board gripper missing from the gripper registry (GRIPPERS / GRIPPER_HOOK)",
     "alarm_19004": "Tray extraction: no extraction coordinate for the tray (COORDINATES_FOR_EXTRACT)",
     "alarm_20009": "Tray release: no extraction coordinate for the extracted tray",
+    "alarm_1419": "Gripper pick refused: a tray is out. Close the tray and press RESET.",
+    "alarm_1519": "Gripper drop refused: a tray is out. Close the tray and press RESET.",
+    "alarm_19005": "Tray extraction refused: the gripper on board has no hook",
+    "alarm_19006": "No gripper with a hook, neither on board nor on the shelf",
+    "alarm_19007": "To pick the gripper with the hook, the one on board must be empty",
+    "alarm_20011": "Tray release refused: the gripper on board has no hook. With the tray out the gripper is not changed: the tray is put back by hand",
     "alarm_4099": "Pallet coordinates not found in database",
     "declErr": {
       "947": "Cell not at rest: the PLC does not record declarations while something is moving. Put the cell in HOLD and repeat.",
@@ -1221,6 +1233,7 @@
       "pushOn": "on, travel {mm} mm",
       "pushZ": "finger at {from} mm from the bottom, {drop} mm below the load",
       "pushZDefault": "finger at the pick height, as the load",
+      "hook": "Hook",
       "pushNoVice": "Push to stop is on for this part, but there is no vice on the pallet: the cycle cannot run.",
       "pushNoData": "Push to stop is on, but a measurement is missing: the vice jaw length or the gripper claw length. Complete the registry before creating the order.",
       "pushNoFit": "The part is {piece} mm long and the vice jaw is {claw} mm: the part overhangs, and nobody declared where it really rests. Declare it on the vice page.",

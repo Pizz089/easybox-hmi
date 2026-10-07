@@ -31,6 +31,8 @@
   // (7/10) «Dichiara quale pallet e' in pinza»: stesso modulo della
   // destinazione «A bordo del robot» di Attrezzaggi (35, e 41 se in macchina)
   import { dichiaraPalletABordo, messaggioEsito } from '../../util/palletOnRobot.js'
+  // (7/10, consegna 34) cassetto fuori: niente comandi pinza
+  import { statoCassetti, motivoPinzaCassetto } from '../../util/cassettoFuori.js'
 </script>
 
 <template>
@@ -1421,8 +1423,11 @@ export default {
           // di range 1..12: una riga spuria/fuori range/duplicata con EXTRACT==1
           // non deve leggersi come "cassetto estratto" (disallineo pannello<->PLC,
           // e' il bug vissuto sul cassetto 8).
-          this.extractedTray = trays.find(t => t.EXTRACT == 1 && t.FLOOR_MAG >= 1 && t.FLOOR_MAG <= 12) || null;
-          this.trayBusy = trays.some(t => t.EXTRACT == 1000 || t.EXTRACT == 2000);
+          // (7/10) le stesse regole, ora in util/cassettoFuori.js: le usa anche
+          // la lista pinze per spegnere carica / scarica col cassetto fuori
+          const cassetti = statoCassetti(trays);
+          this.extractedTray = cassetti.estratto;
+          this.trayBusy = cassetti.manovra;
         })
         .catch(error => {
           console.info("-------------")
@@ -2257,7 +2262,8 @@ export default {
       // (1-bis) l'hint ausiliari PREVALE su notHold: e' la precondizione
       if (dataStored.safetyAux === 0) return 'robot.hint.auxNotReset';
       if (this.dataRobot.STATUS != dataStored.status_hold) return 'robot.hint.notHold';
-      return '';
+      // (7/10, consegna 34) cassetto fuori o in manovra: niente pinze
+      return motivoPinzaCassetto({ estratto: this.extractedTray, manovra: this.trayBusy });
     },
     palletDisabledReason() {
       if (dataStored.safetyAux === 0) return 'robot.hint.auxNotReset';
@@ -2368,6 +2374,11 @@ export default {
     // Ramo scarico: inHold && onBoard; ramo carico: inHold && !onBoard —
     // col ramo scelto da onBoard stesso, il gate netto si riduce a inHold.
     gripperBranchEnabled() {
+      // (7/10, consegna 34) con un cassetto fuori, o in manovra, il PLC non
+      // muove pinze (1419 carico, 1519 deposito e cambio): il bottone si
+      // spegne prima, col motivo in gripperDisabledReason. Vale per tutti e
+      // tre i rami (11, 12, 27): la conferma ricontrolla questo computed.
+      if (this.extractedTray || this.trayBusy) return false;
       const inHold = this.dataRobot.STATUS == dataStored.status_hold;
       const onBoard = this.gripperOnBoardNow();
       return onBoard ? (inHold && onBoard) : (inHold && !onBoard);

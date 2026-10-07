@@ -68,7 +68,47 @@ Nel working tree di cella ci sono file non tracciati che il `.gitignore` non esc
    - stato del robot che si aggiorna;
    - `DB_executeQuery.readyForNextQuery` TRUE.
 
+## [ ] 2026-10-07 — Consegna 34 (7/10): uncino per i cassetti e pinza ferma col cassetto fuori
+
+**Cosa.** PLC, la scarica Dario: file `34_FB7_uncino_e_cassetto_fuori.scl`, solo FB_Robot, sulla base della consegna 33 (i blocchi non si sovrappongono, si può scaricare nella stessa finestra). Decisioni di Dario del 7/10 in DECISIONI.md: l'uncino è un dato dell'anagrafica (`GRIPPER.HAS_HOOK`); senza una pinza adatta a bordo il PLC va a prendersi quella con l'uncino; anche il rilascio vuole l'uncino; con un cassetto aperto niente pinze dallo scaffale.
+
+**`HAS_HOOK` in cella** (verificato il 7/10): bit, esiste già. Vale 1 sulla pinza doppia (righe 26 e 37), 0 sulla pinza pallet (1) e sulle vecchie righe «gancio» 15 e 24 (SUB_POS 1002). Il PLC lo legge dalla tabella `GRIPPER`; la vista `GRIPPERS`, da cui legge il pannello, non lo esponeva: lo aggiunge `gripper-has-hook.sql`.
+
+**Come il PLC sceglie la pinza con l'uncino** (REGION Gripper_Hook_Search): la pinza a bordo se ha `HAS_HOOK = 1`, altrimenti la prima a scaffale (`POS_PLANT 0`) con l'uncino, a ID più basso (riga canonica della doppia). Nessuna: **19006**. Fino al 7/10 si cercavano le righe «gancio» (SUB_POS > 1000) e in `GripperRequested` finiva 2, una pinza che non esiste.
+- Estrazione dal pannello (master 700): se la pinza a bordo non ha l'uncino il PLC la scarica, solo se è vuota (altrimenti **19007**), monta quella con l'uncino, manda il TCP al robot ed estrae: 700 → 705 → 710 (deposita) → 715 (monta) → 720 (TCP) → 730 → 750. Con la doppia a bordo: 700 → 705 → 730, nessun cambio pinza.
+- Estrazione e rilascio, in ogni percorso: la query delle catene legge anche `HAS_HOOK` della pinza a bordo. Senza uncino: **19005** (estrazione) o **20011** (rilascio). Col cassetto fuori la pinza non si cambia: il cassetto si rientra a mano.
+
+**In automatico** la pinza a bordo all'estrazione è quella dell'ordine e non si cambia: senza uncino 19005 e il ciclo si ferma. Quindi ogni pinza che preleva pezzi dai cassetti deve avere `HAS_HOOK = 1` (oggi la doppia ce l'ha). Produzione lo avvisa, senza bloccare, quando si crea o si avvia un ordine con una pinza senza uncino.
+
+**Pinze col cassetto fuori.** Catene pinza (scaffale → robot e robot → scaffale), stato 10: con un cassetto fuori (registro `ExtractedTray`, sensori `I_OUT_TRAY1..12`, catene di estrazione o rilascio attive) la pinza non si muove: **1419** (carico) o **1519** (deposito, e quindi anche il cambio pinza). Vale per tutti i percorsi: comandi dal pannello, swap, master automatici. I master automatici e gli swap restano in attesa con l'errore alzato, come col 949: si chiude il cassetto e si preme RESET. Solo il 700 chiude da sé la missione. Nel pannello i comandi pinza (pagina Robot e «sposta» della lista pinze) sono spenti col cassetto fuori o in manovra, con «Cassetto fuori: prima rientralo».
+
+**Codici** (tutti in `Error`, testi `robot.alarm_<codice>`, vedi ALLARMI-PLC.md): 1419 carico pinza rifiutato, cassetto fuori; 1519 deposito pinza rifiutato, cassetto fuori; 19005 estrazione rifiutata, pinza a bordo senza uncino; 19006 nessuna pinza con uncino, né a bordo né a scaffale; 19007 per prendere la pinza con l'uncino quella a bordo deve essere vuota; 20011 rilascio rifiutato, pinza a bordo senza uncino.
+
+**Messa in servizio, in quest'ordine, a cella ferma:**
+1. la vista, prima del pannello che mostra la casella:
+   ```
+   cd D:\Prog\easybox\serverDati\scripts; sqlcmd -S .\SQLEXPRESS -E -d ADMG -W -i gripper-has-hook.sql
+   ```
+   Atteso «estesa con HAS_HOOK»; rilanciato, «conforme». Se stampa FERMO, riportare la definizione trovata. Senza lo script il pannello funziona lo stesso: la casella è spenta e il valore a database non si tocca;
+2. i servizi (pannello con la casella, i testi dei sei codici, i comandi pinza spenti col cassetto fuori, l'avviso in Produzione);
+3. **prima del download**, in anagrafica pinze: `HAS_HOOK = 1` su tutte e sole le pinze che hanno l'uncino. La verifica in fondo allo script li elenca (le righe 15 e 24 non compaiono: la vista le esclude già);
+4. il download della consegna 34 (Dario), in RUN senza reinizializzazione: interfaccia invariata, nessuna variabile nuova, nessun retain perso;
+5. i test di accettazione della consegna, in HOLD, porta operatore chiusa. In watch: `"DB_Robot".Error`, `Dispatcher[0]` (`_master`), `Gripper_ID[1]`, `GripperRequested`, `"DB_BOX_1".ExtractedTray`:
+   1. pinza pallet a bordo, vuota, cassetti chiusi, «estrai cassetto» dal pannello. Atteso: 700 → 705 → 710 → 715 (monta la 26) → 720 → 730 → 750, il cassetto esce;
+   2. col cassetto fuori, «carica pinza» o «scarica pinza». Atteso: 1419 o 1519, il robot non va allo scaffale. Il pannello aggiornato spegne questi comandi col cassetto fuori: per vedere il rifiuto del PLC il comando va mandato senza il pannello (`TO_PLANT/CMD/ROBOT` `11;<id>` o `12` da un client MQTT);
+   3. doppia a bordo, «estrai cassetto». Atteso: niente cambio pinza, 700 → 705 → 730;
+   4. rilascio del cassetto con la doppia a bordo: rientra come prima;
+   5. doppia a bordo e cassetto fuori, togli l'uncino alla doppia in anagrafica, comando di rilascio. Atteso: 20011, il robot non si muove. Rimetti l'uncino, RESET, rilascia: il cassetto rientra;
+   6. automatico, un ciclo completo: identico a prima;
+6. tia-export e confronto con le consegne 33 e 34, blocco per blocco (parte 5, dopo il download).
+
+**Limiti** (LAVORI-IN-CODA): un cassetto a metà corsa non lo vede nessuno (`AllTrayInside`, %I35.6, non cablato); le righe 15 e 24 da chiarire; `currentGripperHasHook` dichiarata e mai usata.
+
+Provato sul clone del portatile il 7/10: `gripper-has-hook.sql` lanciato due volte («estesa con HAS_HOOK», poi «conforme»; verifica: 1 senza uncino, 26 e 37 con).
+
 ## 2026-10-07 — Riarmo dopo un'emergenza: procedura (simulazione 7/10, problema 1)
+
+**Quando vale** (DECISIONI.md, 7/10): HOLD = pausa, il PLC non azzera niente e CONTINUA riprende la missione dal punto in cui era. Questa procedura vale solo per una missione interrotta: emergenza o riarmo, RESET con una missione a metà, RESTART MAIN PROGRAM, comando di movimento a metà missione.
 
 Decisione di Dario del 7/10 (DECISIONI.md): nessuna correzione PLC. Il riarmo (`Start_AUX`, `ResetAreaRobot`) azzera le catene del PLC, mentre il robot riprenderebbe la missione interrotta. Quindi il robot va in home e lo stato della cella si dichiara di nuovo. In quest'ordine:
 

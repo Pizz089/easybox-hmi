@@ -10,6 +10,8 @@
     import { KO_NO_FIXTURE, KO_PUSH_NO_DATA, KO_PUSH_NO_FIT, KO_PUSH_NO_ROOM } from '../../util/errorCodes.js'
     // (push-to-stop 15/9) stessa formula della vista COORDINATES_PUSH_MC
     import { pushQuotes, PUSH_STATUS, zPushDrop } from '../../util/pushQuotes.js'
+    // (7/10, consegna 34) avviso: pinza dell'ordine senza uncino
+    import { avvisoUncinoOrdine } from '../../util/grippers.js'
     import { useI18n } from 'vue-i18n'
     import workOrderStep from '../../components/workOrder_step.vue'
     import UiButton from '../../components/ui/UiButton.vue'
@@ -108,6 +110,14 @@
             ? t('wizard.lastData.pushZDefault')
             : t('wizard.lastData.pushZ', { from: pieceZPush/1000, drop: pushZDrop/1000 }) }}</span>
       </div>
+
+      <!-- (7/10, consegna 34) pinza dell'ordine senza uncino: nel ciclo
+           automatico il PLC si ferma all'estrazione del cassetto (19005).
+           E' un AVVISO: il salvataggio resta possibile. -->
+      <div class="form-row" v-if="hookWarning">
+        <label class="form-label">{{ t('wizard.lastData.hook') }}</label>
+        <span class="hook-warning">{{ t(hookWarning) }}</span>
+      </div>
     </section>
 
     <!-- (1/9) La card POSIZIONAMENTO (8 decentramenti X/Y prelievo/deposito
@@ -156,7 +166,9 @@ export default {
             // null = alla quota di presa) e quota di presa del pezzo
             pieceZPush:null,
             pieceZPick:null,
-            viceFound:false
+            viceFound:false,
+            // (7/10, consegna 34) chiave dell'avviso "pinza senza uncino", '' se no
+            hookWarning:''
         }
     },
     computed: {
@@ -267,6 +279,15 @@ export default {
                 })
                 .catch(e => { console.info(e); this.gripperClaw = null; });
         },
+        // (7/10, consegna 34) la pinza dell'ordine ha l'uncino per i cassetti?
+        // Senza, l'avviso (avvisoUncinoOrdine di util/grippers.js). Lettura
+        // fallita o dato che manca: nessun avviso, l'ordine non si blocca.
+        getHookWarning(){
+            fetch(dataStored.server + 'api/conf/gripper/show/all', { method: 'GET' })
+                .then(r => { if (!r.ok) throw new Error('Network response was not ok'); return r.json(); })
+                .then(rows => { this.hookWarning = avvisoUncinoOrdine(rows, dataStored.createWorkOrder.gripperID); })
+                .catch(e => { console.info(e); this.hookWarning = ''; });
+        },
         saveData() {
             // guardia: senza part program dal particolare l'ordine non nasce
             // (il bottone e' gia' disabilitato, questa e' la difesa in piu')
@@ -331,6 +352,7 @@ export default {
       },
       mounted(){
         this.getPiecePP()
+        this.getHookWarning()
       }
     }
   </script>
@@ -430,6 +452,13 @@ export default {
   flex: none;
   margin: 0;
   text-decoration: none;
+}
+
+/* (7/10) avviso che non blocca: colore di avviso, non di errore */
+.hook-warning {
+  color: var(--color-warning);
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .form-select {
