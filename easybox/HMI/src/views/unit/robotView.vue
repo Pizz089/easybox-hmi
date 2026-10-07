@@ -29,7 +29,6 @@
   import { aspettaEco } from '../../util/palletMachine.js'
   // (B61) i codici che la Reimposta stato cella mostra: niente riquadro globale
   import { codiciInDialog } from '../../util/robotAlarm.js'
-  const DECL_CODICI = [947, 948, 99, 996, 997, 999, 944, 945, 946, 968, 969, 20001, 20002, 20005, 20006]
   import { ecoMc, ecoBox, ecoRobot, ecoTasca, ecoTipoCassetto } from '../../util/declEcho.js'
 </script>
 
@@ -971,6 +970,12 @@
 </template>
 
 <script>
+// (B61) i codici che la Reimposta stato cella mostra (sezioni macchina,
+// cassetto, robot e tasche): con il dialog aperto il riquadro globale tace.
+// Qui e non nello <script setup>: lo usa il watcher di declDialog.open, che
+// dello <script setup> vede solo gli import.
+const DECL_CODICI = [947, 948, 99, 996, 997, 999, 944, 945, 946, 968, 969, 20001, 20002, 20005, 20006];
+
 // Comandi chele (CARD 5): missioni PLC senza parametri su TO_PLANT/CMD/ROBOT.
 // Un punto solo per i codici; lato -> {open, close}.
 const CLAW_CMD = {
