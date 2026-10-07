@@ -93,7 +93,12 @@ La pinza è quella che il PLC ha registrata come lato 1 (`GRIPPER/REGISTERED`), 
 
 Non si tocca la casella del magazzino: `MAG_POS` resta la casa del pallet, dove lo si riporta con «Gestione pallet».
 
-**Messa in servizio.** Solo pannello: nessuno script SQL e nessuna modifica al PLC (il 35 e il 41 esistono già). Aggiornare i servizi.
+**Anche «In macchina» e «Rimuovi» del Posiziona passano dal PLC** (simulazione del 7/10, problema 16: scrivevano solo il database e `DB_MC1.pallet` restava com'era). Stessa logica della pagina Macchine, in `HMI/src/util/palletMachine.js`:
+- «In macchina»: `40;<pallet>` a MC1, eco `DECLARE/MC1` col pallet (3 s), poi il database come prima (`POS_PLANT` 101, la casa resta, la casella di provenienza si libera). Se il registro ha già quel pallet il 40 non parte (FB204 lo rifiuterebbe); se ne ha un altro, niente comando e si dice quale;
+- «Rimuovi» di un pallet in macchina: `41`, eco col pallet a 0, poi `MAG_POS -1`, `POS_PLANT 0`. Il 41 parte solo se il registro ha quel pallet (o non risponde); con il registro già a 0 basta il database (il 41 azzererebbe anche il pezzo in macchina); con un altro pallet nel registro non si tocca niente. «Rimuovi» di un pallet a magazzino non riguarda la macchina: solo il database;
+- rifiuto 947 di FB204 (ciclo macchina avviato, o 40 con un pallet già dichiarato) o niente eco: messaggio e **nessuna** scrittura nel database.
+
+**Messa in servizio.** Solo pannello: nessuno script SQL e nessuna modifica al PLC (35, 40 e 41 esistono già). Aggiornare i servizi.
 
 ## [ ] 2026-10-06 — deposito manuale in MC1: vista `MAN_ORDER_MC1` **prima** del download di FB_Robot
 

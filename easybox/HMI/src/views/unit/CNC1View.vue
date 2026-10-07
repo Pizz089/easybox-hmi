@@ -1,5 +1,8 @@
 <script setup>
     import { dataStored } from '../../data.js'
+    // (7/10) la doppia mossa 40/41 -> eco -> REST sta in util/palletMachine.js,
+    // condivisa col Posiziona di Attrezzaggi e col pallet a bordo del robot
+    import { mandaComandoPallet, scriviPosizione, messaggioEsitoMacchina } from '../../util/palletMachine.js'
 </script>
 
 <template>
@@ -147,9 +150,8 @@ export default {
             palletsList: [],
             orders: [],
             // doppia mossa ECO-DRIVEN: publish 40/41 -> attesa eco coerente
-            // -> SOLO allora REST POS_PLANT. Timeout 3s = errore, zero REST.
-            pendingDecl: null,     // {type:'set'|'clear', palletId}
-            declTimer: null,
+            // -> SOLO allora REST POS_PLANT. Timeout 3s o rifiuto 947 =
+            // errore, zero REST (util/palletMachine.js, dal 7/10).
             declWaiting: false,
             pollTimer: null
         }
@@ -183,8 +185,8 @@ export default {
                 .catch(e => { console.info(e); });
         },
         // eco DECLARE/MC1 "pallet;manualVice": UNICA sorgente dello stato a
-        // video; se c'e' una doppia mossa armata e l'eco e' COERENTE, parte
-        // la scrittura REST POS_PLANT (mai prima dell'eco).
+        // video. L'attesa dell'eco di un 40/41 mandato da qui la fa il modulo
+        // (util/palletMachine.js), con la sua coerenza e il rifiuto 947.
         declareMc1Handler(payload) {
             const parts = String(payload).split(';');
             const pallet = parseInt(parts[0], 10);
@@ -193,15 +195,6 @@ export default {
             this.declPallet = pallet;
             this.declManualVice = Number.isInteger(mv) ? mv : 0;
             this.declKnown = true;
-            const p = this.pendingDecl;
-            if (!p) return;
-            const coherent = (p.type == 'set' && pallet == p.palletId) ||
-                             (p.type == 'clear' && pallet == 0);
-            if (!coherent) return;   // eco spontaneo non pertinente: resto in attesa
-            clearTimeout(this.declTimer);
-            this.pendingDecl = null;
-            this.declWaiting = false;
-            this.applyPosPlant(p.type, p.palletId);
         },
         declarePallet() {
             if (this.rigBlockReason != '' || this.declWaiting || !(this.palletSel > 0)) return;
@@ -219,79 +212,43 @@ export default {
                 this.getRigLists();
                 return;
             }
-            this.armDecl({ type: 'set', palletId: this.palletSel });
-            dataStored.WS.socket.emit('TO_PLANT/CMD/MC1', '40;' + this.palletSel);
+            this.mandaPallet('set', this.palletSel);
         },
         removePallet() {
             if (this.rigBlockReason != '' || this.declWaiting || !(this.declPallet > 0)) return;
-            this.armDecl({ type: 'clear', palletId: this.declPallet });
-            dataStored.WS.socket.emit('TO_PLANT/CMD/MC1', '41');
+            this.mandaPallet('clear', this.declPallet);
+        },
+        // 40;<pallet> o 41 su MC1, eco coerente, poi la posizione nel DB:
+        // dichiara -> POS_PLANT 101 (la casa resta, la casella di provenienza
+        // si libera), rimuovi -> il pallet in macchina a MAG_POS -1 /
+        // POS_PLANT 0. Timeout o 947 = messaggio e NESSUNA scrittura REST.
+        // Il comando parte subito (in modo sincrono): l'attesa e' dopo.
+        mandaPallet(tipo, palletId) {
+            this.declWaiting = true;
+            mandaComandoPallet(dataStored.WS.socket, { mc: 1, tipo, palletId }).then(r => {
+                this.declWaiting = false;
+                if (!r.ok) {
+                    dataStored.alert.title = this.$t('WARNING');
+                    dataStored.alert.desc = messaggioEsitoMacchina(r, tipo);
+                    dataStored.alert.type = 'warning';
+                    return;
+                }
+                return scriviPosizione({
+                    server: dataStored.server, tipo, mc: 1,
+                    palletId: tipo === 'set' ? palletId : null,
+                    liberaCasella: tipo === 'set',
+                }).then(w => {
+                    if (w.ok) return;
+                    dataStored.alert.title = this.$t('WARNING');
+                    dataStored.alert.desc = 'machine.restFailed';
+                    dataStored.alert.type = 'warning';
+                });
+            });
         },
         toggleManualVice() {
             if (this.rigBlockReason != '' || this.declWaiting) return;
             // SOLO MQTT: lo stato a video cambiera' con l'eco DECLARE/MC1
             dataStored.WS.socket.emit('TO_PLANT/CMD/MC1', this.declManualVice ? '43' : '42');
-        },
-        armDecl(pending) {
-            this.pendingDecl = pending;
-            this.declWaiting = true;
-            clearTimeout(this.declTimer);
-            this.declTimer = setTimeout(() => {
-                // nessun eco entro 3s: errore a video, NESSUNA scrittura REST
-                this.pendingDecl = null;
-                this.declWaiting = false;
-                dataStored.alert.title = this.$t('WARNING');
-                dataStored.alert.desc = 'machine.echoTimeout';
-                dataStored.alert.type = 'warning';
-            }, 3000);
-        },
-        // REST POS_PLANT (stesso endpoint del dialog Posiziona "In macchina
-        // MC1"): dichiara -> 101, rimuovi -> 0; MAG_POS=-1; pass-through
-        // FRESCO (pattern AE) di tutti gli altri campi; per la dichiarazione
-        // da magazzino si libera la casella di provenienza (free 4->2).
-        async applyPosPlant(type, palletId) {
-            try {
-                const pallets = await fetch(dataStored.server + 'api/conf/pallet/show/all', { method: 'GET' })
-                    .then(r => { if (!r.ok) throw new Error('Network response was not ok'); return r.json(); });
-                const id = type == 'set' ? palletId : this.findInMachine(pallets);
-                const row = (pallets || []).find(p => p.ID == id);
-                if (!row) return;   // niente riga fresca: nessuna scrittura cieca
-                const fromSlot = row.MAG_POS > 0 ? row.MAG_POS : 0;
-                // (am-casella-magpos) tabella ratificata: in macchina la
-                // CASA resta (MAG_POS invariato); il rimuovi (41) porta
-                // fuori magazzino (-1) come il ramo Rimuovi del dialog
-                const params = new URLSearchParams({
-                    ID: row.ID, FAMILY: row.FAMILY, DESCR: row.DESCR,
-                    X: row.X, Y: row.Y, Z: row.Z,
-                    X_CORR: row.X_CORR, Y_CORR: row.Y_CORR, Z_CORR: row.Z_CORR,
-                    MAG: row.MAG,
-                    MAG_POS: type == 'set' ? row.MAG_POS : -1,
-                    POS_PLANT: type == 'set' ? 101 : 0
-                });
-                const body = await fetch(dataStored.server + 'api/conf/pallet/updatePallet?' + params.toString(), { method: 'GET' })
-                    .then(r => { if (!r.ok) throw new Error('Network response was not ok'); return r.text(); });
-                if (body != 'OK') throw new Error(body);
-                // (am-inmacchina-free) al set la casa (MAG_POS) resta del
-                // pallet, ma la casella di provenienza va LIBERATA (4->2,
-                // idempotente): il rientro automatico PLC cerca la casa con
-                // STATUS=2 — palletSlotGuard la protegge comunque via MAG_POS
-                if (type == 'set' && fromSlot > 0)
-                    await fetch(dataStored.server + 'api/conf/position/warehouseSlot/free/WPALLET/' + fromSlot, { method: 'GET' })
-                        .catch(e => { console.info(e); });
-            } catch (e) {
-                console.info(e);
-                dataStored.alert.title = this.$t('WARNING');
-                dataStored.alert.desc = 'machine.restFailed';
-                dataStored.alert.type = 'warning';
-            }
-        },
-        // per il RIMUOVI: il pallet da riportare a POS_PLANT=0 e' quello
-        // attualmente dichiarato in MC1 (101; fascia per i legacy)
-        findInMachine(pallets) {
-            const exact = (pallets || []).find(p => p.POS_PLANT == 101);
-            if (exact) return exact.ID;
-            const inBand = (pallets || []).find(p => p.POS_PLANT > 100 && p.POS_PLANT < 1000);
-            return inBand ? inBand.ID : 0;
         },
         getGripperData() {
             fetch(dataStored.server+'api/conf/fixture/showOnMC/1',{ method: 'GET'})
@@ -350,7 +307,6 @@ export default {
     unmounted(){
         this.polling=false;
         clearInterval(this.pollTimer);
-        clearTimeout(this.declTimer);
         dataStored.WS.socket.off('connect', this.requestSnapshots);
         dataStored.WS.socket.off('DECLARE/MC1', this.mc1DeclHandler);
     }

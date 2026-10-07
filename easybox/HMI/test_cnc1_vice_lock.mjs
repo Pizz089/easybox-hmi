@@ -58,7 +58,9 @@ check(typeof emitted[0][1] === 'string', 'payload stringa');
 
 console.log('\n3) nessun fallback: niente timer/alert legati al blocco');
 check(!/viceLock[\s\S]{0,200}(setTimeout|alert\.)/.test(src) || !/(setTimeout|dataStored\.alert)[^\n]*viceLock/.test(src), 'nessun timeout/alert nel ramo BLOCCO MORSA');
-check(vm.declTimer === null && vm.pendingDecl === null, 'la doppia mossa eco-driven (40/41) non viene armata');
+// (7/10) la doppia mossa 40/41 sta in util/palletMachine.js: armata vuol dire
+// declWaiting, e il blocco morsa non la tocca (emesso solo l'11, sopra)
+check(vm.declWaiting === false && !emitted.some(e => /^(40;|41$)/.test(String(e[1]))), 'la doppia mossa eco-driven (40/41) non viene armata');
 
 await server.close();
 console.log('\n' + (failed ? failed + ' CHECK FALLITI' : 'TUTTI I CHECK PASSATI'));

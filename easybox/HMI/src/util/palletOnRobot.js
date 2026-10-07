@@ -28,12 +28,13 @@
 // robot»; Robot, «Dichiara quale pallet e' in pinza»).
 // ============================================================================
 import { dataStored } from '../data.js';
+import { aspettaEco, mandaComandoPallet, ECO_MC_MS, RIFIUTI_MC } from './palletMachine.js';
 
 // attese, le stesse delle pagine che mandano gia' questi comandi
-export const ECO_41_MS = 3000;     // pagina Macchine (armDecl)
+export const ECO_41_MS = ECO_MC_MS;  // pagina Macchine (util/palletMachine.js)
 export const ECO_35_MS = 5000;     // Reimposta stato cella (declEchoMs)
 export const SENSORI_MS = 1500;    // risposta allo snapshot dei sensori
-export const RIFIUTI_41 = [947];   // FB_Machine_Autonomous: ciclo macchina avviato
+export const RIFIUTI_41 = RIFIUTI_MC;  // FB204: ciclo macchina avviato
 export const RIFIUTI_35 = [944, 945, 946, 968, 969];   // come Reimposta stato cella
 
 // Contenuto di un lato per il 35 (0 vuoto, 1 grezzo, 2 finito, 3 pallet) a
@@ -141,46 +142,15 @@ export function leggiSensori(socket, ms = SENSORI_MS) {
 	});
 }
 
-// Attende UN'eco COERENTE con quello che si e' mandato, con timeout. Un
-// rifiuto del PLC fra i codici attesi chiude subito l'attesa.
-// Risolve { ok, codice, scaduto } — mai una rejection.
-export function aspettaEco(socket, { evento, coerente, allarme, codici, ms }) {
-	return new Promise(resolve => {
-		let fatto = false;
-		const fine = (esito) => {
-			if (fatto) return;
-			fatto = true;
-			clearTimeout(t);
-			socket.off(evento, suEco);
-			if (allarme) socket.off(allarme, suAllarme);
-			resolve(esito);
-		};
-		const suEco = (payload) => { if (!coerente || coerente(String(payload))) fine({ ok: true, codice: 0, scaduto: false }); };
-		const suAllarme = (payload) => {
-			const c = parseInt(String(payload).trim(), 10);
-			if ((codici || []).indexOf(c) >= 0) fine({ ok: false, codice: c, scaduto: false });
-		};
-		const t = setTimeout(() => fine({ ok: false, codice: 0, scaduto: true }), ms);
-		socket.on(evento, suEco);
-		if (allarme) socket.on(allarme, suAllarme);
-	});
-}
-
 // Manda il piano: prima il 41 (se il pallet e' in macchina) e la sua eco,
 // poi il 35 e la sua eco. Si ferma al primo passo che non conferma.
+// Il 41 e l'attesa delle eco sono quelli di util/palletMachine.js (la stessa
+// logica della pagina Macchine e del Posiziona): qui NON si fa la scrittura
+// REST che li' segue il 41, perche' POS_PLANT lo scrive il 35.
 // Risolve { ok, fase: '41'|'35', codice, scaduto }.
 export async function eseguiDichiarazione(socket, piano, opz = {}) {
 	if (piano.cmd41) {
-		const eco41 = aspettaEco(socket, {
-			// eco DECLARE/MC1 "pallet;manualVice;pezzo": il pallet a 0 e' la conferma
-			evento: 'DECLARE/' + piano.cmd41.unit,
-			coerente: p => parseInt(p.split(';')[0], 10) === 0,
-			allarme: 'ALARM/' + piano.cmd41.unit,
-			codici: RIFIUTI_41,
-			ms: opz.ms41 || ECO_41_MS,
-		});
-		socket.emit('TO_PLANT/CMD/' + piano.cmd41.unit, piano.cmd41.cmd);
-		const r = await eco41;
+		const r = await mandaComandoPallet(socket, { mc: piano.mc, tipo: 'clear', ms: opz.ms41 || ECO_41_MS });
 		if (!r.ok) return Object.assign({ fase: '41' }, r);
 	}
 	const eco35 = aspettaEco(socket, {
