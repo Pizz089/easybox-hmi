@@ -1,0 +1,170 @@
+Confronto progetto (offline) / PLC online - CPU PLC
+Generato da tools/tia-export --compare-online. Non modificare a mano.
+diverso 0, solo offline 0, solo online 0, uguale 165
+
+STATO         OGGETTO
+uguale        PLC/PLC data types/LSql/Helpers/LSql_typeLoginData [LSql_typeLoginData V 1.1.0]
+uguale        PLC/PLC data types/LSql/Helpers/LSql_typePacketHeader [LSql_typePacketHeader V 1.1.0]
+uguale        PLC/PLC data types/LSql/Helpers/LSql_typePreloginData [LSql_typePreloginData V 1.1.0]
+uguale        PLC/PLC data types/LSql/Helpers/LSql_typeSqlBatchData [LSql_typeSqlBatchData V 1.1.0]
+uguale        PLC/PLC data types/LSql/LSql_typeColumFlags [LSql_typeColumFlags V 3.0.0]
+uguale        PLC/PLC data types/LSql/LSql_typeColumn [LSql_typeColumn V 3.0.2]
+uguale        PLC/PLC data types/LSql/LSql_typeConnectionSettings [LSql_typeConnectionSettings V 1.1.0]
+uguale        PLC/PLC data types/LSql/LSql_typeDiagnostics [LSql_typeDiagnostics V 1.1.0]
+uguale        PLC/PLC data types/LSql/LSql_typeErrorToken [LSql_typeErrorToken V 1.0.0]
+uguale        PLC/PLC data types/LSql/LSql_typeLoginInformation [LSql_typeLoginInformation V 1.1.0]
+uguale        PLC/PLC data types/LSql/typeSqlData
+uguale        PLC/PLC data types/LSql/typeTokenRow
+uguale        PLC/PLC data types/MQTT/LMQTT_typeConnParam [LMQTT_typeConnParam V 4.0.0]
+uguale        PLC/PLC data types/MQTT/typeDiagnostics [typeDiagnostics V 1.0.0]
+uguale        PLC/PLC data types/Robot_Mission
+uguale        PLC/PLC data types/Robot_mission_STATUS
+uguale        PLC/PLC data types/System data types/F_SYSINFO
+uguale        PLC/PLC data types/UDT_CMD
+uguale        PLC/PLC data types/UDT_MachineIOConfig
+uguale        PLC/PLC data types/UDT_MachineIn
+uguale        PLC/PLC data types/UDT_MachineMode
+uguale        PLC/PLC data types/UDT_MachineOut
+uguale        PLC/PLC data types/UDT_Order
+uguale        PLC/PLC data types/UDT_SignalMap
+uguale        PLC/PLC data types/sub_data/RST
+uguale        PLC/PLC data types/sub_data/SpecialOption
+uguale        PLC/PLC data types/sub_data/SystemSignalsIN
+uguale        PLC/PLC data types/sub_data/cmd_Maintenance
+uguale        PLC/PLC data types/sub_data/cmd_rob-plc
+uguale        PLC/PLC data types/sub_data/cmd_status_4Robot
+uguale        PLC/PLC data types/sub_data/systemSignals
+uguale        PLC/PLC data types/warehouse_interface?
+uguale        PLC/PLC tags/Approach_type
+uguale        PLC/PLC tags/Default tag table
+uguale        PLC/PLC tags/EasyBOX
+uguale        PLC/PLC tags/Generic/Part_Type
+uguale        PLC/PLC tags/Generic/Unit_type
+uguale        PLC/PLC tags/Generic/unit_status
+uguale        PLC/PLC tags/LSql/LSql_UserConstants
+uguale        PLC/PLC tags/Machine/Machine
+uguale        PLC/PLC tags/Profinet_Comunication
+uguale        PLC/PLC tags/Robot/Robot_Efort
+uguale        PLC/PLC tags/Robot/cmd_Robot
+uguale        PLC/PLC tags/Robot/mission_Robot
+uguale        PLC/PLC tags/cmd
+uguale        PLC/PLC tags/plant
+uguale        PLC/Program blocks/Cyclic interrupt [OB30]
+uguale        PLC/Program blocks/Cyclic interrupt_1 [OB31]
+uguale        PLC/Program blocks/Database/DB_executeQuery [DB7]
+uguale        PLC/Program blocks/Database/DB_executeQuery2 [DB22]
+uguale        PLC/Program blocks/Database/FB_ExecuteQuery [FB6]
+uguale        PLC/Program blocks/Database/FB_ExecuteQuery2 [FB10]
+uguale        PLC/Program blocks/Database/FC_DBdata [FC2]
+uguale        PLC/Program blocks/Database/FC_DBdata2 [FC17]
+uguale        PLC/Program blocks/Database/LGF/6 Converter operations/Binary types - Split and Merge/LGF_MergeBytesToDWord [FC10067] [LGF_MergeBytesToDWord V 3.0.1]
+uguale        PLC/Program blocks/Database/LGF/6 Converter operations/Binary types - Split and Merge/LGF_MergeBytesToWord [FC10066] [LGF_MergeBytesToWord V 3.0.1]
+uguale        PLC/Program blocks/Database/LGF/6 Converter operations/Binary types - Split and Merge/LGF_SplitWordToBytes [FC10068] [LGF_SplitWordToBytes V 3.0.1]
+uguale        PLC/Program blocks/Database/LSql/AnalyzeTokens [FB4]
+uguale        PLC/Program blocks/Database/LSql/DeserializeRows [FB3]
+uguale        PLC/Program blocks/Database/LSql/Helpers/LSql_BytesToString [FC1] [LSql_BytesToString V 1.0.3]
+uguale        PLC/Program blocks/Database/LSql/Helpers/LSql_WriteData [FC4] [LSql_WriteData V 1.1.0]
+uguale        PLC/Program blocks/Database/LSql/Instances/InstAnalyzeTokens [DB4]
+uguale        PLC/Program blocks/Database/LSql/Instances/InstAnalyzeTokens2 [DB16]
+uguale        PLC/Program blocks/Database/LSql/Instances/InstDeserializeRows [DB9]
+uguale        PLC/Program blocks/Database/LSql/Instances/InstDeserializeRows2 [DB17]
+uguale        PLC/Program blocks/Database/LSql/Instances/InstLSql_Microsoft [DB1]
+uguale        PLC/Program blocks/Database/LSql/Instances/InstLSql_Microsoft2 [DB14]
+uguale        PLC/Program blocks/Database/LSql/LSql_Microsoft [FB2] [LSql_Microsoft V 3.1.1]
+uguale        PLC/Program blocks/Database/LSql/SqlCommands [DB3]
+uguale        PLC/Program blocks/Database/LSql/SqlCommands2 [DB19]
+uguale        PLC/Program blocks/Database/LSql/SqlConfig [DB2]
+uguale        PLC/Program blocks/Database/LSql/SqlConfig2 [DB18]
+uguale        PLC/Program blocks/Database/LSql/SqlData [DB5]
+uguale        PLC/Program blocks/Database/LSql/SqlData2 [DB20]
+uguale        PLC/Program blocks/Database/LSql/SqlTdsReceive [DB8]
+uguale        PLC/Program blocks/Database/LSql/SqlTdsReceive2 [DB21]
+uguale        PLC/Program blocks/FOB_RTG1 [OB123]
+uguale        PLC/Program blocks/MQTT/Common/IsIPAddress [FC7] [IsIPAddress V 1.0.0]
+uguale        PLC/Program blocks/MQTT/DB_MQTT [DB110]
+uguale        PLC/Program blocks/MQTT/FC_MQTT [FC8]
+uguale        PLC/Program blocks/MQTT/LMQTT_Client [FB11] [LMQTT_Client V 4.0.4]
+uguale        PLC/Program blocks/MQTT/LMQTT_Client_DB [DB11]
+uguale        PLC/Program blocks/MQTT/Utilities/LMQTT_ConvertToUtf8 [FC6] [LMQTT_ConvertToUtf8 V 3.0.0]
+uguale        PLC/Program blocks/Main [OB1]
+uguale        PLC/Program blocks/Main_Safety_RTG1 [FB1]
+uguale        PLC/Program blocks/Main_Safety_RTG1_DB [DB6]
+uguale        PLC/Program blocks/OB_startUp [OB100]
+uguale        PLC/Program blocks/Plant/DB_MachineConfig [DB15]
+uguale        PLC/Program blocks/Plant/DB_plant [DB100]
+uguale        PLC/Program blocks/Plant/FB_plant [FB5]
+uguale        PLC/Program blocks/Plant/Machines/DBHandControllerMC1 [DB211]
+uguale        PLC/Program blocks/Plant/Machines/DBHandControllerMC2 [DB212]
+uguale        PLC/Program blocks/Plant/Machines/DB_MC1 [DB12]
+uguale        PLC/Program blocks/Plant/Machines/DB_MC1_OLD [DB201]
+uguale        PLC/Program blocks/Plant/Machines/DB_MC2 [DB202]
+uguale        PLC/Program blocks/Plant/Machines/DB_iPos_MC1 [DB13]
+uguale        PLC/Program blocks/Plant/Machines/FB_MachinePosition [FB9]
+uguale        PLC/Program blocks/Plant/Machines/FC_Map_Spinner_MC1 [FC12]
+uguale        PLC/Program blocks/Plant/Machines/MC_HandController/FB_BasicHandController [FB210]
+uguale        PLC/Program blocks/Plant/Machines/MC_Implementations/FB_MC_Dummy [FB201]
+uguale        PLC/Program blocks/Plant/Machines/MC_Implementations/FB_MC_Spinner [FB202]
+uguale        PLC/Program blocks/Plant/Machines/MC_Implementations/FB_Machine_Autonomous [FB204]
+uguale        PLC/Program blocks/Plant/Machines/MC_Implementations/FB_Machine_Spinner [FB203]
+uguale        PLC/Program blocks/Plant/Robot/DB_Robot [DB300]
+uguale        PLC/Program blocks/Plant/Robot/FB_Robot [FB7]
+uguale        PLC/Program blocks/Plant/Robot/Mission/DB_RobotMission [DB500]
+uguale        PLC/Program blocks/Plant/Robot/Mission/DB_RobotMissionStatus [DB501]
+uguale        PLC/Program blocks/Plant/Robot/Robot_Implementations/DB_Robot_Efort [DB111]
+uguale        PLC/Program blocks/Plant/Robot/Robot_Implementations/FB_RobotEfort [FB8]
+uguale        PLC/Program blocks/Plant/Warehouse/EasyBox/DB_BOX_1 [DB101]
+uguale        PLC/Program blocks/Plant/Warehouse/EasyBox/FB_easyBox [FB100]
+uguale        PLC/Program blocks/Plant/Warehouse/VertiBox
+uguale        PLC/Program blocks/System blocks/Program resources/F_TRIG [FB1002]
+uguale        PLC/Program blocks/System blocks/Program resources/R_TRIG [FB1001]
+uguale        PLC/Program blocks/System blocks/Program resources/SERIALIZE [FC890]
+uguale        PLC/Program blocks/System blocks/Program resources/TSEND_C [FB1030]
+uguale        PLC/Program blocks/System blocks/STEP 7 Safety/Compiler blocks/DB10_C [DB30013]
+uguale        PLC/Program blocks/System blocks/STEP 7 Safety/Compiler blocks/DB6_C [DB30002]
+uguale        PLC/Program blocks/System blocks/STEP 7 Safety/Compiler blocks/FB1_C [FB32768]
+uguale        PLC/Program blocks/System blocks/STEP 7 Safety/Compiler blocks/FB1_C_GCTX_DB [DB30008]
+uguale        PLC/Program blocks/System blocks/STEP 7 Safety/Compiler blocks/FB32777_IDB_C [DB30003]
+uguale        PLC/Program blocks/System blocks/STEP 7 Safety/Compiler blocks/FB32778_IDB_C [DB30004]
+uguale        PLC/Program blocks/System blocks/STEP 7 Safety/Compiler blocks/FB32779_IDB_C [DB30005]
+uguale        PLC/Program blocks/System blocks/STEP 7 Safety/Compiler blocks/FB32781_IDB_C [DB30006]
+uguale        PLC/Program blocks/System blocks/STEP 7 Safety/Compiler blocks/FGESTOP1 [FB32776]
+uguale        PLC/Program blocks/System blocks/STEP 7 Safety/Compiler blocks/FGESTOP1_GCTX_DB [DB30014]
+uguale        PLC/Program blocks/System blocks/STEP 7 Safety/Compiler blocks/FOB_GLOBAL_1 [FC32767]
+uguale        PLC/Program blocks/System blocks/STEP 7 Safety/Compiler blocks/FOB_RTG1_GCTX_DB [DB30007]
+uguale        PLC/Program blocks/System blocks/STEP 7 Safety/Compiler blocks/F_8BOOL_INPUT_NC [FB32773]
+uguale        PLC/Program blocks/System blocks/STEP 7 Safety/Compiler blocks/F_8BOOL_OUTPUT [FB32780]
+uguale        PLC/Program blocks/System blocks/STEP 7 Safety/Compiler blocks/F_CTRL_1 [FB32767]
+uguale        PLC/Program blocks/System blocks/STEP 7 Safety/Compiler blocks/F_CTRL_2 [FB32778]
+uguale        PLC/Program blocks/System blocks/STEP 7 Safety/Compiler blocks/F_CTRL_D [FB32777]
+uguale        PLC/Program blocks/System blocks/STEP 7 Safety/Compiler blocks/F_CTRL_RT [FB32781]
+uguale        PLC/Program blocks/System blocks/STEP 7 Safety/Compiler blocks/F_ET_LI [FB32779]
+uguale        PLC/Program blocks/System blocks/STEP 7 Safety/Compiler blocks/F_JL_CORR [FC32768]
+uguale        PLC/Program blocks/System blocks/STEP 7 Safety/Compiler blocks/F_PSV2_13_RCV [FB32774]
+uguale        PLC/Program blocks/System blocks/STEP 7 Safety/Compiler blocks/F_PSV2_13_SEND [FB32775]
+uguale        PLC/Program blocks/System blocks/STEP 7 Safety/Compiler blocks/F_PS_IN_1_0_0_0_0_0_0_2_1_0_1_23 [FB32769]
+uguale        PLC/Program blocks/System blocks/STEP 7 Safety/Compiler blocks/F_PS_OUT_1_0_0_0_0_0_1_1_0_1_1_23 [FB32770]
+uguale        PLC/Program blocks/System blocks/STEP 7 Safety/Compiler blocks/F_PS_SEEDPASS_RCV [FB32771]
+uguale        PLC/Program blocks/System blocks/STEP 7 Safety/Compiler blocks/F_PS_SEEDPASS_SEND [FB32772]
+uguale        PLC/Program blocks/System blocks/STEP 7 Safety/Compiler blocks/SPLIT_FOB_1_1 [FC32769]
+uguale        PLC/Program blocks/System blocks/STEP 7 Safety/ESTOP1_DB [DB10]
+uguale        PLC/Program blocks/System blocks/STEP 7 Safety/F-I/O data blocks/F00220_22A1 [DB30009]
+uguale        PLC/Program blocks/System blocks/STEP 7 Safety/F-I/O data blocks/F00230_23A1 [DB30010]
+uguale        PLC/Program blocks/System blocks/STEP 7 Safety/F-I/O data blocks/F00237_24A1 [DB30015]
+uguale        PLC/Program blocks/System blocks/STEP 7 Safety/F-I/O data blocks/F00260_26A1 [DB30011]
+uguale        PLC/Program blocks/System blocks/STEP 7 Safety/F-I/O data blocks/F00270_27A1 [DB30012]
+uguale        PLC/Program blocks/System blocks/STEP 7 Safety/F-I/O data blocks/F00275_28A1 [DB30016]
+uguale        PLC/Program blocks/System blocks/STEP 7 Safety/F_ESTOP1 [FB215]
+uguale        PLC/Program blocks/System blocks/STEP 7 Safety/F_SystemInfo_DB [DB30001]
+uguale        PLC/Program blocks/System blocks/STEP 7 Safety/Flexible F-Link
+uguale        PLC/Program blocks/System blocks/STEP 7 Safety/RTG1SysInfo [DB30000]
+uguale        PLC/Program blocks/Utility/FC_ExtractApproach [FC10]
+uguale        PLC/Program blocks/Utility/FC_ExtractGripper [FC9]
+uguale        PLC/Program blocks/Utility/FC_Map_Generic [FC15]
+uguale        PLC/Program blocks/Utility/FC_Split_Dint [FC5]
+uguale        PLC/Program blocks/Utility/FC_ValidateConfig [FC16]
+uguale        PLC/Program blocks/Utility/FC_words_to_DINT [FC11]
+uguale        PLC/Program blocks/Utility/GET_BIT [FC13]
+uguale        PLC/Program blocks/Utility/INT_TO_STRING_WITHOUT_SIGN [FC3]
+uguale        PLC/Program blocks/Utility/SET_BIT [FC14]
+uguale        PLC/Software units
+uguale        PLC/Technology objects
