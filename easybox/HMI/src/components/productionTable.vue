@@ -105,6 +105,7 @@
 import StatoElenco from './StatoElenco.vue';
 import RelaunchDialog from './RelaunchDialog.vue';
 import { caricaElenco, STATO } from '../util/caricaElenco.js';
+import { avvisoUncinoOrdine } from '../util/grippers.js';
 
 export default {
     components: { StatoElenco, RelaunchDialog },
@@ -145,6 +146,26 @@ export default {
                     pieceID: pieceID
                 }
             );
+            // (7/10, consegna 34) avvio di un ordine la cui pinza non ha
+            // l'uncino: il comando parte comunque, poi l'avviso
+            if (stat == dataStored.status_working) this.avvisoUncino(id);
+        },
+        // (7/10, consegna 34) AVVISO, non blocco: nel ciclo automatico la
+        // pinza a bordo all'estrazione del cassetto e' quella dell'ordine e il
+        // PLC si ferma con 19005 se non ha l'uncino (util/grippers.js).
+        avvisoUncino(id){
+            const o = (this.orders || []).find(x => x.ID == id);
+            if (!o) return;
+            fetch(dataStored.server + 'api/conf/gripper/show/all', { method: 'GET' })
+                .then(r => { if (!r.ok) throw new Error('Network response was not ok'); return r.json(); })
+                .then(rows => {
+                    const chiave = avvisoUncinoOrdine(rows, o.GRIPPER_ID);
+                    if (!chiave) return;
+                    dataStored.alert.title = this.$t('WARNING');
+                    dataStored.alert.desc = this.$t(chiave);
+                    dataStored.alert.type = 'warning';
+                })
+                .catch(e => { console.info(e); });
         },
         sicurezza(id, desc){
             if (desc == "WORKING")

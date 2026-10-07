@@ -176,7 +176,11 @@
     "stroke_claw": "Corsa della ganascia",
     "tickness_claw": "Spessore della ganascia",
     "claw_length": "Chela: lunghezza nella direzione in cui spinge il pezzo",
-    "claw_lengthHint": "Misura fisica col calibro, in mm. Serve alla spinta in battuta: vuoto = non misurata, il ciclo resta disabilitato."
+    "claw_lengthHint": "Misura fisica col calibro, in mm. Serve alla spinta in battuta: vuoto = non misurata, il ciclo resta disabilitato.",
+    "hasHook": "Uncino per cassetti",
+    "hasHookHint": "Fisso su certe pinze: il PLC estrae e rilascia i cassetti solo con una pinza che ce l'ha. Su una pinza doppia si scrive su tutte e due le righe.",
+    "hasHookUnknown": "Uncino non modificabile da qui: la vista GRIPPERS non lo espone ancora (script gripper-has-hook.sql). Il valore a database non si tocca.",
+    "hasHookTwinFailed": "Pinza salvata, ma l'uncino non è stato scritto sull'altra riga della pinza doppia: le due righe ora sono diverse. Salva di nuovo."
   },
   "tray": {
     "dbId": "ID database {id}",
@@ -535,7 +539,8 @@
     "quantity": "Quantità",
     "comand": "Comandi",
     "sure": "sei sicuro?",
-    "noOrderYet": "Nessun ordine al momento"
+    "noOrderYet": "Nessun ordine al momento",
+    "noHookWarning": "La pinza dell'ordine non ha l'uncino: il ciclo si fermerà all'estrazione del cassetto (19005)"
   },
   "normal": "Normale",
   "cmd": {
@@ -577,6 +582,7 @@
       "palletUnknownOnBoard": "La pinza pallet risulta occupata ma nessun pallet risulta a bordo: il sistema non sa quale scaricare. Dichiarare lo stato cella, poi riprovare.",
       "palletNoDest": "Nessuna destinazione raggiungibile per questo pallet: ne' una posizione di magazzino configurata e libera, ne' una macchina. Configurare la posizione a magazzino, poi riprovare.",
       "trayBusy": "Manovra cassetto in corso",
+      "trayOutGripper": "Cassetto fuori: prima rientralo",
       "noTrayExtracted": "Nessun cassetto estratto: estrarre prima un cassetto"
     },
     "coherence": {
@@ -654,6 +660,12 @@
     "alarm_2205": "Pinza a bordo assente dall'anagrafica pinze (GRIPPERS / GRIPPER_HOOK)",
     "alarm_19004": "Estrazione cassetto: nessuna coordinata di estrazione per il cassetto (COORDINATES_FOR_EXTRACT)",
     "alarm_20009": "Rilascio cassetto: nessuna coordinata di estrazione per il cassetto estratto",
+    "alarm_1419": "Carico pinza rifiutato: c'è un cassetto fuori. Chiudi il cassetto e premi RESET.",
+    "alarm_1519": "Deposito pinza rifiutato: c'è un cassetto fuori. Chiudi il cassetto e premi RESET.",
+    "alarm_19005": "Estrazione cassetto rifiutata: la pinza a bordo non ha l'uncino",
+    "alarm_19006": "Nessuna pinza con l'uncino, né a bordo né a scaffale",
+    "alarm_19007": "Per prendere la pinza con l'uncino, quella a bordo deve essere vuota",
+    "alarm_20011": "Rilascio cassetto rifiutato: la pinza a bordo non ha l'uncino. Col cassetto fuori la pinza non si cambia: il cassetto si rientra a mano",
     "alarm_4099": "Coordinate pallet non trovate a database",
     "declErr": {
       "947": "Cella non a riposo: il PLC non registra dichiarazioni mentre qualcosa si muove. Portare la cella in HOLD e ripetere.",
@@ -1067,6 +1079,7 @@
       "pushOn": "attiva, corsa {mm} mm",
       "pushZ": "chela a {from} mm dal fondo, {drop} mm sotto il deposito",
       "pushZDefault": "chela alla quota di presa, come il deposito",
+      "hook": "Uncino",
       "pushNoVice": "Spinta in battuta attiva sul pezzo, ma sul pallet non c'è una morsa: il ciclo non è eseguibile.",
       "pushNoData": "Spinta in battuta attiva, ma manca una misura: la ganascia della morsa o la lunghezza della chela della pinza. Completare l'anagrafica prima di creare l'ordine.",
       "pushNoFit": "Il pezzo è lungo {piece} mm e la ganascia della morsa {claw} mm: il pezzo sporge, e non è stato dichiarato dove appoggia davvero. Si dichiara nella pagina della morsa.",

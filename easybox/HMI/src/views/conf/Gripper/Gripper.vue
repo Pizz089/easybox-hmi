@@ -189,6 +189,29 @@
             <small class="claw-hint">{{ $t("gripper.claw_lengthHint") }}</small>
           </div>
 
+          <!-- (7/10, consegna 34) UNCINO PER I CASSETTI: e' fisso su certe
+               pinze e il PLC lo legge per scegliere con quale pinza estrarre e
+               rilasciare i cassetti (GRIPPER.HAS_HOOK). Una pinza doppia e' due
+               righe: al salvataggio si scrive anche la gemella. Se la vista
+               GRIPPERS non lo espone ancora, la casella e' spenta e il valore a
+               database non si tocca. -->
+          <div class="pure-control-group">
+            <label :for="ids.hook">{{ $t("gripper.hasHook") }}</label>
+            <input
+              :id="ids.hook"
+              type="checkbox"
+              name="HAS_HOOK"
+              v-model="gripper.HAS_HOOK"
+              :disabled="!hookKnown"
+            />
+          </div>
+          <div class="pure-control-group">
+            <label>&nbsp;</label>
+            <small class="claw-hint">{{
+              $t(hookKnown ? "gripper.hasHookHint" : "gripper.hasHookUnknown")
+            }}</small>
+          </div>
+
           <div class="pure-control-group">
             <label :for="ids.status">{{ $t("gripper.stato") }}</label>
             <optionStatus
@@ -278,6 +301,7 @@ import {
 import { dataStored } from "../../../data.js";
 import optionStatus from "@/components/optionStatus.vue";
 import { KO_OCCUPIED, KO_DISABLED } from "../../../util/errorCodes.js";
+import { twinRowsOf, hasHook } from "../../../util/grippers.js";
 
 export default {
   components: { optionStatus },
@@ -297,6 +321,8 @@ export default {
       TICKNESS_CLAW: 0,
       // null = non misurata (vedi il campo nel form): resta NULL a DB
       CLAW_LENGTH: null,
+      // (7/10) uncino per i cassetti; una pinza nuova nasce senza
+      HAS_HOOK: false,
       STATUS: 0,
       POS_MAG: 0,
       SUB_POS: 0,
@@ -316,6 +342,7 @@ export default {
         stroke: "gripper-stroke",
         thickness: "gripper-thickness",
         clawLength: "gripper-claw-length",
+        hook: "gripper-has-hook",
         status: "gripper-status",
         posMag: "gripper-pos-mag",
         posMagLabel: "gripper-pos-mag-label",
@@ -324,6 +351,10 @@ export default {
 
       defaultGripper,
       gripper: defaultGripper(),
+      // (7/10) false se la vista GRIPPERS non espone HAS_HOOK (script
+      // gripper-has-hook.sql non lanciato): la casella si spegne e il
+      // salvataggio non manda il parametro, cosi' il valore a DB resta
+      hookKnown: true,
       gripperTypeList: [],
       warehousePos: { maxPos: [], freePos: [] },
       create: false,
@@ -643,6 +674,11 @@ export default {
             row && row.CLAW_LENGTH !== null && row.CLAW_LENGTH !== undefined
               ? Number(row.CLAW_LENGTH) / 1000
               : null;
+          // (7/10) HAS_HOOK arriva dalla vista come bit (true/false); se la
+          // vista non lo espone non si sa, e non si scrive
+          const hook = hasHook(row);
+          this.hookKnown = hook !== null;
+          this.gripper.HAS_HOOK = hook === true;
 
           this.updatePreviewFromModel();
         })
@@ -701,6 +737,9 @@ export default {
           String(g.CLAW_LENGTH).trim() === ""
             ? ""
             : Math.round(Number(g.CLAW_LENGTH) * 1000),
+        // (7/10) 1/0; vuoto se la vista non lo espone: il backend lascia la
+        // colonna com'e' (update) o mette il default 0 (insert)
+        HAS_HOOK: this.hookKnown ? (g.HAS_HOOK ? 1 : 0) : "",
       };
 
       const base =
@@ -718,7 +757,7 @@ export default {
           if (!r.ok) throw new Error("Network response was not ok");
           return r.text();
         })
-        .then((body) => {
+        .then(async (body) => {
           if (body == KO_OCCUPIED || body == KO_DISABLED) {
             dataStored.alert.title = this.$t("WARNING");
             dataStored.alert.desc =
@@ -728,9 +767,50 @@ export default {
             dataStored.alert.type = "warning";
             return;
           }
+          // (7/10) pinza doppia: l'uncino e' della pinza fisica, si scrive
+          // anche sulla gemella. Se non riesce si resta sul form, col motivo.
+          if (body == "OK" && !this.create && this.hookKnown) {
+            const ok = await this.syncTwinsHook();
+            if (!ok) {
+              dataStored.alert.title = this.$t("WARNING");
+              dataStored.alert.desc = this.$t("gripper.hasHookTwinFailed");
+              dataStored.alert.type = "warning";
+              return;
+            }
+          }
           return this.$router.push("/conf/Grippers");
         })
         .catch(console.info);
+    },
+
+    // (7/10, consegna 34) le gemelle della pinza (util/grippers.js) prendono
+    // lo stesso HAS_HOOK della riga appena salvata. Si scrive solo dove e'
+    // diverso, con setHasHook (un solo campo). true = allineate.
+    async syncTwinsHook() {
+      const id = Number(this.gripper.ID);
+      const val = this.gripper.HAS_HOOK ? 1 : 0;
+      try {
+        const rows = await fetch(dataStored.server + "api/conf/gripper/show/all", { method: "GET" })
+          .then((r) => {
+            if (!r.ok) throw new Error("Network response was not ok");
+            return r.json();
+          });
+        const daScrivere = twinRowsOf(rows, id).filter((r) => hasHook(r) !== (val === 1));
+        for (const r of daScrivere) {
+          const esito = await fetch(
+            dataStored.server + "api/conf/gripper/setHasHook?" + new URLSearchParams({ ID: r.ID, HAS_HOOK: val }).toString(),
+            { method: "GET" },
+          ).then((x) => {
+            if (!x.ok) throw new Error("Network response was not ok");
+            return x.text();
+          });
+          if (esito != "OK") throw new Error("setHasHook " + r.ID + ": " + esito);
+        }
+        return true;
+      } catch (e) {
+        console.info(e);
+        return false;
+      }
     },
 
     getDisabled(index) {

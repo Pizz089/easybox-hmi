@@ -46,3 +46,32 @@ export function dedupeGrippers(rows) {
 export function isTwinGripper(item) {
 	return !!(item && item.twinIDs && item.twinIDs.length > 1);
 }
+
+// (7/10) le righe GEMELLE della pinza id (stessa pinza fisica, id escluso),
+// con la stessa regola di dedupeGrippers. Serve a scrivere su tutte e due le
+// righe un dato della pinza fisica, come l'uncino per i cassetti (HAS_HOOK).
+// Una pinza semplice non ha gemelle: [].
+export function twinRowsOf(rows, id) {
+	const voce = dedupeGrippers(rows).find(v => v.twinIDs.includes(Number(id)));
+	if (!voce) return [];
+	return (rows || []).filter(r => voce.twinIDs.includes(Number(r.ID)) && Number(r.ID) !== Number(id));
+}
+
+// (7/10) HAS_HOOK come arriva dalla vista GRIPPERS (bit -> true/false, o
+// 1/0): true, false, oppure null se la vista non lo espone ancora (script
+// gripper-has-hook.sql non lanciato) e quindi non si sa.
+export function hasHook(row) {
+	if (!row || row.HAS_HOOK === undefined || row.HAS_HOOK === null) return null;
+	return row.HAS_HOOK === true || Number(row.HAS_HOOK) === 1;
+}
+
+// (7/10, consegna 34) nel ciclo automatico la pinza a bordo all'estrazione
+// del cassetto e' quella dell'ordine e non si cambia: senza uncino il PLC si
+// ferma con 19005. Produzione lo dice prima, come AVVISO (non blocca), quando
+// si crea o si avvia l'ordine. rows = righe GRIPPERS, gripperId =
+// WORKORDERS.GRIPPER_ID. Ritorna la chiave del testo, oppure '' se la pinza
+// ha l'uncino o non si sa (vista senza HAS_HOOK, pinza non trovata).
+export function avvisoUncinoOrdine(rows, gripperId) {
+	const r = (rows || []).find(x => Number(x.ID) === Number(gripperId));
+	return r && hasHook(r) === false ? 'production.noHookWarning' : '';
+}

@@ -23,6 +23,18 @@ function clawNum(raw, col) {
 	return String(n);
 }
 
+// (7/10, consegna 34) UNCINO PER I CASSETTI: GRIPPER.HAS_HOOK (bit). Lo legge
+// il PLC per scegliere la pinza con cui estrarre e rilasciare i cassetti.
+// Stessa regola di clawNum: assente o non riconosciuto -> nell'UPDATE il
+// NOME della colonna (un client che non lo manda non lo azzera), nella
+// INSERT il default (0).
+function hookBit(raw, col) {
+	const s = raw == undefined ? '' : String(raw).trim().toLowerCase();
+	if (s === '1' || s === 'true') return '1';
+	if (s === '0' || s === 'false') return '0';
+	return col;
+}
+
 router.get('/show/:ID', (req, res) => {
 
 	sql.connect(DBf.configDB, function (err) {
@@ -208,7 +220,8 @@ router.get('/updateGripper', (req, res) => {
 					POS_PLANT='${req.query.POS_PLANT}',
 					Stroke_CLAW=${clawNum(req.query.STROKE_CLAW, 'Stroke_CLAW')},
 					Tickness_CLAW=${clawNum(req.query.TICKNESS_CLAW, 'Tickness_CLAW')},
-					CLAW_LENGTH=${clawNum(req.query.CLAW_LENGTH, 'CLAW_LENGTH')}
+					CLAW_LENGTH=${clawNum(req.query.CLAW_LENGTH, 'CLAW_LENGTH')},
+					HAS_HOOK=${hookBit(req.query.HAS_HOOK, 'HAS_HOOK')}
 					where ID='${req.query.ID}'`
 		// (gripper-twins, 1/9) SUB_POS NON viene piu' azzerato dall'update: e'
 		// la chiave delle righe gemelle della pinza doppia (26/37 -> 3) usata
@@ -254,7 +267,7 @@ router.get('/insertGripper', (req, res) => {
 
 		var request = new sql.Request();
         let query = `INSERT INTO GRIPPER
-					(FAMILY, DESCR, X_BODY, Y_BODY, Z_BODY, X_CLAW, Y_CLAW, Z_CLAW, STATUS, POS_MAG, SUB_POS, POS_PLANT, Stroke_CLAW, Tickness_CLAW, CLAW_LENGTH)
+					(FAMILY, DESCR, X_BODY, Y_BODY, Z_BODY, X_CLAW, Y_CLAW, Z_CLAW, STATUS, POS_MAG, SUB_POS, POS_PLANT, Stroke_CLAW, Tickness_CLAW, CLAW_LENGTH, HAS_HOOK)
 					SELECT
 					'${req.query.FAMILY}',
 					'${req.query.DESCR}',
@@ -270,7 +283,8 @@ router.get('/insertGripper', (req, res) => {
 					'${req.query.POS_PLANT}',
 					${clawNum(req.query.STROKE_CLAW, '10000')},
 					${clawNum(req.query.TICKNESS_CLAW, '10000')},
-					${clawNum(req.query.CLAW_LENGTH, 'NULL')}`
+					${clawNum(req.query.CLAW_LENGTH, 'NULL')},
+					${hookBit(req.query.HAS_HOOK, '0')}`
 		if (guarded)
 			query += ` WHERE ${shelfSlotGuard(posMag, '')}`;
 		query += ';'
@@ -381,6 +395,49 @@ router.get('/setClawLength', (req, res) => {
 			audit.audit('Pinza ' + row.fam + ' (ID ' + id + '): lunghezza chela da '
 				+ (row.old == null ? 'non misurata' : row.old + ' um') + ' a ' + len + ' um',
 				audit.SRC_PUSH_SIM, 'GRIPPER:' + id);
+			res.send("OK");
+		});
+	});
+})
+
+// ===========================================================================
+// (7/10, consegna 34) SOLO L'UNCINO di una pinza, come setClawLength. Serve
+// all'anagrafica per allineare la GEMELLA di una pinza doppia (convenzione di
+// HMI/src/util/grippers.js): le due righe sono la stessa pinza fisica e il
+// PLC deve trovare lo stesso HAS_HOOK su entrambe. updateGripper scrive ogni
+// colonna dai parametri, quindi non si usa per la gemella.
+// ===========================================================================
+router.get('/setHasHook', (req, res) => {
+	const id = parseInt(req.query.ID, 10);
+	const hook = hookBit(req.query.HAS_HOOK, null);
+	if (!Number.isInteger(id) || id < 1 || hook === null) {
+		res.status(400).send("KO_BAD_INPUT");
+		return;
+	}
+	sql.connect(DBf.configDB, function (err) {
+		if (err) {
+			log.error("err setHasHook: " + err);
+			res.status(500).send("KO");
+			return;
+		}
+		let query = `SET NOCOUNT ON;
+					DECLARE @old bit = (SELECT HAS_HOOK FROM GRIPPER WHERE ID=${id});
+					UPDATE GRIPPER SET HAS_HOOK=${hook} WHERE ID=${id};
+					SELECT @@ROWCOUNT AS n, @old AS old, RTRIM(FAMILY) AS fam FROM GRIPPER WHERE ID=${id};`;
+		var request = new sql.Request();
+		log.info('query ' + query);
+		request.query(query, function (err2, recordset) {
+			if (err2) {
+				log.error("Err query: " + err2);
+				res.status(500).send("KO");
+				return;
+			}
+			const row = recordset.recordset && recordset.recordset[0];
+			if (!row || !row.n) { res.send(ERR.KO_NOT_FOUND); return; }
+			if (Number(row.old) !== Number(hook))
+				audit.audit('Pinza ' + row.fam + ' (ID ' + id + '): uncino per i cassetti da '
+					+ (row.old ? 'si' : 'no') + ' a ' + (hook === '1' ? 'si' : 'no'),
+					audit.SRC_CONF, 'GRIPPER:' + id);
 			res.send("OK");
 		});
 	});
