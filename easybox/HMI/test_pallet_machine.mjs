@@ -10,6 +10,10 @@
 //   3. Attrezzaggi, Posiziona: «In macchina» e «Rimuovi» passano dal PLC
 //      (simulazione del 7/10, problema 16) e scrivono SOLO dopo l'eco; 947,
 //      timeout o un altro pallet nel registro: messaggio e nessuna scrittura.
+//   4. (7/10 sera) «Casella» di un pallet in macchina come «Rimuovi»: prima
+//      il 41, poi la casella; la guardia del 41 (guardia41) uguale per
+//      Rimuovi e Casella: un altro pallet nel registro, o il registro non
+//      letto, niente comando e niente scrittura.
 //
 // Uso:   node test_pallet_machine.mjs
 // ============================================================================
@@ -95,6 +99,14 @@ r = await M.mandaComandoPallet(so, { mc: 1, tipo: 'set', palletId: 901, ms: 60 }
 check(!r.ok && r.scaduto, 'un\'eco con un altro pallet non vale come conferma del 40;901');
 check(await M.leggiRegistroMacchina(socketFinto({ registro: '902;0;1' }), 60) === 902 && await M.leggiRegistroMacchina(socketFinto({ registro: undefined }), 40) === undefined,
 	'registro della macchina dallo snapshot (902), undefined se non risponde');
+// (7/10) la guardia del 41
+const G = (pp, reg, id = 902) => JSON.stringify(M.guardia41({ palletId: id, posPlant: pp, registro: reg }));
+check(G(101, 902) === '{"ok":true,"mc":1}' && G(0, 902) === '{"ok":true,"mc":1}', 'guardia41: il registro ha QUESTO pallet -> 41 a MC1 (anche se il database lo dice a magazzino)');
+check(G(101, 0) === '{"ok":true,"mc":0}' && G(0, 0) === '{"ok":true,"mc":0}' && G(0, undefined) === '{"ok":true,"mc":0}',
+	'   registro a 0, o pallet a magazzino: nessun 41 (a magazzino anche col registro non letto: il 41 non serve)');
+check(G(101, 905) === '{"ok":false,"motivo":"palletMachine.err.otherInMachine","parametri":{"id":905}}', '   un ALTRO pallet nel registro: niente 41, si dice quale');
+check(G(101, undefined) === '{"ok":false,"motivo":"palletMachine.err.registerUnread","parametri":{}}' && G(102, 0) === G(101, undefined),
+	'   registro non letto (o di una macchina che il pannello non legge): niente 41 alla cieca');
 check(M.inMacchina(PALLETS(), 1) === 902 && M.inMacchina([{ ID: 7, POS_PLANT: 150 }], 1) === 7 && M.inMacchina([{ ID: 7, POS_PLANT: 0 }], 1) === 0, 'inMacchina: 100+n esatto, poi la fascia legacy');
 let f = fetchFinto(PALLETS());
 let w = await M.scriviPosizione({ server: 'http://x/', fetchFn: f, tipo: 'set', palletId: 901, mc: 1, liberaCasella: true });
@@ -205,22 +217,81 @@ env = ambiente({ registro: '905;0;0' }, inMc);
 av = apri(inMc, -1);
 av.confirmPlace(); await attesa(80);
 check(!env.sock.emessi.some(e => e.startsWith('TO_PLANT/')) && scritture(env.ff).length === 0 && /otherInMachine.*905/.test(dataStored.alert.desc), '   nel registro un ALTRO pallet: il 41 toglierebbe quello, niente comando e niente scrittura');
+env = ambiente({ registro: undefined }, inMc);
+av = apri(inMc, -1);
+av.confirmPlace(); await attesa(M.REGISTRO_MS + 150);
+check(env.sock.emessi.join() === 'GRIPPER/REQUEST_SNAPSHOT' && scritture(env.ff).length === 0 && /palletMachine\.err\.registerUnread/.test(dataStored.alert.desc) && av.placeBusy === false,
+	'   registro non letto: niente 41 alla cieca e niente scrittura, «registro della macchina non letto, riprova»');
 const aMag = [PALLETS()[0]];
 env = ambiente({ registro: '0;0;0' }, aMag);
 av = apri(aMag, -1);
 av.confirmPlace(); await attesa(80);
 up = scritture(env.ff);
 check(!env.sock.emessi.some(e => e.startsWith('TO_PLANT/')) && up.length === 2 && param(up[0], 'MAG_POS') === '-1' && /free\/WPALLET\/4$/.test(up[1]), 'Rimuovi di un pallet a magazzino: la macchina non c\'entra, solo il database come prima');
-env = ambiente({}, aMag);
+env = ambiente({ registro: undefined }, aMag);
+av = apri(aMag, -1);
+av.confirmPlace(); await attesa(M.REGISTRO_MS + 150);
+check(!env.sock.emessi.some(e => e.startsWith('TO_PLANT/')) && scritture(env.ff).length === 2, '   anche col registro non letto: nessun 41 da mandare, solo il database');
+
+console.log('\n4) Posiziona, «Casella» di un pallet in macchina: come «Rimuovi», prima il 41');
+// la scrittura della casella e' quella di prima: updatePallet con MAG_POS =
+// casella e POS_PLANT 0, poi occupy della casella e free della provenienza
+const casella = (up, n, da) => up.length === (da ? 3 : 2) && param(up[0], 'MAG_POS') === String(n) && param(up[0], 'POS_PLANT') === '0' && param(up[0], 'X') === '400000'
+	&& /warehouseSlot\/occupy\/WPALLET\/\d+$/.test(up[1]) && up[1].endsWith('/' + n) && (!da || /warehouseSlot\/free\/WPALLET\/\d+$/.test(up[2]) && up[2].endsWith('/' + da));
+env = ambiente({ registro: '902;0;1' }, inMc);
+av = apri(inMc, 6);
+av.confirmPlace(); await attesa(80);
+up = scritture(env.ff);
+check(env.sock.emessi.join() === 'GRIPPER/REQUEST_SNAPSHOT,TO_PLANT/CMD/MC1 41' && casella(up, 6, 5) && av.placeTarget === null,
+	'pallet in macchina (902, POS_PLANT 101, nel registro), casella 6: registro letto, 41, eco, poi MAG_POS 6 / POS_PLANT 0, casella 6 occupata e la casa 5 liberata');
+env = ambiente({ registro: '902;0;1', risp: 'zitto' }, inMc);
+av = apri(inMc, 6);
+av.confirmPlace(); await attesa(80);
+check(env.sock.emessi.join() === 'GRIPPER/REQUEST_SNAPSHOT,TO_PLANT/CMD/MC1 41' && scritture(env.ff).length === 0 && av.placeBusy === true,
+	'   la casella si scrive solo dopo l\'eco: prima nessuna scrittura');
+await attesa(M.ECO_MC_MS + 100);
+check(scritture(env.ff).length === 0 && dataStored.alert.desc === 'machine.echoTimeout' && av.placeTarget !== null && av.placeBusy === false, '   niente eco in 3 s: machine.echoTimeout, nessuna scrittura, il dialog resta aperto');
+env = ambiente({ registro: '902;0;1', risp: 947 }, inMc);
+av = apri(inMc, 6);
+av.confirmPlace(); await attesa(80);
+check(scritture(env.ff).length === 0 && /palletMachine\.err\.clear947/.test(dataStored.alert.desc), '   41 rifiutato (947): messaggio e nessuna scrittura');
+env = ambiente({ registro: '0;0;0' }, inMc);
+av = apri(inMc, 6);
+av.confirmPlace(); await attesa(80);
+check(!env.sock.emessi.some(e => e.startsWith('TO_PLANT/')) && casella(scritture(env.ff), 6, 5), '   POS_PLANT 101 ma registro gia\' a 0: niente 41, solo il database');
+const regQui = [Object.assign(PALLETS()[0])];
+env = ambiente({ registro: '901;0;0' }, regQui);
+av = apri(regQui, 6);
+av.confirmPlace(); await attesa(80);
+check(env.sock.emessi.join() === 'GRIPPER/REQUEST_SNAPSHOT,TO_PLANT/CMD/MC1 41' && casella(scritture(env.ff), 6, 4), '   database a magazzino ma nel registro QUESTO pallet (901): anche il 41, poi la casella');
+env = ambiente({ registro: '905;0;0' }, inMc);
+av = apri(inMc, 6);
+av.confirmPlace(); await attesa(80);
+check(env.sock.emessi.join() === 'GRIPPER/REQUEST_SNAPSHOT' && scritture(env.ff).length === 0 && /otherInMachine.*905/.test(dataStored.alert.desc),
+	'   nel registro un ALTRO pallet (905): niente 41 e niente scrittura, si dice quale');
+env = ambiente({ registro: undefined }, inMc);
+av = apri(inMc, 6);
+av.confirmPlace(); await attesa(M.REGISTRO_MS + 150);
+check(env.sock.emessi.join() === 'GRIPPER/REQUEST_SNAPSHOT' && scritture(env.ff).length === 0 && /palletMachine\.err\.registerUnread/.test(dataStored.alert.desc),
+	'   registro non letto: niente 41 alla cieca e niente scrittura, «registro della macchina non letto, riprova»');
+env = ambiente({ registro: '0;0;0' }, aMag);
 av = apri(aMag, 6);
-av.confirmPlace(); await attesa(40);
-check(!env.sock.emessi.some(e => e.startsWith('TO_PLANT/') || e === 'GRIPPER/REQUEST_SNAPSHOT') && scritture(env.ff).some(u => param(u, 'MAG_POS') === '6'), 'casella: invariata, solo il database');
+av.confirmPlace(); await attesa(80);
+check(!env.sock.emessi.some(e => e.startsWith('TO_PLANT/')) && casella(scritture(env.ff), 6, 4) && av.placeTarget === null, 'pallet a magazzino: nessun 41, la casella come prima (MAG_POS 6, occupy 6, free 4)');
+env = ambiente({ registro: undefined }, aMag);
+av = apri(aMag, 6);
+av.confirmPlace(); await attesa(M.REGISTRO_MS + 150);
+check(!env.sock.emessi.some(e => e.startsWith('TO_PLANT/')) && casella(scritture(env.ff), 6, 4), '   anche col registro non letto: il 41 non serve, la casella si scrive');
 
 const att = readFileSync('src/views/conf/AttrezzaggiView.vue', 'utf8');
-check(/import \{ mandaComandoPallet, scriviPosizione, leggiRegistroMacchina, messaggioEsitoMacchina \} from '\.\.\/\.\.\/util\/palletMachine\.js'/.test(att)
+check(/import \{ mandaComandoPallet, scriviPosizione, leggiRegistroMacchina, guardia41, messaggioEsitoMacchina \} from '\.\.\/\.\.\/util\/palletMachine\.js'/.test(att)
 	&& /import \{ mandaComandoPallet, scriviPosizione, messaggioEsitoMacchina \} from '\.\.\/\.\.\/util\/palletMachine\.js'/.test(readFileSync('src/views/unit/CNC1View.vue', 'utf8'))
 	&& /from '\.\/palletMachine\.js'/.test(readFileSync('src/util/palletOnRobot.js', 'utf8')),
 	'Attrezzaggi, pagina Macchine e pallet a bordo usano lo STESSO modulo (util/palletMachine.js)');
+const senzaCommenti = t => t.replace(/\/\/.*$/gm, '');
+check((senzaCommenti(att).match(/\bguardia41\(/g) || []).length === 2 && (senzaCommenti(readFileSync('src/util/palletOnRobot.js', 'utf8')).match(/\bguardia41\(/g) || []).length === 1
+	&& !/mc === 1 && reg/.test(att),
+	'   la guardia del 41 e\' UNA: guardia41 in Rimuovi e Casella, e nel pallet a bordo del robot; nessuna copia a mano');
 const it = JSON.parse(readFileSync('src/locales/it.json', 'utf8')), en = JSON.parse(readFileSync('src/locales/en.json', 'utf8'));
 check(Object.keys(it.palletMachine.err).join() === Object.keys(en.palletMachine.err).join() && /947/.test(it.palletMachine.err.set947), 'testi it/en');
 

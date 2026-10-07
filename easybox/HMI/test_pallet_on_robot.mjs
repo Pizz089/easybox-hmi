@@ -8,6 +8,9 @@
 //   3. eco riuscita, rifiuti (947 sul 41; 944/945/946 sul 35), timeout, eco
 //      non coerente;
 //   4. nessuna scrittura diretta: mai updatePallet, mai POS_PLANT=1000;
+//   (7/10) il 41 passa dalla guardia di «Rimuovi» (guardia41): con un altro
+//   pallet nel registro, o col registro non letto, nessun comando; col
+//   registro gia' a 0 niente 41;
 //   5. le due pagine (Attrezzaggi, Robot) usano lo STESSO modulo.
 //
 // Uso:   node test_pallet_on_robot.mjs
@@ -89,9 +92,19 @@ check(r.emessi[0] === 'GRIPPER/REQUEST_SNAPSHOT', '   prima i sensori freschi (s
 check(nessunaScrittura(r) && r.chiamate.length === 3, '   nessuna scrittura: solo le tre letture (robot, pinza a bordo, pallet)');
 check(r.socket.ascoltatori() === 0, '   nessun ascoltatore lasciato appeso sul socket');
 
-r = await dichiara({ pallets: [{ ID: 901, FAMILY: 'PAL-A', POS_PLANT: 101, MAG_POS: 4 }] });
+// registro della macchina sul pallet: '901;0;1' (pallet 901, pezzo in macchina)
+const SENS = reg => ({ 'GRIPPER/MOUNTED': '1', 'GRIPPER/CLOSED1': '1', 'GRIPPER/REGISTERED': '50', 'DECLARE/MC1': reg });
+const SENZA_REGISTRO = { 'GRIPPER/MOUNTED': '1', 'GRIPPER/CLOSED1': '1', 'GRIPPER/REGISTERED': '50' };
+const IN_MC = [{ ID: 901, FAMILY: 'PAL-A', POS_PLANT: 101, MAG_POS: 4 }];
+r = await dichiara({ pallets: IN_MC, sensori: SENS('901;0;1') });
 check(r.esito.ok && JSON.stringify(r.cmd) === JSON.stringify(['TO_PLANT/CMD/MC1 41', 'TO_PLANT/CMD/ROBOT 35;50;3;901;0;0']),
-	'pallet in macchina (POS_PLANT 101): prima il 41 a MC1, poi il 35 (' + r.cmd.join(' | ') + ')');
+	'pallet in macchina (POS_PLANT 101, nel registro): prima il 41 a MC1, poi il 35 (' + r.cmd.join(' | ') + ')');
+r = await dichiara({ pallets: IN_MC, sensori: SENS('0;0;0') });
+check(r.esito.ok && JSON.stringify(r.cmd) === JSON.stringify(['TO_PLANT/CMD/ROBOT 35;50;3;901;0;0']),
+	'   POS_PLANT 101 ma registro gia\' a 0: niente 41 (azzererebbe il pezzo in macchina), solo il 35, come «Rimuovi»');
+r = await dichiara({ sensori: SENZA_REGISTRO });
+check(r.esito.ok && JSON.stringify(r.cmd) === JSON.stringify(['TO_PLANT/CMD/ROBOT 35;50;3;901;0;0']),
+	'   pallet a magazzino e registro non letto: nessun 41 da mandare, il 35 parte');
 r = await dichiara({ sensori: { 'GRIPPER/MOUNTED': '1', 'GRIPPER/CLOSED1': '1', 'GRIPPER/REGISTERED': '50', 'DECLARE/MC1': '901;0;1' } });
 check(r.esito.ok && r.cmd[0] === 'TO_PLANT/CMD/MC1 41' && r.cmd.length === 2, 'POS_PLANT 0 ma nel registro della macchina (DECLARE/MC1 "901;..."): anche il 41');
 r = await dichiara({ righe: [{ ID: 26, STATUS: dataStored.status_empty }, { ID: 37, STATUS: dataStored.status_finished }], sensori: { 'GRIPPER/MOUNTED': '1', 'GRIPPER/CLOSED1': '1', 'GRIPPER/REGISTERED': '26', 'DECLARE/MC1': '0;0;0' } });
@@ -118,18 +131,22 @@ check(g.esito.parametri.registered === 26 && g.esito.parametri.db === '50', '   
 await guardia({ sensori: { 'GRIPPER/MOUNTED': '1', 'GRIPPER/CLOSED1': '0', 'GRIPPER/REGISTERED': '50', 'DECLARE/MC1': '0;0;0' } }, 'palletOnRobot.err.clawsOpen');
 g = await guardia({ pallets: [{ ID: 901, FAMILY: 'PAL-A', POS_PLANT: 0 }, { ID: 902, FAMILY: 'PAL-B', POS_PLANT: 1000 }] }, 'palletOnRobot.err.otherOnBoard');
 check(g.esito.parametri.name === '#902 PAL-B', '   col nome di quello gia\' a bordo (' + g.esito.parametri.name + ')');
+// (7/10) la guardia del 41, la stessa di «Rimuovi» e «Casella»
+g = await guardia({ pallets: IN_MC, sensori: SENS('902;0;1') }, 'palletMachine.err.otherInMachine');
+check(g.esito.parametri.id === 902, '   pallet in macchina ma nel registro un ALTRO pallet: niente 41 (toglierebbe il 902), si dice quale');
+await guardia({ pallets: IN_MC, sensori: SENZA_REGISTRO }, 'palletMachine.err.registerUnread');
 await guardia({ righe: [{ ID: 26, STATUS: dataStored.status_empty }, { ID: 37, STATUS: dataStored.status_working }], sensori: { 'GRIPPER/MOUNTED': '1', 'GRIPPER/CLOSED1': '1', 'GRIPPER/REGISTERED': '26', 'DECLARE/MC1': '0;0;0' } }, 'palletOnRobot.err.side2Unknown');
 await guardia({}, 'palletOnRobot.err.palletGone', 999);
 g = await dichiara({ fetchKo: true });
 check(!g.esito.ok && g.esito.motivo === 'palletOnRobot.err.read' && g.emessi.length === 0, 'palletOnRobot.err.read: lettura fallita, niente snapshot e niente comandi');
 
 console.log('\n3) eco, rifiuti, timeout');
-r = await dichiara({ pallets: [{ ID: 901, POS_PLANT: 101 }], risp41: 947 });
+r = await dichiara({ pallets: [{ ID: 901, POS_PLANT: 101 }], sensori: SENS('901;0;1'), risp41: 947 });
 check(!r.esito.ok && r.esito.fase === '41' && r.esito.codice === 947 && r.cmd.length === 1, '41 rifiutato (947): ci si ferma, il 35 non parte');
 check(M.messaggioEsito(r.esito).chiave === 'robot.declErr.947', '   messaggio: il testo esistente del 947');
-r = await dichiara({ pallets: [{ ID: 901, POS_PLANT: 101 }], risp41: 'zitto' });
+r = await dichiara({ pallets: [{ ID: 901, POS_PLANT: 101 }], sensori: SENS('901;0;1'), risp41: 'zitto' });
 check(!r.esito.ok && r.esito.fase === '41' && r.esito.scaduto && r.cmd.length === 1 && M.messaggioEsito(r.esito).chiave === 'palletOnRobot.err.noEcho41', '41 senza eco: fermo, 35 non partito, messaggio dedicato');
-r = await dichiara({ pallets: [{ ID: 901, POS_PLANT: 101 }], risp41: '901;0;1' });
+r = await dichiara({ pallets: [{ ID: 901, POS_PLANT: 101 }], sensori: SENS('901;0;1'), risp41: '901;0;1' });
 check(!r.esito.ok && r.esito.scaduto && r.cmd.length === 1, '   un\'eco DECLARE/MC1 col pallet ancora dentro non vale come conferma');
 for (const c of [944, 945, 946]) {
 	r = await dichiara({ risp35: c });
@@ -146,6 +163,8 @@ const att = readFileSync('src/views/conf/AttrezzaggiView.vue', 'utf8');
 const rob = readFileSync('src/views/unit/robotView.vue', 'utf8');
 const imp = /import \{ dichiaraPalletABordo, messaggioEsito \} from '\.\.\/\.\.\/util\/palletOnRobot\.js'/;
 check(imp.test(att) && imp.test(rob), 'Attrezzaggi e Robot importano lo STESSO modulo (util/palletOnRobot.js)');
+check(/const g = guardia41\(\{ palletId: pallet\.ID, posPlant: pallet\.POS_PLANT, registro: s\.mc1Pallet \}\);/.test(readFileSync('src/util/palletOnRobot.js', 'utf8')),
+	'   e il 41 passa da guardia41 di util/palletMachine.js, come «Rimuovi» e «Casella»');
 // corpo del metodo per graffe, senza i commenti (che PARLANO di POS_PLANT)
 const metodo = (src, nome) => {
 	const i = src.indexOf(nome + '(');
