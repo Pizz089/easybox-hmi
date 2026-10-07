@@ -208,7 +208,7 @@
           <div class="pure-control-group">
             <label>&nbsp;</label>
             <small class="claw-hint">{{
-              $t(hookKnown ? "gripper.hasHookHint" : "gripper.hasHookUnknown")
+              $t(hookMissing ? "gripper.hasHookUnknown" : "gripper.hasHookHint")
             }}</small>
           </div>
 
@@ -351,10 +351,14 @@ export default {
 
       defaultGripper,
       gripper: defaultGripper(),
-      // (7/10) false se la vista GRIPPERS non espone HAS_HOOK (script
-      // gripper-has-hook.sql non lanciato): la casella si spegne e il
-      // salvataggio non manda il parametro, cosi' il valore a DB resta
-      hookKnown: true,
+      // (7/10) true solo quando il valore e' noto: pinza nuova, oppure pinza
+      // letta dalla vista con HAS_HOOK. Finche' la pinza non e' letta, o se
+      // la vista non lo espone (script gripper-has-hook.sql non lanciato),
+      // la casella e' spenta e il salvataggio non manda il parametro: il
+      // valore a DB resta
+      hookKnown: false,
+      // pinza letta, ma la vista non ha HAS_HOOK: lo si dice sotto la casella
+      hookMissing: false,
       gripperTypeList: [],
       warehousePos: { maxPos: [], freePos: [] },
       create: false,
@@ -642,6 +646,8 @@ export default {
     getDataTable() {
       if (this.$route.query.gripperID == undefined) {
         this.create = true;
+        // pinza nuova: l'uncino lo decide il form (default senza)
+        this.hookKnown = true;
         return;
       }
       fetch(
@@ -678,6 +684,7 @@ export default {
           // vista non lo espone non si sa, e non si scrive
           const hook = hasHook(row);
           this.hookKnown = hook !== null;
+          this.hookMissing = !!row && hook === null;
           this.gripper.HAS_HOOK = hook === true;
 
           this.updatePreviewFromModel();

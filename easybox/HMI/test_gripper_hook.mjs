@@ -103,7 +103,12 @@ check(vm.gripper.HAS_HOOK === true && vm.hookKnown === true, 'lettura: la doppia
 vm = await apriPinza(1, RIGHE());
 check(vm.gripper.HAS_HOOK === false && vm.hookKnown === true, '   la pinza pallet (1) non ce l\'ha');
 vm = await apriPinza(26, senzaHook(RIGHE()));
-check(vm.hookKnown === false, '   vista senza HAS_HOOK: casella spenta (non si sa)');
+check(vm.hookKnown === false && vm.hookMissing === true, '   vista senza HAS_HOOK: casella spenta (non si sa), e lo dice');
+// pinza non ancora letta: casella spenta, un salvataggio non manda HAS_HOOK
+{
+	const v0 = vmOf(Gripper);
+	check(v0.hookKnown === false && v0.hookMissing === false, '   prima della lettura: casella spenta, nessun motivo «vista senza HAS_HOOK»');
+}
 const tpl = readFileSync('src/views/conf/Gripper/Gripper.vue', 'utf8');
 check(/type="checkbox"\s+name="HAS_HOOK"\s+v-model="gripper\.HAS_HOOK"\s+:disabled="!hookKnown"/.test(tpl) && /\$t\("gripper\.hasHook"\)/.test(tpl), '   nel form la casella, accanto alle misure, senza permessi diversi dagli altri campi');
 
