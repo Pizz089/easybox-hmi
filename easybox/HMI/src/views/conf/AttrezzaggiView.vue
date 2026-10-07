@@ -20,6 +20,9 @@
     import { caricaElenco, STATO } from '../../util/caricaElenco.js';
     // (7/10) pallet «a bordo del robot»: dichiarazione al PLC (35, e 41 se in macchina)
     import { dichiaraPalletABordo, messaggioEsito } from '../../util/palletOnRobot.js';
+    // (7/10) «In macchina» e «Rimuovi»: 40 / 41 con l'eco, poi il database
+    // (la logica della pagina Macchine, util/palletMachine.js)
+    import { mandaComandoPallet, scriviPosizione, leggiRegistroMacchina, messaggioEsitoMacchina } from '../../util/palletMachine.js';
 </script>
 
 <template>
@@ -415,6 +418,72 @@ export default {
             this.placeTarget = null;
             this.placeSel = null;
         },
+        // (7/10) «In macchina»: 40;<pallet> a MC<n>, eco col pallet nel
+        // registro, poi il database (POS_PLANT 100+n, la casa resta, la
+        // casella di provenienza si libera). Se il registro ha gia' QUESTO
+        // pallet il 40 non serve (FB204 lo rifiuterebbe col 947); se ne ha un
+        // altro non si manda niente e si dice quale. 947 o niente eco:
+        // messaggio e nessuna scrittura.
+        async confirmInMachine(n){
+            const t = this.placeTarget;
+            if (!t || this.placeBusy) return;
+            const id = Number(t.ID);
+            const socket = dataStored.WS.socket;
+            this.placeBusy = true;
+            let esito = { ok: true }, scritto = null;
+            try {
+                const reg = n === 1 ? await leggiRegistroMacchina(socket) : undefined;
+                if (reg > 0 && reg !== id) esito = { ok: false, motivo: 'palletMachine.err.otherInMachine', parametri: { id: reg } };
+                else if (reg !== id) esito = await mandaComandoPallet(socket, { mc: n, tipo: 'set', palletId: id });
+                if (esito.ok) scritto = await scriviPosizione({ server: dataStored.server, tipo: 'set', palletId: id, mc: n, liberaCasella: true });
+            } finally {
+                this.placeBusy = false;
+            }
+            this.esitoMacchina(esito, scritto, 'set');
+        },
+        // (7/10) «Rimuovi» (fuori magazzino): se il pallet e' in macchina
+        // (database POS_PLANT 100+n, o registro DB_MC1.pallet) prima il 41 con
+        // la sua eco, poi il database (MAG_POS -1, POS_PLANT 0). Il 41 si manda
+        // solo se il registro ha QUESTO pallet o non e' noto: con un altro
+        // pallet nel registro non si tocca niente (il 41 toglierebbe quello);
+        // col registro gia' a 0 basta il database. Un pallet a magazzino non
+        // riguarda la macchina: solo il database, come prima.
+        async confirmRemove(){
+            const t = this.placeTarget;
+            if (!t || this.placeBusy) return;
+            const id = Number(t.ID);
+            const socket = dataStored.WS.socket;
+            const pp = Number(t.POS_PLANT);
+            let mc = pp > 100 && pp < 1000 ? pp - 100 : 0;
+            this.placeBusy = true;
+            let esito = { ok: true }, scritto = null;
+            try {
+                const reg = await leggiRegistroMacchina(socket);
+                if (reg === id) mc = 1;
+                else if (mc === 1 && reg === 0) mc = 0;
+                else if (mc === 1 && reg > 0) esito = { ok: false, motivo: 'palletMachine.err.otherInMachine', parametri: { id: reg } };
+                if (esito.ok && mc > 0) esito = await mandaComandoPallet(socket, { mc, tipo: 'clear' });
+                if (esito.ok) scritto = await scriviPosizione({ server: dataStored.server, tipo: 'clear', palletId: id, mc: mc || 1, liberaCasella: true });
+            } finally {
+                this.placeBusy = false;
+            }
+            this.esitoMacchina(esito, scritto, 'clear');
+        },
+        // esito comune di «In macchina» e «Rimuovi»
+        esitoMacchina(esito, scritto, tipo){
+            if (!esito.ok) {
+                dataStored.alert.title = this.$t('WARNING');
+                dataStored.alert.desc = esito.motivo ? this.$t(esito.motivo, esito.parametri || {}) : this.$t(messaggioEsitoMacchina(esito, tipo));
+                dataStored.alert.type = 'warning';
+            } else if (!scritto || !scritto.ok) {
+                dataStored.alert.title = this.$t('WARNING');
+                dataStored.alert.desc = this.$t('machine.restFailed');
+                dataStored.alert.type = 'warning';
+            } else {
+                this.closePlace();
+            }
+            this.getDataTable();
+        },
         // (7/10) etichetta della macchina in cui il pallet risulta (POS_PLANT
         // 100+n), per dire nella conferma che prima parte il 41
         placeMachineLabel(p){
@@ -489,6 +558,13 @@ export default {
                 dataStored.alert.type = 'warning';
                 return;
             }
+            // (7/10) «In macchina» e «Rimuovi» passano dal PLC: 40;<pallet> o
+            // 41 con la loro eco, e SOLO dopo la scrittura nel database, con
+            // gli stessi valori di prima. Simulazione del 7/10, problema 16:
+            // scrivevano solo il database e il registro DB_MC1.pallet restava
+            // com'era. Qui sotto resta la sola casella.
+            if (isMachine) { this.confirmInMachine(machineN); return; }
+            if (sel === -1) { this.confirmRemove(); return; }
             // TRAPPOLA NOTA (incidente storico form Pallet, 396000->396):
             // update PASS-THROUGH — la riga viene rimandata ESATTAMENTE come
             // letta da show/all (X/Y/Z/CORR/FAMILY/DESCR/MAG mai toccati ne'
@@ -500,21 +576,13 @@ export default {
             // (am-casella-magpos) POS_PLANT e MAG_POS ESPLICITI per ramo
             // (tabella ratificata — la vista COORDINATES_FOR_PALLET_WAREHOUSE
             // e le gambe automatiche di deposito/prelievo vivono di MAG_POS):
-            //   casella N   -> MAG_POS=N,         POS_PLANT=0
+            //   casella N   -> MAG_POS=N,         POS_PLANT=0   (qui)
             //   In macchina -> MAG_POS INVARIATO (la CASA resta), POS_PLANT=100+n
-            //   Rimuovi     -> MAG_POS=-1,        POS_PLANT=0 (chiude il buco
-            //                  del pallet a 101 rimosso che restava a 101)
-            let newMagPos, newPosPlant;
-            if (isMachine) {
-                newMagPos = row.MAG_POS;          // la casa resta (pass-through fresh)
-                newPosPlant = 100 + machineN;     // canone D2
-            } else if (sel > 0) {
-                newMagPos = sel;
-                newPosPlant = 0;
-            } else {
-                newMagPos = -1;                   // -1 = fuori magazzino (decodifica PalletsView)
-                newPosPlant = 0;
-            }
+            //   Rimuovi     -> MAG_POS=-1,        POS_PLANT=0
+            // (7/10) gli ultimi due dopo l'eco del PLC: scriviPosizione di
+            // util/palletMachine.js, stessi valori.
+            const newMagPos = sel;
+            const newPosPlant = 0;
             const params = new URLSearchParams({
                 ID: row.ID,
                 FAMILY: row.FAMILY,

@@ -68,6 +68,11 @@ export const AMMESSE = [
 	// ---- pallet «a bordo del robot» (7/10, da ui-lifting 086ed93)
 	{ pagina: 'robotView', tipo: 'nuovo', firma: /^fetch GET api\/conf\/pallet\/show\/all$/,
 		motivo: '«Dichiara quale pallet e\' in pinza»: con pinza pallet occupata e nessun pallet a bordo, al posto del solo avviso palletUnknownOnBoard. Il tocco apre la scelta del pallet (rilegge l\'elenco); la dichiarazione (41 se il pallet e\' in macchina, poi 35) parte solo dalla conferma, col modulo util/palletOnRobot.js, e la coprono i controlli di test_pallet_on_robot.mjs' },
+	// ---- Posiziona: «In macchina» e «Rimuovi» dal PLC (7/10, da ui-lifting 9c507df)
+	{ pagina: 'AttrezzaggiView', tipo: 'cambiato', firma: /^fetch GET api\/conf\/pallet\/updatePallet\?ID=\d+&.*&MAG_POS=-1&POS_PLANT=(0|101)( \| .*)?$/,
+		motivo: '«In macchina» e «Rimuovi» non scrivono piu\' subito il database (simulazione del 7/10, problema 16: DB_MC1.pallet restava com\'era). La stessa scrittura, con gli stessi valori, arriva dopo il 40;<pallet> / 41 e la sua eco (util/palletMachine.js, la logica della pagina Macchine); 947 o niente eco: nessuna scrittura. Coperto da test_pallet_machine.mjs' },
+	{ pagina: 'AttrezzaggiView', tipo: 'cambiato', firma: /^emit GRIPPER\/REQUEST_SNAPSHOT undefined$/,
+		motivo: 'primo passo della conferma di «In macchina» / «Rimuovi»: si legge il registro della macchina (snapshot DECLARE/MC1) prima di decidere se mandare il 40 / 41; il resto (comando, eco, database) e\' asincrono e lo copre test_pallet_machine.mjs' },
 	{ pagina: 'smallboxView', tipo: 'tolto', firma: /^emit TO_PLANT\/CMD\/ROBOT 26$/,
 		motivo: '"Inserisci cassetto" tolto dai Controlli EasyBox (decisione di Dario): era sempre spento, perche\' la sua condizione RobotInLocalMode non la scrive nessuno (le assegnazioni in robotView sono commentate). Il cassetto si rilascia da Robot -> Gestione cassetto' },
 ];

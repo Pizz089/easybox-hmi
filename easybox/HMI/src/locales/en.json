@@ -1452,5 +1452,12 @@
       "read": "Cannot read the current state from the server: no command sent. Retry.",
       "noEcho41": "No confirmation from the machine within 3 seconds: the pallet was not removed from the machine and the declaration was not sent."
     }
+  },
+  "palletMachine": {
+    "err": {
+      "set947": "The machine refused the pallet (947): machine cycle running, or a pallet is already declared in the machine. No position written. If another pallet is in the machine, remove it first.",
+      "clear947": "The machine refused the pallet removal (947): machine cycle running. No position written: bring the machine to rest and retry.",
+      "otherInMachine": "In the PLC the machine holds pallet #{id}: the command is not sent, so as not to remove or overwrite that one. Fix it first from the Machines page."
+    }
   }
 }

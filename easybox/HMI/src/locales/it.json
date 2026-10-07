@@ -1452,5 +1452,12 @@
       "read": "Impossibile leggere lo stato attuale dal server: nessun comando inviato. Riprovare.",
       "noEcho41": "Nessuna conferma dalla macchina entro 3 secondi: il pallet non è stato tolto dalla macchina e la dichiarazione non è partita."
     }
+  },
+  "palletMachine": {
+    "err": {
+      "set947": "La macchina ha rifiutato il pallet (947): ciclo macchina avviato, oppure c'è già un pallet dichiarato in macchina. Nessuna posizione scritta. Se in macchina c'è un altro pallet, toglierlo prima.",
+      "clear947": "La macchina ha rifiutato la rimozione del pallet (947): ciclo macchina avviato. Nessuna posizione scritta: portare la macchina a riposo e ripetere.",
+      "otherInMachine": "Nel PLC la macchina ha il pallet #{id}: il comando non si manda, per non togliere o sovrascrivere quello. Sistemare prima dalla pagina Macchine."
+    }
   }
 }

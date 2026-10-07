@@ -258,7 +258,12 @@ check(!sent.some(x => x.ev === 'TO_PLANT/CMD/MC1'), 'ID che non e\' nell\'elenco
 check(String(dataStored.alert.desc) === 'machine.palletNotInList', 'e il motivo e\' scritto');
 const csrc = readFileSync('src/views/unit/CNC1View.vue', 'utf8');
 check(!/type=.text.[^>]*palletSel/.test(csrc), 'nessun campo libero per l\'ID pallet: solo il select');
-check((csrc.match(/'40;'/g) || []).length === 1, 'il 40 si compone in UN punto solo');
+// (7/10) il 40 si compone in util/palletMachine.js, condiviso con il
+// Posiziona di Attrezzaggi: le pagine lo chiedono al modulo, non lo scrivono
+const msrc = readFileSync('src/util/palletMachine.js', 'utf8');
+check((msrc.match(/'40;'/g) || []).length === 1 && !/'40;'/.test(csrc) && /mandaComandoPallet\(/.test(csrc)
+	&& !/'40;'/.test(readFileSync('src/views/conf/AttrezzaggiView.vue', 'utf8')),
+	'il 40 si compone in UN punto solo (util/palletMachine.js); CNC1View e Attrezzaggi lo chiedono al modulo');
 
 console.log('\n4) le frasi');
 check(typeof it.pallet.inMachine === 'string' && typeof en.pallet.inMachine === 'string', 'pallet.inMachine in it+en');

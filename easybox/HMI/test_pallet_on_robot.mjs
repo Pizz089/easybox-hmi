@@ -159,7 +159,11 @@ check(onRobot && decl && [onRobot, decl].every(m => /dichiaraPalletABordo\(/.tes
 	'   i due metodi chiamano il modulo: nessun 35/41 scritto a mano, nessun updatePallet, nessun POS_PLANT');
 check(/if \(sel === 'robot'\) \{ this\.confirmOnRobot\(\); return; \}/.test(att) && att.indexOf("if (sel === 'robot')") < att.indexOf("api/conf/pallet/updatePallet?"),
 	'Attrezzaggi: «A bordo del robot» esce prima di updatePallet');
-check(/newPosPlant = 100 \+ machineN;/.test(att) && /newMagPos = -1;/.test(att) && /newMagPos = sel;/.test(att), '   le destinazioni esistenti (casella, Rimuovi, In macchina) restano com\'erano');
+// (7/10) «In macchina» e «Rimuovi» scrivono dopo l'eco del PLC, con
+// scriviPosizione di util/palletMachine.js: stessi valori di prima
+const pmsrc = readFileSync('src/util/palletMachine.js', 'utf8');
+check(/const newMagPos = sel;/.test(att) && /MAG_POS: tipo === 'set' \? row\.MAG_POS : -1,/.test(pmsrc) && /POS_PLANT: tipo === 'set' \? 100 \+ mc : 0,/.test(pmsrc),
+	'   le destinazioni esistenti scrivono gli stessi valori: casella (pagina), In macchina e Rimuovi (palletMachine, dopo l\'eco)');
 check(/placeSel='robot'/.test(att) && /palletOnRobot\.confirmText/.test(att), '   voce nuova nel dialog Posiziona, con il testo che dice cosa fa');
 check(/palletDisabledReason !== 'robot\.hint\.palletUnknownOnBoard'/.test(rob) && /palletDisabledReason === 'robot\.hint\.palletUnknownOnBoard'"[\s\S]{0,200}openPalletDecl\(\)/.test(rob),
 	'Robot: al posto dell\'avviso palletUnknownOnBoard, l\'azione «Dichiara quale pallet e\' in pinza»');
