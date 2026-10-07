@@ -63,6 +63,15 @@
 #             di nuovo, torna a quella nuova) e riavvia il pannello.
 #   dev       ritorno al server di sviluppo: AppParameters di nuovo vite.js,
 #             riavvio del pannello. dist resta su disco, non si usa.
+#   modo      (7/10 sera) scrive come gira il pannello: preview, dev, altro o
+#             niente (non installato). Non serve l'amministratore: lo usa
+#             pannello.ps1 per sapere se deve lanciare aggiorna.
+#   servito   (7/10 sera, B59) da che commit viene il pannello servito: legge
+#             dist\build.txt (lo scrive la build, vite.config.js) e lo
+#             confronta col commit piu' recente che tocca easybox/HMI. Se la
+#             build non lo contiene, riga rossa "pannello servito non
+#             aggiornato: -Azione aggiorna". Non serve l'amministratore; lo
+#             stampano anche stato e pannello.ps1 -Versione stato.
 # Le quattro azioni riavviano con le cautele di riavvia (porta tenuta da un
 # altro processo, servizio in Paused) e segnalano le operazioni pianificate
 # attive. preview, ripristina e dev toccano solo il pannello; aggiorna
@@ -101,7 +110,7 @@
 # ============================================================================
 param(
 	[Parameter(Mandatory = $true)]
-	[ValidateSet('stato', 'prova', 'installa', 'riavvia', 'rimuovi', 'preview', 'aggiorna', 'ripristina', 'dev')]
+	[ValidateSet('stato', 'prova', 'installa', 'riavvia', 'rimuovi', 'preview', 'aggiorna', 'ripristina', 'dev', 'modo', 'servito')]
 	[string]$Azione
 )
 
@@ -122,6 +131,8 @@ $Dist      = Join-Path $Pannello 'dist'
 $DistPrev  = Join-Path $Pannello 'dist_prev'
 $DistBuild = Join-Path $Pannello 'dist_build'
 $LogBuild  = Join-Path $Pannello 'log\build_pannello.log'
+# (7/10 sera, B59) da che commit viene la dist servita: lo scrive la build
+$BuildTxt  = Join-Path $Dist 'build.txt'
 $ChiavePannello = 'HKLM:\SYSTEM\CurrentControlSet\Services\EasyBoxPannello\Parameters'
 $PAR_DEV     = 'node_modules\vite\bin\vite.js'
 $PAR_PREVIEW = 'node_modules\vite\bin\vite.js preview --port 5173 --strictPort'
@@ -205,6 +216,46 @@ function DescriviDist([string]$cartella) {
 	$idx = Join-Path $cartella 'index.html'
 	if (-not (Test-Path -LiteralPath $idx)) { return $(if (Test-Path -LiteralPath $cartella) { 'presente ma SENZA index.html' } else { 'assente' }) }
 	return ('compilata il ' + (Get-Item -LiteralPath $idx).LastWriteTime.ToString('dd/MM HH:mm'))
+}
+
+# (7/10 sera, B59) dist\build.txt: righe chiave=valore (ramo, commit, data).
+# $null se il file non c'e'.
+function LeggiBuildTxt([string]$file) {
+	if (-not (Test-Path -LiteralPath $file)) { return $null }
+	$v = @{}
+	foreach ($r in @(Get-Content -LiteralPath $file -ErrorAction SilentlyContinue)) {
+		if ($r -match '^\s*([a-z]+)\s*=\s*(.*?)\s*$') { $v[$Matches[1]] = $Matches[2] }
+	}
+	return $v
+}
+# La build contiene l'ultimo commit che tocca easybox/HMI? Si' se e' lo stesso
+# commit o un suo discendente (dopo la build puo' esserci un commit che non
+# tocca il pannello, es. i documenti: la dist resta buona).
+#   $true aggiornato, $false no (commit diverso, non leggibile o sconosciuto)
+function BuildContiene([string]$commitBuild, [string]$ultimoHmi) {
+	if ($commitBuild -notmatch '^[0-9a-f]{7,40}$' -or $ultimoHmi -notmatch '^[0-9a-f]{7,40}$') { return $false }
+	if ($commitBuild -eq $ultimoHmi) { return $true }
+	# un commit che il repo non conosce: git scrive su stderr, e' un "no"
+	try { & git -C $Pannello merge-base --is-ancestor $ultimoHmi $commitBuild 2>$null; return ($LASTEXITCODE -eq 0) }
+	catch { return $false }
+}
+# Stampa da che commit viene il pannello servito e se e' aggiornato.
+# Ritorna $true se aggiornato.
+function PannelloServito {
+	$b = LeggiBuildTxt $BuildTxt
+	if (-not $b) {
+		Scrivi ('Pannello servito: ' + $BuildTxt + ' non c''e'' (dist assente o compilata prima del 7/10 sera): non si sa da che commit viene. -Azione aggiorna lo riscrive.') 'Yellow'
+		return $false
+	}
+	Scrivi ('Pannello servito: ramo ' + $b['ramo'] + ', commit ' + $b['commit'] + ', compilato il ' + $b['data']) 'Cyan'
+	$ultimo = ((& git -C $Pannello log -1 --format=%H -- . 2>$null) -join '').Trim()
+	if (-not $ultimo) { Scrivi '  ultimo commit di easybox/HMI non leggibile (git?): confronto saltato.' 'Yellow'; return $false }
+	if (-not (BuildContiene $b['commit'] $ultimo)) {
+		Scrivi ('pannello servito non aggiornato: -Azione aggiorna (ultimo commit di easybox/HMI: ' + $ultimo + ')') 'Red'
+		return $false
+	}
+	Scrivi ('  aggiornato: contiene l''ultimo commit di easybox/HMI (' + $ultimo + ').') 'Green'
+	return $true
 }
 
 # (7/10) di quale dei due servizi e' un processo: si risale dai padri fino al
@@ -450,6 +501,14 @@ function ComandiNssm([string]$node) {
 }
 function Testo([string[]]$a) { return ('nssm ' + (($a | ForEach-Object { if ($_ -match '\s') { '"' + $_ + '"' } else { $_ } }) -join ' ')) }
 
+# ---------------------------------------------------------------- modo, servito
+# (7/10 sera) senza amministratore e senza toccare niente: le usa pannello.ps1
+if ($Azione -eq 'modo') { Write-Output (ModoPannello); exit 0 }
+if ($Azione -eq 'servito') {
+	if ((ModoPannello) -ne 'preview') { Scrivi ('Pannello servito: non gira compilato (' + (ModoPannello) + '), serve i file del ramo com''e''.') 'Cyan'; exit 0 }
+	if (PannelloServito) { exit 0 } else { exit 3 }
+}
+
 # ---------------------------------------------------------------- stato
 if ($Azione -eq 'stato') {
 	foreach ($n in @($S_B, $S_P)) {
@@ -471,6 +530,8 @@ if ($Azione -eq 'stato') {
 		$testoModo = $(if ($modo -eq 'preview') { 'COMPILATO (vite preview, cartella dist)' } elseif ($modo -eq 'dev') { 'server di sviluppo (vite)' } else { 'parametri non riconosciuti: ' + (Get-ItemProperty -Path $ChiavePannello).AppParameters })
 		Scrivi ('Pannello: ' + $testoModo + '. dist: ' + (DescriviDist $Dist) + '; dist_prev: ' + (DescriviDist $DistPrev)) 'Cyan'
 		if ($modo -eq 'preview' -and -not (Test-Path -LiteralPath (Join-Path $Dist 'index.html'))) { Scrivi '  ATTENZIONE: compilato ma senza dist\index.html, il pannello non parte (nel log: The directory "dist" does not exist). Rimedio: -Azione aggiorna, oppure -Azione dev.' 'Red' }
+		# (7/10 sera, B59) da che commit viene la dist servita
+		if ($modo -eq 'preview') { $null = PannelloServito }
 	}
 	# (7/10) chi tiene le porte, e se e' il processo del servizio
 	if (-not (MostraProprietari)) {
@@ -698,6 +759,7 @@ if ($Azione -eq 'aggiorna') {
 	Scrivi ('dist: ' + (DescriviDist $Dist) + '; dist_prev: ' + (DescriviDist $DistPrev)) 'Cyan'
 	if (-not $ok) { Fermati 'dopo l''aggiornamento i servizi non sono tutti a posto (Running, porte loro) o lo scambio delle dist non e'' riuscito.' 'leggere eventi e log qui sopra; per tornare alla build di prima del pannello: -Azione ripristina. Mandare a Dario questa finestra.' }
 	Scrivi 'Aggiornato: pannello ricompilato, backend e pannello riavviati. Sui client: Ctrl+F5.' 'Green'
+	$null = PannelloServito
 	exit 0
 }
 

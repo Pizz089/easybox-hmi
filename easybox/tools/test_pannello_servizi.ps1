@@ -11,12 +11,16 @@
 #   Get-NetTCPConnection                                      porte finte
 #   Test-EasyBoxAmministratore                                amministratore si'/no
 #   npm.cmd                                                   npm finto (esito scelto)
+#   Get-EasyBoxModoPannello, Invoke-EasyBoxAggiorna,          (7/10 sera) modo del
+#   Show-EasyBoxPannelloServito                               pannello e aggiorna finti
 # Nessun servizio vero viene toccato, nessun npm vero parte.
 #
 # Casi: servizi assenti (comportamento di prima); servizi presenti e
 # amministratore; servizi presenti e non amministratore (si ferma prima del
 # fetch); npm install fallito (il pannello si rimette su); pannello che non
-# si ferma (nessun file cambiato).
+# si ferma (nessun file cambiato); (7/10 sera) pannello COMPILATO: dopo pull
+# e npm install si lancia aggiorna (riuscito, e non riuscito: il pannello si
+# rimette su), e stato dice da che commit viene il pannello servito.
 # Uso: powershell -ExecutionPolicy Bypass -File easybox\tools\test_pannello_servizi.ps1
 # Exit code = numero di controlli falliti. I rami ui-lifting e ui-v3 del
 # repo devono contenere il pannello.ps1 da provare (si prova il committato).
@@ -99,6 +103,17 @@ function global:Get-NetTCPConnection {
 	if ($global:SERVIZI['EasyBoxBackend'] -eq 'Running' -and $global:SERVIZI['EasyBoxPannello'] -eq 'Running') { foreach ($p in $LocalPort) { [pscustomobject]@{ LocalPort = $p } } }
 }
 function global:Test-EasyBoxAmministratore { return $global:ADMIN }
+# (7/10 sera) pannello compilato: modo del servizio e servizi-cella.ps1 -Azione
+# aggiorna finti (quello vero fa la build e riavvia i due servizi)
+$global:MODO = 'dev'
+$global:AGG_ESITO = 0
+function global:Get-EasyBoxModoPannello { return $global:MODO }
+function global:Invoke-EasyBoxAggiorna {
+	[void]$global:CHIAMATE.Add('Aggiorna @' + (((& git.exe -C $global:CLONE branch --show-current) -join '').Trim()))
+	if ($global:AGG_ESITO -eq 0) { $global:SERVIZI['EasyBoxBackend'] = 'Running'; $global:SERVIZI['EasyBoxPannello'] = 'Running' }
+	return $global:AGG_ESITO
+}
+function global:Show-EasyBoxPannelloServito { [void]$global:CHIAMATE.Add('Servito'); Write-Host 'Pannello servito: ramo finto, commit finto' }
 function global:npm.cmd {
 	[void]$global:CHIAMATE.Add('npm ' + ($args -join ' '))
 	if ($global:NPM_ESITO -eq 0 -and -not (Test-Path node_modules)) { New-Item -ItemType Directory node_modules | Out-Null }
@@ -142,6 +157,7 @@ Check ($iNpm -gt $iStop -and $iRestart -gt $iNpm -and $iStart -gt $iNpm) ('ordin
 Check ($global:SERVIZI['EasyBoxBackend'] -eq 'Running' -and $global:SERVIZI['EasyBoxPannello'] -eq 'Running') 'alla fine i due servizi girano'
 Check ($r.Testo -match 'Fatto\. Servizi:' -and $r.Testo -match 'Porte 8080, 3000 e 5173 in ascolto' -and $r.Testo -match 'Ctrl\+F5 sui client' -and $r.Testo -match 'readyForNextQuery') 'messaggio finale: cosa e'' stato riavviato, porte e controlli'
 Check ($r.Testo -notmatch 'finestra di start_server\.bat|rilanciare start_hmi\.bat') 'nessun riferimento alle finestre dei .bat'
+Check ($r.Testo -match 'Servito: server di sviluppo \(vite\)' -and @($r.Chiamate | Where-Object { $_ -like 'Aggiorna*' }).Count -eq 0) 'server di sviluppo: niente aggiorna, e il messaggio dice cosa e'' servito'
 
 # ------------------------------------------------------------ 3. servizi presenti, NON amministratore
 $global:ADMIN = $false
@@ -173,8 +189,40 @@ Check ($r.Codice -eq 1 -and $r.Testo -match 'FERMO: EasyBoxPannello non si e'' f
 Check ((Ramo) -eq $ramoPrima -and ((GitC rev-parse HEAD) -join '').Trim() -eq $headPrima -and @($r.Chiamate | Where-Object { $_ -like 'npm*' -or $_ -like 'Restart*' }).Count -eq 0) 'nessun file cambiato, niente npm, niente riavvii'
 $global:PANNELLO_NON_SI_FERMA = $false
 
+# ------------------------------------------------------------ 6. pannello COMPILATO (7/10 sera)
+$global:SERVIZI = @{ 'EasyBoxBackend' = 'Running'; 'EasyBoxPannello' = 'Running' }
+$global:ADMIN = $true; $global:NPM_ESITO = 0; $global:MODO = 'preview'; $global:AGG_ESITO = 0
+$ramoPrima = Ramo
+$verso = $(if ($ramoPrima -eq 'ui-v3') { 'stabile' } else { 'v3' })
+$ramoDopo = $(if ($verso -eq 'v3') { 'ui-v3' } else { 'ui-lifting' })
+$r = Lancia $verso 'CASO 6a: pannello compilato, aggiorna riuscito'
+Check ($r.Codice -eq 0 -and (Ramo) -eq $ramoDopo) ('compilato: exit 0, ramo ' + $ramoDopo)
+$iStop = [array]::IndexOf($r.Chiamate, ($r.Chiamate | Where-Object { $_ -like 'Stop EasyBoxPannello*' } | Select-Object -First 1))
+$iAgg = [array]::IndexOf($r.Chiamate, ($r.Chiamate | Where-Object { $_ -like 'Aggiorna*' } | Select-Object -First 1))
+$iNpm = [array]::IndexOf($r.Chiamate, ($r.Chiamate | Where-Object { $_ -like 'npm*' } | Select-Object -First 1))
+Check ($iStop -ge 0 -and $iAgg -gt $iStop -and ($iNpm -lt 0 -or $iAgg -gt $iNpm) -and $r.Chiamate[$iAgg] -eq ('Aggiorna @' + $ramoDopo)) ('ordine: stop pannello, cambio di ramo e npm install, POI aggiorna sul ramo nuovo (' + ($r.Chiamate -join ' ; ') + ')')
+Check (@($r.Chiamate | Where-Object { $_ -like 'Restart*' -or $_ -like 'Start*' }).Count -eq 0) 'il riavvio lo fa aggiorna: pannello.ps1 non riavvia il backend e non avvia il pannello per conto suo (nessuna dist vecchia rimessa su)'
+Check ($r.Testo -match 'Il pannello gira COMPILATO: build nuova e riavvio con servizi-cella\.ps1 -Azione aggiorna' -and $r.Testo -match 'Servito: pannello COMPILATO, dalla build appena fatta' -and @($r.Chiamate | Where-Object { $_ -eq 'Servito' }).Count -eq 1) 'messaggio finale: pannello compilato dalla build appena fatta, e da che commit viene'
+Check ($global:SERVIZI['EasyBoxBackend'] -eq 'Running' -and $global:SERVIZI['EasyBoxPannello'] -eq 'Running') 'alla fine i due servizi girano'
+
+$global:AGG_ESITO = 1
+$ramoPrima = Ramo
+$verso = $(if ($ramoPrima -eq 'ui-v3') { 'stabile' } else { 'v3' })
+$ramoDopo = $(if ($verso -eq 'v3') { 'ui-v3' } else { 'ui-lifting' })
+$r = Lancia $verso 'CASO 6b: pannello compilato, build non riuscita'
+Check ($r.Codice -eq 1 -and $r.Testo -match 'FERMO: aggiornamento del pannello compilato non riuscito') 'build non riuscita: FERMO'
+$iAgg = [array]::IndexOf($r.Chiamate, ($r.Chiamate | Where-Object { $_ -like 'Aggiorna*' } | Select-Object -First 1))
+$iStart = [array]::IndexOf($r.Chiamate, 'Start EasyBoxPannello')
+Check ($iAgg -ge 0 -and $iStart -gt $iAgg -and $global:SERVIZI['EasyBoxPannello'] -eq 'Running' -and $r.Testo -match 'EasyBoxPannello avviato: il pannello e'' di nuovo su') ('il pannello si rimette su, sulla dist che c''e'' (' + ($r.Chiamate -join ' ; ') + ')')
+Check ($r.Testo -match ('Il repo e'' gia'' sul ramo ' + $ramoDopo + ', ma il pannello servito resta quello di prima') -and $r.Testo -match 'build_pannello\.log') 'e dice che il repo e'' sul ramo nuovo ma il pannello servito e'' quello di prima, e dove leggere l''errore'
+Check (@($r.Chiamate | Where-Object { $_ -like 'Restart EasyBoxBackend*' }).Count -eq 0) 'il backend non viene riavviato da pannello.ps1'
+
+$r = Lancia 'stato' 'CASO 6c: pannello compilato, stato'
+Check ($r.Codice -eq 0 -and @($r.Chiamate | Where-Object { $_ -eq 'Servito' }).Count -eq 1 -and $r.Testo -match 'Pannello servito:') 'stato: dice da che commit viene il pannello servito'
+$global:MODO = 'dev'; $global:AGG_ESITO = 0
+
 # ------------------------------------------------------------ pulizia
-foreach ($f in @('Get-Service', 'Stop-Service', 'Start-Service', 'Restart-Service', 'Get-NetTCPConnection', 'Test-EasyBoxAmministratore', 'npm.cmd')) { Remove-Item -LiteralPath ('function:\' + $f) -ErrorAction SilentlyContinue }
+foreach ($f in @('Get-Service', 'Stop-Service', 'Start-Service', 'Restart-Service', 'Get-NetTCPConnection', 'Test-EasyBoxAmministratore', 'npm.cmd', 'Get-EasyBoxModoPannello', 'Invoke-EasyBoxAggiorna', 'Show-EasyBoxPannelloServito')) { Remove-Item -LiteralPath ('function:\' + $f) -ErrorAction SilentlyContinue }
 Remove-Item -LiteralPath $BASE -Recurse -Force -ErrorAction SilentlyContinue
 
 Write-Host ''

@@ -48,6 +48,14 @@
 #     c'e', prima di uscire;
 #   - alla fine riavvia EasyBoxBackend, avvia EasyBoxPannello e aspetta le
 #     porte 8080, 3000 e 5173 (al massimo 90 secondi). Niente finestre.
+#   - (7/10 sera) COL PANNELLO COMPILATO (EasyBoxPannello in modo preview)
+#     riavviare non basta: servirebbe la dist di prima. Dopo pull e npm
+#     install si lancia servizi-cella.ps1 -Azione aggiorna, cioe' la stessa
+#     build di sempre con lo stesso codice (build in dist_build, scambio delle
+#     dist, riavvio di backend e pannello): niente copia qui. Se la build
+#     fallisce dist e backend restano quelli di prima, il pannello si rimette
+#     su e lo script si ferma. Il messaggio finale dice cosa e' servito
+#     (dist\build.txt: ramo e commit della build).
 # Non usa MAI reset, clean, stash, checkout -- o --force: nel peggiore dei
 # casi si ferma e spiega, e il repo resta com'era.
 # Testi senza lettere accentate: PowerShell 5.1 legge i file senza BOM come
@@ -128,6 +136,21 @@ function RimettiSuPannello {
 	else { Scrivi ($S_P + ' NON avviato: con la cella in HOLD lanciare servizi-cella.ps1 -Azione riavvia, oppure chiamare Dario.') 'Red' }
 }
 
+# (7/10 sera) pannello compilato: il modo del servizio, il pannello servito e
+# la build stanno in servizi-cella.ps1 (-Azione modo, servito, aggiorna): qui
+# si chiamano, non si copiano. La prova li sostituisce con funzioni finte
+# dello stesso nome (come Test-EasyBoxAmministratore).
+$SERVIZI_CELLA = Join-Path $PSScriptRoot 'servizi-cella.ps1'
+if (-not (Get-Command Get-EasyBoxModoPannello -CommandType Function -ErrorAction SilentlyContinue)) {
+	function Get-EasyBoxModoPannello { return [string]((& $SERVIZI_CELLA -Azione modo) | Select-Object -Last 1) }
+}
+if (-not (Get-Command Show-EasyBoxPannelloServito -CommandType Function -ErrorAction SilentlyContinue)) {
+	function Show-EasyBoxPannelloServito { & $SERVIZI_CELLA -Azione servito | Out-Host }
+}
+if (-not (Get-Command Invoke-EasyBoxAggiorna -CommandType Function -ErrorAction SilentlyContinue)) {
+	function Invoke-EasyBoxAggiorna { & $SERVIZI_CELLA -Azione aggiorna | Out-Host; return $LASTEXITCODE }
+}
+
 # ---------------------------------------------------------------- radice
 if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
 	Fermati 'git non trovato.' 'installare Git per Windows o chiamare Dario.'
@@ -159,6 +182,8 @@ function ModificheLocali { return @((G @('status', '--porcelain', '--untracked-f
 if ($Versione -eq 'stato') {
 	Stato
 	Scrivi ('Servizi: ' + $S_B + ' ' + (StatoServizio $S_B) + ', ' + $S_P + ' ' + (StatoServizio $S_P))
+	# (7/10 sera, B59) col pannello compilato: da che commit viene la dist servita
+	if (Servizio $S_P) { Show-EasyBoxPannelloServito }
 	$mod = ModificheLocali
 	if ($mod.Count -eq 0) { Scrivi 'Modifiche locali (file tracciati): nessuna' 'Green' }
 	else {
@@ -311,6 +336,30 @@ if ($serve) {
 $cambiatiHmi = @((G (@('diff', '--name-only', $headPrima, 'HEAD', '--') + $HMI_AVVIO)).Uscita | Where-Object { $_ -and $_.Trim() })
 $riavviaHmi = $serve -or ($cambiatiHmi.Count -gt 0)
 
+# 6-servizi col pannello COMPILATO (7/10 sera): la build nuova e il riavvio di
+# backend e pannello li fa servizi-cella.ps1 -Azione aggiorna, lo stesso
+# codice di sempre. Se non riesce, Fermati rimette su il pannello (sulla dist
+# che c'e': con la build fallita, quella di prima).
+if ($conServizi -and (Servizio $S_P) -and (Get-EasyBoxModoPannello) -eq 'preview') {
+	Scrivi ''
+	Scrivi 'Il pannello gira COMPILATO: build nuova e riavvio con servizi-cella.ps1 -Azione aggiorna...' 'Cyan'
+	$esitoAggiorna = Invoke-EasyBoxAggiorna
+	if ($esitoAggiorna -ne 0) {
+		Fermati 'aggiornamento del pannello compilato non riuscito (servizi-cella.ps1 -Azione aggiorna, messaggi qui sopra).' 'leggere l''errore della build qui sopra (log completo in easybox\HMI\log\build_pannello.log) e mandarlo a Dario. Dopo la correzione: servizi-cella.ps1 -Azione aggiorna.' ('Il repo e'' gia'' sul ramo ' + $ramo + ', ma il pannello servito resta quello di prima finche'' la build non riesce.')
+	}
+	$script:PannelloFermato = $false
+	Scrivi ''
+	Stato
+	Scrivi ''
+	Scrivi 'Fatto. Servito: pannello COMPILATO, dalla build appena fatta (backend e pannello riavviati da aggiorna):' 'Green'
+	Show-EasyBoxPannelloServito
+	Scrivi 'Controlli:' 'Green'
+	Scrivi '  - Ctrl+F5 sui client (touch di cella e tablet);' 'Green'
+	Scrivi '  - stato del robot che si aggiorna;' 'Green'
+	Scrivi '  - DB_executeQuery.readyForNextQuery TRUE.' 'Green'
+	exit 0
+}
+
 # 6-servizi: si riavvia il backend (node non rilegge i file da solo), si
 # riavvia il pannello e si aspettano le porte. Niente finestre.
 if ($conServizi) {
@@ -325,6 +374,7 @@ if ($conServizi) {
 	Scrivi 'Fatto. Servizi:' 'Green'
 	Scrivi ('  ' + $S_B + ': riavviato (' + (StatoServizio $S_B) + ');') 'Green'
 	Scrivi ('  ' + $S_P + ': riavviato (' + (StatoServizio $S_P) + ').') 'Green'
+	Scrivi ('Servito: ' + $(if ((Get-EasyBoxModoPannello) -eq 'dev') { 'server di sviluppo (vite), i file del ramo ' + $ramo + ' come sono.' } else { 'pannello del ramo ' + $ramo + '.' })) 'Green'
 	if ($porteOk) { Scrivi 'Porte 8080, 3000 e 5173 in ascolto.' 'Green' }
 	else {
 		$su = PorteInAscolto
