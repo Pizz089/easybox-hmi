@@ -13,7 +13,10 @@
 //   4. (7/10 sera) «Casella» di un pallet in macchina come «Rimuovi»: prima
 //      il 41, poi la casella; la guardia del 41 (guardia41) uguale per
 //      Rimuovi e Casella: un altro pallet nel registro, o il registro non
-//      letto, niente comando e niente scrittura.
+//      letto, niente comando e niente scrittura. Col 41, la casella si
+//      controlla PRIMA su dati riletti adesso (occupata, disabilitata, non
+//      letta: niente 41); se la scrittura fallisce lo stesso dopo il 41, il
+//      messaggio dice che il registro e' gia' a 0 e il database no.
 //
 // Uso:   node test_pallet_machine.mjs
 // ============================================================================
@@ -60,12 +63,15 @@ function socketFinto(o = {}) {
 	};
 }
 // fetch finto: pallet freschi, risposta di updatePallet, chiamate registrate
-function fetchFinto(pallets, body = 'OK') {
+// (7/10) posti: righe di showWarehouse/WPALLET; ko: url che rispondono non ok
+function fetchFinto(pallets, body = 'OK', posti = [], ko = null) {
 	const chiamate = [];
 	const f = async (url) => {
 		const u = String(url);
 		chiamate.push(u);
+		if (ko && ko.test(u)) return { ok: false, json: async () => [], text: async () => '' };
 		if (/pallet\/show\/all/.test(u)) return { ok: true, json: async () => JSON.parse(JSON.stringify(pallets)) };
+		if (/showWarehouse\/WPALLET/.test(u)) return { ok: true, json: async () => JSON.parse(JSON.stringify(posti)) };
 		return { ok: true, text: async () => (/updatePallet/.test(u) ? body : 'OK'), json: async () => [] };
 	};
 	f.chiamate = chiamate;
@@ -123,6 +129,22 @@ check(!w.ok && scritture(f).length === 1, 'risposta non OK: esito non riuscito e
 f = fetchFinto(PALLETS());
 w = await M.scriviPosizione({ server: 'http://x/', fetchFn: f, tipo: 'set', palletId: 999, mc: 1 });
 check(!w.ok && scritture(f).length === 0, 'pallet non piu\' in elenco: nessuna scrittura cieca');
+// (7/10) «Casella» dopo il 41: scriviPosizione tipo 'casella' e casellaLibera
+f = fetchFinto(PALLETS());
+w = await M.scriviPosizione({ server: 'http://x/', fetchFn: f, tipo: 'casella', casella: 6, palletId: 902 });
+up = scritture(f);
+check(w.ok && up.length === 3 && param(up[0], 'MAG_POS') === '6' && param(up[0], 'POS_PLANT') === '0' && param(up[0], 'X') === '400000'
+	&& /occupy\/WPALLET\/6$/.test(up[1]) && /free\/WPALLET\/5$/.test(up[2]), 'casella: MAG_POS 6, POS_PLANT 0, pass-through, occupy della 6 e free della casa 5 (come la casella del Posiziona)');
+f = fetchFinto(PALLETS());
+w = await M.scriviPosizione({ server: 'http://x/', fetchFn: f, tipo: 'casella', casella: 5, palletId: 902 });
+up = scritture(f);
+check(w.ok && up.length === 2 && /occupy\/WPALLET\/5$/.test(up[1]), '   di nuovo nella propria casa (5): occupy, nessun free');
+f = fetchFinto(PALLETS(), 'OK', [{ SUB_POS: 7, STATUS: 9 }]);
+check((await M.casellaLibera({ server: 'http://x/', fetchFn: f, casella: 5, palletId: 902 })).ok
+	&& JSON.stringify(await M.casellaLibera({ server: 'http://x/', fetchFn: f, casella: 4, palletId: 902 })) === '{"ok":false,"motivo":"warehouses.occupiedBy","parametri":{"name":"#901 PAL-A"}}'
+	&& (await M.casellaLibera({ server: 'http://x/', fetchFn: f, casella: 7, palletId: 902 })).motivo === 'warehouses.disabledPos'
+	&& (await M.casellaLibera({ server: 'http://x/', fetchFn: fetchFinto(PALLETS(), 'OK', [], /show/), casella: 8, palletId: 902 })).motivo === 'palletMachine.err.slotUnread',
+	'casellaLibera: la propria casa e\' libera; occupata da un altro (#901 PAL-A); disabilitata (STATUS 9); non letta');
 
 // ------------------------------------------------------------- le pagine
 function vmOf(comp, extra) {
@@ -134,13 +156,18 @@ function vmOf(comp, extra) {
 	vm.$router = { push: () => {} };
 	return vm;
 }
-function ambiente(o, pallets) {
+// extra: { body, posti, ko } per fetchFinto. linea: comandi e chiamate
+// nell'ordine in cui partono (per dire «prima del 41»)
+function ambiente(o, pallets, extra = {}) {
 	const sock = socketFinto(o);
+	const linea = [];
+	const emit0 = sock.emit;
+	sock.emit = (e, p) => { linea.push('emit ' + e + (p === undefined ? '' : ' ' + p)); return emit0(e, p); };
 	dataStored.WS = { socket: sock };
-	const ff = fetchFinto(pallets || PALLETS());
-	globalThis.fetch = ff;
+	const ff = fetchFinto(pallets || PALLETS(), extra.body, extra.posti, extra.ko);
+	globalThis.fetch = (u, o2) => { linea.push('fetch ' + u); return ff(u, o2); };
 	dataStored.alert = { title: '', desc: '', type: '' };
-	return { sock, ff };
+	return { sock, ff, linea };
 }
 
 console.log('\n2) pagina Macchine (CNC1View): la stessa sequenza, dal modulo');
@@ -244,6 +271,49 @@ av.confirmPlace(); await attesa(80);
 up = scritture(env.ff);
 check(env.sock.emessi.join() === 'GRIPPER/REQUEST_SNAPSHOT,TO_PLANT/CMD/MC1 41' && casella(up, 6, 5) && av.placeTarget === null,
 	'pallet in macchina (902, POS_PLANT 101, nel registro), casella 6: registro letto, 41, eco, poi MAG_POS 6 / POS_PLANT 0, casella 6 occupata e la casa 5 liberata');
+// (7/10) la casella si controlla PRIMA del 41, su dati riletti adesso
+const i41 = env.linea.indexOf('emit TO_PLANT/CMD/MC1 41');
+check(i41 > 0 && env.linea.slice(0, i41).some(x => /pallet\/show\/all$/.test(x)) && env.linea.slice(0, i41).some(x => /showWarehouse\/WPALLET$/.test(x))
+	&& !env.linea.slice(0, i41).some(x => /updatePallet|warehouseSlot/.test(x)),
+	'   prima del 41 si rileggono pallet e caselle (casella libera?), nessuna scrittura');
+// un altro pallet ha preso la casella 6: l'elenco della pagina (polling) non lo
+// sa ancora, la rilettura si'
+const presa = [...inMc, { ID: 903, FAMILY: 'PAL-C', DESCR: 'c', MAG: 1, MAG_POS: 6, POS_PLANT: 0 }];
+env = ambiente({ registro: '902;0;1' }, presa);
+av = apri(inMc, 6);
+av.confirmPlace(); await attesa(80);
+check(env.sock.emessi.join() === 'GRIPPER/REQUEST_SNAPSHOT' && scritture(env.ff).length === 0 && /warehouses\.occupiedBy.*#903 PAL-C/.test(dataStored.alert.desc)
+	&& av.placeTarget !== null && av.placeSel === null && av.placeBusy === false,
+	'   casella presa nel frattempo (903, vista solo rileggendo): niente 41, niente scrittura, si dice da chi, si sceglie un\'altra casella');
+env = ambiente({ registro: '902;0;1' }, inMc, { posti: [{ SUB_POS: 6, STATUS: 9 }] });
+av = apri(inMc, 6);
+av.confirmPlace(); await attesa(80);
+check(env.sock.emessi.join() === 'GRIPPER/REQUEST_SNAPSHOT' && scritture(env.ff).length === 0 && /warehouses\.disabledPos/.test(dataStored.alert.desc) && av.placeSel === null,
+	'   casella disabilitata (STATUS 9): niente 41, niente scrittura');
+env = ambiente({ registro: '902;0;1' }, inMc, { ko: /showWarehouse/ });
+av = apri(inMc, 6);
+av.confirmPlace(); await attesa(80);
+check(env.sock.emessi.join() === 'GRIPPER/REQUEST_SNAPSHOT' && scritture(env.ff).length === 0 && /palletMachine\.err\.slotUnread/.test(dataStored.alert.desc),
+	'   caselle non lette: niente 41 alla cieca, niente scrittura');
+// la casella risulta libera, ma fra la rilettura e la scrittura qualcuno la
+// prende: il 41 e' gia' partito
+env = ambiente({ registro: '902;0;1' }, inMc, { body: 'KO_OCCUPIED' });
+av = apri(inMc, 6);
+av.confirmPlace(); await attesa(80);
+up = scritture(env.ff);
+check(env.sock.emessi.join() === 'GRIPPER/REQUEST_SNAPSHOT,TO_PLANT/CMD/MC1 41' && up.length === 1 && param(up[0], 'MAG_POS') === '6'
+	&& /palletMachine\.err\.slotAfter41.*"slot":6/.test(dataStored.alert.desc) && av.placeTarget !== null && av.placeSel === null && av.placeBusy === false,
+	'   scrittura fallita DOPO il 41 (KO_OCCUPIED): nessuna casella toccata, il messaggio dice registro gia\' a 0 e database no, altra casella o «Rimuovi dal magazzino»');
+env = ambiente({ registro: '902;0;1' }, inMc, { ko: /updatePallet/ });
+av = apri(inMc, 6);
+av.confirmPlace(); await attesa(80);
+check(env.sock.emessi.join() === 'GRIPPER/REQUEST_SNAPSHOT,TO_PLANT/CMD/MC1 41' && scritture(env.ff).length === 1 && /palletMachine\.err\.slotAfter41/.test(dataStored.alert.desc),
+	'   anche con la scrittura in errore di rete: lo stesso messaggio');
+// il secondo tentativo, con il registro ormai a 0: niente 41, solo il database
+env = ambiente({ registro: '0;0;0' }, inMc);
+av = apri(inMc, 7);
+av.confirmPlace(); await attesa(80);
+check(!env.sock.emessi.some(e => e.startsWith('TO_PLANT/')) && casella(scritture(env.ff), 7, 5), '   poi un\'altra casella (7): registro a 0, niente 41, la casella si scrive');
 env = ambiente({ registro: '902;0;1', risp: 'zitto' }, inMc);
 av = apri(inMc, 6);
 av.confirmPlace(); await attesa(80);
@@ -284,7 +354,7 @@ av.confirmPlace(); await attesa(M.REGISTRO_MS + 150);
 check(!env.sock.emessi.some(e => e.startsWith('TO_PLANT/')) && casella(scritture(env.ff), 6, 4), '   anche col registro non letto: il 41 non serve, la casella si scrive');
 
 const att = readFileSync('src/views/conf/AttrezzaggiView.vue', 'utf8');
-check(/import \{ mandaComandoPallet, scriviPosizione, leggiRegistroMacchina, guardia41, messaggioEsitoMacchina \} from '\.\.\/\.\.\/util\/palletMachine\.js'/.test(att)
+check(/import \{ mandaComandoPallet, scriviPosizione, leggiRegistroMacchina, guardia41, casellaLibera, messaggioEsitoMacchina \} from '\.\.\/\.\.\/util\/palletMachine\.js'/.test(att)
 	&& /import \{ mandaComandoPallet, scriviPosizione, messaggioEsitoMacchina \} from '\.\.\/\.\.\/util\/palletMachine\.js'/.test(readFileSync('src/views/unit/CNC1View.vue', 'utf8'))
 	&& /from '\.\/palletMachine\.js'/.test(readFileSync('src/util/palletOnRobot.js', 'utf8')),
 	'Attrezzaggi, pagina Macchine e pallet a bordo usano lo STESSO modulo (util/palletMachine.js)');

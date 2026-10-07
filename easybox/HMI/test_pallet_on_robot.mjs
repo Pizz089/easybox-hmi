@@ -181,7 +181,7 @@ check(/if \(sel === 'robot'\) \{ this\.confirmOnRobot\(\); return; \}/.test(att)
 // (7/10) «In macchina» e «Rimuovi» scrivono dopo l'eco del PLC, con
 // scriviPosizione di util/palletMachine.js: stessi valori di prima
 const pmsrc = readFileSync('src/util/palletMachine.js', 'utf8');
-check(/const newMagPos = sel;/.test(att) && /MAG_POS: tipo === 'set' \? row\.MAG_POS : -1,/.test(pmsrc) && /POS_PLANT: tipo === 'set' \? 100 \+ mc : 0,/.test(pmsrc),
+check(/const newMagPos = sel;/.test(att) && /MAG_POS: tipo === 'set' \? row\.MAG_POS : tipo === 'casella' \? Number\(casella\) : -1,/.test(pmsrc) && /POS_PLANT: tipo === 'set' \? 100 \+ mc : 0,/.test(pmsrc),
 	'   le destinazioni esistenti scrivono gli stessi valori: casella (pagina), In macchina e Rimuovi (palletMachine, dopo l\'eco)');
 check(/placeSel='robot'/.test(att) && /palletOnRobot\.confirmText/.test(att), '   voce nuova nel dialog Posiziona, con il testo che dice cosa fa');
 check(/palletDisabledReason !== 'robot\.hint\.palletUnknownOnBoard'/.test(rob) && /palletDisabledReason === 'robot\.hint\.palletUnknownOnBoard'"[\s\S]{0,200}openPalletDecl\(\)/.test(rob),

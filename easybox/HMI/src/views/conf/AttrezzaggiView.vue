@@ -20,7 +20,7 @@
     import { dichiaraPalletABordo, messaggioEsito } from '../../util/palletOnRobot.js';
     // (7/10) «In macchina» e «Rimuovi»: 40 / 41 con l'eco, poi il database
     // (la logica della pagina Macchine, util/palletMachine.js)
-    import { mandaComandoPallet, scriviPosizione, leggiRegistroMacchina, guardia41, messaggioEsitoMacchina } from '../../util/palletMachine.js';
+    import { mandaComandoPallet, scriviPosizione, leggiRegistroMacchina, guardia41, casellaLibera, messaggioEsitoMacchina } from '../../util/palletMachine.js';
 </script>
 
 <template>
@@ -478,23 +478,45 @@ export default {
         // (7/10) «Casella» di un pallet che risulta in macchina (database
         // POS_PLANT 100+n, o registro DB_MC1.pallet = quel pallet): come
         // «Rimuovi», prima il 41 con la stessa guardia e la sua eco, poi il
-        // database con la casella scelta (MAG_POS = casella, POS_PLANT 0),
-        // scritto come prima da writeSlot. Prima scriveva solo il database e il
-        // registro della macchina restava sul pallet. Un pallet a magazzino:
-        // nessun 41, solo il database come prima.
+        // database con la casella scelta (MAG_POS = casella, POS_PLANT 0).
+        // Prima scriveva solo il database e il registro della macchina restava
+        // sul pallet. Un pallet a magazzino: nessun 41, il database come prima
+        // (writeSlot).
+        // Col 41: la casella si controlla PRIMA, su dati riletti adesso
+        // (casellaLibera); occupata, disabilitata o non letta = nessun comando.
+        // Dopo l'eco la casella la scrive scriviPosizione (stessi valori di
+        // writeSlot, riga riletta). Se fallisce lo stesso, il messaggio dice
+        // che il registro della macchina e' gia' a 0 e il database no.
         async confirmSlot(t, sel){
             if (this.placeBusy) return;
             const socket = dataStored.WS.socket;
             this.placeBusy = true;
-            let esito;
+            let esito, dopo41 = false, scritto = null;
             try {
-                esito = guardia41({ palletId: t.ID, posPlant: t.POS_PLANT, registro: await leggiRegistroMacchina(socket) });
-                if (esito.ok && esito.mc > 0) esito = await mandaComandoPallet(socket, { mc: esito.mc, tipo: 'clear' });
+                const g = guardia41({ palletId: t.ID, posPlant: t.POS_PLANT, registro: await leggiRegistroMacchina(socket) });
+                esito = g;
+                if (g.ok && g.mc > 0) {
+                    esito = await casellaLibera({ server: dataStored.server, casella: sel, palletId: t.ID });
+                    if (esito.ok) esito = await mandaComandoPallet(socket, { mc: g.mc, tipo: 'clear' });
+                    dopo41 = esito.ok;
+                    if (dopo41) scritto = await scriviPosizione({ server: dataStored.server, tipo: 'casella', casella: sel, palletId: t.ID });
+                }
             } finally {
                 this.placeBusy = false;
             }
-            if (!esito.ok) { this.esitoMacchina(esito, null, 'clear'); return; }
-            this.writeSlot(t, sel);
+            if (!esito.ok) {
+                // casella presa o disabilitata nel frattempo: se ne sceglie un'altra
+                if (esito.motivo === 'warehouses.occupiedBy' || esito.motivo === 'warehouses.disabledPos') this.placeSel = null;
+                this.esitoMacchina(esito, null, 'clear');
+                return;
+            }
+            if (!dopo41) { this.writeSlot(t, sel); return; }
+            if (scritto && scritto.ok) { this.closePlace(); this.getDataTable(); return; }
+            dataStored.alert.title = this.$t('WARNING');
+            dataStored.alert.desc = this.$t('palletMachine.err.slotAfter41', { slot: sel });
+            dataStored.alert.type = 'warning';
+            this.placeSel = null;
+            this.getDataTable();
         },
         // esito comune di «In macchina», «Rimuovi» e della guardia di «Casella»
         esitoMacchina(esito, scritto, tipo){
