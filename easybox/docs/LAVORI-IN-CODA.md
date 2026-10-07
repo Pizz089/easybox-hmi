@@ -5,6 +5,207 @@
 > stato corretto sul momento. Gli interventi manuali da fare in impianto
 > stanno invece in `APPUNTI-CELLA.md`.
 
+## [ ] Il 244 in manuale usa ancora DB_MC1.order.ID
+
+**Cosa.** Limite dichiarato dalla consegna 33 (7/10). La consegna corregge la
+scelta dell'ordine nel deposito e nel prelievo manuale da pannello (vista
+`MAN_ORDER_MC1` 7/10, simulazione problema 3), ma la missione 244 (preleva
+il finito e deposita il grezzo in MC1) in manuale decide ancora con
+`DB_MC1.order.ID`, che FB204 non azzera a fine produzione: dopo un ordine
+finito puo' usare i dati dell'ordine chiuso.
+
+**Trovato il** 2026-10-07, limiti della consegna 33. Collegato al problema 3
+di [SIMULAZIONE-2026-10-07.md](SIMULAZIONE-2026-10-07.md).
+
+## [ ] Il pulsante HOLD azzera Error anche con una catena ferma su un errore (FB8)
+
+**Cosa.** Limite dichiarato dalla consegna 33 (7/10). La consegna rifiuta i
+comandi da pannello con un errore attivo (972, simulazione problema 9), ma il
+fronte del pulsante HOLD (o l'apertura della porta) in FB8 azzera ancora
+`Error` anche quando una catena e' ferma proprio su quell'errore: l'errore
+sparisce senza che la causa sia stata tolta.
+
+**Direzione.** Il pulsante non deve azzerare l'errore se una catena e' ferma
+su un errore (problema 9 di [SIMULAZIONE-2026-10-07.md](SIMULAZIONE-2026-10-07.md)).
+
+**Trovato il** 2026-10-07, limiti della consegna 33.
+
+## [ ] Simulazione 7/10, problema 1: [S1] il riarmo azzera il PLC mentre il robot riprende la missione
+
+**Cosa.** `Start_AUX` (%I230.2) o `ResetAreaRobot` (%I33.5), letti a livello, azzerano le catene di FB7, il ponte SQL, `Command`, `MissionCode` e il master di FB204; il robot invece riprende la missione. Spiega l'incidente del pallet del 6/10. Della stessa famiglia il reset 99, i posizionamenti in HOLD e il 18.
+
+**Stato.** da progettare con il robotista, insieme al problema 15 e al pezzo in macchina ritentivo. Finche' non e' corretto vale la regola provvisoria scritta nel documento (riarmo solo dopo un'emergenza; con una missione in corso lasciarla finire e controllare i registri, oppure «Reimposta stato cella»).
+
+**Dettagli e direzione:** [SIMULAZIONE-2026-10-07.md](SIMULAZIONE-2026-10-07.md), problema 1.
+
+**Trovato il** 2026-10-07, simulazione a tavolino della cella.
+
+## [ ] Simulazione 7/10, problema 2: [S2] dopo un deposito manuale del pallet in MC il registro della macchina e' sbagliato
+
+**Cosa.** Al 60 di Pallet_Robot_to_MC `"DB_MC1".pallet := #pieceReq`, ma `pieceReq` e' TEMP e calcolata al 10, in un altro ciclo: al 60 non contiene il pallet comandato.
+
+**Stato.** corretto dalla consegna 33 (PLC, 7/10), da scaricare. In cella, prima: controllo 1 del documento (`DB_MC1.pallet` deve valere il pallet in macchina).
+
+**Dettagli e direzione:** [SIMULAZIONE-2026-10-07.md](SIMULAZIONE-2026-10-07.md), problema 2.
+
+**Trovato il** 2026-10-07, simulazione a tavolino della cella.
+
+## [ ] Simulazione 7/10, problema 3: [S1 IPOTESI, S2] il deposito manuale in MC1 usa l'ordine chiuso
+
+**Cosa.** La consegna 30 decideva «ordine avviato» con `DB_MC1.order.ID > 0`, che FB204 non azzera a fine produzione: dopo un ordine finito il deposito (e il prelievo) manuale prendeva quote, spinta e soffiaggio dell'ordine chiuso.
+
+**Stato.** corretto dalla consegna 33 (PLC) con la vista `MAN_ORDER_MC1` 7/10 (`serverDati/scripts/man-order-mc1.sql`, da lanciare prima del download). Resta il 244 in manuale (voce a parte).
+
+**Dettagli e direzione:** [SIMULAZIONE-2026-10-07.md](SIMULAZIONE-2026-10-07.md), problema 3.
+
+**Trovato il** 2026-10-07, simulazione a tavolino della cella.
+
+## [ ] Simulazione 7/10, problema 4: [S1] finito depositato su una tasca gia' piena
+
+**Cosa.** Al 50 di Part_Robot_to_MC `PartSubPosMC` e `TrayIdMC` vengono sovrascritti col grezzo appena depositato, senza condizioni; in alcuni percorsi di FB204 il finito precedente e' ancora sul lato 2, va nella tasca del grezzo e al giro dopo un altro finito ci viene posato sopra.
+
+**Dettagli e direzione:** [SIMULAZIONE-2026-10-07.md](SIMULAZIONE-2026-10-07.md), problema 4.
+
+**Trovato il** 2026-10-07, simulazione a tavolino della cella.
+
+## [ ] Simulazione 7/10, problema 5: [S1/S2] due numeri di cassetto che si separano: Tray_ID ed ExtractedTray
+
+**Cosa.** Il 25 scrive `Tray_ID` anche quando e' rifiutato, `Tray_ID` non e' ritentivo, la 38 e i sensori cambiano solo `ExtractedTray`: prelievo nel cassetto estratto ma aggiornamento e deposito su quello di `Tray_ID`.
+
+**Dettagli e direzione:** [SIMULAZIONE-2026-10-07.md](SIMULAZIONE-2026-10-07.md), problema 5.
+
+**Trovato il** 2026-10-07, simulazione a tavolino della cella.
+
+## [ ] Simulazione 7/10, problema 6: [S1 IPOTESI] risposta SQL tardiva consegnata alla query successiva
+
+**Cosa.** Dopo il timeout di 20 s, o un reset con una query in volo, `executeSqlCommand` non viene azzerato: la risposta vecchia puo' finire alla query dopo, con le coordinate di un'altra query al robot.
+
+**Dettagli e direzione:** [SIMULAZIONE-2026-10-07.md](SIMULAZIONE-2026-10-07.md), problema 6.
+
+**Trovato il** 2026-10-07, simulazione a tavolino della cella.
+
+## [ ] Simulazione 7/10, problema 7: [S1 IPOTESI] reset durante la lavorazione HAAS
+
+**Cosa.** Il 99 e il riarmo portano FB204 a 0 anche dal 95, a macchina in lavoro: FB204 puo' rilanciare una missione in macchina.
+
+**Dettagli e direzione:** [SIMULAZIONE-2026-10-07.md](SIMULAZIONE-2026-10-07.md), problema 7.
+
+**Trovato il** 2026-10-07, simulazione a tavolino della cella.
+
+## [ ] Simulazione 7/10, problema 8: [S2] un errore SQL viene letto come «zero righe»
+
+**Cosa.** L'errorToken non viene letto: una colonna mancante (uno script non lanciato prima del download) disattiva in silenzio la spinta, lascia al robot le misure del pezzo precedente o chiude la produzione; un UPDATE fallito risulta riuscito.
+
+**Dettagli e direzione:** [SIMULAZIONE-2026-10-07.md](SIMULAZIONE-2026-10-07.md), problema 8.
+
+**Trovato il** 2026-10-07, simulazione a tavolino della cella.
+
+## [ ] Simulazione 7/10, problema 9: [S1] missione chiesta con un errore attivo che parte da sola piu' tardi
+
+**Cosa.** I comandi da pannello vengono accettati con `Error` diverso da 0; il master li avvia solo con `Error` a 0; il pulsante HOLD (o la porta) azzera `Error` in FB8 e la missione chiesta minuti prima parte.
+
+**Stato.** la consegna 33 (PLC) rifiuta i comandi con un errore attivo (allarme 972, testi nel pannello). Resta il pulsante HOLD che azzera `Error` (voce a parte).
+
+**Dettagli e direzione:** [SIMULAZIONE-2026-10-07.md](SIMULAZIONE-2026-10-07.md), problema 9.
+
+**Trovato il** 2026-10-07, simulazione a tavolino della cella.
+
+## [ ] Simulazione 7/10, problema 10: [S3] in HOLD gli errori non arrivano al pannello; circa 40 codici senza testo
+
+**Cosa.** In HOLD lo stato pubblicato e' fisso e l'errore non esce; i rifiuti (944-946, 970, 971, 2000x) il pannello li aspetta su ALARM/ROBOT, dove il PLC non li mandava: si vedeva solo un timeout. Circa 40 codici senza testo (21, 521, 621, 691, 799, 894, 899, 935, 940-942, 949, 951, 990, 992, ...), alcuni testi sbagliati (22, 936, 30123).
+
+**Stato.** dalla consegna 33 944, 945 e 946 arrivano su ALARM/ROBOT (ALLARMI-PLC.md). Restano la pubblicazione di `Error` in HOLD e i testi mancanti o sbagliati.
+
+**Dettagli e direzione:** [SIMULAZIONE-2026-10-07.md](SIMULAZIONE-2026-10-07.md), problema 10.
+
+**Trovato il** 2026-10-07, simulazione a tavolino della cella.
+
+## [ ] Simulazione 7/10, problema 11: [S1] il contenuto della pinza non blocca i comandi
+
+**Cosa.** Scarico pinza, swap e prelievo pallet passano anche con un oggetto in pinza; l'incoerenza fra memoria del PLC e chele chiuse da' solo l'allarme 23, un messaggio.
+
+**Dettagli e direzione:** [SIMULAZIONE-2026-10-07.md](SIMULAZIONE-2026-10-07.md), problema 11.
+
+**Trovato il** 2026-10-07, simulazione a tavolino della cella.
+
+## [ ] Simulazione 7/10, problema 12: [S1 IPOTESI sui dati] il finito viene depositato in tasca con la quota del grezzo
+
+**Cosa.** Part_Robot_to_TRAY usa le colonne PICK anche per il finito. Oggi nessun effetto se nessun pezzo ha Z_PICK diverso da Z_PLACE (controllo 3 del documento).
+
+**Dettagli e direzione:** [SIMULAZIONE-2026-10-07.md](SIMULAZIONE-2026-10-07.md), problema 12.
+
+**Trovato il** 2026-10-07, simulazione a tavolino della cella.
+
+## [ ] Simulazione 7/10, problema 13: [S2] HOLD messo o tolto a meta' missione cambia il ramo delle catene
+
+**Cosa.** `RemoteMode := NOT HOLD` viene riletto a ogni ciclo: pallet e finito prendono il ramo manuale (`PalletRequested`, `PartSubPos`), con POS_PLANT sull'ID sbagliato e il finito marcato grezzo.
+
+**Dettagli e direzione:** [SIMULAZIONE-2026-10-07.md](SIMULAZIONE-2026-10-07.md), problema 13.
+
+**Trovato il** 2026-10-07, simulazione a tavolino della cella.
+
+## [ ] Simulazione 7/10, problema 14: [S2] dopo una dichiarazione 35 rifiutata la supervisione 938 resta spenta
+
+**Cosa.** L'indice 31 (Declare_State) e' ritentivo e non viene mai azzerato dal reset: dopo un 35 rifiutato la catena resta sul codice d'errore.
+
+**Stato.** corretto dalla consegna 33 (PLC), da scaricare.
+
+**Dettagli e direzione:** [SIMULAZIONE-2026-10-07.md](SIMULAZIONE-2026-10-07.md), problema 14.
+
+**Trovato il** 2026-10-07, simulazione a tavolino della cella.
+
+## [ ] Simulazione 7/10, problema 15: [S1 IPOTESI] STOP->RUN a missione in corso
+
+**Cosa.** I Dispatcher ritentivi restano ma il frame della missione e' a zero: una catena al 40 riscrive al robot un comando con coordinate a zero alla prima rimozione di HOLD.
+
+**Stato.** stesso cantiere del pezzo in macchina non ritentivo (voce «Pezzo in macchina non ritentivo»).
+
+**Dettagli e direzione:** [SIMULAZIONE-2026-10-07.md](SIMULAZIONE-2026-10-07.md), problema 15.
+
+**Trovato il** 2026-10-07, simulazione a tavolino della cella.
+
+## [x] Simulazione 7/10, problema 16: [S2] Attrezzaggi: «In macchina» e «Rimuovi» scrivevano solo il DB
+
+**Cosa.** Il registro `DB_MC1.pallet` restava com'era, e FB204 decide su quello.
+
+**Stato.** chiuso nel pannello il 7/10 (9c507df): le due destinazioni passano dal PLC (40/41 con l'eco) col modulo `util/palletMachine.js`; 947 o niente eco = nessuna scrittura. Da mettere in servizio aggiornando il pannello.
+
+**Dettagli e direzione:** [SIMULAZIONE-2026-10-07.md](SIMULAZIONE-2026-10-07.md), problema 16.
+
+**Trovato il** 2026-10-07, simulazione a tavolino della cella.
+
+## [ ] Simulazione 7/10, problema 17: [S3] MQTT: comandi persi e echi persi
+
+**Cosa.** In ricezione una pubblicazione prima del consumatore cancella il comando; in uscita il buffer di 11 posti sovrascrive senza controllo: comandi o echi che si perdono ogni tanto.
+
+**Dettagli e direzione:** [SIMULAZIONE-2026-10-07.md](SIMULAZIONE-2026-10-07.md), problema 17.
+
+**Trovato il** 2026-10-07, simulazione a tavolino della cella.
+
+## [ ] Simulazione 7/10, problema 18: [S2] tasche marcate male nei depositi in tasca
+
+**Cosa.** Il deposito manuale in tasca registra sempre «grezzo», anche col finito; il deposito automatico del grezzo restituito (lato 1) viene registrato come finito, sulla tasca del pezzo in macchina.
+
+**Dettagli e direzione:** [SIMULAZIONE-2026-10-07.md](SIMULAZIONE-2026-10-07.md), problema 18.
+
+**Trovato il** 2026-10-07, simulazione a tavolino della cella.
+
+## [ ] Simulazione 7/10, problema 19: [S1 IPOTESI] cassetto a meta' corsa non rilevabile
+
+**Cosa.** AllTrayInside (%I35.6) non e' collegato e il controllo e' commentato: il rilascio viene confermato senza sensore.
+
+**Dettagli e direzione:** [SIMULAZIONE-2026-10-07.md](SIMULAZIONE-2026-10-07.md), problema 19.
+
+**Trovato il** 2026-10-07, simulazione a tavolino della cella.
+
+## [ ] Simulazione 7/10, problema 20: [S2] il pannello lavora sul primo cassetto con EXTRACT=1
+
+**Cosa.** Il backend non azzera gli altri cassetti e l'eco non viene confrontato: si puo' modificare un cassetto diverso da quello estratto (controllo 4 del documento).
+
+**Dettagli e direzione:** [SIMULAZIONE-2026-10-07.md](SIMULAZIONE-2026-10-07.md), problema 20.
+
+**Trovato il** 2026-10-07, simulazione a tavolino della cella.
+
 ## [ ] Pezzo in macchina non ritentivo
 
 **Cosa.** In FB_Robot (export `plc/FB/FB_Robot.scl`) quattro variabili che
@@ -38,6 +239,11 @@ Con gli zeri le due query potrebbero non trovare la tasca: da verificare
 sul PLC (o in simulazione) prima di decidere.
 
 **Trovato il** 2026-10-06, analizzando il prelievo da MC1 dopo la spinta.
+
+**Consegna 33 (7/10).** Fra i limiti dichiarati: `OrderIdMC` non e'
+ritentivo, e col PLC 33 entra anche nella query del soffiaggio (stato 37 di
+Part_MC_to_Robot, ramo fra l'ordine attivo e il piu' recente). Stessa
+soluzione proposta qui sopra. Collegati i problemi 1 e 15 di [SIMULAZIONE-2026-10-07.md](SIMULAZIONE-2026-10-07.md).
 
 ## [x] Dichiarazione dell'attrezzatura a bordo del robot
 

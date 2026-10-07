@@ -68,6 +68,40 @@ Nel working tree di cella ci sono file non tracciati che il `.gitignore` non esc
    - stato del robot che si aggiorna;
    - `DB_executeQuery.readyForNextQuery` TRUE.
 
+## [ ] 2026-10-07 — Consegna 33 (7/10): correzioni della simulazione, vista `MAN_ORDER_MC1` **prima** del download
+
+**Cosa corregge** (PLC, la scarica Dario; file `33_FB7_correzioni_simulazione.scl`): quattro problemi della [simulazione del 7/10](SIMULAZIONE-2026-10-07.md):
+- 2: registro del pallet in macchina (`DB_MC1.pallet`) sbagliato dopo un deposito manuale del pallet;
+- 3: il manuale usava l'ordine chiuso (`DB_MC1.order.ID`, che FB204 non azzera a fine produzione);
+- 9: comandi accettati con un errore attivo, che poi partivano da soli;
+- 14: una dichiarazione 35 rifiutata lasciava spenta la supervisione 938.
+
+**Come il PLC sceglie l'ordine dal pannello.**
+- Deposito in MC1: l'ordine di MC1 del pezzo della tasca di provenienza, dalla vista `MAN_ORDER_MC1` 7/10. Prima l'ordine **avviato e non completo** (STATUS 3, PRODUCTED < QUANTITY, la regola con cui FB204 sceglie l'ordine attivo), poi in coda o in pausa (4, 6), a parità il più recente. Nessun ordine: 970. Provenienza del pezzo non nota: l'ordine avviato di MC1 se c'è, altrimenti 971.
+- Prelievo da MC1, query del soffiaggio (stato 37 di Part_MC_to_Robot): l'ordine attivo, altrimenti quello congelato col pezzo in macchina (`OrderIdMC`), altrimenti il più recente.
+- Il ramo pannello o automatico non si decide più da `RemoteMode` riletto a ogni ciclo (simulazione, problema 13), ma dal master: i comandi del pannello lo tengono in **1230** (prelievo del pezzo da MC1), **1250** (deposito del pezzo su MC1), **1350** (deposito del pallet su MC1).
+
+**Comandi con un errore attivo.** Dal PLC 33 un comando dal pannello con `Error` diverso da 0 viene rifiutato con **972** (su `ALARM/ROBOT`, testo nel pannello): RESET e si ripete; con il 938 prima la dichiarazione dello stato cella. L'elenco esatto dei comandi rifiutati e di quelli ancora ammessi sta nell'intestazione della consegna: **da riportare qui** quando il file arriva nel repo (al momento di questa nota non era disponibile).
+
+**944, 945, 946** (rifiuti del 35): dal PLC 33 arrivano su `ALARM/ROBOT`; prima restavano solo in `Error` e il pannello vedeva un timeout. Vedi ALLARMI-PLC.md.
+
+**Messa in servizio, in quest'ordine, a cella ferma:**
+1. la vista, **prima** del download:
+   ```
+   cd D:\Prog\easybox\serverDati\scripts; sqlcmd -S .\SQLEXPRESS -E -d ADMG -W -i man-order-mc1.sql
+   ```
+   Atteso «aggiornata dalla 6/10 alla 7/10»; rilanciato, «conforme». La verifica in fondo stampa gli ordini di MC1 (3, 4, 6), le prime tasche del cassetto 8 col loro ordine e gli ordini avviati ma già completi: devono essere 0 (chiusura automatica, `orderAutoClose.js`); se non lo sono, riportarlo. Col PLC 33 e la vista del 6/10 un deposito dal pannello con l'ordine avviato darebbe 970;
+2. i servizi (pannello col testo nuovo del 970 e il 972);
+3. il download della consegna 33 (Dario);
+4. i test di accettazione dell'intestazione della consegna (**da riportare qui** col file);
+5. tia-export e confronto con la consegna, blocco per blocco.
+
+**Rollback.** La vista del 6/10 si rimette solo insieme al PLC di prima (testo in testa a `man-order-mc1.sql`).
+
+**Limiti** (LAVORI-IN-CODA): il 244 in manuale usa ancora `DB_MC1.order.ID`; il pulsante HOLD azzera `Error` anche con una catena ferma su un errore (FB8); `OrderIdMC` non è ritentivo.
+
+Provato sul clone del portatile il 7/10: script lanciato due volte («aggiornata», poi «conforme»; 52 tasche del cassetto 8 con l'ordine 2117; 0 avviati ma completi). In una transazione chiusa con ROLLBACK: l'ordine 2117 portato a STATUS 3 resta scelto (avviato, 0 su 1); con QUANTITY 0 (avviato ma completo) non lo sceglie più nessuna tasca. Riga tornata com'era.
+
 ## [ ] 2026-10-07 — pallet «a bordo del robot»: come si dichiara, e perché passa dal PLC
 
 **Quando serve.** Dopo un prelievo del pallet dalla macchina il sistema non sapeva che il pallet era in pinza: il pannello vedeva la pinza vuota e il PLC rifiutava il deposito a magazzino (errore 23 di MISSION_Unload_Pallet).
@@ -101,6 +135,8 @@ Non si tocca la casella del magazzino: `MAG_POS` resta la casa del pallet, dove 
 **Messa in servizio.** Solo pannello: nessuno script SQL e nessuna modifica al PLC (35, 40 e 41 esistono già). Aggiornare i servizi.
 
 ## [ ] 2026-10-06 — deposito manuale in MC1: vista `MAN_ORDER_MC1` **prima** del download di FB_Robot
+
+> **7/10:** la regola della vista è cambiata con la consegna 33 (anche l'ordine avviato e non completo, con la precedenza). Lo stesso script, rilanciato, porta la vista dalla 6/10 alla 7/10: vedi la voce «Consegna 33» qui sopra.
 
 Decisione di Dario in [DECISIONI.md](DECISIONI.md) («Deposito manuale in MC1»). La vista `MAN_ORDER_MC1` dà, per ogni tasca di cassetto, il pezzo (`Part_Type` della tasca) e l'ordine di MC1 in attesa per quel pezzo (STATUS 4 o 6, il più recente). FB_Robot la interroga (consegna 30, REGION Part_Robot_to_MC) quando in manuale, senza ordine avviato, si deposita in MC1.
 

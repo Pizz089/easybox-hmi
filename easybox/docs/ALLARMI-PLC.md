@@ -47,12 +47,33 @@ Instradati per sezione dal codice, perche' i canali `ALARM/MC1`, `ALARM/BOX` e
 |---|---|---|
 | 947, 948 | `ALARM/MC1` | macchina (36/37) |
 | 99, 996, 997, 999 | `ALARM/BOX` | cassetto (38) |
-| 944, 945, 946 | `ALARM/ROBOT` | robot (35) |
+| 944, 945, 946 | `ALARM/ROBOT` (dal PLC 33; prima solo in `Error`) | robot (35) |
 | 20001, 20002, 20005, 20006 | `ALARM/ROBOT` | tasche (39) |
 
 Il PLC pubblica l'allarme quando rifiuta, ma **non pubblica niente per dire
 "ora e' a posto"**: manda solo l'eco del comando riuscito. Per questo nel
 dialog l'eco vale anche come cancellazione dell'errore di quella sezione.
+
+**944, 945, 946 prima del PLC 33.** Il rifiuto del 35 (REGION Declare_State
+di FB_Robot) li scriveva solo in `Error`, senza pubblicarli su `ALARM/ROBOT`:
+il pannello non riceveva il codice, l'attesa dell'eco del 35 finiva per
+timeout («Nessuna conferma dal PLC») e il motivo si leggeva solo come errore
+del robot. Dal PLC 33 (consegna del 7/10) arrivano davvero su `ALARM/ROBOT`,
+e la sezione robot del dialog, come la dichiarazione del pallet a bordo
+(`util/palletOnRobot.js`), mostra il testo del rifiuto.
+
+## Rifiuti dei comandi dal pannello (970, 971, 972)
+
+| codice | canale | quando | testo |
+|---|---|---|---|
+| 970 | `Error` | deposito manuale in MC1: nessun ordine di MC1 per il pezzo prelevato. Dal PLC 33 l'ordine si cerca nella vista `MAN_ORDER_MC1` 7/10: prima quello **avviato e non completo** (STATUS 3, PRODUCTED < QUANTITY), poi in coda o in pausa (4, 6), il piu' recente. Prima valeva solo in coda o in pausa | `robot.alarm_970` |
+| 971 | `Error` | deposito manuale in MC1: non si sa da quale tasca viene il pezzo in pinza. Col PLC 33 esce solo se in piu' **non c'e' un ordine avviato di MC1**: «oppure avvia l'ordine» torna vero | `robot.alarm_971` |
+| 972 | `ALARM/ROBOT`, come il 968 | (PLC 33) comando dal pannello rifiutato perche' il robot ha un **errore attivo**: prima veniva accettato e partiva da solo quando l'errore si azzerava (simulazione del 7/10, problema 9). RESET e si ripete; col 938 prima la dichiarazione dello stato cella | `robot.alarm_972` |
+
+Il 972 lo mostra il toast globale come gli altri `robot.alarm_<codice>`: nel
+pannello non c'e' una logica dedicata (il 968, l'altro rifiuto su
+`ALARM/ROBOT`, chiude solo le attese delle dichiarazioni 35, non quelle dei
+comandi di missione).
 
 ## Se manca una chiave
 
