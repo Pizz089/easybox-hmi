@@ -34,6 +34,13 @@
 #      in dist_build e se fallisce ci si ferma prima di toccare dist e
 #      servizio; lo scambio delle dist a pannello fermo; solo il pannello si
 #      ferma e riparte, il backend no; dist_build e dist_prev ignorate da git.
+#   (7/10 sera, B59)
+#  12. modo e servito: prima del controllo da amministratore, non toccano
+#      servizi ne' nssm; servito legge dist\build.txt e lo confronta col
+#      commit piu' recente che tocca easybox/HMI (riga rossa se la build non
+#      lo contiene); stato e aggiorna lo stampano. LeggiBuildTxt e
+#      BuildContiene si ESEGUONO, estratte dal file, su un build.txt finto e
+#      sui commit veri del repo.
 # Uso: powershell -ExecutionPolicy Bypass -File easybox\tools\test_servizi_cella.ps1
 # Exit code = numero di controlli falliti.
 # ============================================================================
@@ -226,7 +233,7 @@ Check (@($stopProcess + @(& $chiamate 'Stop-Service') + @(& $chiamate 'Start-Ser
 # 11. pannello compilato
 $ifAggiorna = & $ramo '$Azione -eq ''aggiorna'''
 $ifRipristina = & $ramo '$Azione -eq ''ripristina'''
-Check ($null -ne $ifPreview -and $null -ne $ifAggiorna -and $null -ne $ifRipristina -and $null -ne $ifDev -and $testo -match "ValidateSet\('stato', 'prova', 'installa', 'riavvia', 'rimuovi', 'preview', 'aggiorna', 'ripristina', 'dev'\)") '11. azioni preview, aggiorna, ripristina e dev'
+Check ($null -ne $ifPreview -and $null -ne $ifAggiorna -and $null -ne $ifRipristina -and $null -ne $ifDev -and $testo -match "ValidateSet\('stato', 'prova', 'installa', 'riavvia', 'rimuovi', 'preview', 'aggiorna', 'ripristina', 'dev'(, 'modo', 'servito')?\)") '11. azioni preview, aggiorna, ripristina e dev'
 $parPreview = (& $assegna '$PAR_PREVIEW')[0]; $parDev = (& $assegna '$PAR_DEV')[0]
 Check ($parPreview.Right.Extent.Text -eq "'node_modules\vite\bin\vite.js preview --port 5173 --strictPort'" -and $parDev.Right.Extent.Text -eq "'node_modules\vite\bin\vite.js'") '    parametri: preview sulla 5173 con --strictPort (porta di oggi), dev come prima'
 Check ($funzioni['ComandiNssm'].Body.Extent.Text -match 'Nome = \$S_P; Par = \$PAR_DEV;') '    installa crea il pannello come prima, col server di sviluppo'
@@ -253,6 +260,27 @@ $soloPannello = @($ifPreview, $ifRipristina, $ifDev, $riavviaPannello, $compila)
 Check (@(@(& $chiamate 'Stop-Service') + @(& $chiamate 'Start-Service') + @(& $chiamate 'RiavviaServizi') | Where-Object { $n1 = $_; @($soloPannello | Where-Object { & $dentro $n1 $_ }).Count -gt 0 -and $_.Extent.Text -notmatch '-Name \$S_P\b' }).Count -eq 0) '    preview, ripristina e dev fermano e avviano solo il pannello, mai il backend (solo aggiorna riavvia anche il backend)'
 $gitignoreHmi = [IO.File]::ReadAllText((Join-Path (Split-Path $PSScriptRoot) 'HMI\.gitignore'))
 Check ($gitignoreHmi -match '(?m)^dist_build\s*$' -and $gitignoreHmi -match '(?m)^dist_prev\s*$' -and $gitignoreHmi -match '(?m)^dist\s*$') '    dist, dist_build e dist_prev ignorate da git (easybox\HMI\.gitignore)'
+
+# 12. da che commit viene il pannello servito (7/10 sera, B59)
+$ifModo = & $ramo '$Azione -eq ''modo'''
+$ifServito = & $ramo '$Azione -eq ''servito'''
+$iAdmin = [array]::IndexOf($ast.EndBlock.Statements, $ifAdmin)
+Check ($null -ne $ifModo -and $null -ne $ifServito -and $testo -match "ValidateSet\([^)]*'modo', 'servito'\)" -and [array]::IndexOf($ast.EndBlock.Statements, $ifModo) -lt $iAdmin -and [array]::IndexOf($ast.EndBlock.Statements, $ifServito) -lt $iAdmin) '12. azioni modo e servito, prima del controllo da amministratore'
+Check (@(@($nssm) + @($servizi) | Where-Object { (& $dentro $_ $ifModo) -or (& $dentro $_ $ifServito) }).Count -eq 0 -and $ifModo.Clauses[0].Item2.Extent.Text -match 'Write-Output \(ModoPannello\)') '    modo scrive ModoPannello e basta; modo e servito non toccano servizi ne'' nssm'
+$servito = $funzioni['PannelloServito']
+Check ($null -ne $servito -and $servito.Body.Extent.Text -match 'LeggiBuildTxt \$BuildTxt' -and $servito.Body.Extent.Text -match 'log -1 --format=%H -- \.' -and $servito.Body.Extent.Text -match 'BuildContiene' -and $servito.Body.Extent.Text -match "pannello servito non aggiornato: -Azione aggiorna" -and $servito.Body.Extent.Text -match "'Red'") '    PannelloServito: build.txt contro l''ultimo commit di easybox/HMI, riga rossa "pannello servito non aggiornato: -Azione aggiorna"'
+Check ((& $assegna '$BuildTxt')[0].Right.Extent.Text -eq "Join-Path `$Dist 'build.txt'" -and $ifStato.Clauses[0].Item2.Extent.Text -match "if \(\`$modo -eq 'preview'\) \{ \`$null = PannelloServito \}" -and $ifAggiorna.Clauses[0].Item2.Extent.Text -match '\$null = PannelloServito') '    dist\build.txt; stato (col pannello compilato) e aggiorna lo stampano'
+# le due funzioni vere, eseguite
+. ([scriptblock]::Create($funzioni['LeggiBuildTxt'].Extent.Text + "`n" + $funzioni['BuildContiene'].Extent.Text))
+$Pannello = Join-Path (Split-Path $PSScriptRoot) 'HMI'
+$finto = Join-Path ([IO.Path]::GetTempPath()) ('build-' + [guid]::NewGuid().ToString('N').Substring(0, 8) + '.txt')
+Set-Content -LiteralPath $finto -Encoding ASCII -Value @('ramo=ui-v3', 'commit=abc123', 'data=2026-10-07 21:05')
+$letto = LeggiBuildTxt $finto
+Remove-Item -LiteralPath $finto -ErrorAction SilentlyContinue
+Check ($letto['ramo'] -eq 'ui-v3' -and $letto['commit'] -eq 'abc123' -and $letto['data'] -eq '2026-10-07 21:05' -and $null -eq (LeggiBuildTxt $finto)) '    LeggiBuildTxt: ramo, commit e data; file assente = $null'
+$capo = ((& git -C $Pannello rev-parse HEAD) -join '').Trim()
+$prima = ((& git -C $Pannello rev-parse HEAD~1) -join '').Trim()
+Check ((BuildContiene $capo $capo) -and (BuildContiene $capo $prima) -and -not (BuildContiene $prima $capo) -and -not (BuildContiene 'sconosciuto' $capo) -and -not (BuildContiene '' $capo)) '    BuildContiene: stesso commit o discendente si''; build piu'' vecchia, sconosciuta o vuota no'
 
 Write-Host ''
 Write-Host $(if ($script:falliti) { "$($script:falliti) CHECK FALLITI" } else { 'TUTTI I CHECK PASSATI' })

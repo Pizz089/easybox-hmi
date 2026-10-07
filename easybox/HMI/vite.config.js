@@ -4,6 +4,8 @@ import { fileURLToPath, URL } from 'node:url'
 import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
+// (7/10 sera, B59) la build scrive dist/build.txt (ramo, commit, data)
+import { buildInfoPlugin } from './buildInfo.js'
 
 // https://vite.dev/config/
 // AA: l'overlay flottante Vue DevTools e' iniettato in modalita' dev da
@@ -80,6 +82,7 @@ export default defineConfig(({ mode }) => {
     plugins: [
       vue(),
       ...(devtoolsOn ? [vueDevTools()] : []),
+      buildInfoPlugin(),
     ],
     resolve: {
       alias: {
