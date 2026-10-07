@@ -1188,22 +1188,82 @@ BEGIN
 	                
 	                ///////////////////////////     
 	            700: //MISSION_ExtractTray
-	                IF #Gripper_ID[1] = 0 AND #Gripper_ID[2] = 0 THEN
-	                    #Dispatcher["_Gripper_Hook_Search"] := 10;
-	                    
-	                    #Dispatcher["_master"] := 710;
-	                ELSE
-	                    #Dispatcher["_master"] := 730;
-	                END_IF;
-	            710: //gripper hook found
+	                // (7/10, decisione di Dario) IL CASSETTO SI ESTRAE SOLO CON UNA PINZA CON
+	                // L'UNCINO (GRIPPER.HAS_HOOK = 1). La ricerca dice quale: la pinza a bordo
+	                // se ce l'ha, altrimenti una a scaffale. Fino al 7/10 con una pinza a bordo
+	                // si estraeva con quella senza nessun controllo, e senza pinza si cercava
+	                // una riga "gancio" che portava a una pinza inesistente (ID 2).
+	                // Il controllo vero sta anche nella catena (30 di Extract_TRAY), che vale
+	                // per ogni percorso.
+	                #Dispatcher["_Gripper_Hook_Search"] := 10;
+	                #Dispatcher["_master"] := 705;
+	            705: // esito della ricerca della pinza con uncino
 	                IF #Dispatcher["_Gripper_Hook_Search"] = 0 THEN
-	                    #Dispatcher["_Gripper_TRAY_to_Robot"] := 10;
-	                    
-	                    #Dispatcher["_master"] := 720;
+	                    IF #Error <> 0 THEN
+	                        // nessuna pinza con uncino (19006) o errore DB: resta l'errore
+	                        #MissionCode := 0;
+	                        #Dispatcher["_master"] := 0;
+	                    ELSIF #GripperRequested = #Gripper_ID[1] THEN
+	                        // la pinza a bordo ha l'uncino
+	                        #Dispatcher["_master"] := 730;
+	                    ELSIF #RemoteMode THEN
+	                        // CICLO AUTOMATICO: a bordo c'e' la pinza dell'ordine, che serve
+	                        // anche per prendere il pezzo. Cambiarla qui vorrebbe dire
+	                        // ricambiarla col cassetto fuori, che e' vietato (1419/1519).
+	                        // Ci si ferma: la pinza dell'ordine deve avere l'uncino.
+	                        #Error := 19005;
+	                        #MissionCode := 0;
+	                        #Dispatcher["_master"] := 0;
+	                    ELSIF #GripperOccuped[1] OR #GripperOccuped[2] THEN
+	                        #Error := 19007;   // per prendere la pinza con uncino quella a bordo deve essere vuota
+	                        #MissionCode := 0;
+	                        #Dispatcher["_master"] := 0;
+	                    ELSIF #Gripper_ID[1] > 0 THEN
+	                        // COMANDO DAL PANNELLO (decisione di Dario): il PLC va a prendersi
+	                        // la pinza con l'uncino. Prima scarica quella a bordo.
+	                        #MCRequested := 0;
+	                        #Dispatcher["_Gripper_Robot_to_TRAY"] := 10;
+	                        #Dispatcher["_master"] := 710;
+	                    ELSE
+	                        // flangia nuda: si carica e basta
+	                        #MCRequested := 0;
+	                        #Dispatcher["_Gripper_TRAY_to_Robot"] := 10;
+	                        #Dispatcher["_master"] := 715;
+	                    END_IF;
 	                END_IF;
-	            720: //gripper loaded
+	            710: // scarico della pinza a bordo, che non ha l'uncino
+	                // Guardia doppia come al 110: registro a zero E catena chiusa.
+	                IF #Gripper_ID[1] = 0 AND #Dispatcher["_Gripper_Robot_to_TRAY"] = 0 THEN
+	                    #Dispatcher["_Gripper_TRAY_to_Robot"] := 10;
+	                    #Dispatcher["_master"] := 715;
+	                ELSIF #Dispatcher["_Gripper_Robot_to_TRAY"] = 0 THEN
+	                    // la catena ha chiuso senza scaricare (949, 1519 cassetto fuori):
+	                    // si chiude la missione, resta l'errore
+	                    #MissionCode := 0;
+	                    #Dispatcher["_master"] := 0;
+	                END_IF;
+	            715: // carico della pinza con uncino
 	                IF #Dispatcher["_Gripper_TRAY_to_Robot"] = 0 THEN
-	                    #Dispatcher["_master"] := 730;
+	                    IF #Gripper_ID[1] = #GripperRequested THEN
+	                        #Dispatcher["get_TCP_Data"] := 10;
+	                        #Dispatcher["_master"] := 720;
+	                    ELSE
+	                        // la catena ha chiuso senza montare la pinza (949, 1419 cassetto
+	                        // fuori, 937): si chiude la missione, resta l'errore
+	                        #MissionCode := 0;
+	                        #Dispatcher["_master"] := 0;
+	                    END_IF;
+	                END_IF;
+	            720: // TCP della pinza nuova al robot
+	                // TCP NON AGGIORNATO = NIENTE ESTRAZIONE, come al 120: il robot avrebbe
+	                // ancora le misure della pinza di prima.
+	                IF #Dispatcher["get_TCP_Data"] = 0 THEN
+	                    IF #Error <> 0 THEN
+	                        #MissionCode := 0;
+	                        #Dispatcher["_master"] := 0;
+	                    ELSE
+	                        #Dispatcher["_master"] := 730;
+	                    END_IF;
 	                END_IF;
 	            730: //start extract tray
 	                #Dispatcher["Extract_TRAY"] := 10;
@@ -2073,6 +2133,23 @@ BEGIN
 	                    IF NOT "DB_BOX_1".Robot_enabled_to_work THEN
 	                        #Error := 949;
 	                        #Dispatcher["_Gripper_Robot_to_TRAY"] := 0;
+	                    ELSIF "DB_BOX_1".ExtractedTray > 0
+	                        OR #Dispatcher["Extract_TRAY"] > 0 OR #Dispatcher["Release_TRAY"] > 0
+	                        OR "I_OUT_TRAY1" OR "I_OUT_TRAY2" OR "I_OUT_TRAY3" OR "I_OUT_TRAY4"
+	                        OR "I_OUT_TRAY5" OR "I_OUT_TRAY6" OR "I_OUT_TRAY7" OR "I_OUT_TRAY8"
+	                        OR "I_OUT_TRAY9" OR "I_OUT_TRAY10" OR "I_OUT_TRAY11" OR "I_OUT_TRAY12"
+	                    THEN
+	                        // CASSETTO FUORI = PINZA FERMA (7/10, decisione di Dario): con un
+	                        // cassetto aperto il robot che va allo scaffale pinze rischia l'urto.
+	                        // Registro E sensori di cassetto fuori (I_OUT_TRAYn, gli stessi di
+	                        // FB_easyBox), piu' le catene di estrazione e rilascio. Un cassetto a
+	                        // meta' corsa non lo vede nessuno: AllTrayInside non e' cablato.
+	                        // Stessa uscita del 949: la catena si chiude senza scaricare.
+	                        // Chi l'ha lanciata si ferma con l'errore alzato (il 700 chiude
+	                        // la missione, gli altri master restano in attesa come col 949):
+	                        // si esce col RESET, dopo aver chiuso il cassetto.
+	                        #Error := 1519;
+	                        #Dispatcher["_Gripper_Robot_to_TRAY"] := 0;
 	                    ELSE
 	                        #queryTemp := CONCAT(IN1 := 'SELECT X,Y,Z,X_ROT,Y_ROT,Z_ROT,APPROACH_TYPE,APPROACH_X,APPROACH_Y,APPROACH_Z from COORDINATES_GRIPPER_SHELF where id=',
 	                                             IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#Gripper_ID[1]));
@@ -2174,6 +2251,23 @@ BEGIN
 	                IF "SqlCommands".sqlCommands[0] = '' THEN
 	                    IF NOT "DB_BOX_1".Robot_enabled_to_work THEN
 	                        #Error := 949;
+	                        #Dispatcher["_Gripper_TRAY_to_Robot"] := 0;
+	                    ELSIF "DB_BOX_1".ExtractedTray > 0
+	                        OR #Dispatcher["Extract_TRAY"] > 0 OR #Dispatcher["Release_TRAY"] > 0
+	                        OR "I_OUT_TRAY1" OR "I_OUT_TRAY2" OR "I_OUT_TRAY3" OR "I_OUT_TRAY4"
+	                        OR "I_OUT_TRAY5" OR "I_OUT_TRAY6" OR "I_OUT_TRAY7" OR "I_OUT_TRAY8"
+	                        OR "I_OUT_TRAY9" OR "I_OUT_TRAY10" OR "I_OUT_TRAY11" OR "I_OUT_TRAY12"
+	                    THEN
+	                        // CASSETTO FUORI = PINZA FERMA (7/10, decisione di Dario): con un
+	                        // cassetto aperto il robot che va allo scaffale pinze rischia l'urto.
+	                        // Registro E sensori di cassetto fuori (I_OUT_TRAYn, gli stessi di
+	                        // FB_easyBox), piu' le catene di estrazione e rilascio. Un cassetto a
+	                        // meta' corsa non lo vede nessuno: AllTrayInside non e' cablato.
+	                        // Stessa uscita del 949: la catena si chiude senza montare la pinza.
+	                        // Chi l'ha lanciata si ferma con l'errore alzato (il 700 chiude
+	                        // la missione, gli altri master restano in attesa come col 949):
+	                        // si esce col RESET, dopo aver chiuso il cassetto.
+	                        #Error := 1419;
 	                        #Dispatcher["_Gripper_TRAY_to_Robot"] := 0;
 	                    ELSE
 	                        // SORGENTE UNICA: #GripperRequested (17/9).
@@ -2300,39 +2394,55 @@ BEGIN
 	    END_REGION
 	    
 	    REGION Gripper_Hook_Search
-	        CASE #Dispatcher["_Gripper_Hook_Search"] OF
-	            0: // nothing to do
-	                ;
-	            10: //prepare mission data
-	                IF "SqlCommands".sqlCommands[0] = '' THEN
-	                    //#queryTemp := 'select id,pos_mag-1000 from gripper where pos_mag>1000 and pos_plant>=0';
-	                    #queryTemp := 'select id,sub_pos-1000 from gripper where sub_pos>1000 AND pos_plant>=0';
-	                    #queryStartExecution := TRUE;
-	                    #Dispatcher["_Gripper_Hook_Search"] := 20;
-	                END_IF;
-	                
-	            20:  //execute query
-	                // PRESA IN CARICO VERIFICATA: SqlData e' un buffer unico condiviso,
-	                // senza il confronto su sqlCommands[0] si legge la risposta di un
-	                // altro richiedente — qui finirebbe in GripperRequested un ID pinza
-	                // preso da una colonna qualsiasi di un'altra query.
-	                IF NOT "DB_executeQuery".readyForNextQuery
-	                    AND "SqlCommands".sqlCommands[0] = #queryTemp THEN
-	                    #Dispatcher["_Gripper_Hook_Search"] := 30;
-	                END_IF;
-	                
-	            30: // wait anwser
-	                IF "DB_executeQuery".dataReady THEN
-	                    IF "DB_executeQuery".noData OR "DB_executeQuery".dataError THEN
-	                        #Error := 22;
-	                    ELSE
-	                        #GripperRequested := DINT_TO_INT("SqlData".data.rows[0].col[1]);
+	        REGION Gripper_Hook_Search
+	            // PINZA CON UNCINO PER I CASSETTI (7/10, decisione di Dario). L'uncino e'
+	            // fisso su certe pinze e lo dice l'anagrafica: GRIPPER.HAS_HOOK = 1 (in cella
+	            // il 7/10: la pinza doppia, righe 26 e 37). Le vecchie righe "gancio" con
+	            // SUB_POS > 1000 (15 e 24) hanno HAS_HOOK = 0 e restano fuori.
+	            // USCITA: #GripperRequested = la pinza a bordo se ha l'uncino, altrimenti la
+	            // prima con uncino a scaffale (POS_PLANT 0; riga canonica, ID minore).
+	            // Nessuna: 19006. Fino al 7/10 si cercavano le righe gancio e in
+	            // GripperRequested finiva SUB_POS-1000, cioe' 2: una pinza che non esiste.
+	            CASE #Dispatcher["_Gripper_Hook_Search"] OF
+	                0: // nothing to do
+	                    ;
+	                10: //prepare mission data
+	                    IF "SqlCommands".sqlCommands[0] = '' THEN
+	                        #queryTemp := CONCAT(IN1 := 'select top 1 ID from GRIPPER where HAS_HOOK=1 and (ID=',
+	                                             IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#Gripper_ID[1]),
+	                                             IN3 := ' or POS_PLANT=0) order by case when ID=',
+	                                             IN4 := "INT_TO_STRING_WITHOUT_SIGN"(#Gripper_ID[1]),
+	                                             IN5 := ' then 0 else 1 end, ID');
+	                        #queryStartExecution := TRUE;
+	                        #Dispatcher["_Gripper_Hook_Search"] := 20;
 	                    END_IF;
 	                    
-	                    "DB_executeQuery".readyForNextQuery := true;
-	                    #Dispatcher["_Gripper_Hook_Search"] := 0;
-	                END_IF;
-	        END_CASE;
+	                20:  //execute query
+	                    // PRESA IN CARICO VERIFICATA: SqlData e' un buffer unico condiviso,
+	                    // senza il confronto su sqlCommands[0] si legge la risposta di un
+	                    // altro richiedente — qui finirebbe in GripperRequested un ID pinza
+	                    // preso da una colonna qualsiasi di un'altra query.
+	                    IF NOT "DB_executeQuery".readyForNextQuery
+	                        AND "SqlCommands".sqlCommands[0] = #queryTemp THEN
+	                        #Dispatcher["_Gripper_Hook_Search"] := 30;
+	                    END_IF;
+	                    
+	                30: // wait anwser
+	                    IF "DB_executeQuery".dataReady THEN
+	                        IF "DB_executeQuery".noData THEN
+	                            #Error := 19006;   // nessuna pinza con uncino, ne' a bordo ne' a scaffale
+	                        ELSIF "DB_executeQuery".dataError THEN
+	                            #Error := 99;      // errore DB
+	                        ELSE
+	                            #GripperRequested := DINT_TO_INT("SqlData".data.rows[0].col[0]);
+	                        END_IF;
+	                        
+	                        "DB_executeQuery".readyForNextQuery := true;
+	                        #Dispatcher["_Gripper_Hook_Search"] := 0;
+	                    END_IF;
+	            END_CASE;
+	            
+	        END_REGION
 	        
 	    END_REGION
 	    
@@ -4100,8 +4210,13 @@ BEGIN
 	            12:
 	                IF "SqlCommands".sqlCommands[0] = '' AND "DB_executeQuery".readyForNextQuery THEN
 	                    IF #Tray_ID > 0 AND #Tray_ID <> "DB_BOX_1".ExtractedTray THEN
-	                        #queryTemp := CONCAT(IN1 := 'SELECT TRAY,X,Y,Z,X_ROT,Y_ROT,Z_ROT,APPROACH_TYPE,APPROACH_X,APPROACH_Y,APPROACH_Z from COORDINATES_FOR_EXTRACT where tray=',
-	                                             IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#Tray_ID));
+	                        // (7/10) col[11] = HAS_HOOK della pinza a bordo, 0 se non e' in
+	                        // anagrafica (isnull: il ponte SQL non converte NULL in zero).
+	                        // 194 caratteri con ID a 5 cifre, queryTemp ne regge 254.
+	                        #queryTemp := CONCAT(IN1 := 'SELECT TRAY,X,Y,Z,X_ROT,Y_ROT,Z_ROT,APPROACH_TYPE,APPROACH_X,APPROACH_Y,APPROACH_Z,isnull((select cast(HAS_HOOK as int) from GRIPPER where ID=',
+	                                             IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#Gripper_ID[1]),
+	                                             IN3 := '),0) from COORDINATES_FOR_EXTRACT where tray=',
+	                                             IN4 := "INT_TO_STRING_WITHOUT_SIGN"(#Tray_ID));
 	                        #queryStartExecution := TRUE;
 	                        #Dispatcher["Extract_TRAY"] := 15;
 	                    ELSIF #Tray_ID > 0 AND #Tray_ID = "DB_BOX_1".ExtractedTray THEN
@@ -4147,7 +4262,14 @@ BEGIN
 	                END_IF;
 	                
 	            30: // prepare mission data for robot
-	                IF NOT #GripperOccuped[1] AND NOT #GripperOccuped[2] THEN
+	                // SOLO CON L'UNCINO (7/10, decisione di Dario): col[11] e' HAS_HOOK della
+	                // pinza a bordo. Vale per ogni percorso, pannello e ciclo automatico.
+	                IF "SqlData".data.rows[0].col[11] <> 1 THEN
+	                    #Error := 19005;   // pinza a bordo senza uncino: il cassetto non si estrae
+	                    "DB_executeQuery".readyForNextQuery := TRUE;
+	                    #queryTemp := '';
+	                    #Dispatcher["Extract_TRAY"] := 0;
+	                ELSIF NOT #GripperOccuped[1] AND NOT #GripperOccuped[2] THEN
 	                    "DB_RobotMission"."X_Pick-Place" := "SqlData".data.rows[0].col[1];
 	                    "DB_RobotMission"."Y_Pick-Place" := "SqlData".data.rows[0].col[2];
 	                    "DB_RobotMission"."Z_Pick-Place" := "SqlData".data.rows[0].col[3];
@@ -4241,8 +4363,12 @@ BEGIN
 	                
 	            12:
 	                IF "SqlCommands".sqlCommands[0] = '' THEN
-	                    #queryTemp := CONCAT(IN1 := 'SELECT X,Y,Z,X_ROT,Y_ROT,Z_ROT,APPROACH_TYPE,APPROACH_X,APPROACH_Y,APPROACH_Z from COORDINATES_FOR_EXTRACT where tray=',
-	                                         IN2 := "INT_TO_STRING_WITHOUT_SIGN"("DB_BOX_1".ExtractedTray));
+	                    // (7/10) col[10] = HAS_HOOK della pinza a bordo, come al 12 di
+	                    // Extract_TRAY. 189 caratteri con ID a 5 cifre.
+	                    #queryTemp := CONCAT(IN1 := 'SELECT X,Y,Z,X_ROT,Y_ROT,Z_ROT,APPROACH_TYPE,APPROACH_X,APPROACH_Y,APPROACH_Z,isnull((select cast(HAS_HOOK as int) from GRIPPER where ID=',
+	                                         IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#Gripper_ID[1]),
+	                                         IN3 := '),0) from COORDINATES_FOR_EXTRACT where tray=',
+	                                         IN4 := "INT_TO_STRING_WITHOUT_SIGN"("DB_BOX_1".ExtractedTray));
 	                    IF #MCRequested = 1 THEN
 	                        #paramsTemp[0] := DINT_TO_INT("DB_MC1".order.GRIPPER);
 	                        #paramsTemp[1] := DINT_TO_INT(IN := "RAW");
@@ -4290,7 +4416,15 @@ BEGIN
 	                END_IF;
 	                
 	            30:  // prepare mission data
-	                IF NOT #GripperOccuped[1] AND NOT #GripperOccuped[2] THEN
+	                // SOLO CON L'UNCINO (7/10, decisione di Dario): col[10] e' HAS_HOOK della
+	                // pinza a bordo. Col cassetto fuori la pinza non si cambia (1419/1519):
+	                // senza uncino il cassetto si rientra a mano.
+	                IF "SqlData".data.rows[0].col[10] <> 1 THEN
+	                    #Error := 20011;   // pinza a bordo senza uncino: il cassetto non si rientra col robot
+	                    "DB_executeQuery".readyForNextQuery := TRUE;
+	                    #queryTemp := '';
+	                    #Dispatcher["Release_TRAY"] := 0;
+	                ELSIF NOT #GripperOccuped[1] AND NOT #GripperOccuped[2] THEN
 	                    "DB_RobotMission"."X_Pick-Place" := "SqlData".data.rows[0].col[0];
 	                    "DB_RobotMission"."Y_Pick-Place" := "SqlData".data.rows[0].col[1];
 	                    "DB_RobotMission"."Z_Pick-Place" := "SqlData".data.rows[0].col[2];

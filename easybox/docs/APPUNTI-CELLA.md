@@ -100,7 +100,9 @@ Nel working tree di cella ci sono file non tracciati che il `.gitignore` non esc
    4. rilascio del cassetto con la doppia a bordo: rientra come prima;
    5. doppia a bordo e cassetto fuori, togli l'uncino alla doppia in anagrafica, comando di rilascio. Atteso: 20011, il robot non si muove. Rimetti l'uncino, RESET, rilascia: il cassetto rientra;
    6. automatico, un ciclo completo: identico a prima;
-6. tia-export e confronto con le consegne 33 e 34, blocco per blocco (parte 5, dopo il download).
+6. tia-export e confronto con le consegne 33 e 34, blocco per blocco (parte 5, dopo il download). Fatto il 7/10 sul **progetto del portatile** salvato alle 12:21 (commit 8c9da6a), non ancora scaricato nel PLC: dopo il download si rifà l'export, e se non cambia niente il confronto vale. Esito:
+   - blocchi A, C, D, E1, E2, F1 e F2 identici; fuori dai blocchi niente cambia, compresi i blocchi della 33;
+   - il blocco B (Gripper_Hook_Search) ha lo stesso codice, ma è stato incollato **dentro** la region esistente: `REGION Gripper_Hook_Search` compare due volte, una dentro l'altra. Il comportamento non cambia; la region esterna va tolta in TIA alla prossima modifica.
 
 **Limiti** (LAVORI-IN-CODA): un cassetto a metà corsa non lo vede nessuno (`AllTrayInside`, %I35.6, non cablato); le righe 15 e 24 da chiarire; `currentGripperHasHook` dichiarata e mai usata.
 
