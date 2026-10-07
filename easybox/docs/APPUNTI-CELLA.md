@@ -68,6 +68,33 @@ Nel working tree di cella ci sono file non tracciati che il `.gitignore` non esc
    - stato del robot che si aggiorna;
    - `DB_executeQuery.readyForNextQuery` TRUE.
 
+## [ ] 2026-10-07 — pallet «a bordo del robot»: come si dichiara, e perché passa dal PLC
+
+**Quando serve.** Dopo un prelievo del pallet dalla macchina il sistema non sapeva che il pallet era in pinza: il pannello vedeva la pinza vuota e il PLC rifiutava il deposito a magazzino (errore 23 di MISSION_Unload_Pallet).
+
+**Come si dichiara** (cella in HOLD), due strade che sono la stessa funzione (`HMI/src/util/palletOnRobot.js`):
+- Attrezzaggi → riga del pallet → **Posiziona** → **A bordo del robot** → Conferma;
+- pagina Robot, quando la pinza pallet risulta occupata e nessun pallet è a bordo: sotto «Gestione pallet» c'è **Dichiara quale pallet è in pinza** (prima c'era solo l'avviso «Dichiarare lo stato cella, poi riprovare») → scegliere il pallet → Conferma.
+
+**Cosa parte.** Il pannello non scrive il database. Manda al PLC:
+1. se il pallet risulta in macchina (`POS_PLANT` 100+n, oppure è quello del registro `DB_MC1.pallet`): `41` a MC1, come la pagina Macchine, e aspetta l'eco `DECLARE/MC1` col pallet a 0 (3 s). Rifiuto 947 (ciclo macchina avviato) o niente eco: ci si ferma qui, il 35 non parte. Dopo il 41 la macchina risulta vuota, anche il pezzo in morsa (`piecepresent` a 0);
+2. `35;<pinza>;3;<pallet>;<lato 2>;0` e aspetta l'eco `DECLARE/ROBOT` `<pinza>;3;<lato 2>` (5 s). Rifiuti 944, 945, 946 (e 968/969 sotto pendant) con i testi di «Reimposta stato cella».
+
+La pinza è quella che il PLC ha registrata come lato 1 (`GRIPPER/REGISTERED`), purché sia fra quelle a bordo nel database: il 35 mette in `Gripper_ID[1]` l'ID ricevuto, e per una pinza doppia la riga sbagliata scambierebbe i lati. Il lato 2 ripete il contenuto attuale della gemella; per una pinza a un lato solo (una sola riga GRIPPER a bordo) vale 0.
+
+**Perché passa dal PLC.** Per il robot il database non basta: il pannello Robot decide su `GRIPPER.STATUS`, il PLC su `GripperOccuped[1]`. Scrivere solo `POS_PLANT=1000` lascerebbe la stessa incoerenza della sera del 6/10. Il 35 (FB_Robot, REGION Declare_State) scrive `GripperOccuped`, lo STATUS della pinza e `UPDATE Pallet SET POS_PLANT=1000` (stato 68), con le sue validazioni.
+
+**Attenzione.** Il 35 parte con `RESET_ALL_DISPATCH`: annulla tutte le catene in corso nel PLC. Per questo il pannello rifiuta se:
+- la cella non è in HOLD;
+- la pagina Robot ha appena mandato una missione (le catene del PLC il pannello non le vede: vale la cella in HOLD);
+- la pinza non è a bordo (sensore `GRIPPER/MOUNTED` e database), o quella registrata dal PLC non è fra quelle a bordo nel database;
+- le chele del lato 1 sono lette aperte (`CLOSED1 = 0`: niente in mano);
+- un altro pallet risulta già a bordo (`POS_PLANT=1000`): il 35 non lo libererebbe.
+
+Non si tocca la casella del magazzino: `MAG_POS` resta la casa del pallet, dove lo si riporta con «Gestione pallet».
+
+**Messa in servizio.** Solo pannello: nessuno script SQL e nessuna modifica al PLC (il 35 e il 41 esistono già). Aggiornare i servizi.
+
 ## [ ] 2026-10-06 — deposito manuale in MC1: vista `MAN_ORDER_MC1` **prima** del download di FB_Robot
 
 Decisione di Dario in [DECISIONI.md](DECISIONI.md) («Deposito manuale in MC1»). La vista `MAN_ORDER_MC1` dà, per ogni tasca di cassetto, il pezzo (`Part_Type` della tasca) e l'ordine di MC1 in attesa per quel pezzo (STATUS 4 o 6, il più recente). FB_Robot la interroga (consegna 30, REGION Part_Robot_to_MC) quando in manuale, senza ordine avviato, si deposita in MC1.

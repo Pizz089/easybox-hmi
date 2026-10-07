@@ -39,7 +39,16 @@ sul PLC (o in simulazione) prima di decidere.
 
 **Trovato il** 2026-10-06, analizzando il prelievo da MC1 dopo la spinta.
 
-## [ ] Dichiarazione dell'attrezzatura a bordo del robot
+## [x] Dichiarazione dell'attrezzatura a bordo del robot
+
+**Chiusa il** 2026-10-07. Chiarito con Dario cosa mancava: dichiarare un
+PALLET a bordo del robot dopo il prelievo dalla macchina, senza passare dalla
+dichiarazione dell'intera cella. Ora c'e' la destinazione «A bordo del
+robot» nel Posiziona di Attrezzaggi e, nella pagina Robot, «Dichiara quale
+pallet e' in pinza» al posto del solo avviso. Tutte e due mandano al PLC il
+35 (e prima il 41 se il pallet e' in macchina) col modulo condiviso
+`HMI/src/util/palletOnRobot.js`; il pannello non scrive POS_PLANT=1000. Come
+si usa e perche' passa dal PLC: APPUNTI-CELLA, voce del 7/10.
 
 **Cosa.** Dario (6/10 sera): manca la possibilita' di dichiarare
 l'attrezzatura a bordo del robot.
