@@ -391,6 +391,18 @@ if (fb7 && fb204 && fbBox) {
 } else console.log('  (plc/FB non c\'e\': formati non riletti dal PLC)');
 check(Robot.methods.openPockets.toString().includes('this.pockets.tray = this.extractedTray.FLOOR_MAG'), 'openPockets si segna il cassetto disegnato');
 
+console.log('\n8-quater) (B61) Reimposta stato cella aperta: il riquadro globale tace');
+// il watcher VERO (Options API): deve vedere DECL_CODICI (se stesse nello
+// <script setup> sarebbe un ReferenceError all'apertura del dialog)
+const { codiceInDialog } = await server.ssrLoadModule('/src/util/robotAlarm.js');
+vm = vmOf();
+let erroreWatch = null;
+try { Robot.watch['declDialog.open'].call(vm, true); } catch (e) { erroreWatch = e; }
+check(erroreWatch === null && codiceInDialog(945) && codiceInDialog(20002) && codiceInDialog(99), 'dialog aperto: 945, 20002, 99 registrati (nessun errore nel watcher' + (erroreWatch ? ': ' + erroreWatch.message : '') + ')');
+Robot.watch['declDialog.open'].call(vm, false);
+await tick(1600);
+check(!codiceInDialog(945), 'dialog chiuso: dopo il margine i codici tornano al riquadro');
+
 console.log('\n9) LA GRIGLIA E\' QUELLA DEL LAYOUT, non una seconda copia');
 const rsrc = readFileSync('src/views/unit/robotView.vue', 'utf8');
 const lsrc = readFileSync('src/views/layoutView.vue', 'utf8');

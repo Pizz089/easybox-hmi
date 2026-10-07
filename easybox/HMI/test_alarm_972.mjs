@@ -141,7 +141,10 @@ check(esito.ok === false && esito.codice === 947 && codiceInDialog(947), '   rif
 await new Promise(r => setTimeout(r, DIALOG_GRACE_MS + 50));
 check(!codiceInDialog(947), '   dopo ' + DIALOG_GRACE_MS + ' ms torna al riquadro');
 const rv = readFileSync('src/views/unit/robotView.vue', 'utf8');
-check(/'declDialog\.open'\(aperto\)/.test(rv) && /codiciInDialog\(DECL_CODICI\)/.test(rv) && /const DECL_CODICI = \[947, 948, 99, 996, 997, 999, 944, 945, 946, 968, 969, 20001, 20002, 20005, 20006\]/.test(rv),
+// DECL_CODICI nello <script> dell'Options API, non nello <script setup> (che
+// il watcher non vede): il watcher vero lo prova test_cell_declare.mjs
+const rvOpzioni = rv.slice(rv.indexOf('\n<script>'));
+check(/'declDialog\.open'\(aperto\)/.test(rv) && /codiciInDialog\(DECL_CODICI\)/.test(rv) && /const DECL_CODICI = \[947, 948, 99, 996, 997, 999, 944, 945, 946, 968, 969, 20001, 20002, 20005, 20006\]/.test(rvOpzioni),
 	'Reimposta stato cella aperta: i suoi codici (macchina, cassetto, robot, tasche) non vanno al riquadro');
 
 console.log('\n' + (failed ? failed + ' CHECK FALLITI' : 'TUTTI I CHECK PASSATI'));
