@@ -38,8 +38,9 @@
 #             gia' installati, prima di fermarsi.
 #   riavvia   ferma i due servizi, aspetta che le porte si liberino, chiude i
 #             soli node rimasti sulle tre porte (le vecchie finestre), li
-#             riavvia e controlla che siano Running e che le porte siano loro.
-#             Altrimenti esce in errore. Per esempio dopo un git pull: node non
+#             riavvia (prima il backend, poi il pannello) e controlla che siano
+#             Running e che le porte siano loro. Altrimenti esce in errore.
+#             Per esempio dopo un git pull col server di sviluppo: node non
 #             rilegge i file da solo.
 #   rimuovi   ferma e toglie SOLO EasyBoxBackend e EasyBoxPannello. Dopo si
 #             torna alle finestre lanciando a mano start_server.bat e start_hmi.bat.
@@ -53,17 +54,19 @@
 #             in dist_prev), AppParameters del pannello a "preview", riavvio
 #             del solo pannello e verifica. Se la build fallisce non cambia
 #             niente.
-#   aggiorna  dopo ogni git pull, col pannello compilato: build in
-#             dist_build; se fallisce si ferma e dist e servizio restano come
-#             sono; se riesce dist -> dist_prev, dist_build -> dist, riavvio
-#             del solo pannello, attesa della porta, stato.
+#   aggiorna  dopo ogni git pull, col pannello compilato: un comando solo.
+#             Build in dist_build; se fallisce si ferma e dist e servizi
+#             restano come sono. Se riesce: servizi fermi, dist -> dist_prev,
+#             dist_build -> dist, poi riavvio del backend e del pannello (il
+#             backend prima, come riavvia), verifica e stato.
 #   ripristina scambia dist e dist_prev (torna alla build di prima; lanciato
 #             di nuovo, torna a quella nuova) e riavvia il pannello.
 #   dev       ritorno al server di sviluppo: AppParameters di nuovo vite.js,
 #             riavvio del pannello. dist resta su disco, non si usa.
-# Le quattro azioni riavviano il pannello con le cautele di riavvia (porta
-# tenuta da un altro processo, servizio in Paused) e segnalano le operazioni
-# pianificate attive. Il backend non lo toccano.
+# Le quattro azioni riavviano con le cautele di riavvia (porta tenuta da un
+# altro processo, servizio in Paused) e segnalano le operazioni pianificate
+# attive. preview, ripristina e dev toccano solo il pannello; aggiorna
+# riavvia anche il backend, perche' dopo un git pull serve a tutti e due.
 #
 # (7/10) PERCHE' STATO E RIAVVIA GUARDANO I PROPRIETARI DELLE PORTE. In cella i
 # due servizi uscivano con codice 1 (EADDRINUSE) almeno dalle 13:02: le porte
@@ -580,20 +583,25 @@ $scambia = {
 	}
 }
 
-# ---------------------------------------------------------------- riavvia
-if ($Azione -eq 'riavvia') {
-	$mancano = @($S_B, $S_P) | Where-Object { -not (Servizio $_) }
-	if ($mancano.Count -gt 0) { Fermati ('servizi non installati: ' + ($mancano -join ', ')) 'installarli con -Azione installa, oppure usare le finestre dei .bat.' }
-	Scrivi 'Riavvio EasyBoxBackend ed EasyBoxPannello (la cella deve essere in HOLD)...' 'Cyan'
-	# (7/10) 1. fermi, anche da Paused
+# Riavvia i DUE servizi (riavvia, e aggiorna dopo la build) con le cautele di
+# sempre:
+#   1. fermi, anche da Paused;
+#   2. a servizi fermi le porte devono liberarsi. Se restano prese sono node
+#      avviati fuori dai servizi (le vecchie finestre): si chiudono quelli, e
+#      solo quelli. Un processo che non e' node non si tocca: Fermati, coi
+#      servizi FERMI;
+#   3. $daFermo se c'e' (aggiorna: lo scambio delle dist, a servizi fermi);
+#   4. avvio PRIMA del backend (porte 8080 e 3000), POI del pannello (5173);
+#   5. verifica: Running, e le porte sono dei servizi giusti; se no, eventi
+#      nssm e log.
+# Ritorna $true se tutto e' a posto. Se $daFermo fallisce i servizi ripartono
+# lo stesso (sulla dist che c'e'), e il risultato e' $false.
+function RiavviaServizi([scriptblock]$daFermo = $null) {
 	Stop-Service -Name $S_B, $S_P -Force -ErrorAction SilentlyContinue
 	foreach ($n in @($S_B, $S_P)) {
 		try { (Servizio $n).WaitForStatus('Stopped', [TimeSpan]::FromSeconds(30)) }
 		catch { Fermati ($n + ' non si ferma (stato ' + (Servizio $n).Status + ').') 'guardare services.msc e chiamare Dario.' }
 	}
-	# 2. a servizi fermi le porte devono liberarsi. Se restano prese sono node
-	#    avviati fuori dai servizi (le vecchie finestre): si chiudono quelli,
-	#    e solo quelli. Un processo che non e' node non si tocca.
 	if (-not (AspettaPorteLibere 20)) {
 		$rimasti = ProcessiSullePorte
 		if (@($rimasti | Where-Object { $_.Nome -ne 'node' -or $_.Servizio }).Count -gt 0) {
@@ -607,20 +615,32 @@ if ($Azione -eq 'riavvia') {
 			Fermati 'porte ancora occupate dopo aver chiuso i node. I servizi sono FERMI.' 'chiamare Dario con questa finestra.'
 		}
 	}
-	# 3. avvio, e verifica: Running, e le porte sono dei servizi giusti
-	Start-Service -Name $S_B, $S_P
-	$suTutte = AspettaPorte 90
+	$esito = $true
+	if ($daFermo -and -not (& $daFermo)) { $esito = $false }
+	Start-Service -Name $S_B
+	$suB = AspettaPorte 90 @(8080, 3000)
+	Start-Service -Name $S_P
+	$suP = AspettaPorte 90 @(5173)
+	if (-not ($suB -and $suP)) { $esito = $false }
 	Scrivi ''
-	$ok = $suTutte
 	foreach ($n in @($S_B, $S_P)) {
 		$s = Servizio $n
 		if ($s.Status -eq 'Running') { Scrivi ($n + ': Running') 'Green' }
-		else { $ok = $false; Scrivi ($n + ': ' + $s.Status + '. Ultimi eventi nssm:') 'Red'; MostraEventi $n }
+		else { $esito = $false; Scrivi ($n + ': ' + $s.Status + '. Ultimi eventi nssm:') 'Red'; MostraEventi $n }
 	}
-	if (-not (MostraProprietari)) { $ok = $false }
+	if (-not (MostraProprietari)) { $esito = $false }
 	Coda $AccessLog 5
+	if (-not $esito) { Coda $LogB; Coda $LogP }
+	return $esito
+}
+
+# ---------------------------------------------------------------- riavvia
+if ($Azione -eq 'riavvia') {
+	$mancano = @($S_B, $S_P) | Where-Object { -not (Servizio $_) }
+	if ($mancano.Count -gt 0) { Fermati ('servizi non installati: ' + ($mancano -join ', ')) 'installarli con -Azione installa, oppure usare le finestre dei .bat.' }
+	Scrivi 'Riavvio EasyBoxBackend ed EasyBoxPannello (la cella deve essere in HOLD)...' 'Cyan'
+	$ok = RiavviaServizi
 	if (-not $ok) {
-		Coda $LogB; Coda $LogP
 		Fermati 'dopo il riavvio i servizi non sono tutti Running, o le porte non sono tutte dei servizi.' 'leggere eventi e log qui sopra; se una porta e'' di un altro processo, rilanciare -Azione riavvia; se non si sistema, chiamare Dario.'
 	}
 	Scrivi 'Servizi ripartiti: Running, e le porte 8080, 3000 e 5173 sono loro.' 'Green'
@@ -665,18 +685,19 @@ if ($Azione -eq 'preview') {
 	exit 0
 }
 
-# aggiorna: dopo ogni git pull, col pannello compilato
+# aggiorna: dopo ogni git pull, col pannello compilato. Un comando solo:
+# build del pannello, poi (7/10) riavvio di backend e pannello, il backend
+# prima, con lo scambio delle dist a servizi fermi (RiavviaServizi $ruota)
 if ($Azione -eq 'aggiorna') {
+	if (-not (Servizio $S_B)) { Fermati ($S_B + ' non installato.') 'installarlo con -Azione installa.' }
 	$modo = ModoPannello
 	if ($modo -ne 'preview') { Fermati ('il pannello non gira compilato (' + $modo + '): aggiorna serve solo al pannello compilato.') 'col server di sviluppo, dopo un git pull basta -Azione riavvia; per passare al compilato, -Azione preview.' }
-	Scrivi 'Aggiornamento del pannello compilato (la cella deve essere in HOLD)...' 'Cyan'
-	if (-not (CompilaPannello)) { Fermati 'build non riuscita: dist e servizio restano come sono, il pannello servito e'' quello di prima.' 'leggere l''errore qui sopra (log completo in log\build_pannello.log); se mancano dipendenze, pannello.ps1. Poi mandarlo a Dario.' }
-	$ok = RiavviaPannello $ruota
+	Scrivi 'Aggiornamento dopo un git pull: build del pannello, poi riavvio di backend e pannello (la cella deve essere in HOLD)...' 'Cyan'
+	if (-not (CompilaPannello)) { Fermati 'build non riuscita: dist e servizi restano come sono, gira la versione di prima (backend compreso: non e'' stato riavviato).' 'leggere l''errore qui sopra (log completo in log\build_pannello.log); se mancano dipendenze, pannello.ps1. Poi mandarlo a Dario.' }
+	$ok = RiavviaServizi $ruota
 	Scrivi ('dist: ' + (DescriviDist $Dist) + '; dist_prev: ' + (DescriviDist $DistPrev)) 'Cyan'
-	$null = MostraProprietari
-	if (-not $ok) { Fermati 'il pannello non e'' ripartito come atteso.' 'per tornare alla build di prima: -Azione ripristina. Mandare a Dario questa finestra.' }
-	Scrivi 'Pannello aggiornato. Sui client: Ctrl+F5.' 'Green'
-	Scrivi 'Se il git pull ha cambiato anche serverDati: -Azione riavvia (riavvia anche il backend).' 'Yellow'
+	if (-not $ok) { Fermati 'dopo l''aggiornamento i servizi non sono tutti a posto (Running, porte loro) o lo scambio delle dist non e'' riuscito.' 'leggere eventi e log qui sopra; per tornare alla build di prima del pannello: -Azione ripristina. Mandare a Dario questa finestra.' }
+	Scrivi 'Aggiornato: pannello ricompilato, backend e pannello riavviati. Sui client: Ctrl+F5.' 'Green'
 	exit 0
 }
 
