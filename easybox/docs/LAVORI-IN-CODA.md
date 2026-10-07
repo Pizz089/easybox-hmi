@@ -5,6 +5,30 @@
 > stato corretto sul momento. Gli interventi manuali da fare in impianto
 > stanno invece in `APPUNTI-CELLA.md`.
 
+## [ ] Registro della tasca del finito, congelato al prelievo dalla macchina
+
+**Cosa.** Limite dichiarato dalla consegna 35 (7/10). `PartSubPosMC` si riscrive alla fine di Part_Robot_to_MC prima che il finito a bordo sia depositato, nei giri di FB204 che passano dal 55/57 (ripartenza col pezzo in macchina, errore DB al 95/4). Al giro dopo il deposito del finito trova la tasca già a 5: con la 35 si ferma col 691 (prima posava su una tasca piena, problema 4 della simulazione).
+
+**Direzione.** Un registro della tasca del finito, scritto al prelievo dalla macchina e non più toccato fino al deposito. Il 691 resta la rete di sicurezza.
+
+**Trovato il** 2026-10-07, limiti della consegna 35.
+
+## [ ] TCP dopo il cambio pinza nei percorsi pezzo (310, 410, 510, 1110, 1210)
+
+**Cosa.** Il TCP dopo un cambio pinza lo mandano solo il 115, il 715, il 950 e lo swap; la consegna 35 lo aggiunge ai tre percorsi pallet (215, 1030, 1335). I percorsi pezzo (310, 410, 510, 1110, 1210) restano senza.
+
+**Direzione.** Dipende dalla risposta del robotista: quando il robot prende una pinza (comando 11) il TCP lo imposta da solo o aspetta il comando 10 dal PLC? Se lo aspetta, una consegna li allinea tutti.
+
+**Trovato il** 2026-10-07, intestazione della consegna 35, in attesa del robotista.
+
+## [ ] FB204: chiedere il rilascio del cassetto prima di un cambio pinza o pallet
+
+**Cosa.** Con la consegna 35, con un cassetto fuori la pinza non si cambia mai: in automatico il ciclo si ferma col 952 (FB204 in 9999), si rientra il cassetto e si dà RESET.
+
+**Direzione.** FB204 chieda da solo il rilascio del cassetto prima di un cambio pinza o pallet, invece di fermarsi col 952. Modifica di FB204, da decidere.
+
+**Trovato il** 2026-10-07, intestazione della consegna 35.
+
 ## [ ] BASE_WEB_MM da confermare (base dei grigliati, 7/10)
 
 **Cosa.** `HMI/src/util/baseDxf.js`, `BASE_WEB_MM = 3`: il materiale minimo fra una cavità (col franco scelto) e un foro o il profilo di `Base.dxf`. Sotto, la tasca è in rosso nell'anteprima e DXF e stampa chiedono conferma; non blocca niente. Il valore è stato messo d'ufficio, non è una decisione. Col file del 7/10 e una griglia d'esempio (pezzo 60×40, distanze 20 e 15) due tasche cadono sui fori centrali: il controllo serve.
@@ -134,6 +158,8 @@ su un errore (problema 9 di [SIMULAZIONE-2026-10-07.md](SIMULAZIONE-2026-10-07.m
 
 **Cosa.** Al 50 di Part_Robot_to_MC `PartSubPosMC` e `TrayIdMC` vengono sovrascritti col grezzo appena depositato, senza condizioni; in alcuni percorsi di FB204 il finito precedente e' ancora sul lato 2, va nella tasca del grezzo e al giro dopo un altro finito ci viene posato sopra.
 
+**Stato (consegna 35, 7/10).** Il deposito a tasca fissa vuole la tasca vuota a database: invece di posare su una tasca piena si ferma col 691. La correzione vera è il registro della tasca del finito (voce in cima).
+
 **Dettagli e direzione:** [SIMULAZIONE-2026-10-07.md](SIMULAZIONE-2026-10-07.md), problema 4.
 
 **Trovato il** 2026-10-07, simulazione a tavolino della cella.
@@ -158,6 +184,8 @@ su un errore (problema 9 di [SIMULAZIONE-2026-10-07.md](SIMULAZIONE-2026-10-07.m
 
 **Cosa.** Il 99 e il riarmo portano FB204 a 0 anche dal 95, a macchina in lavoro: FB204 puo' rilanciare una missione in macchina.
 
+**Stato (consegna 35, 7/10).** Il RESET (99) col FB204 al 95 e la porta della HAAS chiusa porta FB204 al substate 6, che aspetta il fine ciclo; con la porta aperta va a 0 come prima. Da chiudere dopo il download e il test 10 della consegna (APPUNTI-CELLA, «Consegna 35»).
+
 **Dettagli e direzione:** [SIMULAZIONE-2026-10-07.md](SIMULAZIONE-2026-10-07.md), problema 7.
 
 **Trovato il** 2026-10-07, simulazione a tavolino della cella.
@@ -175,6 +203,8 @@ su un errore (problema 9 di [SIMULAZIONE-2026-10-07.md](SIMULAZIONE-2026-10-07.m
 **Cosa.** I comandi da pannello vengono accettati con `Error` diverso da 0; il master li avvia solo con `Error` a 0; il pulsante HOLD (o la porta) azzera `Error` in FB8 e la missione chiesta minuti prima parte.
 
 **Stato.** la consegna 33 (PLC) rifiuta i comandi con un errore attivo (allarme 972, testi nel pannello). Resta il pulsante HOLD che azzera `Error` (voce a parte).
+
+**Stato (consegna 35, 7/10).** Chiuso anche per «sposta» della pagina Cassetti, che passa dal manager di FB_Robot. **Resta aperto per le missioni di FB204:** una missione 16 in attesa di `Error` = 0 parte quando il fronte del pulsante HOLD fisico azzera `Error`. Con un errore attivo e la produzione in pausa si dà RESET dal pannello (azzera anche `MissionCode`) prima di toccare il pulsante HOLD.
 
 **Dettagli e direzione:** [SIMULAZIONE-2026-10-07.md](SIMULAZIONE-2026-10-07.md), problema 9.
 
@@ -247,6 +277,8 @@ su un errore (problema 9 di [SIMULAZIONE-2026-10-07.md](SIMULAZIONE-2026-10-07.m
 ## [ ] Simulazione 7/10, problema 17: [S3] MQTT: comandi persi e echi persi
 
 **Cosa.** In ricezione una pubblicazione prima del consumatore cancella il comando; in uscita il buffer di 11 posti sovrascrive senza controllo: comandi o echi che si perdono ogni tanto.
+
+**Stato (consegna 35, 7/10).** Limite dichiarato: FC_MQTT ricalcola il comando ricevuto a ogni chiamata, e una pubblicazione di FB204 nello stesso ciclo cancella un comando del pannello prima che FB_Robot lo legga. Succedeva già ai comandi della pagina Robot; dalla 35 vale anche per estrai e riponi della pagina Cassetti, che prima FB_easyBox consumava subito.
 
 **Dettagli e direzione:** [SIMULAZIONE-2026-10-07.md](SIMULAZIONE-2026-10-07.md), problema 17.
 

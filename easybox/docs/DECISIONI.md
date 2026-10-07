@@ -2,6 +2,14 @@
 
 Decisioni di Dario che vincolano codice, dati e procedure in cella; la più recente in alto. Il come (script, comandi, ordine degli interventi) sta in [APPUNTI-CELLA.md](APPUNTI-CELLA.md).
 
+**Consegna 35: guardie del PLC (7/10).** Dalla seconda simulazione del 7/10.
+1. **I timeout non contano in HOLD.** I timeout di swap (943) e del cassetto (19003) si fermano in HOLD: l'HOLD è una pausa, e CONTINUA riprende.
+2. **Il RESET non abbandona un ciclo HAAS in corso a porta chiusa.** Con la macchina in lavorazione (FB204 al 95, porta chiusa) FB204 aspetta il fine ciclo invece di tornare a 0 e rileggere l'ordine col pezzo in lavorazione. Con la porta aperta va a 0 come prima.
+3. **La pagina Cassetti comanda i cassetti solo in HOLD.** Estrai e riponi passano dal manager di FB_Robot, con gli stessi rifiuti della pagina Robot.
+4. **Un comando di missione non sovrascrive mai una missione in corso o sospesa**: il PLC lo rifiuta col 973. Si riprende con CONTINUA, oppure RESET o la procedura dopo una missione interrotta.
+
+Il come (download, precondizioni, test): APPUNTI-CELLA.md, «Consegna 35»; i codici: ALLARMI-PLC.md.
+
 **Base dei grigliati da `Base.dxf` (7/10).** Il profilo esterno e i fori del grigliato non sono più scritti nel codice di Grating.vue: il pannello li legge da `Base.dxf`, nella cartella `Grating_model_dir` del backend, fuori dal repo. Se cambia il disegno si sostituisce il file, senza toccare il codice e senza build.
 1. Il DXF è il grigliato **come lo inserisce l'operatore nel cassetto, visto dal lato operatore**: 0,0 in alto a sinistra, Y negativa verso il basso, la scritta «Robot» sul lato lontano dall'operatore.
 2. È la stessa vista dell'anteprima di Grating.vue, che **non cambia verso**: la base non si ruota (`x_svg = x_dxf`, `y_svg = −y_dxf`). Il robot vede il cassetto ruotato di 180°, come già nel codice, che non si tocca: una tasca in coordinate robot (X, Y) µm sta nel DXF in (W − Y/1000, X/1000 − H), e l'origine del work object è l'angolo (W, −H), dove nasce la tasca 1.

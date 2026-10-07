@@ -8,17 +8,18 @@
 // Uso: usePlantGlobals() nello <script setup> del layout.
 // ============================================================================
 import { onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { dataStored } from '@/data'
+import { makePlcAlarmRobotHandler } from '../util/robotAlarm.js'
 
 export function usePlantGlobals() {
+  const { t, te } = useI18n()
   // Handler nominati (equivalente composition-API del pattern this.<nome>Handler
   // di robotView/units/productionTable, e4ab4e5): servono i riferimenti per
   // l'off specifico in onUnmounted.
-  const plcAlarmRobotHandler = payload => {
-    dataStored.alert.title = 'PLC_Error'
-    dataStored.alert.desc = 'robot.alarm_' + payload
-    dataStored.alert.type = 'warning'
-  }
+  // (consegna 35, 7/10) robot.alarm_<codice> come prima; un 972 seguito entro
+  // 1 s dal codice dell'errore attivo diventa un avviso unico (util/robotAlarm.js)
+  const plcAlarmRobotHandler = makePlcAlarmRobotHandler(dataStored, { t, te })
 
   // (AN 1-bis) precondizione ausiliari: stato globale in dataStored, un solo
   // listener per tutto il pannello (il layout e' sempre montato).
