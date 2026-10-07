@@ -52,7 +52,8 @@ function duplicateKeys(text) {
 }
 
 const CODES = {
-	robot: [961, 962, 964, 967, 19004, 20009, 2205],
+	// 970/971 dalla consegna 30 (6/10), 972 dalla consegna 33 (7/10)
+	robot: [961, 962, 964, 967, 19004, 20009, 2205, 970, 971, 972],
 	mc1: [952, 953, 954, 955, 956, 957, 958, 959, 947],
 };
 const raw = { it: readFileSync('src/locales/it.json', 'utf8'), en: readFileSync('src/locales/en.json', 'utf8') };
@@ -77,6 +78,11 @@ for (const [fam, codes] of Object.entries(CODES))
 console.log('\n3) 947 col testo nuovo, 18 e 20006 non toccati');
 check(loc.it.robot.alarm_947 === 'Comando macchina rifiutato: ciclo attivo o pallet già dichiarato. Portare la cella in HOLD e ripetere.', '947 it: testo nuovo (vale anche per morsa, pallet e porta)');
 check(/HOLD/.test(loc.en.robot.alarm_947), '947 en: testo inglese equivalente');
+// (7/10, consegna 33) il 970 vale anche per l'ordine avviato; il 972 e' nuovo
+check(/avviato, in coda o in pausa/.test(loc.it.robot.alarm_970) && /non serve avviarlo/.test(loc.it.robot.alarm_970) && /started, queued or paused/.test(loc.en.robot.alarm_970),
+	'970: nessun ordine di MC1 avviato, in coda o in pausa (consegna 33)');
+check(/errore attivo/.test(loc.it.robot.alarm_972) && /938/.test(loc.it.robot.alarm_972) && /active error/.test(loc.en.robot.alarm_972),
+	'972: comando rifiutato con un errore attivo; con il 938 prima la dichiarazione dello stato cella');
 let head = null;
 try { head = { it: JSON.parse(execSync('git show HEAD:easybox/HMI/src/locales/it.json', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })) }; } catch (e) { head = null; }
 if (head) {
