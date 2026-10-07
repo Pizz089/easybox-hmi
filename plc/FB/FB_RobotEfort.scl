@@ -235,9 +235,9 @@ BEGIN
 	    
 	    IF DINT_TO_INT("DB_RobotMissionStatus".GripperCode) <> #codeOld THEN
 	        "FC_MQTT"(insert := true,
-	                  send := false,
-	                  topic := 'FROM_PLANT/GRIPPER/CODE',
-	                  payload := STRING_TO_WSTRING("INT_TO_STRING_WITHOUT_SIGN"(DINT_TO_INT("DB_RobotMissionStatus".GripperCode))));
+	       send := false,
+	       topic := 'FROM_PLANT/GRIPPER/CODE',
+	       payload := STRING_TO_WSTRING("INT_TO_STRING_WITHOUT_SIGN"(DINT_TO_INT("DB_RobotMissionStatus".GripperCode))));
 	        #codeOld := DINT_TO_INT("DB_RobotMissionStatus".GripperCode);
 	    END_IF;
 	    
@@ -256,9 +256,9 @@ BEGIN
 	    
 	    IF "Gripper_mounted" <> #sensorOld THEN
 	        "FC_MQTT"(insert := true,
-	                  send := false,
-	                  topic := 'FROM_PLANT/GRIPPER/SENSOR',
-	                  payload := STRING_TO_WSTRING("INT_TO_STRING_WITHOUT_SIGN"(BOOL_TO_INT("Gripper_mounted"))));
+	       send := false,
+	       topic := 'FROM_PLANT/GRIPPER/SENSOR',
+	       payload := STRING_TO_WSTRING("INT_TO_STRING_WITHOUT_SIGN"(BOOL_TO_INT("Gripper_mounted"))));
 	        #sensorOld := "Gripper_mounted";
 	    END_IF;
 	END_REGION
