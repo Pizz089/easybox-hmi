@@ -70,7 +70,7 @@ Nel working tree di cella ci sono file non tracciati che il `.gitignore` non esc
 
 ## [ ] 2026-10-07 — Consegna 33 (7/10): correzioni della simulazione, vista `MAN_ORDER_MC1` **prima** del download
 
-**Cosa corregge** (PLC, la scarica Dario; file `33_FB7_correzioni_simulazione.scl`): quattro problemi della [simulazione del 7/10](SIMULAZIONE-2026-10-07.md):
+**Cosa corregge** (PLC, la scarica Dario; file `33_FB7_correzioni_simulazione.scl`, in TIA dal 7/10, export nel commit 80a414b): quattro problemi della [simulazione del 7/10](SIMULAZIONE-2026-10-07.md):
 - 2: registro del pallet in macchina (`DB_MC1.pallet`) sbagliato dopo un deposito manuale del pallet;
 - 3: il manuale usava l'ordine chiuso (`DB_MC1.order.ID`, che FB204 non azzera a fine produzione);
 - 9: comandi accettati con un errore attivo, che poi partivano da soli;
@@ -81,7 +81,11 @@ Nel working tree di cella ci sono file non tracciati che il `.gitignore` non esc
 - Prelievo da MC1, query del soffiaggio (stato 37 di Part_MC_to_Robot): l'ordine attivo, altrimenti quello congelato col pezzo in macchina (`OrderIdMC`), altrimenti il più recente.
 - Il ramo pannello o automatico non si decide più da `RemoteMode` riletto a ogni ciclo (simulazione, problema 13), ma dal master: i comandi del pannello lo tengono in **1230** (prelievo del pezzo da MC1), **1250** (deposito del pezzo su MC1), **1350** (deposito del pallet su MC1).
 
-**Comandi con un errore attivo.** Dal PLC 33 un comando dal pannello con `Error` diverso da 0 viene rifiutato con **972** (su `ALARM/ROBOT`, testo nel pannello): RESET e si ripete; con il 938 prima la dichiarazione dello stato cella. L'elenco esatto dei comandi rifiutati e di quelli ancora ammessi sta nell'intestazione della consegna: **da riportare qui** quando il file arriva nel repo (al momento di questa nota non era disponibile).
+**Comandi con un errore attivo.** Dal PLC 33 un comando dal pannello con `Error` diverso da 0 viene rifiutato con **972** (su `ALARM/ROBOT`, testo nel pannello): RESET e si ripete; con il 938 prima la dichiarazione dello stato cella. Il comando si consuma, `MissionCode` non viene scritto: prima restava in attesa e partiva da solo quando il pulsante HOLD azzerava `Error`. Vale con la cella in manuale e il robot non sotto pendant; sotto pendant resta il 968. Elenco dal codice (REGION Manager CMD from HMI, valori da `tags/cmd_Robot.xml`):
+- **rifiutati con il 972**: 11 preleva pinza, 12 deposita pinza, 13 e 14 preleva/deposita oggetto (i comandi pallet), 25 estrai cassetto, 26 riponi cassetto, 27 cambio pinza, 31 e 32 preleva/deposita pezzo nel cassetto, 33 e 34 preleva/deposita pezzo in MC1, 244 preleva il finito e deposita il grezzo, 240-243 apri/chiudi pinza 1 e 2;
+- **ancora ammessi**: home (20), manutenzione (21), posizionamenti (15, 1501, 1502, 1511, 1512), le dichiarazioni (35-44) e i reset (83, 99), oltre a HOLD, velocità e refresh.
+
+Per l'operatore cambia questo: carico, scarico e cambio pinza e i comandi pallet da magazzino prima partivano anche con un errore attivo, adesso vogliono prima il RESET.
 
 **944, 945, 946** (rifiuti del 35): dal PLC 33 arrivano su `ALARM/ROBOT`; prima restavano solo in `Error` e il pannello vedeva un timeout. Vedi ALLARMI-PLC.md.
 
@@ -92,9 +96,16 @@ Nel working tree di cella ci sono file non tracciati che il `.gitignore` non esc
    ```
    Atteso «aggiornata dalla 6/10 alla 7/10»; rilanciato, «conforme». La verifica in fondo stampa gli ordini di MC1 (3, 4, 6), le prime tasche del cassetto 8 col loro ordine e gli ordini avviati ma già completi: devono essere 0 (chiusura automatica, `orderAutoClose.js`); se non lo sono, riportarlo. Col PLC 33 e la vista del 6/10 un deposito dal pannello con l'ordine avviato darebbe 970;
 2. i servizi (pannello col testo nuovo del 970 e il 972);
-3. il download della consegna 33 (Dario);
-4. i test di accettazione dell'intestazione della consegna (**da riportare qui** col file);
-5. tia-export e confronto con la consegna, blocco per blocco.
+3. il download della consegna 33 (Dario), in RUN senza reinizializzazione: interfaccia invariata, nessun retain perso. Prima, in watch: `"DB_Robot".Dispatcher[31]` (se è diverso da 0, oggi la supervisione 938 è spenta), `"DB_MC1".order.ID`, `"DB_MC1".pallet`. Se l'indice 31 è fermo su 944, 945 o 946, al primo ciclo torna a 0 e il pannello riceve quel codice **una** volta: è atteso;
+4. i test di accettazione della consegna. In watch: `"DB_Robot".OrderIdMC`, `Error`, `MissionCode`, `Dispatcher[31]`, `"DB_MC1".pallet`, `"DB_MC1".order.ID`, `"DB_RobotMission"."X_Pick-Place"`, `"Z_Pick-Place"`:
+   1. *problema 2*: dal pannello preleva il pallet da MC1 (`DB_MC1.pallet` va a 0), poi rimettilo in MC1. Atteso: `DB_MC1.pallet` = ID del pallet;
+   2. *problema 3*: con `DB_MC1.order.ID` su un ordine finito o di un altro pezzo, preleva dal cassetto un pezzo con un ordine di MC1 in coda o in pausa (per esempio il 1035, ordine 2117) e depositalo in MC1 dal pannello. Atteso: `OrderIdMC` = 2117 subito dopo il 12; `Z_Pick-Place` del deposito = quella del 2117 (269600 al 6/10); spinta e misure del 2117. Poi preleva da MC1 dal pannello: stesso `OrderIdMC`, `Z_Pick-Place` = quota di prelievo del finito del 2117;
+   3. *problema 9*: in HOLD, da tabella di controllo `"DB_Robot".Error` = 999, poi «estrai cassetto» dal pannello. Atteso: il pannello mostra 972, il robot non si muove, `MissionCode` resta 0. RESET dal pannello e di nuovo «estrai cassetto»: parte;
+   4. *problema 14*: da tabella di controllo `"DB_Robot".Dispatcher[31]` = 944. Atteso, al ciclo dopo: `Dispatcher[31]` = 0 e il pannello mostra il 944. Se il pannello lo permette, anche una dichiarazione vera che il PLC rifiuta (pinza dichiarata contro il sensore, 945). Atteso: rifiuto a video subito, non dopo il timeout; `Error` = 945 fino al RESET. Dopo il RESET, se la pinza è davvero incoerente col registro, il 938 torna dopo 2 s (supervisione attiva);
+   5. *automatico*: un ciclo completo con deposito, prelievo (o missione 16) e cambio pallet. Atteso: tutto come prima, `DB_MC1.pallet` giusto, `OrderIdMC` = ordine attivo;
+5. tia-export e confronto con la consegna, blocco per blocco. Fatto il 7/10 sul progetto salvato alle 10:37 (commit 80a414b). Blocchi B-F identici; in A cambiano solo gli spazi di 21 righe di continuazione; fuori dai blocchi niente.
+
+**Nello stesso export, fuori dalla consegna:** in `tags/Robot_Efort.xml` il tag `Sys_SetRobotspeed` passa da %QW512 a %QW650 (al posto di `spare_9`, commit 896cb8f). Il codice non cambia, perché lo usa per nome. Prima del download va confermato che anche il robot legga la velocità dalla parola nuova: altrimenti la velocità impostata dal pannello non gli arriva più.
 
 **Rollback.** La vista del 6/10 si rimette solo insieme al PLC di prima (testo in testa a `man-order-mc1.sql`).
 
