@@ -37,9 +37,9 @@ powershell -ExecutionPolicy Bypass -File D:\Prog\easybox\tools\servizi-cella.ps1
 - `installa`: copia nssm, crea i due servizi, li avvia e aspetta le porte. Si ferma se non e' amministratore, se i servizi esistono gia', se c'e' un altro servizio nssm o se le porte sono occupate (prima: cella in HOLD, Ctrl+C nelle due finestre). Se un passo fallisce toglie quello che ha creato. Prima di ogni altro controllo (quindi anche coi servizi già installati) segnala gli avvii automatici delle vecchie finestre e, per le operazioni pianificate attive, propone di disabilitarle: lo fa solo con una «s», dopo averne salvato la definizione in `D:\EasyBox_backup\task_<data e ora>`. `prova` dice soltanto che lo proporrebbe.
 - `riavvia`: ferma i due servizi, aspetta che le porte si liberino, chiude **solo** i node rimasti sulle tre porte (ne scrive pid, ora di avvio e riga di comando), riavvia i servizi e controlla che siano Running e che le porte siano loro. Altrimenti esce in errore. Un processo sulle porte che non è node non lo chiude: si ferma, coi servizi fermi.
 - `rimuovi`: ferma e toglie **solo** `EasyBoxBackend` ed `EasyBoxPannello`.
-- (7/10, pannello compilato, voce qui sotto) `preview`: passaggio dal server di sviluppo al pannello compilato; `aggiorna`: ricompila il pannello dopo un git pull; `ripristina`: torna alla build di prima; `dev`: ritorno al server di sviluppo. Toccano solo il pannello, mai il backend.
+- (7/10, pannello compilato, voce qui sotto) `preview`: passaggio dal server di sviluppo al pannello compilato; `aggiorna`: dopo un git pull ricompila il pannello e riavvia backend e pannello, prima il backend; `ripristina`: torna alla build di prima; `dev`: ritorno al server di sviluppo. `preview`, `ripristina` e `dev` toccano solo il pannello.
 
-Dopo un pull i servizi si riavviano con `-Azione riavvia`, oppure li riavvia `pannello.ps1` (procedura qui sotto). **Col pannello compilato serve in più `-Azione aggiorna`**: senza, il pannello resta quello compilato prima del pull.
+**Dopo un git pull, col pannello compilato: `git pull`, poi `servizi-cella.ps1 -Azione aggiorna`.** È un comando solo: ricompila il pannello e riavvia backend e pannello. Col server di sviluppo bastava `-Azione riavvia`. `pannello.ps1` riavvia i servizi ma non ricompila (procedura qui sotto).
 
 **Pannello compilato (decisione di Dario, 7/10).** Il servizio `EasyBoxPannello` serviva il pannello col server di sviluppo di Vite (`node node_modules\vite\bin\vite.js`), che compila i moduli alla prima richiesta: dopo un avvio il primo caricamento è lento. Ora il pannello si compila **in cella** (`vite build` → `easybox\HMI\dist`) e il servizio lo serve con `node node_modules\vite\bin\vite.js preview --port 5173 --strictPort`. Restano uguali la porta 5173, gli indirizzi, il certificato e il proxy (`/api/` alla 8080, `/socket.io/` alla 3000 con websocket): il blocco `preview` di `vite.config.js` ha lo stesso proxy e lo stesso HTTPS, e la porta 5173 la dà la riga di comando (il blocco resta su 4173 per le prove sul portatile). Il touch e il tablet non cambiano niente.
 - **Perché in cella e non sul portatile:** la build legge il `.env` di `easybox\HMI` e ci scrive dentro `VITE_DARK_MODE`, l'unica variabile `VITE_` che il pannello usa. Se si cambia il `.env` della cella, serve `-Azione aggiorna`. `dist`, `dist_build` e `dist_prev` sono ignorate da git e non vanno nel repo.
@@ -71,7 +71,14 @@ Dopo un pull i servizi si riavviano con `-Azione riavvia`, oppure li riavvia `pa
 4. di nuovo `-Azione stato`: «Pannello: COMPILATO», `dist` compilata adesso, porta 5173 del servizio;
 5. Ctrl+F5 sul touch e sul tablet, stato del robot che si aggiorna.
 
-**Dopo ogni git pull** (cella in HOLD): `servizi-cella.ps1 -Azione aggiorna`. Fa la build in `dist_build`. Se fallisce si ferma e `dist` e servizio restano come sono, col pannello di prima in servizio, e stampa l'errore (completo in `HMI\log\build_pannello.log`). Se riesce: `dist` → `dist_prev`, `dist_build` → `dist`, riavvia solo il pannello, aspetta la porta e stampa lo stato. Se il pull cambia anche `serverDati`, in più `-Azione riavvia`.
+**Fatto in cella il 7/10 alle 14:23:** `-Azione preview` riuscita, build in 24 s, pannello compilato in servizio (`dist` del 07/10 14:23).
+
+**Dopo ogni git pull** (cella in HOLD, PowerShell come amministratore):
+```
+cd D:\Prog; git pull
+powershell -ExecutionPolicy Bypass -File D:\Prog\easybox\tools\servizi-cella.ps1 -Azione aggiorna
+```
+`-Azione aggiorna` fa la build in `dist_build`. Se fallisce si ferma, e `dist` e servizi restano come sono: gira la versione di prima, backend compreso, che non viene riavviato. Stampa l'errore (completo in `HMI\log\build_pannello.log`). Se riesce: ferma i due servizi, `dist` → `dist_prev`, `dist_build` → `dist`, riavvia **prima il backend** (aspetta 8080 e 3000) **e poi il pannello** (5173), controlla che siano Running e che le porte siano loro, e stampa lo stato. Se il pull cambia `package-lock.json` servono prima le dipendenze (`pannello.ps1` fa `npm install`); senza, la build si ferma con l'errore e non cambia niente.
 
 **Se la build nuova non va:** `servizi-cella.ps1 -Azione ripristina` scambia `dist` e `dist_prev` e riavvia il pannello (lanciato di nuovo torna alla build nuova). **Ritorno al server di sviluppo:** `servizi-cella.ps1 -Azione dev` rimette i parametri di prima e riavvia il pannello; `dist` resta su disco e non si usa. Il comando a mano equivalente è `& "C:\Program Files\nssm\nssm.exe" set EasyBoxPannello AppParameters node_modules\vite\bin\vite.js`, poi `-Azione riavvia`.
 
@@ -84,6 +91,8 @@ Dopo un pull i servizi si riavviano con `-Azione riavvia`, oppure li riavvia `pa
 - `\HMI`: `start_hmi.bat`.
 
 Dario le ha **disabilitate** (non cancellate) e ne ha esportato la definizione in `D:\EasyBox_backup\task_2026-10-07`. In più `nodemon` riavviava il backend **a ogni git pull** (guarda i file e riparte quando cambiano). Lo script ora cerca nelle operazioni pianificate le azioni che contengono `start_server`, `start_hmi`, `node`, `npm`, `nodemon`, `vite` o `easybox`: `stato` elenca quelle attive, `installa` le segnala e propone di disabilitarle.
+
+**Non da togliere: `\EasyBox Browser`** (`chrome_proxy.exe --app-id=... --start-maximized`) apre il pannello nel browser all'accesso. Non prende porte e resta attiva. Dal 7/10 lo script elenca a parte le operazioni che lanciano un browser (chrome, chrome_proxy, msedge), come «Browser del pannello all'accesso (ok)»: senza avviso e senza proporre di disabilitarle. Prima lo script la segnalava, per sbaglio, fra gli avvii da togliere.
 
 **Verifica al riavvio del PC** (è anche la prova del riavvio rimasta da fare dal 6/10):
 1. cella in HOLD, riavvio di Windows, accesso come al solito;
@@ -123,7 +132,7 @@ Nel working tree di cella ci sono file non tracciati che il `.gitignore` non esc
    - **Col pannello compilato** (7/10) `pannello.ps1` non ricompila: riavvia il pannello sulla `dist` di prima. Subito dopo: `servizi-cella.ps1 -Azione aggiorna`.
    - **Senza servizi** (le finestre): nella finestra di `start_server.bat` Ctrl+C, poi rilanciare il `.bat`; rilanciare `start_hmi.bat` solo se sono cambiati `package.json`, `package-lock.json` o `vite.config.js`, altrimenti basta Ctrl+F5 sui client.
 
-   In alternativa `cd D:\Prog`, `git pull` e poi `servizi-cella.ps1 -Azione riavvia` (se il pull cambia `package-lock.json` serve `npm install`: meglio lo script), e col pannello compilato `-Azione aggiorna`.
+   In alternativa `cd D:\Prog`, `git pull` e poi, **col pannello compilato, `servizi-cella.ps1 -Azione aggiorna`**, che ricompila e riavvia backend e pannello; col server di sviluppo `servizi-cella.ps1 -Azione riavvia`. Se il pull cambia `package-lock.json` serve `npm install`: meglio lo script.
 3. Controlli:
    - porte 5173, 8080 e 3000 in ascolto;
    - `INIT` nuovo in `access.log`;
