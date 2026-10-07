@@ -7,12 +7,14 @@
 //   2. casi d'errore: binario, profilo assente o doppio, aperto, sciolto, 3D,
 //      origine in basso a sinistra, quote in pollici, estrusione storta;
 //   3. andata e ritorno: export (buildGratingDxf) -> lettura, profilo e fori
-//      identici; tasche dell'export in (W - Y/1000, X/1000 - H) delle
-//      coordinate robot di drawingToRobot(gridCenters(...));
+//      identici; tasche dell'export in (Y/1000, -X/1000) delle coordinate
+//      robot di drawingToRobot(gridCenters(...)) (verso corretto la sera del
+//      7/10: vista lato operatore, origine del work object in 0,0);
 //   4. disegno: angoli e fori dove dice x_svg = x_dxf, y_svg = -y_dxf;
 //   5. tasche contro base (pocketsVsBase): pulito, sul foro, oltre il profilo;
 //   6. Grating.vue: loadBase, riga rossa, DXF/stampa bloccati, conferma
-//      "esportare comunque?", viewBox, sorgente del template;
+//      "esportare comunque?", viewBox, sorgente del template; la tasca k a
+//      video sta dove la mette TrayPockets (pagina Cassetti);
 //   7. testi i18n.
 //
 // NESSUNA geometria del cliente: il cassetto di prova e' 500 x 400 e la base
@@ -39,7 +41,8 @@ const { drawingToRobot } = await server.ssrLoadModule('/src/util/gratingAxes.js'
 const cc = await server.ssrLoadModule('/src/util/cavityClearance.js');
 const gratingMod = await server.ssrLoadModule('/src/views/conf/Grating/Grating.vue');
 const comp = gratingMod.default;
-const { buildGratingDxf, stripPreviewOnly } = gratingMod;
+const { buildGratingDxf, stripPreviewOnly, pocketsOperatorView } = gratingMod;
+const trayPockets = (await server.ssrLoadModule('/src/components/layout/TrayPockets.vue')).default;
 
 let failed = 0;
 const check = (c, l) => { console.log((c ? '  ok   ' : '  FAIL ') + l); if (!c) failed++; };
@@ -158,7 +161,9 @@ check(!leggi(dxfDoc([lw('PROFILE', pollici)]), {}).error, 'senza W e H il contro
 // ======================================================================
 console.log('\n3) andata e ritorno: export -> lettura');
 const g = buildGrid({ pieceX: 40, pieceY: 70, prismatic: true, safeX: 20, safeY: 10, width: W, height: H });
-const exp = buildGratingDxf({ base: b, pieces: g.listPz, dimX: g.dim_x, dimY: g.dim_y, radius: g.radius, clearanceUm: 0 });
+// le tasche come le disegna e le esporta Grating.vue: vista lato operatore
+const gv = pocketsOperatorView(g.listPz, { width: W, height: H, dim_x: g.dim_x, dim_y: g.dim_y });
+const exp = buildGratingDxf({ base: b, pieces: gv, dimX: g.dim_x, dimY: g.dim_y, radius: g.radius, clearanceUm: 0 });
 const back = leggi(exp);
 check(!back.error, 'l\'export si rilegge come base valida');
 check(back.profile.length === b.profile.length && back.profile.every((v, i) => near(v.x, b.profile[i].x) && near(v.y, b.profile[i].y) && v.bulge === b.profile[i].bulge),
@@ -183,17 +188,18 @@ function tascheDxf(dxf) {
 }
 const robot = drawingToRobot(gridCenters(g.listPz, { width: W, height: H, dim_x: g.dim_x, dim_y: g.dim_y }));
 const td = tascheDxf(exp);
-const scarto = Math.max(...td.map((c, i) => Math.max(Math.abs(c.x - (W - robot[i].Y / 1000)), Math.abs(c.y - (robot[i].X / 1000 - H)))));
+const scarto = Math.max(...td.map((c, i) => Math.max(Math.abs(c.x - robot[i].Y / 1000), Math.abs(c.y + robot[i].X / 1000))));
 check(td.length === robot.length && scarto <= 0.0005 + 1e-9,
-	'prismi: centro tasca DXF = (W - Y/1000, X/1000 - H) delle coordinate robot, scarto max ' + scarto.toFixed(6) + ' mm (arrotondamento al micron)');
-check(near(td[0].x, W - robot[0].Y / 1000, 0.0005) && td[0].x > W / 2 && td[0].y < -H / 2, '   tasca 1 in basso a destra nel DXF, vicino all\'origine del work object (W, -H)');
+	'prismi: centro tasca DXF = (Y/1000, -X/1000) delle coordinate robot, scarto max ' + scarto.toFixed(6) + ' mm (arrotondamento al micron)');
+check(near(td[0].x, robot[0].Y / 1000, 0.0005) && td[0].x < W / 2 && td[0].y > -H / 2 && td.every(c => c.x >= td[0].x - 1e-9 && c.y <= td[0].y + 1e-9),
+	'   tasca 1 in alto a sinistra nel DXF, vicino all\'origine del work object (0, 0)');
 const gc = buildGrid({ pieceX: 50, pieceY: 50, prismatic: false, safeX: 15, safeY: 15, width: W, height: H });
-const expC = buildGratingDxf({ base: b, pieces: gc.listPz, dimX: 0, dimY: 0, radius: gc.radius, clearanceUm: 200 });
+const expC = buildGratingDxf({ base: b, pieces: pocketsOperatorView(gc.listPz, { width: W, height: H, dim_x: 0, dim_y: 0 }), dimX: 0, dimY: 0, radius: gc.radius, clearanceUm: 200 });
 const robC = drawingToRobot(gridCenters(gc.listPz, { width: W, height: H, dim_x: 0, dim_y: 0 }));
 const tc = tascheDxf(expC);
-check(tc.length === robC.length && tc.every((c, i) => near(c.x, W - robC[i].Y / 1000, 0.0005) && near(c.y, robC[i].X / 1000 - H, 0.0005) && near(c.r, 25.1)),
+check(tc.length === robC.length && tc.every((c, i) => near(c.x, robC[i].Y / 1000, 0.0005) && near(c.y, -robC[i].X / 1000, 0.0005) && near(c.r, 25.1)),
 	'cilindri: stessa regola, raggio con franco 0.2 mm (25.1) a centro fermo');
-const td1 = tascheDxf(buildGratingDxf({ base: b, pieces: g.listPz, dimX: 40, dimY: 70, radius: 0, clearanceUm: 1000 }));
+const td1 = tascheDxf(buildGratingDxf({ base: b, pieces: gv, dimX: 40, dimY: 70, radius: 0, clearanceUm: 1000 }));
 check(td1.every((c, i) => near(c.x, td[i].x) && near(c.y, td[i].y) && near(c.w, 41) && near(c.h, 71)), 'franco 1 mm: cavita\' 41 x 71, centri invariati');
 check(!buildGratingDxf({ base: null, pieces: g.listPz, dimX: 40, dimY: 70, radius: 0 }).includes('PROFILE\n66'), 'senza base nessun profilo (l\'export pero\' e\' bloccato a monte)');
 
@@ -218,15 +224,15 @@ console.log('\n5) tasche contro base (BASE_WEB_MM = ' + bd.BASE_WEB_MM + ', DA C
 check(bd.BASE_WEB_MM === 3, 'BASE_WEB_MM = 3');
 const rett = { profile: [{ x: 0, y: 0 }, { x: W, y: 0 }, { x: W, y: -H }, { x: 0, y: -H }].map(v => Object.assign({ bulge: 0 }, v)), holes: [] };
 const cav = (lp, dx, dy, um = 100) => lp.map(p => { const c = cc.cavityRect(p.x, p.y, dx, dy, um); return { tipo: 'rect', x: c.x, y: c.y, w: c.w, h: c.h }; });
-check(bd.pocketsVsBase(rett, cav(g.listPz, 40, 70)).length === 0, 'caso pulito: griglia coi bordi da 20 mm, nessun conflitto');
-const c1 = { x: g.listPz[0].x + 20, y: g.listPz[0].y + 35 };
+check(bd.pocketsVsBase(rett, cav(gv, 40, 70)).length === 0, 'caso pulito: griglia coi bordi da 20 mm, nessun conflitto');
+const c1 = { x: gv[0].w, y: gv[0].h };
 const sulForo = Object.assign({}, rett, { holes: [{ cx: c1.x, cy: -c1.y, r: 3 }] });
-const k1 = bd.pocketsVsBase(sulForo, cav(g.listPz, 40, 70));
+const k1 = bd.pocketsVsBase(sulForo, cav(gv, 40, 70));
 check(k1.length === 1 && k1[0].index === 0 && k1[0].foro && !k1[0].profilo, 'foro al centro della tasca 1: conflitto foro sulla sola tasca 1');
 const corto = Object.assign({}, rett, { profile: [{ x: 0, y: 0 }, { x: W, y: 0 }, { x: W, y: -300 }, { x: 0, y: -300 }].map(v => Object.assign({ bulge: 0 }, v)) });
-const k2 = bd.pocketsVsBase(corto, cav(g.listPz, 40, 70));
-check(k2.length > 0 && k2.every(k => k.profilo && !k.foro) && k2.some(k => k.index === 0) && k2.every(k => g.listPz[k.index].y + 70 > 300 - 3),
-	'profilo piu\' corto del cassetto: le tasche oltre (o a meno di 3 mm) sono in conflitto col profilo, prima la 1');
+const k2 = bd.pocketsVsBase(corto, cav(gv, 40, 70));
+check(k2.length > 0 && k2.every(k => k.profilo && !k.foro) && !k2.some(k => k.index === 0) && k2.some(k => k.index === gv.length - 1) && k2.every(k => gv[k.index].y + 70 > 300 - 3),
+	'profilo piu\' corto del cassetto (lato operatore): in conflitto le tasche in basso, l\'ultima si\', la 1 (in alto) no');
 // soglie esatte, cavita' 40 x 70 a (100,100) in SVG
 const r0 = [{ tipo: 'rect', x: 100, y: 100, w: 40, h: 70 }];
 check(bd.pocketsVsBase(Object.assign({}, rett, { holes: [{ cx: 146.01, cy: -135, r: 3 }] }), r0).length === 0, 'foro a r + 3.01 dal bordo: nessun conflitto');
@@ -308,7 +314,7 @@ check(vm.listPz.length > 0 && typeof vm.saveData === 'function' && !/this\.base/
 	'generazione, salvataggio e modello SVG non dipendono dalla base');
 
 // conflitti e conferma «esportare comunque?»
-const tasca1 = (() => { const v = makeVm(); return { x: v.listPz[0].x + 20, y: v.listPz[0].y + 35 }; })();
+const tasca1 = (() => { const v = makeVm(); return { x: v.pocketsView[0].w, y: v.pocketsView[0].h }; })();
 const baseForo = leggi(dxfDoc([lw('PROFILE', [[0, 0], [W, 0], [W, -H], [0, -H]]), circle('HOLES', tasca1.x, -tasca1.y, 3)]));
 vm = makeVm({ base: baseForo });
 check(vm.pocketConflicts.length === 1 && vm.pocketConflicts[0].index === 0, 'anteprima: la tasca 1 sul foro e\' in conflitto');
@@ -344,8 +350,8 @@ check(scaricato && leggi(scaricato).profile.length === 6 && leggi(scaricato).pro
 // viewBox
 const vb = (base, w = W, h = H) => comp.computed.sceneViewBox.call({ grating: { width: w, height: h }, baseSvg: base ? bd.baseToSvg(base) : null });
 const largo = leggi(dxfDoc([lw('PROFILE', [[-1, 1], [W + 1, 1], [W + 1, -H - 1], [-1, -H - 1]])]));
-check(vb(largo) === '-26 -26 552 711', 'sceneViewBox dal riquadro della base (' + vb(largo) + ')');
-check(vb(null) === '-25 -25 550 710', 'senza base: il solo cassetto (' + vb(null) + ')');
+check(vb(largo) === '-26 -26 552 731', 'sceneViewBox dal riquadro della base e dal cartiglio a due righe (' + vb(largo) + ')');
+check(vb(null) === '-25 -25 550 730', 'senza base: il solo cassetto (' + vb(null) + ')');
 
 // il modello SVG non porta la sovrapposizione rossa
 const conSovr = '<svg><rect id="tray"/><g id="baseConflicts" class="noPrint"><rect x="1"/><circle r="2"/></g><g id="base"><path d="M0 0 Z"/></g></svg>';
@@ -366,6 +372,27 @@ check(/<g id="baseConflicts" class="noPrint"/.test(tpl), 'tasche in conflitto in
 check(/Promise\.all\(\[this\.getPiecesList\(\), this\.getGripperList\(\), this\.getTrayList\(\)\]\)\s*\.then\(\(\) => \{ this\.loadBase\(\); this\.getGratingList\(\); \}\)/.test(src), 'la base si carica dopo getTrayList (servono W e H)');
 check(!/querySelector/.test(comp.methods.esportaDXF.toString()), 'esportaDXF non legge piu\' il profilo dal DOM');
 check(/checkGridFit\(\) \{\s*if \(this\.listPz\.length === 0\) return true;\s*const tray = this\.trayList\[this\.grating\.trayIndex-1\];/.test(src), 'checkGridFit invariato');
+
+// la tasca k a video sta dove la mette la pagina Cassetti (TrayPockets), a
+// partire dalle coordinate robot di drawingToRobot
+for (const [nome, griglia, dx, dy, rad] of [['prismi 40x70', g, 40, 70, 0], ['cilindri r 25', gc, 0, 0, 25]]) {
+	const vmT = makeVm();
+	vmT.listPz = griglia.listPz; vmT.dim_x = dx; vmT.dim_y = dy; vmT.radius = rad; vmT.prismatic = dx > 0;
+	const rob = drawingToRobot(gridCenters(griglia.listPz, { width: W, height: H, dim_x: dx, dim_y: dy }));
+	const tp = trayPockets.computed.drawPz.call({ pockets: rob.map((r, i) => ({ x: r.X / 1000, y: r.Y / 1000, prisma: dx > 0, SUB_POS: i + 1 })) });
+	const vista = vmT.pocketsView;
+	const err = Math.max(...vista.map((p, i) => dx > 0
+		? Math.max(Math.abs(p.x - (tp[i].w - dx / 2)), Math.abs(p.y - (tp[i].h - dy / 2)))
+		: Math.max(Math.abs(p.x - tp[i].w), Math.abs(p.y - tp[i].h))));
+	check(vista.length === tp.length && err <= 0.0005 && vista.every((p, i) => p.n === tp[i].SUB_POS), nome + ': Grating.vue disegna la tasca k dove la disegna TrayPockets (scarto ' + err.toFixed(6) + ' mm)');
+}
+const v1 = makeVm().pocketsView;
+check(v1[0].n === 1 && v1.every(p => p.x >= v1[0].x - 1e-9 && p.y >= v1[0].y - 1e-9) && v1[0].x < W / 2 && v1[0].y < H / 2, 'tasca 1 in alto a sinistra, vicino all\'origine (0,0)');
+check(JSON.stringify(makeVm().listPz) === JSON.stringify(buildGrid({ pieceX: 40, pieceY: 70, prismatic: true, safeX: 20, safeY: 10, width: W, height: H }).listPz), 'listPz (da cui nascono le quote del robot) invariato: cambia solo il disegno');
+check(/<g v-for="\(p, index\) in pocketsView"/.test(tpl) && !/in listPz"/.test(tpl) && /<g id="origin">/.test(tpl) && /<g id="pocketNumbers">/.test(tpl) && !/transform=/.test(tpl.slice(tpl.indexOf('id="trayLayout"'), tpl.indexOf('</svg>'))),
+	'template: tasche dalla vista, numeri, origine, nessuna transform');
+check(/pieces: this\.pocketsView/.test(comp.methods.esportaDXF.toString()) && /this\.pocketsView\.map/.test(comp.methods.baseConflicts.toString()), 'export DXF e controllo dei fori dalla vista lato operatore');
+check(/\.base-conflict \{\s*background: var\(--color-warning-bg\);/.test(src) && /\.base-error \{\s*background: var\(--color-danger-bg\);/.test(src), 'elenco delle tasche in conflitto in giallo, il rosso resta per la base assente');
 
 // ======================================================================
 console.log('\n7) testi i18n (it ed en)');

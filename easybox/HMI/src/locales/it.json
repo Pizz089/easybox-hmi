@@ -330,6 +330,7 @@
     },
     "rowsCols": "{rows} righe × {cols} colonne = {tot} pz",
     "generatedOn": "Generato il:",
+    "viewNote": "Vista lato operatore: lato robot in alto, tasca 1 in alto a sinistra vicino all'origine del work object (0,0).",
     "print": "Stampa PDF",
     "redistribute": "Ridistribuisci le posizioni",
     "taughtMismatch": "ATTENZIONE: le tasche a database risultano TARATE in cella (passi reali {realW} / {realH} mm) e NON coincidono con quelle che verranno rigenerate ({genW} / {genH} mm). Il robot lavora sulle coordinate attuali: sovrascriverle può causare una COLLISIONE. Rigenerare comunque?",

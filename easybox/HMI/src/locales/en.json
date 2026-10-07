@@ -330,6 +330,7 @@
     },
     "rowsCols": "{rows} rows × {cols} columns = {tot} pcs",
     "generatedOn": "Generated on:",
+    "viewNote": "Operator side view: robot side at the top, pocket 1 at the top left next to the work object origin (0,0).",
     "print": "Print PDF",
     "redistribute": "Redistribute positions",
     "taughtMismatch": "WARNING: the tray positions in the database were TAUGHT in the cell (real pitches {realW} / {realH} mm) and do NOT match the ones that will be regenerated ({genW} / {genH} mm). The robot works on the current coordinates: overwriting them can cause a COLLISION. Regenerate anyway?",
