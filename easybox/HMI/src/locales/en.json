@@ -1459,7 +1459,9 @@
       "set947": "The machine refused the pallet (947): machine cycle running, or a pallet is already declared in the machine. No position written. If another pallet is in the machine, remove it first.",
       "clear947": "The machine refused the pallet removal (947): machine cycle running. No position written: bring the machine to rest and retry.",
       "otherInMachine": "In the PLC the machine holds pallet #{id}: the command is not sent, so as not to remove or overwrite that one. Fix it first from the Machines page.",
-      "registerUnread": "Machine register not read, try again. No command sent and no position written."
+      "registerUnread": "Machine register not read, try again. No command sent and no position written.",
+      "slotUnread": "Slot state not read, try again. No command sent and no position written.",
+      "slotAfter41": "The pallet was removed from the machine: the machine register is already 0. Writing slot {slot} to the database failed, though, and the database still shows it in the machine. Choose another slot or use \"Remove from warehouse\"."
     }
   }
 }

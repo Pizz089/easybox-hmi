@@ -1459,7 +1459,9 @@
       "set947": "La macchina ha rifiutato il pallet (947): ciclo macchina avviato, oppure c'è già un pallet dichiarato in macchina. Nessuna posizione scritta. Se in macchina c'è un altro pallet, toglierlo prima.",
       "clear947": "La macchina ha rifiutato la rimozione del pallet (947): ciclo macchina avviato. Nessuna posizione scritta: portare la macchina a riposo e ripetere.",
       "otherInMachine": "Nel PLC la macchina ha il pallet #{id}: il comando non si manda, per non togliere o sovrascrivere quello. Sistemare prima dalla pagina Macchine.",
-      "registerUnread": "Registro della macchina non letto, riprova. Nessun comando mandato e nessuna posizione scritta."
+      "registerUnread": "Registro della macchina non letto, riprova. Nessun comando mandato e nessuna posizione scritta.",
+      "slotUnread": "Stato delle caselle non letto, riprova. Nessun comando mandato e nessuna posizione scritta.",
+      "slotAfter41": "Il pallet è stato tolto dalla macchina: il registro della macchina è già a 0. La scrittura della casella {slot} nel database però non è riuscita, e il database lo dà ancora in macchina. Scegli un'altra casella oppure usa «Rimuovi dal magazzino»."
     }
   }
 }

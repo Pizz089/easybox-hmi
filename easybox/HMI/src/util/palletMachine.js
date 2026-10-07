@@ -113,15 +113,40 @@ export function guardia41({ palletId, posPlant, registro }) {
 	return { ok: true, mc: 0 };
 }
 
+// (7/10) «Casella» di un pallet in macchina: la casella si controlla su dati
+// riletti ADESSO, PRIMA del 41. Dopo il 41 una casella presa lascerebbe il
+// registro della macchina a 0 e il database ancora in macchina. Stesso
+// criterio del backend (palletSlotGuard in serverDati/CONF/Pallet.js): un
+// ALTRO pallet con MAG_POS = casella, oppure [POSITION] WPALLET STATUS=9.
+// Risolve { ok:true } oppure { ok:false, motivo, parametri }.
+export async function casellaLibera({ server, fetchFn, casella, palletId }) {
+	const f = fetchFn || fetch;
+	const get = url => f(server + url, { method: 'GET' }).then(r => { if (!r.ok) throw new Error('Network response was not ok'); return r.json(); });
+	let pallets, posti;
+	try {
+		[pallets, posti] = await Promise.all([get('api/conf/pallet/show/all'), get('api/conf/position/showWarehouse/WPALLET')]);
+	} catch (e) {
+		console.info(e);
+		return { ok: false, motivo: 'palletMachine.err.slotUnread', parametri: {} };
+	}
+	const n = Number(casella);
+	const occ = (pallets || []).find(p => Number(p.MAG_POS) === n && Number(p.ID) !== Number(palletId));
+	if (occ) return { ok: false, motivo: 'warehouses.occupiedBy', parametri: { name: ('#' + occ.ID + ' ' + String(occ.FAMILY || '').trim()).trim() } };
+	if ((posti || []).some(r => Number(r.SUB_POS) === n && Number(r.STATUS) === 9)) return { ok: false, motivo: 'warehouses.disabledPos', parametri: {} };
+	return { ok: true };
+}
+
 // La posizione nel database DOPO l'eco (logica di CNC1View.applyPosPlant).
 // Riga riletta adesso, pass-through di tutti gli altri campi (pattern AE).
-//   set   -> MAG_POS invariato (la casa resta del pallet), POS_PLANT 100+mc
-//   clear -> MAG_POS -1 (fuori magazzino), POS_PLANT 0
+//   set     -> MAG_POS invariato (la casa resta del pallet), POS_PLANT 100+mc
+//   clear   -> MAG_POS -1 (fuori magazzino), POS_PLANT 0
+//   casella -> MAG_POS = casella, POS_PLANT 0; poi occupy della casella e
+//              free della provenienza, come la «Casella» del Posiziona
 // palletId null col clear: il pallet che il database dice in macchina.
 // liberaCasella: la casella di provenienza (MAG_POS > 0) va liberata (4->2):
 // il rientro automatico del PLC cerca la casa con STATUS=2.
 // Risolve { ok, body } oppure { ok:false, errore }.
-export async function scriviPosizione({ server, fetchFn, tipo, palletId, mc = 1, liberaCasella }) {
+export async function scriviPosizione({ server, fetchFn, tipo, palletId, mc = 1, liberaCasella, casella }) {
 	const f = fetchFn || fetch;
 	try {
 		const pallets = await f(server + 'api/conf/pallet/show/all', { method: 'GET' })
@@ -135,14 +160,19 @@ export async function scriviPosizione({ server, fetchFn, tipo, palletId, mc = 1,
 			X: row.X, Y: row.Y, Z: row.Z,
 			X_CORR: row.X_CORR, Y_CORR: row.Y_CORR, Z_CORR: row.Z_CORR,
 			MAG: row.MAG,
-			MAG_POS: tipo === 'set' ? row.MAG_POS : -1,
+			MAG_POS: tipo === 'set' ? row.MAG_POS : tipo === 'casella' ? Number(casella) : -1,
 			POS_PLANT: tipo === 'set' ? 100 + mc : 0,
 		});
 		const body = await f(server + 'api/conf/pallet/updatePallet?' + params.toString(), { method: 'GET' })
 			.then(r => { if (!r.ok) throw new Error('Network response was not ok'); return r.text(); });
 		if (body != 'OK') return { ok: false, errore: 'body', body };
-		if (liberaCasella && fromSlot > 0)
-			await f(server + 'api/conf/position/warehouseSlot/free/WPALLET/' + fromSlot, { method: 'GET' }).catch(e => { console.info(e); });
+		const slot = (azione, n) => f(server + 'api/conf/position/warehouseSlot/' + azione + '/WPALLET/' + n, { method: 'GET' }).catch(e => { console.info(e); });
+		if (tipo === 'casella') {
+			await slot('occupy', Number(casella));
+			if (fromSlot > 0 && fromSlot != Number(casella)) await slot('free', fromSlot);
+		} else if (liberaCasella && fromSlot > 0) {
+			await slot('free', fromSlot);
+		}
 		return { ok: true, body };
 	} catch (e) {
 		console.info(e);
