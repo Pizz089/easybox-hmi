@@ -11,6 +11,10 @@ node_modules
 .DS_Store
 dist
 dist-ssr
+# (7/10) pannello compilato in cella (tools/servizi-cella.ps1 -Azione
+# aggiorna): la build va in dist_build, la dist di prima resta in dist_prev
+dist_build
+dist_prev
 coverage
 *.local
 
