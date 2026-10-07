@@ -363,6 +363,16 @@ Decisione di Dario (6/10, 18:24):
 
 Provato il 6/10 sul clone del portatile: due esecuzioni di ogni script (la seconda «già presente» / «conforme»), verifiche vuote, e il caso costruito sulla riga morsa 1 / pezzo 1035 in una transazione chiusa con ROLLBACK (`Z_PUSH` 10000 → 0, 0 → 10000, 10001 → 0, 4000 → 6000, −1 rifiutato dal vincolo).
 
+### [ ] 6/10 — prelievo da MC1 dopo una spinta: il robot usa la X del deposito
+
+In cella, ordine 2117, corsa della spinta 3640 µm (3,64 mm):
+- il PLC manda la X giusta: `X_Pick-Place` = 315140 = `X_PLACE` 311500 + corsa 3640. La scrive al 30 di `Part_MC_to_Robot` (`col[0] + xPushOffsetMC`), prima del comando di prelievo (40); nel ciclo a missione 16 la stessa somma la fa il master (`xPlaceTemp + xPushOffsetMC`);
+- il robot ha prelevato a 311,5 mm, cioè alla X che aveva memorizzato al deposito, non a quella ricevuta.
+
+**Causa lato robot**, verificata col robotista: il PLC e il pannello non c'entrano.
+
+**Da fare (robotista):** il programma del prelievo da MC deve usare la X ricevuta col comando di prelievo, non quella memorizzata al deposito. Finché non è corretto, dopo una spinta il robot preleva il pezzo dove era prima della spinta, cioè spostato della corsa.
+
 Ordine obbligato, **a cella ferma**, i primi quattro prima del deploy del
 backend (insert/update nominano le colonne e la tabella nuove), la vista per
 ultima perche' le nomina tutte:
