@@ -1,119 +1,108 @@
-<template>
-    <div class="alert" :class="type"> <!--@click="$emit('cmd_close')"-->
-        <span @click="$emit('cmd_close')" class="pure-u-1">
-            <h3>{{ $t(title) }}</h3>
-            <hr>
-        </span>
-        <br>
-        <strong>{{ $t(desc) }}</strong>
-        <br><br>
-        <ul>
-            <li v-for="chk in checks" :key="chk">{{ chk }}</li>
-        </ul>
-        <slot />
+<!-- ==========================================================================
+     Alert.vue — il riquadro globale degli allarmi e degli esiti (pannello
+     v3, fase E1.2, 7/10). Montato una volta in AppShell, sopra a tutto.
 
-        <div class="close-container" @click.stop>
-            <button class="close-button" @click="$emit('cmd_close')">
-                <img src="@/assets/xRossa2.png" alt="Chiudi" class="close-icon" />
-            </button>
-        </div>
+     CONTRATTO INVARIATO: dataStored.alert (title, desc, type, check) e
+     emptyAlertList; gli stessi handler (layout/plantGlobals.js, combinazione
+     972 della consegna 35 compresa). title e desc passano da $t come prima:
+     una chiave si traduce, un testo gia' tradotto resta com'e'.
+
+     ASPETTO: quello della tavola Conferma (assets/css/dialogs.css, sede
+     unica, UI-DESIGN-SYSTEM §7). Prima il fondo era --color-*-bg, che e'
+     trasparente al 14-16 %: la pagina si leggeva attraverso.
+       - alarm / warning: velo --bg-backdrop, superficie piena --bg-dialog,
+         angoli 24, min(720px, 94vw); il tono (danger / warning) sta in
+         icona, titolo e bordo, mai nel fondo. Si chiude solo con OK (grande,
+         a tutta larghezza in compatto) o con la X: il tocco sul velo NON
+         chiude, un allarme non si chiude per sbaglio senza leggerlo;
+       - message (esito positivo, es. «Livello modificato»): avviso breve
+         senza velo, in alto a destra sotto la striscia, fondo pieno; si
+         chiude da solo dopo 4 s o al tocco. Non blocca la pagina.
+     CODICE: se desc e' robot.alarm_<n> (o robot.alarmBox_<n>) il codice va
+     in un badge accanto al titolo; per l'avviso unito della 35 il badge lo
+     passa chi lo compone (prop badge: «972 → <codice>»).
+     ========================================================================== -->
+<template>
+  <div v-if="isMessage" class="alert-toast" role="status" aria-live="polite" @click="chiudi">
+    <CircleCheck class="alert-toast__icon" :stroke-width="2" aria-hidden="true" />
+    <div class="alert-toast__body">
+      <p class="alert-toast__title">{{ $t(title) }}</p>
+      <p class="alert-toast__desc">{{ $t(desc) }}</p>
     </div>
+    <button type="button" class="alert-box__x alert-toast__x" :aria-label="$t('alertBox.close')" @click.stop="chiudi">
+      <X :stroke-width="2" aria-hidden="true" />
+    </button>
+  </div>
+  <div v-else class="mission-dialog-overlay alert-overlay">
+    <section class="mission-dialog alert-box" :class="'alert-box--' + tone" role="alertdialog" aria-modal="true"
+      :aria-labelledby="idTitolo" :aria-describedby="idTesto">
+      <header class="alert-box__head">
+        <span class="alert-box__icon"><component :is="icona" :stroke-width="2" aria-hidden="true" /></span>
+        <h2 :id="idTitolo" class="alert-box__title">{{ $t(title) }}</h2>
+        <span v-if="codice" class="alert-box__code">{{ codice }}</span>
+        <button type="button" class="alert-box__x" :aria-label="$t('alertBox.close')" @click="chiudi">
+          <X :stroke-width="2" aria-hidden="true" />
+        </button>
+      </header>
+      <p :id="idTesto" class="alert-box__desc">{{ $t(desc) }}</p>
+      <ul v-if="checks && checks.length" class="alert-box__checks">
+        <li v-for="chk in checks" :key="chk">{{ chk }}</li>
+      </ul>
+      <slot />
+      <UiButton variant="primary" size="main" block class="alert-box__ok" @click="chiudi">{{ $t('alertBox.ok') }}</UiButton>
+    </section>
+  </div>
 </template>
 
 <script>
-import { dataStored } from '@/data';
+import { OctagonAlert, TriangleAlert, CircleCheck, X } from 'lucide-vue-next';
+import UiButton from '@/components/ui/UiButton.vue';
 
+// il codice per il badge, dalla chiave del testo (o quello passato da chi
+// compone l'avviso); '' se non c'e' un codice
+export function codiceDaDesc(desc) {
+	const m = String(desc == null ? '' : desc).match(/^robot\.alarm(?:Box)?_(\d+)$/);
+	return m ? m[1] : '';
+}
+export const TOAST_MS = 4000;
+
+let n = 0;
 export default {
-    emits: ['cmd_close'],
-    props: {
-        title: String,
-        desc: String,
-        type: '',
-        checks: []
-    }
+	components: { UiButton, CircleCheck, X },
+	emits: ['cmd_close'],
+	props: {
+		title: String,
+		desc: String,
+		type: { type: String, default: 'alarm' },
+		checks: { type: Array, default: () => [] },
+		badge: { type: String, default: '' },
+	},
+	data() {
+		const id = 'alert-' + (++n);
+		return { idTitolo: id + '-t', idTesto: id + '-d', timer: null };
+	},
+	computed: {
+		isMessage() { return this.type === 'message'; },
+		tone() { return this.type === 'warning' ? 'warning' : this.type === 'message' ? 'success' : 'danger'; },
+		icona() { return this.type === 'warning' ? TriangleAlert : this.type === 'message' ? CircleCheck : OctagonAlert; },
+		codice() { return this.badge || codiceDaDesc(this.desc); },
+	},
+	watch: {
+		// un esito nuovo mentre il precedente e' ancora a video: 4 s da capo
+		desc() { this.armaToast(); },
+		type() { this.armaToast(); },
+	},
+	mounted() { this.armaToast(); },
+	unmounted() { clearTimeout(this.timer); },
+	methods: {
+		armaToast() {
+			clearTimeout(this.timer);
+			this.timer = this.isMessage ? setTimeout(() => this.chiudi(), TOAST_MS) : null;
+		},
+		chiudi() {
+			clearTimeout(this.timer);
+			this.$emit('cmd_close');
+		},
+	},
 };
 </script>
-
-<style scoped>
-/* Modale allarmi di impianto: rifatta a token (era coral/red/yellow pieni,
-   con padding-bottom 400px refuso). VINCOLO: deve restare visivamente
-   allarmante — bordo 2px danger, titolo danger marcato, glow sul tipo alarm.
-   z-index 50000 invariato: sopra TUTTO, anche modali (2000). */
-.alert {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  padding: var(--space-5) var(--space-6) var(--space-6);
-  background: var(--bg-surface);
-  color: var(--text-primary);
-  border: 2px solid var(--color-danger);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--elevation-3);
-  transition: all 0.5s ease-out;
-  height: auto;
-  max-height: 80vh;
-  width: 90%;
-  max-width: 1000px;
-  z-index: 50000;
-  overflow-y: auto;
-}
-
-.alert h3 {
-  margin: 0;
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-danger);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.close-button {
-  all: unset;
-  position: absolute;
-  top: var(--space-4);
-  right: var(--space-4);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 44px;   /* touch minimo */
-  min-height: 44px;
-  border: 2px solid var(--border-strong);
-  border-radius: var(--radius-md);
-  padding: 0;
-  background-color: var(--bg-surface-2);
-}
-
-.close-icon {
-  width: 30px;
-  height: 30px;
-  display: block;
-}
-
-/* Tipi semantici (status, doc §6): l'alarm deve "gridare" da lontano
-   come le status card — bg danger pieno di tinta + glow esterno. */
-.alarm {
-    background: var(--color-danger-bg);
-    border-color: var(--color-danger);
-    box-shadow: var(--elevation-3), 0 0 12px var(--color-danger);
-}
-
-.warning {
-    background: var(--color-warning-bg);
-    border-color: var(--color-warning);
-}
-
-.warning h3 {
-    color: var(--color-warning);
-}
-
-.message {
-    background: var(--color-success-bg);
-    border-color: var(--color-success);
-}
-
-.message h3 {
-    color: var(--color-success);
-}
-</style>

@@ -82,6 +82,24 @@
     }
   },
   "strip": {
+    "short": {
+      "robot": "Rob.",
+      "easybox": "EB",
+      "trayOut": "C{n} fuori",
+      "st": {
+        "hold": "HOLD",
+        "alarm": "ALL.",
+        "off": "off",
+        "working": "lav.",
+        "auto": "AUTO",
+        "remote": "rem.",
+        "local": "loc.",
+        "manual": "man.",
+        "notDef": "n.d.",
+        "normal": "ok",
+        "unknown": "—"
+      }
+    },
     "cell": {
       "hold": "HOLD",
       "holdSub": "Cella ferma",
@@ -134,6 +152,17 @@
     "selectHint": "Scegli un allarme dall'elenco."
   },
   "settings": {
+    "screen": {
+      "title": "Schermo",
+      "css": "Finestra",
+      "cssUnit": "px CSS",
+      "dpr": "devicePixelRatio",
+      "physical": "Circa in px fisici",
+      "layout": "Misura del layout",
+      "wide": "Largo (da {n} px)",
+      "compact": "Compatto (sotto {n} px)",
+      "hint": "I numeri che vede il browser adesso: si aggiornano se la finestra cambia o il tablet ruota. Il punto di rottura resta {n} px CSS."
+    },
     "user": "Utente",
     "changeLevel": "Cambia livello",
     "language": "Lingua",
@@ -144,6 +173,7 @@
     }
   },
   "layout": {
+    "positionLocked": "Tasca bloccata: lo stato non si cambia da qui.",
     "viewOnly": "SOLO VISUALIZZAZIONE!!",
     "legend": "LEGENDA:",
     "nav": {
@@ -483,6 +513,10 @@
       }
     }
   },
+  "alertBox": {
+    "ok": "OK",
+    "close": "Chiudi"
+  },
   "shell": {
     "offline": "Pannello scollegato: i comandi non partono"
   },
@@ -697,6 +731,7 @@
   },
   "normal": "Normale",
   "cmd": {
+    "holdNotConfirmed": "HOLD non confermato dal PLC: lo stato del robot non è cambiato. Guarda la striscia prima di premere di nuovo.",
     "hold": "HOLD",
     "start": "START",
     "reset": "RESET",

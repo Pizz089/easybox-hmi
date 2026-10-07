@@ -37,6 +37,21 @@
   import { aspettaEco } from '../../util/palletMachine.js'
   // (B61) i codici che la Reimposta stato cella mostra: niente riquadro globale
   import { codiciInDialog } from '../../util/robotAlarm.js'
+  // (fase E1.5) in compatto le schede Movimenti / Missioni / Chele salgono
+  // sulla riga delle schede della sezione (AppShell, #section-extra)
+  import { ref, onMounted, onUnmounted } from 'vue'
+  import { useCompact } from '../../util/breakpoints.js'
+  const compact = useCompact()
+  // larghezza della colonna dei comandi: le schede le stanno sopra, allineate
+  const colComandi = ref(null)
+  const larghezzaComandi = ref(0)
+  let osservaComandi = null
+  onMounted(() => {
+    if (typeof ResizeObserver === 'undefined' || !colComandi.value) return
+    osservaComandi = new ResizeObserver(e => { larghezzaComandi.value = Math.round(e[0].contentRect.width) })
+    osservaComandi.observe(colComandi.value)
+  })
+  onUnmounted(() => { if (osservaComandi) osservaComandi.disconnect() })
   import { ecoMc, ecoBox, ecoRobot, ecoTasca, ecoTipoCassetto } from '../../util/declEcho.js'
 </script>
 
@@ -176,14 +191,21 @@
       </UiCard>
     </div>
 
-    <div class="rv__col rv__col--cmd">
+    <div class="rv__col rv__col--cmd" ref="colComandi">
       <!-- (compatto) schede Movimenti / Missioni / Chele; in largo nascoste,
-           le tre card si vedono tutte. Solo CSS: i comandi restano nel DOM. -->
-      <div class="ctl-seg rv-tabs" role="tablist">
-        <button type="button" class="ctl-seg__opt rv-tabs__opt" :class="{ on: rvTab=='movement' }" @click="rvTab='movement'">{{ $t('robot.section.movement') }}</button>
-        <button type="button" class="ctl-seg__opt rv-tabs__opt" :class="{ on: rvTab=='mission' }" @click="rvTab='mission'">{{ $t('robot.section.mission') }}</button>
-        <button type="button" class="ctl-seg__opt rv-tabs__opt" :class="{ on: rvTab=='claw' }" @click="rvTab='claw'">{{ $t('robot.section.claws') }}</button>
-      </div>
+           le tre card si vedono tutte. Solo CSS: i comandi restano nel DOM.
+           (fase E1.5, 7/10) in compatto stanno sulla riga delle schede della
+           sezione (Robot / Macchina MC1 / EasyBox), a destra, larghe quanto
+           la colonna dei comandi, che cosi' comincia alla stessa altezza
+           della card Stato. In largo non cambia niente. -->
+      <Teleport to="#section-extra" defer :disabled="!compact">
+        <div class="ctl-seg rv-tabs" role="tablist"
+          :style="compact && larghezzaComandi ? { width: larghezzaComandi + 'px' } : null">
+          <button type="button" class="ctl-seg__opt rv-tabs__opt" :class="{ on: rvTab=='movement' }" @click="rvTab='movement'">{{ $t('robot.section.movement') }}</button>
+          <button type="button" class="ctl-seg__opt rv-tabs__opt" :class="{ on: rvTab=='mission' }" @click="rvTab='mission'">{{ $t('robot.section.mission') }}</button>
+          <button type="button" class="ctl-seg__opt rv-tabs__opt" :class="{ on: rvTab=='claw' }" @click="rvTab='claw'">{{ $t('robot.section.claws') }}</button>
+        </div>
+      </Teleport>
 
       <!-- i comandi manuali partono solo in HOLD (CMD_enabled -> cmdActive):
            il motivo una volta qui, invece che sotto ogni tile -->
@@ -2905,6 +2927,14 @@ h6 {
 .rv-grid--move { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
 .rv-grid--mission { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .rv-grid .ui-tile { min-height: 112px; }
+/* (fase E1.6) largo con la finestra massimizzata di Windows (1920x970: barra
+   del titolo e barra delle applicazioni): tile piu' basse, la pagina sta
+   tutta senza scorrere */
+@media (min-width: 1600px) and (max-height: 1040px) {
+  .rv__col--cmd { gap: var(--space-3); }
+  .rv-panel { --card-padding: 18px; }
+  .rv-grid .ui-tile { min-height: 88px; padding: 12px 18px; gap: 8px; }
+}
 .rv-why {
   display: -webkit-box;
   -webkit-line-clamp: 2;

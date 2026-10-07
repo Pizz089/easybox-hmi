@@ -446,7 +446,10 @@
                         this.listPz[index].status=dataStored.status_notDef; //NOT DEFINITED    
                         break;
                     case 9: //LOCKED
-                        alert("POSITION LOCKED!");
+                        // (v3 E1.2) il riquadro del pannello, non l'alert() del browser
+                        dataStored.alert.title = 'WARNING';
+                        dataStored.alert.desc = 'layout.positionLocked';
+                        dataStored.alert.type = 'warning';
                         break;
                 } 
             },

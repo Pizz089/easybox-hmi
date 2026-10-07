@@ -78,9 +78,12 @@ export function codiceInDialog(codice) {
 // daBox(codice) dice se lo stesso codice e' appena arrivato su ALARM/BOX.
 export function robotAlarmCombiner({ t, te, now = () => Date.now(), finestraMs = ALARM_PAIR_MS, daBox = () => false } = {}) {
 	let ultimo972 = null;
-	return payload => {
+	// (E1.2) il codice dell'ultima coppia 972 + codice, per il badge del
+	// riquadro («972 → <codice>»); null se l'ultimo payload non era una coppia
+	const f = payload => {
 		const code = codiceAllarme(payload);
 		const ora = now();
+		f.ultimaCoppia = null;
 		if (code === ALARM_REJECT_ACTIVE) {
 			ultimo972 = ora;
 			return chiaveAllarme(payload);
@@ -94,8 +97,11 @@ export function robotAlarmCombiner({ t, te, now = () => Date.now(), finestraMs =
 		}
 		const chiave = 'robot.alarm_' + code;
 		const descrizione = te && te(chiave) ? String(t(chiave)).trim().replace(/[.\s]+$/, '') : '';
+		f.ultimaCoppia = code;
 		return t('robot.alarm972Code', { errore: descrizione ? code + ' ' + descrizione : String(code) });
 	};
+	f.ultimaCoppia = null;
+	return f;
 }
 
 // ---------------------------------------------------------------- handler
@@ -116,6 +122,10 @@ export function makePlcAlarmHandlers(store, opzioni = {}) {
 			store.alert.title = 'PLC_Error';
 			store.alert.desc = d;
 			store.alert.type = 'warning';
+			// (E1.2) badge del riquadro per l'avviso unito; per gli altri il
+			// codice lo ricava il riquadro dalla chiave. Vale solo per QUESTO
+			// desc: chi scrive dopo un altro testo non si porta dietro il badge
+			store.alert.badge = desc.ultimaCoppia ? { desc: d, text: ALARM_REJECT_ACTIVE + ' → ' + desc.ultimaCoppia } : null;
 		},
 		box: payload => {
 			const code = codiceAllarme(payload);

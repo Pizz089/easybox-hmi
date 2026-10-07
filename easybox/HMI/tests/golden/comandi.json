@@ -7591,7 +7591,47 @@
    ],
    "controlli": [
     {
-     "id": "UiChip@click $emit('open-user')",
+     "id": "img@load misura",
+     "etichetta": "",
+     "evento": "load",
+     "handler": "misura",
+     "disabled": "",
+     "classe": "",
+     "esiti": {
+      "robot in HOLD": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": []
+      },
+      "robot in lavoro": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": []
+      },
+      "robot in AUTO": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": []
+      },
+      "robot spento": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": []
+      },
+      "stato non ancora noto": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": []
+      },
+      "NOT_DEFINED (0)": {
+       "abilitato": true,
+       "effetti": [],
+       "stato": []
+      }
+     }
+    },
+    {
+     "id": "button@click $emit('open-user')",
      "etichetta": "{{t('changeUser.levelLabel.' + livello)}}",
      "evento": "click",
      "handler": "$emit('open-user')",
@@ -7683,11 +7723,11 @@
      }
     },
     {
-     "id": "button@click sendToRobot(17)",
+     "id": "button@click premi",
      "etichetta": "— {{plant.robot == dataStored.status_hold ? t('strip.resume') : t('cmd.hold')}}",
      "evento": "click",
-     "handler": "sendToRobot(17)",
-     "disabled": "ignoto",
+     "handler": "premi",
+     "disabled": "ignoto || holdGuard.attesa",
      "classe": "{ 'strip__hold--held': plant.robot == dataStored.status_hold }",
      "esiti": {
       "robot in HOLD": {
@@ -7729,11 +7769,11 @@
      }
     },
     {
-     "id": "button@click sendToRobot(17) #2",
+     "id": "button@click premi #2",
      "etichetta": "{{t('cmd.start')}}",
      "evento": "click",
-     "handler": "sendToRobot(17)",
-     "disabled": "",
+     "handler": "premi",
+     "disabled": "holdGuard.attesa",
      "classe": "",
      "esiti": {
       "robot in HOLD": "nascosto",

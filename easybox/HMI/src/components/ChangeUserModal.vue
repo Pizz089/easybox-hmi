@@ -3,6 +3,10 @@ import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { dataStored } from '@/data'
+// (v3 E1.2) icone del livello in lucide, come la striscia (util/userLevel.js)
+import { X } from 'lucide-vue-next'
+import UiButton from '@/components/ui/UiButton.vue'
+import { iconaLivello } from '@/util/userLevel.js'
 
 const props = defineProps({
   open: {
@@ -20,11 +24,7 @@ const showError = ref(false)
 const errorMsg = ref('')
 const passwordInput = ref(null)
 
-const currentLevelIcon = computed(() => {
-  const map = { 0: 'casco.png', 1: 'chiaveIng.svg', 2: 'laurea.png' }
-  const file = map[dataStored.userLevel] || 'casco.png'
-  return new URL(`../assets/${file}`, import.meta.url).href
-})
+const currentLevelIcon = computed(() => iconaLivello(dataStored.userLevel))
 
 function close() {
   password.value = ''
@@ -131,27 +131,24 @@ onUnmounted(() => {
 </script>
 
 <template>
+  <!-- (v3 E1.2) la scatola dei dialog del pannello (assets/css/dialogs.css):
+       velo, superficie piena, angoli 24. Il tocco sul velo chiude come prima
+       (e' un cambio utente, non un allarme). -->
   <Teleport to="body">
     <Transition name="modal">
-      <div v-if="open" class="modal-backdrop" @click.self="close">
-        <div class="modal-dialog" :class="{ shake: showError }">
-          <button
-            type="button"
-            class="modal-close"
-            @click="close"
-            :aria-label="t('changeUser.close')"
-          >
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="4" y1="4" x2="16" y2="16" />
-              <line x1="4" y1="16" x2="16" y2="4" />
-            </svg>
-          </button>
-
-          <h2 class="modal-title">{{ t('changeUser.title') }}</h2>
-          <p class="modal-subtitle">{{ t('changeUser.subtitle') }}</p>
+      <div v-if="open" class="mission-dialog-overlay change-user" @click.self="close">
+        <section class="mission-dialog mission-dialog--narrow change-user__box" :class="{ shake: showError }"
+          role="dialog" aria-modal="true" aria-labelledby="changeuser-title">
+          <header class="alert-box__head">
+            <h2 id="changeuser-title" class="alert-box__title change-user__title">{{ t('changeUser.title') }}</h2>
+            <button type="button" class="alert-box__x" @click="close" :aria-label="t('changeUser.close')">
+              <X :stroke-width="2" aria-hidden="true" />
+            </button>
+          </header>
+          <p class="change-user__subtitle">{{ t('changeUser.subtitle') }}</p>
 
           <div class="current-level">
-            <img :src="currentLevelIcon" class="level-icon" alt="" />
+            <component :is="currentLevelIcon" class="level-icon" :stroke-width="2" aria-hidden="true" />
             <span>
               {{ t('changeUser.currentLevel') }}:
               <strong>{{ t('changeUser.levelLabel.' + dataStored.userLevel) }}</strong>
@@ -172,155 +169,84 @@ onUnmounted(() => {
             <span v-if="errorMsg" class="error-msg">{{ errorMsg }}</span>
           </div>
 
-          <button type="button" class="pure-button-primary btn-primary" @click="submit">
-            {{ t('changeUser.submit') }}
-          </button>
+          <UiButton variant="primary" size="main" block @click="submit">{{ t('changeUser.submit') }}</UiButton>
 
-          <!-- X: visibile SOLO sopra il livello operatore -->
-          <button v-if="dataStored.userLevel > 0" type="button" class="btn-ghost btn-logout" @click="backToOperator">
+          <!-- ritorno all'operatore: visibile SOLO sopra il livello operatore -->
+          <UiButton v-if="dataStored.userLevel > 0" variant="outline" size="main" block @click="backToOperator">
             {{ t('changeUser.backToOperator') }}
-          </button>
-        </div>
+          </UiButton>
+        </section>
       </div>
     </Transition>
   </Teleport>
 </template>
 
 <style scoped>
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: var(--bg-backdrop);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2000;
-}
-
-.modal-dialog {
-  position: relative;
-  background: var(--bg-surface);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--elevation-3);
-  padding: var(--space-6);
-  width: 420px;
-  max-width: 92vw;
-}
-
-.modal-dialog.shake {
-  animation: shake 0.4s cubic-bezier(.36, .07, .19, .97) both;
-}
-
-.modal-close {
-  position: absolute;
-  top: var(--space-4);
-  right: var(--space-4);
-  background: transparent;
-  border: 0;
-  cursor: pointer;
+/* (v3 E1.2) scatola, velo e X dalla sede unica (dialogs.css); qui solo il
+   contenuto del cambio utente. Sopra gli altri dialog (2000), sotto il
+   riquadro degli allarmi (50000). */
+.change-user { z-index: 2000; }
+.change-user__title { color: var(--text-primary); }
+.change-user__subtitle {
+  margin: 0;
+  font-size: var(--font-size-body);
   color: var(--text-secondary);
-  padding: var(--space-2);
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 44px;  /* touch minimo */
-  min-height: 44px;
-  transition: background var(--transition-fast), color var(--transition-fast);
-}
-
-.modal-close:hover,
-.modal-close:focus-visible {
-  background: var(--bg-surface-2);
-  color: var(--text-primary);
-  outline: none;
-}
-
-.modal-title {
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-bold);
-  color: var(--text-primary);
-  margin: 0 0 var(--space-2);
-}
-
-.modal-subtitle {
-  font-size: var(--font-size-sm);
-  color: var(--text-secondary);
-  margin: 0 0 var(--space-5);
 }
 
 .current-level {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-4);
-  background: var(--bg-input);
-  border-radius: var(--radius-md);
-  margin-bottom: var(--space-5);
-  font-size: var(--font-size-sm);
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg-well);
+  border-radius: var(--radius-btn);
+  font-size: var(--font-size-body);
   color: var(--text-secondary);
 }
-
 .current-level strong {
   color: var(--text-primary);
-  font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-extrabold);
 }
-
 .level-icon {
   width: 32px;
   height: 32px;
-  object-fit: contain;
+  flex: none;
+  color: var(--accent);
 }
 
 .form-group {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  margin-bottom: var(--space-5);
 }
-
 .form-group label {
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-body);
   color: var(--text-secondary);
-  font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-bold);
 }
-
 .form-group input {
   background: var(--bg-input);
-  /* border-strong sugli input (audit WCAG: subtle su bg-input 1.77 -> 4.31) */
   border: 1px solid var(--border-strong);
-  border-radius: var(--radius-md);
-  padding: var(--space-2) var(--space-4);
-  min-height: 44px;  /* touch minimo */
+  border-radius: var(--radius-btn);
+  padding: 0 var(--space-4);
+  min-height: 56px;
   color: var(--text-primary);
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-md);
   transition: border-color var(--transition-fast);
 }
-
 .form-group input:focus,
 .form-group input:focus-visible {
   outline: none;
   border-color: var(--text-primary);
 }
-
 .error-msg {
-  font-size: var(--font-size-sm);
-  color: var(--color-danger);
+  font-size: var(--font-size-body);
+  color: var(--color-danger-fg);
 }
 
-/* Layout hook (opzione A audit-sistema-b): SOLO full-width nel modal,
-   l'estetica viene dalla variante Primary canonica (buttons.css). */
-.btn-primary {
-  width: 100%;
+.change-user__box.shake {
+  animation: shake 0.4s cubic-bezier(.36, .07, .19, .97) both;
 }
-
-/* X: layout hook come .btn-primary — l'estetica e' la variante Ghost
-   canonica (buttons.css), qui solo full-width + stacco dal submit. */
-.btn-logout {
-  width: 100%;
-  margin-top: var(--space-2);
-}
-
 @keyframes shake {
   10%, 90% { transform: translate3d(-1px, 0, 0); }
   20%, 80% { transform: translate3d(2px, 0, 0); }
@@ -332,19 +258,16 @@ onUnmounted(() => {
 .modal-leave-active {
   transition: opacity 0.2s ease;
 }
-
-.modal-enter-active .modal-dialog,
-.modal-leave-active .modal-dialog {
+.modal-enter-active .change-user__box,
+.modal-leave-active .change-user__box {
   transition: transform 0.2s ease, opacity 0.2s ease;
 }
-
 .modal-enter-from,
 .modal-leave-to {
   opacity: 0;
 }
-
-.modal-enter-from .modal-dialog,
-.modal-leave-to .modal-dialog {
+.modal-enter-from .change-user__box,
+.modal-leave-to .change-user__box {
   transform: scale(0.95);
   opacity: 0;
 }

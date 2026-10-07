@@ -80,17 +80,22 @@ console.log('\n3) HOLD / Riprendi / START della striscia = pulsante di robotView
 const g = JSON.parse(readFileSync('tests/golden/comandi.json', 'utf8'));
 const rif = JSON.parse(readFileSync('tests/golden/comandi_riferimento.json', 'utf8'));
 const strip = g.pagine.StatusStrip.controlli, robot = rif.pagine.robotView.controlli;
-const emitsIn = (ctrls, scen) => ctrls.filter(c => c.handler === 'sendToRobot(17)').map(c => c.esiti[scen]).filter(e => e && typeof e === 'object').flatMap(e => e.effetti);
+// (fase E1.3) nella striscia il 17 passa dall'antirimbalzo: handler premi,
+// che manda sendToRobot(17) (test_hold_guard.mjs)
+const ssSrc = readFileSync('src/layout/v3/StatusStrip.vue', 'utf8');
+const viaPremi = /const premi = \(\) => \{ holdGuard\.premi\(\(\) => sendToRobot\(17\)\); \};/.test(ssSrc);
+const manda17 = h => h.startsWith('sendToRobot(17)') || (viaPremi && h === 'premi');
+const emitsIn = (ctrls, scen) => ctrls.filter(c => manda17(c.handler)).map(c => c.esiti[scen]).filter(e => e && typeof e === 'object').flatMap(e => e.effetti);
 const coppie = [['robot in HOLD', 'HOLD liv2'], ['robot in AUTO', 'AUTO liv2'], ['robot spento', 'OFF liv2']];
 for (const [s, r] of coppie)
 	check(JSON.stringify(emitsIn(strip, s)) === JSON.stringify(emitsIn(robot, r)) && emitsIn(strip, s).length === 1,
 		s + ': ' + JSON.stringify(emitsIn(strip, s)) + ' come robotView (' + JSON.stringify(emitsIn(robot, r)) + ')');
-const vis = (ctrls, scen) => ctrls.filter(c => c.handler.startsWith('sendToRobot(17)')).map(c => c.esiti[scen] === 'nascosto' ? '-' : c.etichetta.includes('start') || c.etichetta === 'START' ? 'START' : 'HOLD');
+const vis = (ctrls, scen) => ctrls.filter(c => manda17(c.handler)).map(c => c.esiti[scen] === 'nascosto' ? '-' : c.etichetta.includes('start') || c.etichetta === 'START' ? 'START' : 'HOLD');
 check(vis(strip, 'robot spento').join() === '-,START' && vis(strip, 'robot in HOLD').join() === 'HOLD,-', 'a tre stati: HOLD/Riprendi se non spento, START da spento');
 // (6/10) il 17 e' un toggle nel PLC: a STATUS ignoto o NOT_DEFINED il
 // pulsante resta visibile ma spento, in tutti e due i posti
 const spento = (ctrls, scen) => {
-	const visibili = ctrls.filter(c => c.handler.startsWith('sendToRobot(17)')).map(c => c.esiti[scen]).filter(e => e && e !== 'nascosto');
+	const visibili = ctrls.filter(c => manda17(c.handler)).map(c => c.esiti[scen]).filter(e => e && e !== 'nascosto');
 	return visibili.length === 1 && visibili[0].abilitato === false;
 };
 check(spento(strip, 'stato non ancora noto') && spento(strip, 'NOT_DEFINED (0)') && spento(robot, 'STATUS ignoto liv2') && spento(robot, 'NOT_DEFINED liv2'),

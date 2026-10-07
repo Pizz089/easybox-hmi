@@ -181,11 +181,11 @@ export default {
 }
 .relaunch-choice button {
     width: 100%;
-    min-height: 52px;
+    min-height: var(--touch-target);   /* (v3 E1.2) 56, come la tavola Conferma */
 }
 .relaunch-cancel {
     width: 100%;
-    min-height: 52px;
+    min-height: var(--touch-target);
 }
 .relaunch-hint {
     color: var(--text-muted);

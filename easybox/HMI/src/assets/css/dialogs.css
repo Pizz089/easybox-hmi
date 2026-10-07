@@ -70,3 +70,138 @@
 .mission-dialog--danger .pure-button-mission:hover:not(:disabled) {
     background: var(--color-critical-hover);
 }
+
+/* ---- (v3 E1.2, 7/10) titolo e pulsanti dei dialog di oggi ----
+   robotView, layoutView, Rilancia, Grigliato e gli altri usano gia' questa
+   scatola, ma il titolo era .command-section-title (etichetta piccola,
+   grigia, maiuscola) e i pulsanti alti 44-52: nella tavola Conferma il
+   titolo e' grande e i pulsanti sono da 56. Una regola qui, nessun .vue. */
+.mission-dialog > .command-section-title:first-child,
+.mission-dialog > h3:first-child {
+    margin: 0;
+    font-size: 26px;
+    font-weight: var(--font-weight-extrabold);
+    line-height: 1.2;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--text-primary);
+}
+.mission-dialog .pure-g button,
+.mission-dialog .button_pressed {
+    min-height: var(--touch-target);
+}
+
+/* ============ RIQUADRO GLOBALE DEGLI ALLARMI (Alerts/Alert.vue) ============
+   (fase E1.2, 7/10) Stessa scatola dei dialog: velo --bg-backdrop, superficie
+   piena --bg-dialog, angoli 24, min(720px, 94vw). Il tono (allarme rosso,
+   avviso ambra) sta in icona, titolo e bordo: MAI un --color-*-bg come fondo
+   della superficie, sono trasparenti e la pagina si leggeva attraverso.
+   Sopra a tutto (z-index 50000, come prima), anche sopra gli altri dialog.
+   Il velo non ha @click: un allarme si chiude solo con OK o con la X. */
+.alert-overlay { z-index: 50000; }
+.alert-box {
+    border: 2px solid var(--border-strong);
+    gap: 20px;
+}
+.alert-box--danger  { border-color: var(--color-danger); }
+.alert-box--warning { border-color: var(--color-warning); }
+.alert-box__head {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+}
+.alert-box__icon {
+    width: 56px;
+    height: 56px;
+    flex: none;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.alert-box__icon svg { width: 30px; height: 30px; }
+/* il cerchio dell'icona come in UiConfirmDialog (la tinta e' sul cerchio,
+   non sulla superficie) */
+.alert-box--danger  .alert-box__icon { background: var(--color-danger-bg);  color: var(--color-danger-fg); }
+.alert-box--warning .alert-box__icon { background: var(--color-warning-bg); color: var(--color-warning-fg); }
+.alert-box__title {
+    margin: 0;
+    flex: 1;
+    min-width: 0;
+    font-size: 26px;
+    font-weight: var(--font-weight-extrabold);
+    line-height: 1.2;
+    text-transform: none;
+    letter-spacing: 0;
+    overflow-wrap: anywhere;
+}
+.alert-box--danger  .alert-box__title { color: var(--color-danger-fg); }
+.alert-box--warning .alert-box__title { color: var(--color-warning-fg); }
+/* il codice del PLC, accanto al titolo */
+.alert-box__code {
+    flex: none;
+    padding: 6px 12px;
+    border-radius: var(--radius-chip);
+    background: var(--bg-well);
+    color: var(--text-primary);
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-extrabold);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+.alert-box__x {
+    flex: none;
+    width: 56px;
+    height: 56px;
+    border: 0;
+    border-radius: var(--radius-btn);
+    background: transparent;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+.alert-box__x:hover { background: var(--bg-raised); color: var(--text-primary); }
+.alert-box__x svg { width: 28px; height: 28px; }
+/* testo leggibile a un metro */
+.alert-box__desc {
+    margin: 0;
+    font-size: var(--font-size-md);
+    line-height: 1.55;
+    color: var(--text-primary);
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+}
+.alert-box__checks { margin: 0; padding-left: 22px; font-size: var(--font-size-body); color: var(--text-secondary); }
+.alert-box__ok { min-height: 56px; }
+@media (min-width: 1600px) {
+    /* in largo OK a destra, non a tutta larghezza */
+    .alert-box__ok { align-self: flex-end; width: auto; min-width: 200px; }
+}
+
+/* esito positivo (type message): avviso breve senza velo, in alto a destra
+   sotto la striscia, fondo pieno; si chiude da solo dopo 4 s o al tocco */
+.alert-toast {
+    position: fixed;
+    top: calc(var(--status-strip-height) + 16px);
+    right: 16px;
+    z-index: 50000;
+    width: min(460px, calc(100vw - 32px));
+    box-sizing: border-box;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 16px 12px 16px 18px;
+    border-radius: 20px;
+    background: var(--bg-dialog);
+    border: 2px solid var(--color-success);
+    box-shadow: var(--elevation-3);
+    cursor: pointer;
+}
+.alert-toast__icon { flex: none; width: 28px; height: 28px; margin-top: 2px; color: var(--color-success-fg); }
+.alert-toast__body { flex: 1; min-width: 0; }
+.alert-toast__title { margin: 0; font-size: var(--font-size-body); font-weight: var(--font-weight-extrabold); color: var(--color-success-fg); }
+.alert-toast__desc { margin: 4px 0 0; font-size: var(--font-size-md); line-height: 1.45; color: var(--text-primary); overflow-wrap: anywhere; }
+.alert-toast__x { width: 48px; height: 48px; }

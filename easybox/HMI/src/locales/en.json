@@ -82,6 +82,24 @@
     }
   },
   "strip": {
+    "short": {
+      "robot": "Rob.",
+      "easybox": "EB",
+      "trayOut": "T{n} out",
+      "st": {
+        "hold": "HOLD",
+        "alarm": "ALM",
+        "off": "off",
+        "working": "run",
+        "auto": "AUTO",
+        "remote": "rem.",
+        "local": "loc.",
+        "manual": "man.",
+        "notDef": "n.d.",
+        "normal": "ok",
+        "unknown": "—"
+      }
+    },
     "cell": {
       "hold": "HOLD",
       "holdSub": "Cell stopped",
@@ -134,6 +152,17 @@
     "selectHint": "Pick an alarm from the list."
   },
   "settings": {
+    "screen": {
+      "title": "Screen",
+      "css": "Window",
+      "cssUnit": "CSS px",
+      "dpr": "devicePixelRatio",
+      "physical": "About, in physical px",
+      "layout": "Layout size",
+      "wide": "Wide (from {n} px)",
+      "compact": "Compact (below {n} px)",
+      "hint": "What the browser sees right now: updated when the window changes or the tablet rotates. The breakpoint stays at {n} CSS px."
+    },
     "user": "User",
     "changeLevel": "Change level",
     "language": "Language",
@@ -144,6 +173,7 @@
     }
   },
   "layout": {
+    "positionLocked": "Pocket locked: its state is not changed from here.",
     "viewOnly": "VIEW ONLY!!",
     "legend": "LEGEND:",
     "nav": {
@@ -483,6 +513,10 @@
       }
     }
   },
+  "alertBox": {
+    "ok": "OK",
+    "close": "Close"
+  },
   "shell": {
     "offline": "Panel disconnected: commands are not sent"
   },
@@ -697,6 +731,7 @@
   },
   "normal": "Normal",
   "cmd": {
+    "holdNotConfirmed": "HOLD not confirmed by the PLC: the robot state did not change. Check the strip before pressing again.",
     "hold": "HOLD",
     "start": "START",
     "reset": "RESET",

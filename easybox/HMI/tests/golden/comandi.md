@@ -287,10 +287,11 @@ Scenari: robot in HOLD · robot in lavoro · robot in AUTO · robot spento · st
 
 | Etichetta | Handler | Abilitazione | Abilitato per scenario | Effetto | Conferma |
 |---|---|---|---|---|---|
+| (load) | `misura` |  | robot in HOLD: sì<br>robot in lavoro: sì<br>robot in AUTO: sì<br>robot spento: sì<br>stato non ancora noto: sì<br>NOT_DEFINED (0): sì | – | no |
 | {{t('changeUser.levelLabel.' + livello)}} | `$emit('open-user')` |  | robot in HOLD: sì<br>robot in lavoro: sì<br>robot in AUTO: sì<br>robot spento: sì<br>stato non ancora noto: sì<br>NOT_DEFINED (0): sì | evento open-user | no |
 | {{locale.toUpperCase()}} | `cambiaLingua` |  | robot in HOLD: sì<br>robot in lavoro: sì<br>robot in AUTO: sì<br>robot spento: sì<br>stato non ancora noto: sì<br>NOT_DEFINED (0): sì | – | no |
-| — {{plant.robot == dataStored.status_hold ? t('strip.resume') : t('cmd.hold')}} | `sendToRobot(17)` | `ignoto` | robot in HOLD: sì<br>robot in lavoro: sì<br>robot in AUTO: sì<br>robot spento: –<br>stato non ancora noto: no<br>NOT_DEFINED (0): no | emit TO_PLANT/CMD/ROBOT 17 | no |
-| {{t('cmd.start')}} | `sendToRobot(17)` |  | robot in HOLD: –<br>robot in lavoro: –<br>robot in AUTO: –<br>robot spento: sì<br>stato non ancora noto: –<br>NOT_DEFINED (0): – | emit TO_PLANT/CMD/ROBOT 17 | no |
+| — {{plant.robot == dataStored.status_hold ? t('strip.resume') : t('cmd.hold')}} | `premi` | `ignoto \|\| holdGuard.attesa` | robot in HOLD: sì<br>robot in lavoro: sì<br>robot in AUTO: sì<br>robot spento: –<br>stato non ancora noto: no<br>NOT_DEFINED (0): no | emit TO_PLANT/CMD/ROBOT 17 | no |
+| {{t('cmd.start')}} | `premi` | `holdGuard.attesa` | robot in HOLD: –<br>robot in lavoro: –<br>robot in AUTO: –<br>robot spento: sì<br>stato non ancora noto: –<br>NOT_DEFINED (0): – | emit TO_PLANT/CMD/ROBOT 17 | no |
 
 ## AttrezzaggiView (`src/views/conf/AttrezzaggiView.vue`)
 

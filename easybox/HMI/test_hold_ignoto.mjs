@@ -48,7 +48,11 @@ let gated = 0;
 for (const f of FILE) {
 	const src = readFileSync(f, 'utf8');
 	const tpl = src.slice(src.indexOf('<template>'), src.lastIndexOf('</template>')).replace(/<!--[\s\S]*?-->/g, '');
-	for (const m of tpl.matchAll(/<button([^>]*@click="sendToRobot\(17\)"[^>]*)>([\s\S]*?)<\/button>/g)) {
+	// (fase E1.3) nella striscia il 17 passa dall'antirimbalzo: @click="premi",
+	// e premi manda sendToRobot(17) (test_hold_guard.mjs)
+	const viaPremi = /const premi = \(\) => \{ holdGuard\.premi\(\(\) => sendToRobot\(17\)\); \};/.test(src);
+	const click = viaPremi ? '(?:sendToRobot\\(17\\)|premi)' : 'sendToRobot\\(17\\)';
+	for (const m of tpl.matchAll(new RegExp('<button([^>]*@click="' + click + '"[^>]*)>([\\s\\S]*?)<\\/button>', 'g'))) {
 		const attr = m[1], corpo = m[2];
 		// START: compare solo con lo stato NOTO "spento"
 		if (/v-if="dataRobot\.STATUS==dataStored\.status_off"/.test(attr) || /(^|\s)v-else(\s|$|=)/.test(attr)) continue;

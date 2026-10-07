@@ -28,5 +28,5 @@ const schede = computed(() => {
 </script>
 
 <style scoped>
-.section-tabs { align-self: flex-start; }
+.section-tabs { align-self: flex-start; flex: none; }
 </style>

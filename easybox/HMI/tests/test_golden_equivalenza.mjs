@@ -96,6 +96,9 @@ export const AMMESSE = [
 		motivo: 'Gestione pallet col cassetto fuori (o in manovra): il pallet la cui pinza (PALLET.GripperREQ) non e\' quella a bordo e\' spento nel dialog, e il bottone si spegne se nessun pallet si carica con la pinza a bordo, col motivo «Cassetto fuori: prima rientralo». Il carico comincerebbe con un cambio pinza, che il PLC 35 rifiuta col 1519 (e il PLC 34 eseguiva). Stesso comando 13;3;<pallet>;<posizione> per i pallet della pinza a bordo. Coperto da test_gripper_hook.mjs' },
 	{ pagina: 'robotView', tipo: 'cambiato', scenario: /cassetto \d+ fuori/, firma: /^conferma: emit TO_PLANT\/CMD\/ROBOT 3[13];/,
 		motivo: 'collaudo 31/33 col cassetto fuori: si offre solo la pinza a bordo (prima l\'elenco completo, e con un\'altra pinza il PLC restava appeso al 1110/1210). Stessi comandi 31;tasca;pinza e 33;pinza. Coperto da test_gripper_hook.mjs' },
+	// (fase E1.3, verso definitivo 2.1) antirimbalzo del HOLD della striscia
+	{ pagina: 'StatusStrip', tipo: 'cambiato', firma: /^emit TO_PLANT\/CMD\/ROBOT 17$/,
+		motivo: 'HOLD / Riprendi / START: stesso comando 17. Il 17 e\' un interruttore nel PLC, due tocchi rimettono in moto la cella: dopo un tocco il pulsante resta spento finche\' STATUS del robot non cambia, al massimo 5 s; senza cambio, avviso «HOLD non confermato dal PLC» (util/holdGuard.js). Negli scenari della golden (nessun tocco in corso) le abilitazioni sono quelle di prima. Coperto da test_hold_guard.mjs' },
 ];
 const ammessa = (pagina, firma, scenario) => AMMESSE.find(a => (!a.pagina || a.pagina === pagina) && a.firma.test(firma)
 	&& (!a.scenario || (scenario !== undefined && a.scenario.test(scenario))));

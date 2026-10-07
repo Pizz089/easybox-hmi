@@ -155,6 +155,10 @@
   --icon-size-tile: 28px;   /* tile */
 
   /* ---------- Shell ---------- */
+  /* (fase E1.4) altezza della shell: 100vh qui, 100dvh dove il browser lo
+     conosce (@supports in fondo al file); dove non lo conosce, AppShell la
+     prende da innerHeight al ridimensionamento (util/appHeight.js) */
+  --app-h:               100vh;
   --rail-width:          104px;
   --status-strip-height: 76px;
   /* margini fluidi, tarati sulle tre tavole: pagina 16 / 20 / 28 e card
@@ -182,6 +186,12 @@
 }
 
 /* ---------- COMPATTO (< 1600 px): stessa struttura, misure ridotte ---------- */
+/* (fase E1.4) altezza vera della finestra, senza la barra degli indirizzi
+   (prima del blocco del compatto: li' solo misure in px) */
+@supports (height: 100dvh) {
+  :root { --app-h: 100dvh; }
+}
+
 @media (max-width: 1599px) {
   :root {
     --font-size-hero:  60px;

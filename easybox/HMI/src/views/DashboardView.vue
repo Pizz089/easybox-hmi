@@ -13,10 +13,20 @@ import { caricaElenco, STATO, messaggioPer } from '../util/caricaElenco.js'
 import CubeIcon3D from '../components/CubeIcon3D.vue'
 import UiBadge from '../components/ui/UiBadge.vue'
 import { Bot, Microwave, Server, ChevronRight, Square, ListOrdered, CircleX } from 'lucide-vue-next'
+// (fase E1.3) se in compatto il logo non ci sta nella striscia, sta qui
+import { computed } from 'vue'
+import { useCompact } from '../util/breakpoints.js'
+import { striscia } from '../util/stripLayout.js'
+const compattoHome = useCompact()
+const logoInHome = computed(() => compattoHome.value && striscia.logoNascosto)
 </script>
 
 <template>
-  <div class="home">
+  <div class="home" :class="{ 'home--logo': logoInHome }">
+
+    <!-- (fase E1.3) logo aziendale: in compatto, solo quando la striscia non
+         ha posto per lui (util/stripLayout.js) -->
+    <div v-if="logoInHome" class="home-logo"><img src="@/assets/logo.png" alt="ADMG" /></div>
 
     <!-- ===== ORDINE IN CORSO =====
          L'ordine con STATUS = in lavorazione (3). "Ferma ordine" manda lo
@@ -510,6 +520,12 @@ export default {
     gap: var(--space-3);
     align-content: start;
   }
+  .home--logo {
+    grid-template-rows: auto auto auto auto;
+    grid-template-areas: "logo" "order" "tiles" "banner";
+  }
+  .home-logo { grid-area: logo; }
+  .home-logo img { height: 28px; width: auto; display: block; }
   .home-queue, .home-alarms { display: none; }
   .home-banner {
     grid-area: banner;

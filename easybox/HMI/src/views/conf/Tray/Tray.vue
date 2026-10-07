@@ -312,10 +312,6 @@ export default {
         }
     },
     methods: {
-        modifica(newVal){
-            alert(newValue)
-            console.log(newValue)
-        },
         changeInput(i){
             if (i==".")
                 this.input= parseInt(this.input.toString()+'.0')

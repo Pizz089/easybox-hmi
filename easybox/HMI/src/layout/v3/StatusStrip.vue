@@ -3,8 +3,8 @@
      Main, Home43, Tablet). Mostra SOLO dati che esistono (stores/
      plantStatus.js): stato cella dal robot, Robot, MC1 (MC2 se
      configurata), EasyBox col cassetto fuori, collegamento col server,
-     campanella con gli allarmi attivi, livello utente, lingua, ora, e a
-     destra il pulsante HOLD / Riprendi / START.
+     campanella con gli allarmi attivi, utente, lingua, ora, e a destra il
+     pulsante HOLD / Riprendi / START.
      NON mostrati perche' oggi non hanno una fonte: percentuale e tempo
      residuo del ciclo MC1, stato del PLC (il backend non ha un battito
      del PLC): vedi il report della fase A.
@@ -14,20 +14,45 @@
      testo secondo lo STATUS del robot — HOLD se il robot non e' ne' in
      HOLD ne' spento, "Riprendi" (oggi "HOLD => CONTINUA") in HOLD, START
      da spento con la stessa animazione (blinker). La mappa golden dei
-     comandi lo verifica.
+     comandi lo verifica. (fase E1.3, verso definitivo 2.1) Il 17 e' un
+     interruttore: dopo un tocco il pulsante resta spento finche' STATUS non
+     cambia, o al massimo 5 s; senza cambio, avviso «HOLD non confermato dal
+     PLC» (util/holdGuard.js).
 
-     Compatto (< 1600 px): restano stato cella, MC1, collegamento (solo il
-     pallino), campanella, ora e pulsante.
+     (fase E1.3, 7/10, Dario in cella: «nelle versioni rimpicciolite voglio
+     vedere anche lo stato di robot e EasyBox», «l'operatore deve essere
+     selezionabile anche dalla Home», «manca il logo»)
+       - LARGO: logo (40 px) a sinistra, stato cella, Robot, MC, EasyBox,
+         collegamento, campanella, utente (icona del livello ed etichetta),
+         lingua, ora, HOLD;
+       - COMPATTO: Robot col suo stato al posto della chip «stato cella» (e'
+         la stessa informazione: la chip cella e' calcolata da plant.robot),
+         col tono della cella (ambra in HOLD, rossa in allarme); MC, EasyBox
+         (o «Cassetto N fuori»), il pallino del collegamento, campanella,
+         utente (solo l'icona), HOLD; logo a 28 px e ora se ci stanno;
+       - se non ci sta tutto si toglie prima l'ora, poi il logo, poi si
+         passa ai testi brevi (strip.short.*). Mai Robot, MC, EasyBox,
+         campanella, utente e HOLD; niente a capo, niente scorrimento, e lo
+         stato non si taglia con «…». La misura e' quella vera della striscia
+         (scrollWidth contro clientWidth), rifatta al ridimensionamento e
+         quando cambia un testo. Se il logo esce dalla striscia, in compatto
+         lo mostra l'intestazione della Home (util/stripLayout.js).
      ========================================================================== -->
 <template>
-  <header class="strip">
-    <UiChip :tone="cella.tone" :dot="cella.dot" strong>
+  <header ref="striscia" class="strip" :class="{ 'strip--compact': compact }" :data-ripiego="ripiego">
+    <img v-if="mostraLogo" src="@/assets/logo.png" class="strip__logo" alt="ADMG" @load="misura" />
+
+    <!-- largo: stato cella; compatto: Robot col tono della cella -->
+    <UiChip v-if="!compact" :tone="cella.tone" :dot="cella.dot" strong>
       <b>{{ t(cella.label) }}</b><span v-if="cella.sub">{{ t(cella.sub) }}</span>
     </UiChip>
-    <UiChip v-if="!compact" :dot="punto(plant.robot)">{{ t('strip.robot') }} <b>{{ testo(plant.robot) }}</b></UiChip>
-    <UiChip v-for="m in macchine" :key="m.n" :dot="punto(m.status)">MC{{ m.n }} <b v-if="!compact">{{ testo(m.status) }}</b></UiChip>
-    <UiChip v-if="!compact" :dot="plant.trayOut > 0 ? 'warning' : punto(plant.box)">
-      {{ t('strip.easybox') }} <b>{{ plant.trayOut > 0 ? t('strip.trayOut', { n: plant.trayOut }) : testo(plant.box) }}</b>
+    <UiChip :tone="compact ? cella.tone : 'neutral'" :dot="punto(plant.robot)" data-strip="robot">
+      {{ t(brevi ? 'strip.short.robot' : 'strip.robot') }} <b>{{ testo(plant.robot) }}</b>
+    </UiChip>
+    <UiChip v-for="m in macchine" :key="m.n" :dot="punto(m.status)" :data-strip="'mc' + m.n">MC{{ m.n }} <b>{{ testo(m.status) }}</b></UiChip>
+    <UiChip :dot="plant.trayOut > 0 ? 'warning' : punto(plant.box)" data-strip="easybox">
+      {{ t(brevi ? 'strip.short.easybox' : 'strip.easybox') }}
+      <b>{{ plant.trayOut > 0 ? t(brevi ? 'strip.short.trayOut' : 'strip.trayOut', { n: plant.trayOut }) : testo(plant.box) }}</b>
     </UiChip>
 
     <div class="strip__sp"></div>
@@ -43,17 +68,24 @@
       <Bell :stroke-width="2" aria-hidden="true" />
       <span v-if="alarms > 0" class="strip__badge">{{ alarms }}</span>
     </RouterLink>
-    <UiChip v-if="!compact" clickable :aria-label="t('strip.user')" @click="$emit('open-user')">{{ t('changeUser.levelLabel.' + livello) }}</UiChip>
+    <!-- utente, in tutte e due le misure: icona del livello (lucide), in
+         largo anche l'etichetta; apre il cambio utente -->
+    <button type="button" class="strip__user" data-strip="user" :aria-label="t('strip.user') + ': ' + t('changeUser.levelLabel.' + livello)"
+      :title="t('changeUser.levelLabel.' + livello)" @click="$emit('open-user')">
+      <component :is="iconaLivello(livello)" :stroke-width="2" aria-hidden="true" />
+      <span v-if="!compact">{{ t('changeUser.levelLabel.' + livello) }}</span>
+    </button>
     <UiChip v-if="!compact" clickable :aria-label="t('strip.lang')" @click="cambiaLingua">{{ locale.toUpperCase() }}</UiChip>
-    <span class="strip__clock">{{ ora }}</span>
+    <span v-if="mostraOra" class="strip__clock">{{ ora }}</span>
 
     <!-- HOLD / Riprendi / START: stesso comando del pulsante di robotView.
          STATUS ignoto o NOT_DEFINED: il 17 e' un toggle nel PLC, "HOLD"
          potrebbe togliere l'hold -> visibile ma disabilitato, "—"
-         (util/holdState.js) -->
-    <button v-if="plant.robot != dataStored.status_off" type="button" class="strip__hold"
+         (util/holdState.js). Dopo un tocco: spento finche' STATUS non
+         cambia, al massimo 5 s (util/holdGuard.js) -->
+    <button v-if="plant.robot != dataStored.status_off" type="button" class="strip__hold" data-strip="hold"
       :class="{ 'strip__hold--held': plant.robot == dataStored.status_hold }"
-      :disabled="ignoto" :title="ignoto ? t('cmd.holdUnknown') : null" @click="sendToRobot(17)">
+      :disabled="ignoto || holdGuard.attesa" :title="ignoto ? t('cmd.holdUnknown') : null" @click="premi">
       <template v-if="ignoto">—</template>
       <template v-else>
         <Play v-if="plant.robot == dataStored.status_hold" :stroke-width="2" aria-hidden="true" />
@@ -61,14 +93,14 @@
         {{ plant.robot == dataStored.status_hold ? t('strip.resume') : t('cmd.hold') }}
       </template>
     </button>
-    <button v-else type="button" class="strip__hold strip__hold--start" @click="sendToRobot(17)">
+    <button v-else type="button" class="strip__hold strip__hold--start" data-strip="hold" :disabled="holdGuard.attesa" @click="premi">
       <Play :stroke-width="2" aria-hidden="true" />{{ t('cmd.start') }}
     </button>
   </header>
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { Bell, Play, Pause } from 'lucide-vue-next';
@@ -78,7 +110,10 @@ import { configuredMachineNumbers } from '@/util/machineBrands';
 import { useCompact } from '@/util/breakpoints';
 import { plant } from '@/stores/plantStatus.js';
 import { robotStatoIgnoto } from '@/util/holdState.js';
+import { createHoldGuard } from '@/util/holdGuard.js';
 import { statusName, statusKey, statusTone } from '@/util/unitStatus.js';
+import { iconaLivello } from '@/util/userLevel.js';
+import { striscia as statoStriscia, RIPIEGHI } from '@/util/stripLayout.js';
 import { useLingua } from '@/util/lingua.js';
 import UiChip from '@/components/ui/UiChip.vue';
 
@@ -93,7 +128,7 @@ const ignoto = computed(() => robotStatoIgnoto(plant.robot));
 // codice di [UNIT].STATUS -> testo e pallino: util/unitStatus.js, la stessa
 // mappatura delle card Stato e delle tile della Home
 const nome = statusName;
-const testo = code => t(statusKey(code));
+const testo = code => t((brevi.value ? 'strip.short.st.' : 'strip.st.') + statusKey(code).split('.').pop());
 const punto = statusTone;
 
 // chip dello stato cella: dal robot, che e' chi va in HOLD
@@ -109,14 +144,69 @@ const cella = computed(() => {
 });
 const macchine = computed(() => configuredMachineNumbers().map(n => ({ n, status: plant['mc' + n] })));
 
-// lingua: stesso ciclo it -> en della barra di prima (util/lingua.js)
+// ---- HOLD: antirimbalzo (verso definitivo 2.1)
+const holdGuard = createHoldGuard({
+	stato: () => plant.robot,
+	avvisa: () => {
+		dataStored.alert.title = 'WARNING';
+		dataStored.alert.desc = 'cmd.holdNotConfirmed';
+		dataStored.alert.type = 'warning';
+	},
+});
+watch(() => plant.robot, v => holdGuard.stato(v));
+const premi = () => { holdGuard.premi(() => sendToRobot(17)); };
+
+// ---- ripiego quando non ci sta tutto: 0 tutto, 1 senza ora, 2 senza ora e
+// logo, 3 anche testi brevi (util/stripLayout.js)
+const striscia = ref(null);
+const ripiego = ref(0);
+const mostraOra = computed(() => ripiego.value < RIPIEGHI.senzaOra);
+const mostraLogo = computed(() => ripiego.value < RIPIEGHI.senzaLogo);
+const brevi = computed(() => ripiego.value >= RIPIEGHI.brevi);
+const sfora = () => !!striscia.value && striscia.value.scrollWidth > striscia.value.clientWidth + 1;
+let misurando = false;
+let ancora = false;    // richiesta arrivata a misura in corso: si rifa' dopo
+async function misura() {
+	if (!striscia.value) return;
+	if (misurando) { ancora = true; return; }
+	misurando = true;
+	try {
+		ripiego.value = 0;
+		await nextTick();
+		while (sfora() && ripiego.value < RIPIEGHI.brevi) {
+			ripiego.value++;
+			await nextTick();
+		}
+		statoStriscia.ripiego = ripiego.value;
+		statoStriscia.logoNascosto = !mostraLogo.value;
+		statoStriscia.sfora = sfora();
+	} finally {
+		misurando = false;
+		if (ancora) { ancora = false; misura(); }
+	}
+}
+watch(() => [compact.value, locale.value, plant.robot, plant.mc1, plant.mc2, plant.box, plant.trayOut, livello.value, dataStored.WS.connected], () => { misura(); });
 
 // ora locale, ogni 10 s
 const ora = ref('');
 const aggiornaOra = () => { const d = new Date(); ora.value = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
 let timer = null;
-onMounted(() => { aggiornaOra(); timer = setInterval(aggiornaOra, 10000); });
-onUnmounted(() => clearInterval(timer));
+let osservatore = null;
+onMounted(() => {
+	aggiornaOra();
+	timer = setInterval(aggiornaOra, 10000);
+	misura();
+	if (typeof ResizeObserver !== 'undefined' && striscia.value) {
+		osservatore = new ResizeObserver(() => misura());
+		osservatore.observe(striscia.value);
+	} else window.addEventListener('resize', misura);
+});
+onUnmounted(() => {
+	clearInterval(timer);
+	if (osservatore) osservatore.disconnect(); else window.removeEventListener('resize', misura);
+	holdGuard.annulla();
+	statoStriscia.logoNascosto = false;
+});
 </script>
 
 <style scoped>
@@ -133,7 +223,9 @@ onUnmounted(() => clearInterval(timer));
   min-width: 0;
   overflow: hidden;
 }
-.strip__sp { flex: 1; }
+.strip > * { flex: none; }
+.strip__sp { flex: 1 1 0 !important; min-width: 0; }
+.strip__logo { height: 40px; width: auto; aspect-ratio: 500 / 133; display: block; margin-right: 6px; }
 .strip__conn { width: 10px; height: 10px; border-radius: 50%; background: var(--color-success); flex: none; margin: 0 6px; }
 .strip__ib {
   position: relative;
@@ -165,6 +257,27 @@ onUnmounted(() => clearInterval(timer));
   align-items: center;
   justify-content: center;
 }
+/* utente: bersaglio di almeno 48 x 48, icona del livello */
+.strip__user {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-width: 52px;
+  height: 52px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--bg-chip);
+  color: var(--text-chip);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: var(--font-weight-bold);
+  white-space: nowrap;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+.strip__user svg { width: var(--icon-size-md); height: var(--icon-size-md); flex: none; }
 .strip__clock {
   padding: 0 var(--space-2);
   color: var(--text-primary);
@@ -193,13 +306,18 @@ onUnmounted(() => clearInterval(timer));
 .strip__hold:hover:not(:disabled) { background: var(--accent-hover); }
 .strip__hold:disabled { background: var(--bg-input); color: var(--text-muted); cursor: not-allowed; }
 /* START da spento: la stessa animazione del pulsante di robotView
-   (blinker, definita in assets/css/unit-views.css) */
+   (blinker, definita in assets/css/unit-views.css); ferma mentre aspetta la
+   conferma del PLC (antirimbalzo) */
 .strip__hold--start { animation: blinker 1s linear infinite; }
+.strip__hold--start:disabled { animation: none; }
 
 @media (max-width: 1599px) {
   .strip { gap: 8px; padding: 0 12px 0 16px; }
+  .strip__logo { height: 28px; margin-right: 2px; }
   .strip__ib { width: 48px; height: 48px; border-radius: 13px; }
   .strip__ib svg { width: 22px; height: 22px; }
-  .strip__hold { min-height: 48px; padding: 0 20px; font-size: var(--font-size-base); }
+  .strip__user { min-width: 48px; height: 48px; padding: 0 12px; border-radius: 13px; }
+  .strip__user svg { width: 22px; height: 22px; }
+  .strip__hold { min-height: 48px; padding: 0 18px; font-size: var(--font-size-base); }
 }
 </style>
