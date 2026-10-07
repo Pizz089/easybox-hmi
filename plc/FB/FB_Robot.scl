@@ -291,9 +291,9 @@ BEGIN
 	                    IF #robotInPendant AND DINT_TO_INT("DB_MQTT".lastParams[0]) <> #Gripper_ID[1] THEN
 	                        // sotto pendant non si puo' mandare al robot il TCP di una pinza diversa
 	                        "FC_MQTT"(insert := true,
-	                                  send := false,
-	                                  topic := 'FROM_PLANT/ALARM/ROBOT',
-	                                  payload := STRING_TO_WSTRING('969'));   // cambio pinza: dichiarare a robot in automatico
+	                       send := false,
+	                       topic := 'FROM_PLANT/ALARM/ROBOT',
+	                       payload := STRING_TO_WSTRING('969'));   // cambio pinza: dichiarare a robot in automatico
 	                        "DB_MQTT".lastCmdReceived := 0;
 	                    ELSE
 	                        #declGripper := DINT_TO_INT("DB_MQTT".lastParams[0]);
@@ -307,6 +307,35 @@ BEGIN
 	                        "DB_MQTT".lastCmdReceived := 0;
 	                        #WAIT_END_MISSION := FALSE;   // nessun movimento robot
 	                    END_IF;
+	            END_CASE;
+	        END_IF;
+	        
+	        // ---- Comandi di missione con un ERRORE ATTIVO: rifiutati (7/10) ----
+	        // Fino al 7/10 venivano accettati: MissionCode restava scritto e il master
+	        // lo teneva in attesa di Error = 0. Il fronte del pulsante HOLD (FB8,
+	        // REGION reset alarm) azzera Error, e la missione chiesta minuti prima
+	        // partiva da sola, anche un'apertura chele (simulazione 7/10, problema 9).
+	        // Adesso il comando si consuma senza scrivere niente e il pannello riceve
+	        // 972 su ALARM/ROBOT: prima RESET (con il 938, la dichiarazione dello stato
+	        // cella), poi si ripete il comando.
+	        // Restano ammessi con l'errore attivo: home, manutenzione e posizionamenti
+	        // (partono subito e azzerano le catene), le dichiarazioni e il reset.
+	        // Sotto pendant resta il 968, piu' sotto. Il rifiuto sta qui, sui comandi
+	        // del pannello, e non nel master: in HOLD MissionCode puo' essere anche una
+	        // missione di FB204 in attesa, e azzerarla gliela farebbe leggere come
+	        // riuscita.
+	        IF NOT #RemoteMode AND NOT #robotInPendant AND #Error <> 0 THEN
+	            CASE "DB_MQTT".lastCmdReceived OF
+	                "CMD_RobotPickGripper", "CMD_RobotRemoveGripper", "CMD_RobotExtractTray",
+	                "CMD_RobotReleaseTray", "CMD_RobotPickObject", "CMD_RobotPlaceObject",
+	                "CMD_HMI_SwapGripper", "CMD_RobotPickPartTray", "CMD_RobotPlacePartTray",
+	                "CMD_RobotPickPartMC", "CMD_RobotPlacePartMC", "CMD_RobotPickPlacePartMC",
+	                "CMD_OpenGripper1", "CMD_CloseGripper1", "CMD_OpenGripper2", "CMD_CloseGripper2":
+	                    "FC_MQTT"(insert := true,
+	                   send := false,
+	                   topic := 'FROM_PLANT/ALARM/ROBOT',
+	                   payload := STRING_TO_WSTRING('972'));   // comando rifiutato: errore attivo, prima RESET
+	                    "DB_MQTT".lastCmdReceived := 0;
 	            END_CASE;
 	        END_IF;
 	        
@@ -516,9 +545,9 @@ BEGIN
 	                "CMD_RobotPlacePartMC", "CMD_RobotPickPlacePartMC", "CMD_OpenGripper1",
 	                "CMD_CloseGripper1", "CMD_OpenGripper2", "CMD_CloseGripper2":
 	                    "FC_MQTT"(insert := true,
-	                              send := false,
-	                              topic := 'FROM_PLANT/ALARM/ROBOT',
-	                              payload := STRING_TO_WSTRING('968'));   // robot in manuale dal pendant
+	                   send := false,
+	                   topic := 'FROM_PLANT/ALARM/ROBOT',
+	                   payload := STRING_TO_WSTRING('968'));   // robot in manuale dal pendant
 	                    "DB_MQTT".lastCmdReceived := 0;
 	            END_CASE;
 	        END_IF;
@@ -558,17 +587,17 @@ BEGIN
 	    // PollingDB[1] e' un timer gia' dichiarato e mai usato: nessuna variabile
 	    // nuova, interfaccia invariata.
 	    #PollingDB[1](IN := #Dispatcher["_master"] <> 0
-	                  AND #Error = 0
-	                  AND "DB_RobotMission".Command <> 0
-	                  AND NOT #HOLD
-	                  AND NOT #RESET_ALL_DISPATCH
-	                  AND NOT "Start_AUX"
-	                  AND NOT "ResetAreaRobot"
-	                  AND "DB_Robot_Efort".dispatcher[0] = 0
-	                  AND "DB_Robot_Efort".dispatcher[1] = 0
-	                  AND ("DB_RobotMissionStatus".StatusCode = "cmd_aborted"
-	                  OR "DB_RobotMissionStatus".StatusCode = "cmd_rejected"),
-	                  PT := T#1s);
+	   AND #Error = 0
+	   AND "DB_RobotMission".Command <> 0
+	   AND NOT #HOLD
+	   AND NOT #RESET_ALL_DISPATCH
+	   AND NOT "Start_AUX"
+	   AND NOT "ResetAreaRobot"
+	   AND "DB_Robot_Efort".dispatcher[0] = 0
+	   AND "DB_Robot_Efort".dispatcher[1] = 0
+	   AND ("DB_RobotMissionStatus".StatusCode = "cmd_aborted"
+	   OR "DB_RobotMissionStatus".StatusCode = "cmd_rejected"),
+	   PT := T#1s);
 	    IF #PollingDB[1].Q THEN
 	        IF "DB_RobotMissionStatus".StatusCode = "cmd_aborted" THEN
 	            #Error := 961;   // missione abortita dal robot
@@ -2783,6 +2812,21 @@ BEGIN
 	                    // appena entrato; in automatico il 30 substate 2 di FB204 lo
 	                    // scrive gia', ma sui comandi MANUALI dal pannello nessuno lo
 	                    // faceva e il registro restava a zero.
+	                    // (7/10) IL PALLET SI RICALCOLA QUI. pieceReq e' una variabile
+	                    // TEMP: la calcolava il 10, in un altro ciclo, e qui non conteneva
+	                    // piu' il pallet comandato (0 o un residuo). Dopo un deposito manuale
+	                    // il registro della macchina restava sbagliato (simulazione 7/10,
+	                    // problema 2). La regola e' quella del 10, ma il manuale si
+	                    // riconosce dal master (1350 = comando dal pannello) invece che da
+	                    // RemoteMode: un HOLD messo o tolto a meta' missione non cambia il
+	                    // pallet che il robot ha davvero portato in macchina.
+	                    IF #Dispatcher["_master"] = 1350 THEN
+	                        #pieceReq := #PalletRequested;
+	                    ELSIF #MCRequested = 2 THEN
+	                        #pieceReq := DINT_TO_INT("DB_MC2".order.PALLET);
+	                    ELSE
+	                        #pieceReq := DINT_TO_INT("DB_MC1".order.PALLET);
+	                    END_IF;
 	                    IF #MCRequested = 1 THEN
 	                        "DB_MC1".pallet := #pieceReq;
 	                    ELSIF #MCRequested = 2 THEN
@@ -3318,27 +3362,40 @@ BEGIN
 	                        //gripper empty
 	                        #Error := 22;
 	                        #Dispatcher["_Part_Robot_to_MC"] := 7001;
-	                    ELSIF NOT #RemoteMode AND "DB_MC1".order.ID <= 0 THEN
-	                        // MANUALE SENZA ORDINE AVVIATO (6/10, decisione di Dario): il deposito
-	                        // usa i dati dell'ordine IN ATTESA del pezzo prelevato, cioe' un ordine
-	                        // di MC1 creato o in pausa (STATUS 4 o 6) e non avviato. Il pezzo si
+	                    ELSIF #Dispatcher["_master"] = 1250 THEN
+	                        // DEPOSITO LANCIATO DAL PANNELLO (master 1250). Fino al 7/10 il ramo
+	                        // si sceglieva con RemoteMode e DB_MC1.order.ID <= 0, con due difetti
+	                        // (simulazione 7/10): un HOLD messo o tolto a meta' missione cambiava
+	                        // ramo (problema 13), e FB204 NON azzera order.ID a fine produzione
+	                        // (solo col reset errore macchina), quindi dopo un ordine finito il
+	                        // deposito manuale prendeva quote, spinta e misure dell'ordine CHIUSO,
+	                        // anche di un altro pezzo (problema 3). Stessa regola al 32, al 37 e
+	                        // al 50.
+	                        // Si usa SEMPRE l'ordine del pezzo prelevato (6/10, decisione di
+	                        // Dario), dalla vista MAN_ORDER_MC1: dal 7/10 l'ordine AVVIATO del
+	                        // pezzo (STATUS 3) se c'e', altrimenti quello in coda o in pausa
+	                        // (STATUS 4 o 6); senza ordine la missione non parte. Il pezzo si
 	                        // riconosce dalla tasca di provenienza: cassetto Tray_ID, tasca
 	                        // PartSubPos, gli stessi che a fine deposito diventano TrayIdMC e
 	                        // PartSubPosMC. La regola sta nella vista MAN_ORDER_MC1. Se l'ordine non
 	                        // c'e' la missione non parte (970) e l'operatore lo crea in Produzione
 	                        // senza avviarlo. Prima qui si usava l'ordine piu' recente di MC1,
 	                        // qualunque fosse il pezzo.
+	                        // PROVENIENZA NON NOTA (pezzo messo in pinza a mano e dichiarato, o
+	                        // dopo uno STOP->RUN: Tray_ID e PartSubPos non sono ritentivi): l'ordine
+	                        // AVVIATO di MC1, letto dal database con la stessa regola di FB204
+	                        // (STATUS 3 e PRODUCTED < QUANTITY), non da DB_MC1.order.ID. Fino al
+	                        // 7/10 questo caso usava order.ID > 0. Se non c'e', 971 al 12.
 	                        IF #Tray_ID <= 0 OR #PartSubPos <= 0 THEN
-	                            #Error := 971;   // provenienza del pezzo non nota: niente tasca da cui risalire al pezzo
-	                            #Dispatcher["_Part_Robot_to_MC"] := 7001;
+	                            #queryTemp := 'select top 1 ID from WORKORDERS where MACHINE_ID=1 and STATUS=3 and PRODUCTED<QUANTITY order by ID desc';
 	                        ELSE
 	                            #queryTemp := CONCAT(IN1 := 'select ORDER_ID from MAN_ORDER_MC1 where TRAY=$'',
 	                                                 IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#Tray_ID),
 	                                                 IN3 := '$' and SUB_POS=',
 	                                                 IN4 := "INT_TO_STRING_WITHOUT_SIGN"(#PartSubPos));
-	                            #queryStartExecution := TRUE;
-	                            #Dispatcher["_Part_Robot_to_MC"] := 11;
 	                        END_IF;
+	                        #queryStartExecution := TRUE;
+	                        #Dispatcher["_Part_Robot_to_MC"] := 11;
 	                    ELSE
 	                        // QUOTE DALLA VISTA COORDINATES_Z_MC (19/9): il calcolo
 	                        // Z era scritto a mano qui, nel 10 di Part_MC_to_Robot e
@@ -3351,20 +3408,14 @@ BEGIN
 	                        // e la vista aggiunge Z_CLAW - Z_SINK_CLAW.
 	                        // Z_PLACE_MC = deposito del GREZZO (qui si deposita).
 	                        #queryTemp := 'select P.X,P.Y,Z.Z_PLACE_MC,P.X_ROT,P.Y_ROT,P.Z_ROT,P.APPROACH_TYPE,P.APPROACH_X,P.APPROACH_Y,P.APPROACH_Z from POSITION P,COORDINATES_Z_MC Z where P.PARENT=$'MC_1$' and ';
-	                        IF #RemoteMode THEN
-	                            IF #MCRequested = 1 AND "DB_MC1".order.ID > 0 THEN
-	                                #queryTemp := CONCAT(IN1 := #queryTemp,
-	                                                     IN2 := 'Z.ORDER_ID=',
-	                                                     IN3 := "INT_TO_STRING_WITHOUT_SIGN"(DINT_TO_INT("DB_MC1".order.ID)));
-	                            ELSE
-	                                #Error := 936;   // deposito auto senza ordine attivo
-	                            END_IF;
-	                        ELSE
-	                            // MANUALE CON ORDINE AVVIATO: quello. Senza ordine avviato si passa
-	                            // dall'11 (ramo sopra).
+	                        // (7/10) qui si arriva solo dal ciclo automatico (master 330): il
+	                        // comando dal pannello passa dall'11.
+	                        IF #MCRequested = 1 AND "DB_MC1".order.ID > 0 THEN
 	                            #queryTemp := CONCAT(IN1 := #queryTemp,
 	                                                 IN2 := 'Z.ORDER_ID=',
 	                                                 IN3 := "INT_TO_STRING_WITHOUT_SIGN"(DINT_TO_INT("DB_MC1".order.ID)));
+	                        ELSE
+	                            #Error := 936;   // deposito auto senza ordine attivo
 	                        END_IF;
 	                        
 	                        IF #Error = 0 THEN
@@ -3380,21 +3431,35 @@ BEGIN
 	                    #Dispatcher["_Part_Robot_to_MC"] := 12;
 	                END_IF;
 	                
-	            12:  // esito della ricerca dell'ordine in attesa
-	                // Zero righe = nessun ordine in attesa per quel pezzo. Il ponte SQL puo'
+	            12:  // esito della ricerca dell'ordine del pezzo prelevato
+	                // Zero righe = nessun ordine di MC1 per quel pezzo (avviato, in coda o in
+	                // pausa: vista MAN_ORDER_MC1 dal 7/10). Il ponte SQL puo'
 	                // segnalare le zero righe come dataError invece che noData (gia' visto):
-	                // tutti e due fermano la missione con 970.
+	                // tutti e due fermano la missione: 970, oppure 971 se la provenienza del
+	                // pezzo non e' nota (al 10 si e' cercato l'ordine avviato di MC1).
 	                // Ordine trovato: la query delle quote di deposito e' quella del 10, con
 	                // l'ordine scritto per intero (184 caratteri contro i 254 di queryTemp).
 	                // Si compone qui, mentre il valore e' in SqlData, e parte al 13.
 	                IF "DB_executeQuery".dataReady THEN
 	                    IF "DB_executeQuery".noData OR "DB_executeQuery".dataError THEN
-	                        #Error := 970;   // nessun ordine in attesa (creato o in pausa) per il pezzo prelevato
+	                        IF #Tray_ID <= 0 OR #PartSubPos <= 0 THEN
+	                            #Error := 971;   // provenienza non nota e nessun ordine avviato di MC1
+	                        ELSE
+	                            #Error := 970;   // nessun ordine di MC1 (avviato, in coda o in pausa) per il pezzo prelevato
+	                        END_IF;
 	                        #queryTemp := '';
 	                        #Dispatcher["_Part_Robot_to_MC"] := 7001;
 	                    ELSE
+	                        // (7/10) L'ORDINE TROVATO DIVENTA L'ORDINE DEL PEZZO IN MACCHINA: lo
+	                        // usano la spinta (32), il soffiaggio (37) e, dopo, il prelievo
+	                        // manuale da MC1 (10 e 37 di Part_MC_to_Robot). Il 50 non lo
+	                        // sovrascrive piu' in manuale. Si scrive qui, prima del deposito,
+	                        // perche' fra 12 e 50 non c'e' altro posto dove tenerlo senza
+	                        // cambiare l'interfaccia di FB7: il deposito manuale presuppone la
+	                        // morsa vuota, quindi in macchina non c'e' un altro pezzo da perdere.
+	                        #OrderIdMC := DINT_TO_INT("SqlData".data.rows[0].col[0]);
 	                        #queryTemp := CONCAT(IN1 := 'select P.X,P.Y,Z.Z_PLACE_MC,P.X_ROT,P.Y_ROT,P.Z_ROT,P.APPROACH_TYPE,P.APPROACH_X,P.APPROACH_Y,P.APPROACH_Z from POSITION P,COORDINATES_Z_MC Z where P.PARENT=$'MC_1$' and Z.ORDER_ID=',
-	                                             IN2 := "INT_TO_STRING_WITHOUT_SIGN"(DINT_TO_INT("SqlData".data.rows[0].col[0])));
+	                                             IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#OrderIdMC));
 	                        #Dispatcher["_Part_Robot_to_MC"] := 13;
 	                    END_IF;
 	                    "DB_executeQuery".readyForNextQuery := TRUE;
@@ -3463,26 +3528,25 @@ BEGIN
 	                END_IF;
 	                
 	            32:  // SPINTA: compone la query sulle quote di spinta e arrivo.
-	                // Con un ordine avviato si usa quello. In MANUALE senza ordine avviato
-	                // (6/10) si usa l'ordine in attesa del pezzo prelevato, lo stesso delle
-	                // quote di deposito (vista MAN_ORDER_MC1, controllato all'11-12).
+	                // In AUTOMATICO l'ordine attivo. Col comando dal pannello (master 1250,
+	                // vedi il 10) l'ordine trovato all'11-12 per il pezzo prelevato e salvato
+	                // in OrderIdMC: lo stesso delle quote di deposito. Prima si guardava
+	                // DB_MC1.order.ID > 0, che dopo un ordine finito resta valorizzato
+	                // (simulazione 7/10, problema 3).
 	                // (6/10 sera) terza colonna Z_PUSH_DROP: di quanto scendere con la
 	                // chela rispetto alla Z di deposito durante la spinta (vedi 36).
 	                IF #MCRequested <> 1 THEN
 	                    // MC2 non esiste in questa cella: nessuna spinta
 	                    #Dispatcher["_Part_Robot_to_MC"] := 40;
 	                ELSIF "SqlCommands".sqlCommands[0] = '' THEN
-	                    IF "DB_MC1".order.ID > 0 THEN
+	                    IF #Dispatcher["_master"] <> 1250 THEN
+	                        // automatico: l'ordine attivo, controllato > 0 al 10
 	                        #queryTemp := CONCAT(IN1 := 'select X_PUSH,X_STOP,Z_PUSH_DROP from COORDINATES_PUSH_MC where MC=1 and ORDER_ID=',
 	                                             IN2 := "INT_TO_STRING_WITHOUT_SIGN"(DINT_TO_INT("DB_MC1".order.ID)));
 	                    ELSE
-	                        // manuale: ordine in attesa del pezzo prelevato (150 caratteri)
+	                        // manuale: l'ordine del pezzo prelevato, trovato al 12
 	                        #queryTemp := CONCAT(IN1 := 'select X_PUSH,X_STOP,Z_PUSH_DROP from COORDINATES_PUSH_MC where MC=1 and ORDER_ID=',
-	                                             IN2 := '(select ORDER_ID from MAN_ORDER_MC1 where TRAY=$'',
-	                                             IN3 := "INT_TO_STRING_WITHOUT_SIGN"(#Tray_ID),
-	                                             IN4 := '$' and SUB_POS=',
-	                                             IN5 := "INT_TO_STRING_WITHOUT_SIGN"(#PartSubPos),
-	                                             IN6 := ')');
+	                                             IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#OrderIdMC));
 	                    END_IF;
 	                    #queryStartExecution := TRUE;
 	                    #Dispatcher["_Part_Robot_to_MC"] := 34;
@@ -3562,23 +3626,20 @@ BEGIN
 	                // la query fallisce si prosegue coi valori vecchi — fermare la
 	                // cella per una misura di soffiaggio sarebbe sproporzionato.
 	                IF "SqlCommands".sqlCommands[0] = '' THEN
-	                    IF "DB_MC1".order.ID > 0 THEN
+	                    IF #Dispatcher["_master"] <> 1250 THEN
+	                        // automatico: l'ordine attivo, controllato > 0 al 10
 	                        #queryTemp := CONCAT(IN1 := 'select CLAW_LENGTH,PART_WIDTH,STOP_BEYOND_CLAW,PART_LENGTH,PART_HEIGHT from COORDINATES_BLOW_MC where ORDER_ID=',
 	                                             IN2 := "INT_TO_STRING_WITHOUT_SIGN"(DINT_TO_INT("DB_MC1".order.ID)));
 	                        #queryStartExecution := TRUE;
 	                        #Dispatcher["_Part_Robot_to_MC"] := 38;
 	                    ELSE
-	                        // MANUALE senza ordine avviato (6/10): dati del pezzo dall'ordine in
-	                        // attesa del pezzo prelevato, lo stesso delle quote di deposito (vista
-	                        // MAN_ORDER_MC1, controllato all'11-12). 179 caratteri contro 254.
-	                        // Prima qui non si leggeva niente e il robot riceveva i valori
-	                        // dell'ultimo giro, anche di un altro pezzo.
+	                        // COMANDO DAL PANNELLO (7/10, master 1250, vedi il 10): dati del
+	                        // pezzo dall'ordine trovato al 12 per il pezzo prelevato (OrderIdMC),
+	                        // lo stesso delle quote di deposito.
+	                        // Prima si guardava DB_MC1.order.ID > 0, valorizzato anche dopo un
+	                        // ordine finito (simulazione 7/10, problema 3).
 	                        #queryTemp := CONCAT(IN1 := 'select CLAW_LENGTH,PART_WIDTH,STOP_BEYOND_CLAW,PART_LENGTH,PART_HEIGHT from COORDINATES_BLOW_MC where ORDER_ID=',
-	                                             IN2 := '(select ORDER_ID from MAN_ORDER_MC1 where TRAY=$'',
-	                                             IN3 := "INT_TO_STRING_WITHOUT_SIGN"(#Tray_ID),
-	                                             IN4 := '$' and SUB_POS=',
-	                                             IN5 := "INT_TO_STRING_WITHOUT_SIGN"(#PartSubPos),
-	                                             IN6 := ')');
+	                                             IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#OrderIdMC));
 	                        #queryStartExecution := TRUE;
 	                        #Dispatcher["_Part_Robot_to_MC"] := 38;
 	                    END_IF;
@@ -3710,10 +3771,16 @@ BEGIN
 	                    // nuovo, sempre sull'ultimo pezzo.
 	                    #PartSubPosMC := #PartSubPos;
 	                    #TrayIdMC := #Tray_ID;
-	                    IF #MCRequested = 2 THEN
-	                        #OrderIdMC := DINT_TO_INT("DB_MC2".order.ID);
-	                    ELSE
-	                        #OrderIdMC := DINT_TO_INT("DB_MC1".order.ID);
+	                    // (7/10) solo nel ciclo automatico: col comando dal pannello (master
+	                    // 1250, vedi il 10) OrderIdMC e' gia' l'ordine del pezzo prelevato,
+	                    // scritto al 12; DB_MC1.order.ID in manuale puo' essere l'ordine di una
+	                    // produzione gia' finita.
+	                    IF #Dispatcher["_master"] <> 1250 THEN
+	                        IF #MCRequested = 2 THEN
+	                            #OrderIdMC := DINT_TO_INT("DB_MC2".order.ID);
+	                        ELSE
+	                            #OrderIdMC := DINT_TO_INT("DB_MC1".order.ID);
+	                        END_IF;
 	                    END_IF;
 	                    
 	                    #Dispatcher["updatePartOnRobot"] := 10 + DINT_TO_INT("RAW");
@@ -3765,7 +3832,11 @@ BEGIN
 	                        // Z_PICK_MC = prelievo del FINITO, che puo' avere presa
 	                        // diversa dal grezzo (15/9).
 	                        #queryTemp := 'select P.X,P.Y,Z.Z_PICK_MC,P.X_ROT,P.Y_ROT,P.Z_ROT,P.APPROACH_TYPE,P.APPROACH_X,P.APPROACH_Y,P.APPROACH_Z from POSITION P,COORDINATES_Z_MC Z where P.PARENT=$'MC_1$' and ';
-	                        IF #RemoteMode THEN
+	                        // (7/10) il prelievo lanciato dal pannello si riconosce dal master
+	                        // (1230), non da RemoteMode: un HOLD messo o tolto a meta' missione
+	                        // non deve cambiare ramo (simulazione 7/10, problema 13). Stessa
+	                        // regola al 37.
+	                        IF #Dispatcher["_master"] <> 1230 THEN
 	                            IF #MCRequested = 1 AND "DB_MC1".order.ID > 0 THEN
 	                                #queryTemp := CONCAT(IN1 := #queryTemp,
 	                                                     IN2 := 'Z.ORDER_ID=',
@@ -3775,11 +3846,16 @@ BEGIN
 	                                #Dispatcher["_Part_MC_to_Robot"] := "_Part_MC_to_Robot" * 100 + 1;
 	                            END_IF;
 	                        ELSE
-	                            // HMI (29): ordine attivo se presente, altrimenti il piu' recente
-	                            IF "DB_MC1".order.ID > 0 THEN
+	                            // PANNELLO (7/10): l'ordine del pezzo IN MACCHINA (OrderIdMC, scritto
+	                            // dal deposito: al 12 in manuale, al 50 in automatico). Prima si
+	                            // usava DB_MC1.order.ID, che dopo un ordine finito resta
+	                            // valorizzato (simulazione 7/10, problema 3). Se OrderIdMC non e'
+	                            // noto (per esempio dopo uno STOP->RUN: non e' ritentivo) resta la
+	                            // regola di prima, l'ordine piu' recente di MC1.
+	                            IF #OrderIdMC > 0 THEN
 	                                #queryTemp := CONCAT(IN1 := #queryTemp,
 	                                                     IN2 := 'Z.ORDER_ID=',
-	                                                     IN3 := "INT_TO_STRING_WITHOUT_SIGN"(DINT_TO_INT("DB_MC1".order.ID)));
+	                                                     IN3 := "INT_TO_STRING_WITHOUT_SIGN"(#OrderIdMC));
 	                            ELSE
 	                                #queryTemp := CONCAT(IN1 := #queryTemp,
 	                                                     IN2 := 'Z.MC=1 order by Z.ORDER_ID desc');
@@ -3862,13 +3938,20 @@ BEGIN
 	                // calcolato sulla quota di DEPOSITO, quindi si sottrae l'offset
 	                // per tornare alla nominale.
 	                IF "SqlCommands".sqlCommands[0] = '' THEN
-	                    IF "DB_MC1".order.ID > 0 THEN
+	                    IF #Dispatcher["_master"] <> 1230 AND "DB_MC1".order.ID > 0 THEN
 	                        #queryTemp := CONCAT(IN1 := 'select CLAW_LENGTH,PART_WIDTH,STOP_BEYOND_CLAW,PART_LENGTH,PART_HEIGHT from COORDINATES_BLOW_MC where ORDER_ID=',
 	                                             IN2 := "INT_TO_STRING_WITHOUT_SIGN"(DINT_TO_INT("DB_MC1".order.ID)));
 	                        #queryStartExecution := TRUE;
 	                        #Dispatcher["_Part_MC_to_Robot"] := 38;
+	                    ELSIF #OrderIdMC > 0 THEN
+	                        // COMANDO DAL PANNELLO (7/10, master 1230, vedi il 10): lo stesso
+	                        // ordine del 10, quello del pezzo in macchina (OrderIdMC).
+	                        #queryTemp := CONCAT(IN1 := 'select CLAW_LENGTH,PART_WIDTH,STOP_BEYOND_CLAW,PART_LENGTH,PART_HEIGHT from COORDINATES_BLOW_MC where ORDER_ID=',
+	                                             IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#OrderIdMC));
+	                        #queryStartExecution := TRUE;
+	                        #Dispatcher["_Part_MC_to_Robot"] := 38;
 	                    ELSE
-	                        // MANUALE, nessun ordine attivo (6/10, richiesta di Dario): i dati del
+	                        // PANNELLO con OrderIdMC non noto (6/10, richiesta di Dario): i dati del
 	                        // pezzo arrivano dallo STESSO ordine da cui il 10 ha preso le quote di
 	                        // prelievo (COORDINATES_Z_MC, MC=1, ORDER_ID decrescente),
 	                        // cioe' l'ordine piu' recente: la produzione possibile, anche se non
@@ -5364,12 +5447,21 @@ BEGIN
 	                #MissionCode := 0;
 	                #Dispatcher["_Declare_State"] := 0;
 	            END_IF;
-	        944:
-	            ; // contenuto su lato inesistente
-	        945:
-	            ; // incoerenza sensore pinza
-	        946:
-	            ; // errore DB
+	        944, 945, 946:
+	            // RIFIUTO DELLA DICHIARAZIONE (7/10): 944 contenuto su un lato inesistente
+	            // o pallet su due lati, 945 incoerenza col sensore pinza, 946 errore DB.
+	            // Fino al 7/10 la catena restava parcheggiata qui: l'indice 31 e'
+	            // ritentivo e nessun reset lo azzerava, quindi la supervisione 938
+	            // (inibita con Declare_State <> 0) restava spenta anche dopo il RESET
+	            // (simulazione 7/10, problema 14). Adesso un ciclo solo: il codice va su
+	            // ALARM/ROBOT, dove il pannello lo aspetta per chiudere l'attesa dell'eco
+	            // (prima vedeva solo il timeout), e si torna a 0. Error resta alzato
+	            // fino al RESET.
+	            "FC_MQTT"(insert := true,
+	                      send := false,
+	                      topic := 'FROM_PLANT/ALARM/ROBOT',
+	                      payload := STRING_TO_WSTRING("INT_TO_STRING_WITHOUT_SIGN"(#Dispatcher["_Declare_State"])));
+	            #Dispatcher["_Declare_State"] := 0;
 	    END_CASE;
 	END_REGION
 	
@@ -5555,6 +5647,15 @@ BEGIN
 	        #Dispatcher["executeOneQuery"] := 0;
 	        #Dispatcher["Reset_or_log_MissionData"] := 0;
 	        #Dispatcher["_Declare_Position"] := 0;
+	        // DICHIARAZIONE DELLO STATO CELLA (7/10): si azzera anche lei, ma solo da 20
+	        // in su. Il 10 del Declare_State alza RESET_ALL_DISPATCH e passa al 15 nello
+	        // stesso ciclo, prima di questa REGION: la dichiarazione appena partita deve
+	        // proseguire. Da 20 in su e' una dichiarazione rimasta a meta' (ponte SQL,
+	        // catena dei registri), che RESET, comandi di movimento e AUX chiudono come
+	        // le altre catene (simulazione 7/10, problema 14). L'indice 31 e' ritentivo.
+	        IF #Dispatcher["_Declare_State"] >= 20 THEN
+	            #Dispatcher["_Declare_State"] := 0;
+	        END_IF;
 	        #retryPick := FALSE;
 	        "DB_executeQuery".readyForNextQuery := TRUE;
 	        #queryStartExecution := false;

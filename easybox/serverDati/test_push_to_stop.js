@@ -396,7 +396,10 @@ check(blowQuery.length < 254, 'soffiaggio: la query del PLC (5 colonne, ORDER_ID
 // lo stato che fa avanzare la PROPRIA sequenza. Il 6/10 il 37 di
 // Part_MC_to_Robot era il blocco di Part_Robot_to_MC: faceva avanzare la
 // sequenza di deposito e il prelievo da MC1 restava fermo al 37.
-const fb7 = fs.readFileSync(path.join(__dirname, '..', '..', 'plc', 'FB', 'FB_Robot.scl'), 'utf8');
+// (consegna 33, 7/10) Il 37 di Part_MC_to_Robot ha TRE rami: l'ordine
+// attivo (DB_MC1.order.ID), poi dal pannello l'ordine del pezzo in macchina
+// (OrderIdMC), poi il piu' recente. Gli altri due punti restano a due rami.
+const fb7 =fs.readFileSync(path.join(__dirname, '..', '..', 'plc', 'FB', 'FB_Robot.scl'), 'utf8');
 function statoFB(regione, n) {
 	const righe = fb7.split(/\r?\n/);
 	const a = righe.findIndex(r => r.trim() === 'REGION ' + regione);
@@ -411,13 +414,23 @@ function statoFB(regione, n) {
 	return righe.slice(k, e).join('\n');
 }
 const prefissoBlow = blowQuery.replace(/32767$/, '');
-for (const [regione, n, sequenza, poi] of [['Part_Robot_to_MC', 37, '_Part_Robot_to_MC', 38], ['Part_MC_to_Robot', 37, '_Part_MC_to_Robot', 38], ['Cycle MASTER ROBOT', 1416, '_master', 1417]]) {
+for (const [regione, n, sequenza, poi, rami] of [['Part_Robot_to_MC', 37, '_Part_Robot_to_MC', 38, 2], ['Part_MC_to_Robot', 37, '_Part_MC_to_Robot', 38, 3], ['Cycle MASTER ROBOT', 1416, '_master', 1417, 2]]) {
 	const s = statoFB(regione, n);
 	const avanza = [...s.matchAll(/#Dispatcher\["(\w+)"\]\s*:=\s*(\d+)/g)].map(m => m[1] + ' := ' + m[2]);
-	check(s.split(prefissoBlow).length - 1 === 2,
-		'soffiaggio: FB_Robot ' + regione + ' ' + n + ' usa questa stessa query, con l\'ordine avviato e in manuale');
-	check(avanza.length === 2 && avanza.every(x => x === sequenza + ' := ' + poi),
+	check(s.split(prefissoBlow).length - 1 === rami,
+		'soffiaggio: FB_Robot ' + regione + ' ' + n + ' usa questa stessa query in tutti e ' + rami + ' i rami'
+		+ (rami === 3 ? ' (ordine attivo, OrderIdMC, piu\' recente)' : ' (ordine avviato e manuale)'));
+	check(avanza.length === rami && avanza.every(x => x === sequenza + ' := ' + poi),
 		'   e fa avanzare la propria sequenza: ' + sequenza + ' := ' + poi + ' (' + (avanza.join(', ') || 'stato non trovato') + ')');
+}
+{
+	// i tre rami del 37 di Part_MC_to_Robot, in quest'ordine
+	const s = statoFB('Part_MC_to_Robot', 37);
+	const iAttivo = s.search(/IF #Dispatcher\["_master"\] <> 1230 AND "DB_MC1"\.order\.ID > 0 THEN\s*#queryTemp := CONCAT\(IN1 := '[^']*',\s*IN2 := "INT_TO_STRING_WITHOUT_SIGN"\(DINT_TO_INT\("DB_MC1"\.order\.ID\)\)\);/);
+	const iOrderIdMC = s.search(/ELSIF #OrderIdMC > 0 THEN[\s\S]*?#queryTemp := CONCAT\(IN1 := '[^']*',\s*IN2 := "INT_TO_STRING_WITHOUT_SIGN"\(#OrderIdMC\)\);/);
+	const iRecente = s.indexOf(prefissoBlow + "(select top 1 ORDER_ID from COORDINATES_Z_MC where MC=1 order by ORDER_ID desc)'");
+	check(iAttivo >= 0 && iOrderIdMC > iAttivo && iRecente > iOrderIdMC,
+		'soffiaggio: Part_MC_to_Robot 37, prima l\'ordine attivo (master <> 1230 e DB_MC1.order.ID > 0), poi OrderIdMC, poi l\'ordine piu\' recente di COORDINATES_Z_MC');
 }
 // (6/10) la MAPPA delle misure del pezzo verso il robot, nei tre stati che
 // leggono l'esito della query: Dario ha scambiato X e Y nel PLC (per il
