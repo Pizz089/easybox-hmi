@@ -98,7 +98,7 @@ su un errore (problema 9 di [SIMULAZIONE-2026-10-07.md](SIMULAZIONE-2026-10-07.m
 
 **Cosa.** Al 60 di Pallet_Robot_to_MC `"DB_MC1".pallet := #pieceReq`, ma `pieceReq` e' TEMP e calcolata al 10, in un altro ciclo: al 60 non contiene il pallet comandato.
 
-**Stato.** corretto dalla consegna 33 (PLC, 7/10), da scaricare. In cella, prima: controllo 1 del documento (`DB_MC1.pallet` deve valere il pallet in macchina).
+**Stato.** corretto dalla consegna 33 (PLC, 7/10), scaricata il 7/10 verso le 13:45; restano i test di accettazione. In cella, prima: controllo 1 del documento (`DB_MC1.pallet` deve valere il pallet in macchina).
 
 **Dettagli e direzione:** [SIMULAZIONE-2026-10-07.md](SIMULAZIONE-2026-10-07.md), problema 2.
 
@@ -202,7 +202,7 @@ su un errore (problema 9 di [SIMULAZIONE-2026-10-07.md](SIMULAZIONE-2026-10-07.m
 
 **Cosa.** L'indice 31 (Declare_State) e' ritentivo e non viene mai azzerato dal reset: dopo un 35 rifiutato la catena resta sul codice d'errore.
 
-**Stato.** corretto dalla consegna 33 (PLC), da scaricare.
+**Stato.** corretto dalla consegna 33 (PLC), scaricata il 7/10 verso le 13:45; resta il test di accettazione.
 
 **Dettagli e direzione:** [SIMULAZIONE-2026-10-07.md](SIMULAZIONE-2026-10-07.md), problema 14.
 

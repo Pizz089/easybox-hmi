@@ -2,6 +2,8 @@
 
 Decisioni di Dario che vincolano codice, dati e procedure in cella; la più recente in alto. Il come (script, comandi, ordine degli interventi) sta in [APPUNTI-CELLA.md](APPUNTI-CELLA.md).
 
+**Pannello compilato in cella (7/10).** In cella il pannello non lo serve più il server di sviluppo di Vite, che compila i moduli alla prima richiesta e al primo caricamento ci mette troppo. Il pannello si compila **in cella** (`vite build` → `easybox\HMI\dist`, col `.env` della cella) e il servizio `EasyBoxPannello` lo serve con `vite preview`, con lo stesso proxy e lo stesso HTTPS, sulla stessa porta 5173. Dopo ogni git pull si ricompila con `servizi-cella.ps1 -Azione aggiorna`; si torna al server di sviluppo con `-Azione dev`. Il pacchetto compilato non va nel repo. L'avvio ritardato dei servizi (circa 2,5 minuti dall'accensione) resta: si decide a parte. Procedura e tempi in APPUNTI-CELLA.md.
+
 **Velocità del robot su %QW650 (7/10).** `Sys_SetRobotspeed` è stato spostato da %QW512 a %QW650 (al posto di `spare_9`) da Dario e dal robotista; il lato robot è allineato e legge la velocità dalla parola nuova. Chiude il dubbio del commit 896cb8f. Il PLC la scrive da `FB_RobotEfort`, a ogni ciclo, col valore che il pannello manda col comando 100.
 
 **Uncino per i cassetti e pinze col cassetto fuori (7/10).** Consegna 34.
