@@ -67,7 +67,7 @@ routes['GET /insertGripper'](base({ ID: undefined, HAS_HOOK: '1', POS_MAG: -1 })
 let q = lastQuery();
 check(/CLAW_LENGTH, HAS_HOOK\)/.test(q) && /NULL,\s*1\s*;?$/.test(q.trim()), 'colonna HAS_HOOK nell\'elenco e valore 1');
 routes['GET /insertGripper'](base({ ID: undefined, POS_MAG: -1 }), res());
-check(/NULL,\s*0\s*;?$/.test(lastQuery().trim()), '   senza parametro: 0 (default dello schema)');
+check(/NULL,\s*0\s*;?$/.test(lastQuery().trim()), '   senza parametro: 0, la pinza nuova nasce senza uncino (il valore lo scrive il backend, non si conta sul default della colonna)');
 
 console.log('\n3) setHasHook: solo l\'uncino, per la gemella');
 let r = res();

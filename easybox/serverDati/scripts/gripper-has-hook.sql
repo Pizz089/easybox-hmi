@@ -4,9 +4,11 @@
 --
 -- PERCHE'. Decisione di Dario del 7/10: l'uncino per i cassetti e' fisso su
 -- certe pinze, quindi e' un dato dell'anagrafica. La colonna GRIPPER.HAS_HOOK
--- (bit, NOT NULL, default 0) esiste gia': VERIFICATO in cella il 7/10, vale 1
--- sulla pinza doppia (26 e 37) e 0 sulla pinza pallet (1) e sulle vecchie
--- righe "gancio" 15 e 24 (SUB_POS 1002). Il PLC 34 la legge dalla tabella.
+-- esiste gia': VERIFICATO in cella il 7/10 il tipo, bit; nullabilita' e
+-- default NON verificati (la query del 7/10 leggeva solo il tipo; sul clone
+-- del portatile e' NOT NULL, default 0). Valori in cella: 1 sulla pinza
+-- doppia (26 e 37), 0 sulla pinza pallet (1) e sulle vecchie righe "gancio"
+-- 15 e 24 (SUB_POS 1002). Il PLC 34 la legge dalla tabella.
 -- La vista GRIPPERS invece elenca le colonne per nome (vedi
 -- gripper-claw-length.sql) e non la espone: il pannello, che legge le pinze
 -- dalla vista (CONF/Gripper.js, select * from GRIPPERS), non la vede.
