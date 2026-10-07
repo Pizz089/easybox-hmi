@@ -32,7 +32,13 @@
   // destinazione «A bordo del robot» di Attrezzaggi (35, e 41 se in macchina)
   import { dichiaraPalletABordo, messaggioEsito } from '../../util/palletOnRobot.js'
   // (7/10, consegna 34) cassetto fuori: niente comandi pinza
-  import { statoCassetti, motivoPinzaCassetto } from '../../util/cassettoFuori.js'
+  import { statoCassetti, motivoPinzaCassetto, palletCambiaPinza } from '../../util/cassettoFuori.js'
+  // (7/10 sera, B55) l'eco giusto della Reimposta stato cella
+  import { aspettaEco } from '../../util/palletMachine.js'
+  // (B61) i codici che la Reimposta stato cella mostra: niente riquadro globale
+  import { codiciInDialog } from '../../util/robotAlarm.js'
+  const DECL_CODICI = [947, 948, 99, 996, 997, 999, 944, 945, 946, 968, 969, 20001, 20002, 20005, 20006]
+  import { ecoMc, ecoBox, ecoRobot, ecoTasca, ecoTipoCassetto } from '../../util/declEcho.js'
 </script>
 
 <template>
@@ -429,13 +435,16 @@
                   <span v-if="gripperOnBoardNow()">(ID {{ dataGripper[0].ID }})</span>
                   <span v-else class="coh-na">{{ $t('robot.hint.noGripperSystem') }}</span>
                 </button>
-                <button v-for="g in grippersList" :key="g.ID"
+                <!-- (7/10 sera, B8) col cassetto fuori la pinza non si cambia: solo
+                     quella a bordo (prima il PLC restava appeso al 1110/1210) -->
+                <button v-for="g in testGripperChoices" :key="g.ID"
                   class="mission-dialog-item"
                   :class="{ selected: testDialog.gripperSel===g.ID }"
                   @click="testDialog.gripperSel=g.ID">
                   <span>{{ (g.FAMILY || '').trim() }}</span>
                   <span>{{ $t('robot.dialog.slot') }} {{ g.SUB_POS }} (ID {{ g.ID }})</span>
                 </button>
+                <small class="cmd-hint" v-if="testGripperTrayReason">{{ $t(testGripperTrayReason) }}</small>
               </div>
             </div>
 
@@ -789,15 +798,19 @@
               <div v-if="dialogItems.length==0" class="mission-dialog-empty">
                 {{ $t('robot.dialog.empty') }}
               </div>
+              <!-- (7/10 sera, B2) carico pallet col cassetto fuori: spento il
+                   pallet la cui pinza (PALLET.GripperREQ) non e' quella a bordo -->
               <button v-for="item in dialogItems" :key="item.ID"
                 class="mission-dialog-item"
                 :class="{ selected: dialog.selected!=null && dialog.selected.ID==item.ID }"
-                @click="dialog.selected=item">
+                :disabled="palletItemBlocked(item)"
+                @click="palletItemBlocked(item) ? '' : dialog.selected=item">
                 <span v-if="dialog.type=='tray'">{{ $t('robot.dialog.tray') }} {{ item.FLOOR_MAG }}</span>
                 <span v-else>{{ (item.FAMILY || '').trim() }}</span>
                 <span v-if="dialog.type=='gripper'">{{ $t('robot.dialog.slot') }} {{ item.SUB_POS }}</span>
                 <span v-else-if="dialog.type=='tray'">{{ (item.DESCR || '').trim() }}</span>
                 <span v-else>{{ $t('robot.dialog.position') }} {{ item.MAG_POS }}</span>
+                <span v-if="palletItemBlocked(item)" class="coh-na">{{ $t(palletTrayReason) }}</span>
               </button>
             </div>
 
@@ -1000,7 +1013,9 @@ export default {
                  // contorno del cassetto: serve alla verifica di fit del 44
                  trayX: 0, trayY: 0,
                  // (44) contenuto dichiarato del cassetto estratto
-                 typeSel: 0, typeBusy: false },
+                 typeSel: 0, typeBusy: false,
+                 // (B55) il cassetto disegnato: l'eco di 39 e 44 deve dire questo
+                 tray: 0 },
       declGrippers: [],        // anagrafica COMPLETA (inclusa l'eventuale a bordo)
       // terzo campo di FROM_PLANT/DECLARE/MC1 (aggiunta del PLC): pezzo che
       // la macchina crede di avere in morsa. Serve a PRESELEZIONARE la
@@ -1600,6 +1615,17 @@ export default {
       return this.gripperOnBoardNow() &&
              this.dataGripper[0].STATUS == dataStored.status_empty;
     },
+    // (7/10 sera, B2) gli ID delle righe della pinza a bordo (la doppia ne ha due)
+    gripperOnBoardIds() {
+      return [0, 1].map(i => this.dataGripper && this.dataGripper[i] ? this.dataGripper[i].ID : null).filter(id => id != null);
+    },
+    // carico pallet: col cassetto fuori (o in manovra) un pallet che chiede un
+    // cambio pinza non si propone. Il dato del cassetto e' quello di
+    // util/cassettoFuori.js, come per le pinze.
+    palletItemBlocked(item) {
+      return this.dialog.type == 'palletLoad' && !!this.palletTrayReason &&
+             palletCambiaPinza(item, this.gripperOnBoardIds());
+    },
     // M-fix: dispatcher del bottone unico "Gestione pinza". NESSUNA
     // condizione propria: il gate e' solo gripperBranchEnabled (stessa
     // fonte del :class del bottone) -> bottone attivo => il tap apre
@@ -1812,37 +1838,25 @@ export default {
         .then(d => { this.declPieces = d || []; })
         .catch(e => { console.info(e); this.declPieces = []; });
     },
-    // Attende UN eco, con timeout. Un rifiuto del PLC sulla stessa sezione
-    // chiude l'attesa SUBITO: l'allarme arriva al posto dell'eco, e stare a
-    // guardare il timeout scadere non aggiungerebbe niente.
+    // Attende L'ECO del comando, con timeout. Un rifiuto del PLC sulla stessa
+    // sezione chiude l'attesa SUBITO: l'allarme arriva al posto dell'eco, e
+    // stare a guardare il timeout scadere non aggiungerebbe niente.
+    // (7/10 sera, B55) un eco che non c'entra (un on-change di un'altra cosa,
+    // un refresh) NON chiude il passo: coerente(payload) dice se e' quello
+    // del comando (util/declEcho.js, formati dal PLC). Stessa logica di
+    // palletMachine.aspettaEco, che qui si usa: un eco non coerente porta al
+    // timeout, col messaggio di oggi.
     // Risolve { ok } — mai una rejection da inseguire.
-    waitEcho(event, alarmEvent, codes, ms) {
-      return new Promise(resolve => {
-        let done = false;
-        const finish = (ok) => {
-          if (done) return;
-          done = true;
-          clearTimeout(t);
-          dataStored.WS.socket.off(event, onEcho);
-          if (alarmEvent) dataStored.WS.socket.off(alarmEvent, onAlarm);
-          resolve({ ok: ok });
-        };
-        const onEcho = () => finish(true);
-        const onAlarm = (payload) => {
-          const code = parseInt(String(payload).trim(), 10);
-          if (codes.indexOf(code) >= 0) finish(false);
-        };
-        const t = setTimeout(() => finish(false), ms);
-        dataStored.WS.socket.on(event, onEcho);
-        if (alarmEvent) dataStored.WS.socket.on(alarmEvent, onAlarm);
-      });
+    waitEcho(event, alarmEvent, codes, ms, coerente) {
+      return aspettaEco(dataStored.WS.socket, { evento: event, coerente: coerente || null, allarme: alarmEvent, codici: codes, ms: ms })
+        .then(r => ({ ok: r.ok }));
     },
     declareBare() {
       // MOUNTED=0: flangia nuda dichiarata esplicitamente (35;0;0;0;0;0).
       // Riguarda il solo robot: niente sequenza, niente macchina, niente
       // cassetto.
       if (this.declDialog.waiting) return;
-      this.runDeclSequence([{ section: 'robot', unit: 'ROBOT', cmd: '35;0;0;0;0;0' }]);
+      this.runDeclSequence([{ section: 'robot', unit: 'ROBOT', cmd: '35;0;0;0;0;0', coerente: ecoRobot(0, 0, 0) }]);
     },
     // SEQUENZA OBBLIGATA. Il 35 azzera TUTTE le catene del dispatcher nel PLC
     // (RESET_ALL_DISPATCH): se partisse per primo travolgerebbe le catene che
@@ -1856,10 +1870,12 @@ export default {
       const c1 = this.gripperClosed1 === 0 ? 0 : d.cont1;
       const cmd35 = '35;' + d.gripperSel + ';' + c1 + ';' + (c1 == 3 ? d.id1 : 0) +
                     ';' + d.cont2 + ';' + (d.cont2 == 3 ? d.id2 : 0);
+      // (B55) per ogni passo l'eco coerente: il pezzo dichiarato (0 col 37),
+      // il cassetto dichiarato, pinza e contenuti come mandati
       this.runDeclSequence([
-        { section: 'mc', unit: 'MC1', cmd: d.pieceSel > 0 ? '36;' + d.pieceSel : '37' },
-        { section: 'box', unit: 'BOX', cmd: '38;' + d.boxSel },
-        { section: 'robot', unit: 'ROBOT', cmd: cmd35 }
+        { section: 'mc', unit: 'MC1', cmd: d.pieceSel > 0 ? '36;' + d.pieceSel : '37', coerente: ecoMc(d.pieceSel > 0 ? d.pieceSel : 0) },
+        { section: 'box', unit: 'BOX', cmd: '38;' + d.boxSel, coerente: ecoBox(d.boxSel) },
+        { section: 'robot', unit: 'ROBOT', cmd: cmd35, coerente: ecoRobot(d.gripperSel, c1, d.cont2) }
       ]);
     },
     // Esegue i passi in ordine e SI FERMA al primo eco mancante: i comandi
@@ -1895,7 +1911,7 @@ export default {
         const e = ECHI[st.section];
         this.declDialog.phase = st.section;
         dataStored.WS.socket.emit('TO_PLANT/CMD/' + st.unit, st.cmd);
-        this.waitEcho(e.event, e.alarm, e.codes, ECHO_MS).then(r => {
+        this.waitEcho(e.event, e.alarm, e.codes, ECHO_MS, st.coerente).then(r => {
           if (!r.ok) {
             // FERMO QUI: niente comandi successivi. Il motivo preciso lo
             // scrive la sezione (declErr, dall'allarme); se non e' arrivato
@@ -1923,6 +1939,7 @@ export default {
       this.declErr.pocket = 0;
       this.declErr.trayType = 0;
       this.declErrParams = {};
+      this.pockets.tray = this.extractedTray.FLOOR_MAG;
       loadTrayPockets(dataStored.server, this.extractedTray.FLOOR_MAG).then(d => {
         this.pockets.rows = d.rows;
         this.pockets.dimX = d.dimX;
@@ -1965,7 +1982,7 @@ export default {
       // 20001 (nessun cassetto estratto). Se ne usasse altri arriverebbero
       // comunque al toast globale, e qui scatterebbe l'attesa scaduta: meglio
       // che inventarsi numeri e mostrare la frase sbagliata.
-      this.waitEcho('DECLARE/TRAYTYPE', 'ALARM/ROBOT', [20001], this.declEchoMs).then(r => {
+      this.waitEcho('DECLARE/TRAYTYPE', 'ALARM/ROBOT', [20001], this.declEchoMs, ecoTipoCassetto(this.pockets.tray, tipo)).then(r => {
         this.pockets.typeBusy = false;
         if (!r.ok) {
           if (!this.declErr.trayType) {
@@ -2002,7 +2019,7 @@ export default {
       const sub = this.pockets.sel;
       this.pockets.busy = true;
       this.sendToRobot('39;' + sub + ';' + stato);
-      this.waitEcho('DECLARE/TRAY', 'ALARM/ROBOT', [20001, 20002, 20005, 20006], this.declEchoMs).then(r => {
+      this.waitEcho('DECLARE/TRAY', 'ALARM/ROBOT', [20001, 20002, 20005, 20006], this.declEchoMs, ecoTasca(this.pockets.tray, sub, stato)).then(r => {
         this.pockets.busy = false;
         if (!r.ok) {
           if (!this.declErr.pocket) {
@@ -2035,6 +2052,11 @@ export default {
       // (il PLC risponderebbe 22)
       if (ok && (t == 'pickTray' || t == 'pickMC') &&
           this.testDialog.gripperSel === 0 && !this.gripperOnBoardNow())
+        ok = false;
+      // (7/10 sera, B8) col cassetto fuori la pinza non si cambia: solo quella
+      // a bordo (0), anche se la scelta e' stata fatta prima che uscisse
+      if (ok && (t == 'pickTray' || t == 'pickMC') && this.palletTrayReason &&
+          this.testDialog.gripperSel !== 0 && !this.gripperOnBoardIds().some(id => Number(id) === Number(this.testDialog.gripperSel)))
         ok = false;
       if (!ok) {
         this.closeTestDialog();
@@ -2228,7 +2250,13 @@ export default {
     // S: la macchinetta missione osserva ROBOT/STATUS (statusHandler) + il
     // fetch. (AO) lo swap non ha piu' secondo tempo client: niente watcher
     // su dataGripper per lo sblocco.
-    'dataRobot.STATUS'() { this.checkMissionPhase(); }
+    'dataRobot.STATUS'() { this.checkMissionPhase(); },
+    // (7/10 sera, B61) con la Reimposta stato cella aperta i rifiuti li mostra
+    // il dialog, sezione per sezione (declErr): il riquadro globale tace
+    'declDialog.open'(aperto) {
+      if (aperto && !this.rilasciaDeclCodici) this.rilasciaDeclCodici = codiciInDialog(DECL_CODICI);
+      if (!aperto && this.rilasciaDeclCodici) { this.rilasciaDeclCodici(); this.rilasciaDeclCodici = null; }
+    }
   },
   computed: {
     // (v3) STATUS del robot non noto (assente o NOT_DEFINED): il HOLD si spegne
@@ -2265,10 +2293,31 @@ export default {
       // (7/10, consegna 34) cassetto fuori o in manovra: niente pinze
       return motivoPinzaCassetto({ estratto: this.extractedTray, manovra: this.trayBusy });
     },
+    // (7/10 sera) cassetto fuori o in manovra: lo stesso motivo delle pinze
+    palletTrayReason() {
+      return motivoPinzaCassetto({ estratto: this.extractedTray, manovra: this.trayBusy });
+    },
+    // (B2) carico pallet col cassetto fuori: nessun pallet si carica senza
+    // cambiare pinza -> «Gestione pallet» spento
+    palletLoadAllBlocked() {
+      if (!this.palletTrayReason || !this.palletGripperEmptyNow()) return false;
+      const ids = this.gripperOnBoardIds();
+      const items = this.palletLoadItems || [];
+      return items.length > 0 && items.every(p => palletCambiaPinza(p, ids));
+    },
+    // (B8) collaudo 31/33 col cassetto fuori: solo la pinza a bordo
+    testGripperChoices() {
+      return this.palletTrayReason ? [] : this.grippersList;
+    },
+    testGripperTrayReason() {
+      return this.palletTrayReason && (this.grippersList || []).length > 0 ? this.palletTrayReason : '';
+    },
     palletDisabledReason() {
       if (dataStored.safetyAux === 0) return 'robot.hint.auxNotReset';
       if (this.dataRobot.STATUS != dataStored.status_hold) return 'robot.hint.notHold';
       if (!this.gripperOnBoardNow()) return 'robot.hint.noGripperSystem';
+      // (B2) col cassetto fuori nessun pallet si carica con la pinza a bordo
+      if (this.palletLoadAllBlocked) return this.palletTrayReason;
       // (16/9) pinza pallet occupata ma nessun pallet risulta a bordo: non si
       // sa COSA scaricare, e non lo si chiede all'operatore. Il comando non e'
       // proponibile e il motivo e' scritto.
@@ -2460,6 +2509,9 @@ export default {
     palletBranchEnabled() {
       const inHold = this.dataRobot.STATUS == dataStored.status_hold;
       if (!(inHold && this.gripperOnBoardNow())) return false;
+      // (7/10 sera, B2) cassetto fuori e nessun pallet caricabile senza
+      // cambiare pinza: il PLC rifiuterebbe col 1519
+      if (this.palletLoadAllBlocked) return false;
       // scarico senza sapere quale pallet e' a bordo: niente comando
       if (!this.palletGripperEmptyNow() && !this.palletOnBoard) return false;
       // scarico senza nessuna destinazione raggiungibile: idem
@@ -2538,6 +2590,8 @@ export default {
     dialogConfirmEnabled() {
       // trayRelease: conferma sempre attiva (nessuna selezione richiesta)
       if (this.dialog.type == 'trayRelease') return true;
+      // (B2) un pallet scelto prima che il cassetto uscisse: non si conferma
+      if (this.dialog.selected != null && this.palletItemBlocked(this.dialog.selected)) return false;
       // scarico pallet: si sceglie la DESTINAZIONE, non il pallet
       if (this.dialog.type == 'palletUnload') return this.dialog.dest != null;
       return this.dialog.selected != null;
@@ -2580,12 +2634,18 @@ export default {
       this.armPlcSilentTimer();
     };
     dataStored.WS.socket.on('SNAPSHOT/MISS', this.snapshotMissHandler);
-    dataStored.WS.socket.on('ROBOT/DESCR', payload => {
+    // (7/10 sera, B64) handler nominati, con l'off in unmounted: anonimi,
+    // ogni apertura della pagina ne aggiungeva uno e i vecchi restavano
+    // attaccati a una view smontata
+    this.robotDescrHandler = payload => {
       this.dataRobot.DESCR = payload;
-    });
-    dataStored.WS.socket.on('ROBOT/UPDATEGRIPPER', () =>{
+    };
+    this.robotUpdateGripperHandler = () => {
       this.getRobotData();
-    });
+    };
+    dataStored.WS.socket.on('ROBOT/DESCR', this.robotDescrHandler);
+    dataStored.WS.socket.on('ROBOT/UPDATEGRIPPER', this.robotUpdateGripperHandler);
+    // (v3) ROBOT/CHANGESPEED ha gia' il suo handler nominato (onSpeedEcho)
     dataStored.WS.socket.on('ROBOT/CHANGESPEED', this.onSpeedEcho);
     // M2: campanello estrazione cassetti — il backend emette BOX/STATUS a
     // ogni FROM_PLANT/TRAY/BOX/EXTRACT|RELEASE del PLC (pattern e4ab4e5:
@@ -2664,8 +2724,11 @@ export default {
     dataStored.WS.socket.off('GRIPPER/REGISTERED', this.gripperRegisteredHandler);
     // S: niente timer/feedback orfani, la missione visiva muore con la view
     this.clearMission();
-    //dataStored.WS.socket.off('ROBOT/DESCR');
-    //dataStored.WS.socket.off('ROBOT/UPDATEGRIPPER');
+    if (this.rilasciaDeclCodici) { this.rilasciaDeclCodici(); this.rilasciaDeclCodici = null; }
+    // (B64) off SPECIFICO (evento + callback): un off nudo staccherebbe anche
+    // i listener di altri componenti sugli stessi eventi
+    dataStored.WS.socket.off('ROBOT/DESCR', this.robotDescrHandler);
+    dataStored.WS.socket.off('ROBOT/UPDATEGRIPPER', this.robotUpdateGripperHandler);
   }
 }
 </script>

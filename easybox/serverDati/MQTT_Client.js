@@ -13,8 +13,12 @@ console.log("DEBUG HAAS_MC1_IP=", JSON.stringify(process.env.HAAS_MC1_IP));
 
 //const client = mqtt.connect("mqtt://172.20.70.111");
 // URL broker configurabile via .env (MQTT_BROKER_URL). Fallback al valore storico.
+// (7/10 sera, B54) queueQoSZero: false. Di default mqtt.js tiene in coda le
+// pubblicazioni QoS 0 fatte a broker giu' e le spedisce alla riconnessione:
+// un comando TO_PLANT/CMD dato minuti prima partirebbe da solo, con la cella
+// in un altro stato. Un comando a broker giu' va perso, non ritardato.
 const client = mqtt.connect(process.env.MQTT_BROKER_URL || "mqtt://HMI:HMI@127.0.0.1:9001",
-							{clientId:'API_' + Math.random().toString(16).substr(2, 8),qos:2});
+							{clientId:'API_' + Math.random().toString(16).substr(2, 8),qos:2,queueQoSZero:false});
 
 // Stati ordine/tasca usati dalla chiusura automatica (stessi numeri di
 // _STATUS_TYPE e di dataStored: 3 in lavorazione, 5 finito)

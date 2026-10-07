@@ -33,3 +33,15 @@ export function motivoPinzaCassetto(stato) {
 	if (stato && stato.manovra) return 'robot.hint.trayBusy';
 	return '';
 }
+
+// (7/10 sera, simulazione bis B2) il pallet da caricare chiede un cambio
+// pinza? Il PLC prende la pinza del pallet da PALLET.GripperREQ (vista
+// pallets_grippers, FB_Robot Gripper4Pallet_Search): se non e' quella a bordo,
+// il carico comincia con un cambio pinza, che col cassetto fuori e' vietato.
+// pinzeABordo = gli ID delle righe della pinza a bordo (la doppia ne ha due).
+// GripperREQ assente o 0: nessun cambio da dire (il PLC risponde 1722).
+export function palletCambiaPinza(pallet, pinzeABordo) {
+	const req = Number(pallet && pallet.GripperREQ);
+	if (!(req > 0)) return false;
+	return !(pinzeABordo || []).some(id => Number(id) === req);
+}

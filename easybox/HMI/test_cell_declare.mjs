@@ -223,6 +223,7 @@ check(vm.pocketsEnabled === true, 'cassetto fuori + HOLD: si apre');
 
 console.log('\n8) TASCHE: si clicca la casella, e parte 39;subpos;stato');
 sent.length = 0;
+vm.pockets.tray = 9;                 // il cassetto disegnato (openPockets): l'eco deve dire questo
 vm.pockets.rows = [{ SUB_POS: 1, status: 2, x: 65, y: 50, prisma: true, order_ID: 0 },
                    { SUB_POS: 7, status: 2, x: 65, y: 410, prisma: true, order_ID: 0 }];
 vm.pickPocket({ index: 1, subPos: 7, status: 2, orderID: 0 });
@@ -300,6 +301,95 @@ sent.length = 0; vm.pockets.typeSel = 1033; vm.dataRobot = { STATUS: dataStored.
 vm.declareTrayType();
 await tick();
 check(cmdsTo('ROBOT').length === 0 && vm.declDialog.step === 2, 'fuori da HOLD non parte: il PLC lo ignorerebbe in silenzio');
+
+console.log('\n8-ter) (B55) ECO NON COERENTE: non chiude il passo, si va al timeout');
+// formati dal PLC (util/declEcho.js): DECLARE/MC1 pallet;morsa;pezzo,
+// TRAY/EXTRACT cassetto, DECLARE/ROBOT pinza;cont1;cont2,
+// DECLARE/TRAY cassetto;tasca;stato, DECLARE/TRAYTYPE cassetto;tipo
+vm = vmOf();
+sent.length = 0;
+vm.declDialog.pieceSel = 1032;
+vm.declDialog.boxSel = 9;
+vm.sendDeclare();
+await tick();
+fire('DECLARE/MC1', '0;0;0');                    // eco on-change di altro: pezzo 0, non 1032
+await tick();
+check(cmdsTo('BOX').length === 0, '36;1032 con eco «0;0;0»: non è l\'eco del 36, il 38 non parte');
+fire('DECLARE/MC1', '0;0;1032');                 // ecco quello giusto
+await tick();
+check(cmdsTo('BOX').length === 1, '   arriva «0;0;1032»: il passo si chiude, parte il 38');
+fire('TRAY/EXTRACT', '0');                       // cassetto 0: non e' il 9 dichiarato
+await tick();
+check(cmdsTo('ROBOT').length === 0, '38;9 con eco «0»: il 35 non parte');
+fire('TRAY/EXTRACT', '9');
+await tick();
+check(cmdsTo('ROBOT').length === 1 && cmdsTo('ROBOT')[0] === '35;7;0;0;0;0', '   arriva «9»: parte il 35');
+fire('DECLARE/ROBOT', '5;0;0');                  // un'altra pinza a bordo
+await tick();
+check(vm.declDialog.open === true && vm.declDialog.waiting === true, '35;7;... con eco «5;0;0»: non conclude');
+await tick(150);
+check(vm.declDialog.stoppedAt === 'robot' && String(dataStored.alert.desc) === 'robot.decl.noEcho', '   e al timeout si ferma sul robot, col messaggio di oggi');
+vm = vmOf();
+sent.length = 0;
+vm.declDialog.pieceSel = 0;
+vm.declDialog.boxSel = 0;
+vm.declDialog.cont2 = 2;
+vm.sendDeclare();
+await tick();
+fire('DECLARE/MC1', '0;0;0');
+await tick();
+check(cmdsTo('BOX')[0] === '38;0', '37: l\'eco col pezzo 0 è quello giusto');
+fire('TRAY/EXTRACT', '0');
+await tick();
+check(cmdsTo('ROBOT')[0] === '35;7;0;0;2;0', '38;0: l\'eco «0» (nessun cassetto) è quello giusto');
+fire('DECLARE/ROBOT', '7;0;0');                  // contenuto lato 2 diverso da quello mandato
+await tick();
+check(vm.declDialog.open === true, '35 col lato 2 = 2 ed eco «7;0;0»: non conclude');
+fire('DECLARE/ROBOT', '7;0;2');
+await tick();
+check(vm.declDialog.open === false && String(dataStored.alert.desc) === 'robot.decl.done', '   eco «7;0;2»: conclusa');
+// 39 e 44: il cassetto nel payload e' quello disegnato
+vm = vmOf();
+vm.extractedTray = { FLOOR_MAG: 9 };
+vm.dataRobot = { STATUS: dataStored.status_hold };
+vm.pockets.tray = 9;
+vm.pockets.rows = [{ SUB_POS: 7, status: 2, x: 65, y: 410, prisma: true, order_ID: 0 }];
+vm.pockets.sel = 7;
+sent.length = 0;
+vm.declarePocket(dataStored.status_raw);
+await tick();
+fire('DECLARE/TRAY', '9;8;2');                   // la catena di un prelievo: tasca 8, stato 2
+fire('DECLARE/TRAY', '3;7;4');                   // un altro cassetto
+await tick();
+check(vm.pockets.busy === true && vm.pockets.rows[0].status === 2, '39;7;4 con echi «9;8;2» e «3;7;4»: niente da aggiornare, si aspetta');
+fire('DECLARE/TRAY', '9;7;4');
+await tick();
+check(vm.pockets.busy === false && vm.pockets.rows[0].status === 4, '   eco «9;7;4»: la tasca 7 diventa grezza');
+vm.pockets.typeSel = 1033;
+vm.declPieces = [];
+vm.pockets.trayX = 0;
+sent.length = 0;
+vm.declareTrayType();
+await tick();
+fire('DECLARE/TRAYTYPE', '3;1033');
+await tick();
+check(vm.pockets.typeBusy === true, '44;1033 con eco «3;1033» (altro cassetto): non conclude');
+fire('DECLARE/TRAYTYPE', '9;1033');
+await tick();
+check(vm.pockets.typeBusy === false, '   eco «9;1033»: dichiarato');
+// i formati riletti dall'export del PLC (plc/FB, solo nel repo completo: in
+// cella plc/ non c'e')
+const plcFb = f => { try { return readFileSync('../../plc/FB/' + f, 'utf8'); } catch (e) { return null; } };
+const fb7 = plcFb('FB_Robot.scl'), fb204 = plcFb('FB_Machine_Autonomous.scl'), fbBox = plcFb('FB_easyBox.scl');
+const conc = (...campi) => campi.map((c, i) => 'IN' + (2 * i + 1) + ' := "INT_TO_STRING_WITHOUT_SIGN"\\(' + c + '\\)').join(",\\s*IN\\d := ';',\\s*");
+if (fb7 && fb204 && fbBox) {
+	check(new RegExp("topic := 'FROM_PLANT/DECLARE/ROBOT',\\s*payload := STRING_TO_WSTRING\\(CONCAT\\(" + conc('#Gripper_ID\\[1\\]', '#declCont1', '#declCont2')).test(fb7), 'PLC: DECLARE/ROBOT = pinza;cont1;cont2 (FB_Robot)');
+	check(new RegExp("topic := 'FROM_PLANT/DECLARE/MC1',\\s*payload := STRING_TO_WSTRING\\(CONCAT\\(" + conc('#pallet', '#ManualVice', '"DB_MC1".piecepresent\\[1\\]')).test(fb204), 'PLC: DECLARE/MC1 = pallet;morsa;pezzo (FB204)');
+	check(new RegExp("topic := 'FROM_PLANT/DECLARE/TRAY',\\s*payload := STRING_TO_WSTRING\\(CONCAT\\(" + conc('"DB_BOX_1".ExtractedTray', '#declSubPos', '#declStato')).test(fb7)
+		&& new RegExp("topic := 'FROM_PLANT/DECLARE/TRAYTYPE',\\s*payload := STRING_TO_WSTRING\\(CONCAT\\(" + conc('"DB_BOX_1".ExtractedTray', '#declTipo')).test(fb7), 'PLC: DECLARE/TRAY = cassetto;tasca;stato, DECLARE/TRAYTYPE = cassetto;tipo (FB_Robot)');
+	check(/topic := 'FROM_PLANT\/TRAY\/BOX\/EXTRACT',\s*payload := STRING_TO_WSTRING\("INT_TO_STRING_WITHOUT_SIGN"\(#ExtractedTray\)\)/.test(fbBox), 'PLC: TRAY/BOX/EXTRACT = numero del cassetto (FB_easyBox)');
+} else console.log('  (plc/FB non c\'e\': formati non riletti dal PLC)');
+check(Robot.methods.openPockets.toString().includes('this.pockets.tray = this.extractedTray.FLOOR_MAG'), 'openPockets si segna il cassetto disegnato');
 
 console.log('\n9) LA GRIGLIA E\' QUELLA DEL LAYOUT, non una seconda copia');
 const rsrc = readFileSync('src/views/unit/robotView.vue', 'utf8');

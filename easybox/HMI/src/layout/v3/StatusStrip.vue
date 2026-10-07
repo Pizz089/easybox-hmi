@@ -32,9 +32,10 @@
 
     <div class="strip__sp"></div>
 
-    <!-- collegamento col server: oggi "IN ATTESA DI CONNESSIONE!!" nella barra -->
-    <UiChip v-if="!dataStored.WS.connected" tone="danger" dot="danger" :title="t('strip.offline')">
-      <span v-if="!compact">{{ t('strip.offline') }}</span>
+    <!-- collegamento col server. (7/10 sera, B54) da scollegato i comandi non
+         partono (util/socketCommands.js): la striscia lo dice -->
+    <UiChip v-if="!dataStored.WS.connected" tone="danger" dot="danger" :title="t('shell.offline')" :aria-label="t('shell.offline')">
+      <span v-if="!compact">{{ t('shell.offline') }}</span>
     </UiChip>
     <span v-else-if="compact" class="strip__conn" :title="t('strip.online')" aria-hidden="true"></span>
 

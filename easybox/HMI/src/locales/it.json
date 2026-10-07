@@ -483,6 +483,9 @@
       }
     }
   },
+  "shell": {
+    "offline": "Pannello scollegato: i comandi non partono"
+  },
   "rowCmd": {
     "play": "Avvia",
     "pause": "Sospendi",
@@ -794,6 +797,7 @@
     "alarm_45": "TIMEOUT bloccaggio tavola",
     "alarm_46": "TIMEOUT sbloccaggio tavola",
     "alarm_99": "ALLARME GENERICO",
+    "alarmBox_99": "Numero di cassetto fuori intervallo: il PLC accetta da 1 a 12, oppure nessun cassetto fuori",
     "alarm_100": "NON IN HOME POSITION",
     "alarm_934": "Comando rifiutato: ausiliari non ripristinati. Premere il ripristino e riprovare.",
     "alarm_936": "Deposito pinza rifiutato: nessuna pinza risulta registrata al sistema. Verificare l'esito dell'ultimo carico o eseguire il riallineamento pinza.",
@@ -806,6 +810,11 @@
     "alarm_945": "Dichiarazione incoerente col sensore: verificare la pinza montata",
     "alarm_946": "Errore database durante la dichiarazione dello stato",
     "alarm_947": "Comando macchina rifiutato: ciclo attivo o pallet già dichiarato. Portare la cella in HOLD e ripetere.",
+    "alarm_948": "Dichiarazione del pezzo in macchina rifiutata: ID del pezzo non valido",
+    "alarm_951": "MC1: morsa chiusa a contenuto ignoto. Il ciclo aspetta che la morsa si apra o che il pezzo in macchina venga dichiarato",
+    "alarm_996": "Dichiarazione del cassetto rifiutata: il cassetto dichiarato non coincide con i sensori",
+    "alarm_997": "Dichiarazione del cassetto rifiutata: robot in missione",
+    "alarm_999": "Più cassetti fuori contemporaneamente: anomalia fisica",
     "alarm_952": "Errore robot durante una missione: ciclo MC1 fermato",
     "alarm_953": "AUX assente durante una missione: ciclo MC1 fermato",
     "alarm_954": "Start HAAS non confermato",

@@ -2867,11 +2867,11 @@
      }
     },
     {
-     "id": "button@click dialog.selected=item",
+     "id": "button@click palletItemBlocked(item) ? '' : dialog.selected=item",
      "etichetta": "Cassetto {{item.FLOOR_MAG}} {{(item.FAMILY || '').trim()}} Slot {{item.SUB_POS}} {{(item.DESCR || '').trim()}} Posizione",
      "evento": "click",
-     "handler": "dialog.selected=item",
-     "disabled": "",
+     "handler": "palletItemBlocked(item) ? '' : dialog.selected=item",
+     "disabled": "palletItemBlocked(item)",
      "classe": "{ selected: dialog.selected!=null && dialog.selected.ID==item.ID }",
      "esiti": {
       "HOLD liv2": [],

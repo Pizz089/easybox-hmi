@@ -483,6 +483,9 @@
       }
     }
   },
+  "shell": {
+    "offline": "Panel disconnected: commands are not sent"
+  },
   "rowCmd": {
     "play": "Start",
     "pause": "Pause",
@@ -794,6 +797,7 @@
     "alarm_45": "TIMEOUT bloccaggio tavola",
     "alarm_46": "TIMEOUT sbloccaggio tavola",
     "alarm_99": "GENERIC ALARM",
+    "alarmBox_99": "Tray number out of range: the PLC accepts 1 to 12, or no tray out",
     "alarm_100": "NOT IN HOME POSITION",
     "alarm_934": "Command refused: auxiliaries not reset. Press the reset and retry.",
     "alarm_936": "Gripper deposit refused: no gripper is registered in the system. Check the last load outcome or run the gripper realignment.",
@@ -806,6 +810,11 @@
     "alarm_945": "Declaration inconsistent with the sensor: check the mounted gripper",
     "alarm_946": "Database error during state declaration",
     "alarm_947": "Machine command refused: cycle active or pallet already declared. Put the cell in HOLD and repeat.",
+    "alarm_948": "Machine part declaration refused: invalid part ID",
+    "alarm_951": "MC1: vice closed with unknown content. The cycle waits for the vice to open or for the part in the machine to be declared",
+    "alarm_996": "Tray declaration refused: the declared tray does not match the sensors",
+    "alarm_997": "Tray declaration refused: robot on a mission",
+    "alarm_999": "More than one tray out at the same time: physical anomaly",
     "alarm_952": "Robot error during a mission: MC1 cycle stopped",
     "alarm_953": "AUX missing during a mission: MC1 cycle stopped",
     "alarm_954": "HAAS start not confirmed",

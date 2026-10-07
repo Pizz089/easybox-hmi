@@ -54,8 +54,9 @@ function duplicateKeys(text) {
 const CODES = {
 	// 970/971 dalla consegna 30 (6/10), 972 dalla consegna 33 (7/10),
 	// 1419/1519/19005/19006/19007/20011 dalla consegna 34 (7/10, uncino),
-	// 973 e 691 (tasca non vuota) dalla consegna 35 (7/10)
-	robot: [961, 962, 964, 967, 19004, 20009, 2205, 970, 971, 972, 1419, 1519, 19005, 19006, 19007, 20011, 973, 691],
+	// 973 e 691 (tasca non vuota) dalla consegna 35 (7/10); 948, 951, 996,
+	// 997, 999 dalla simulazione bis (B61, 7/10 sera)
+	robot: [961, 962, 964, 967, 19004, 20009, 2205, 970, 971, 972, 1419, 1519, 19005, 19006, 19007, 20011, 973, 691, 948, 951, 996, 997, 999],
 	mc1: [952, 953, 954, 955, 956, 957, 958, 959, 947],
 };
 const raw = { it: readFileSync('src/locales/it.json', 'utf8'), en: readFileSync('src/locales/en.json', 'utf8') };
@@ -122,11 +123,13 @@ check(loc.en.robot.alarm_18 === 'Gripper not empty' && loc.en.robot.alarm_18 !==
 console.log('\n4) la famiglia e\' quella che il pannello usa davvero');
 // (v3) gli handler globali sono in layout/plantGlobals.js (prima in StandardMenu)
 const menu = readFileSync('src/layout/plantGlobals.js', 'utf8');
-check(/'robot\.alarm_' \+ code/.test(menu) && /socket\.on\('ALARM\/MC1'/.test(menu), 'allarmi MC1: evento ALARM/MC1 -> robot.alarm_<codice>');
-// (consegna 35) l'handler di PLC/ALARM/ROBOT sta in util/robotAlarm.js (972 + codice)
+// (consegna 35, 7/10 sera) gli handler di PLC/ALARM/ROBOT, ALARM/MC1 e
+// ALARM/BOX stanno in util/robotAlarm.js
 const robotAlarm = readFileSync('src/util/robotAlarm.js', 'utf8');
-check(/makePlcAlarmRobotHandler\(dataStored/.test(menu) && /socket\.on\('PLC\/ALARM\/ROBOT', plcAlarmRobotHandler\)/.test(menu)
-	&& /'robot\.alarm_' \+ payload/.test(robotAlarm), 'errori robot: robot.alarm_<codice> (util/robotAlarm.js)');
+check(/'robot\.alarm_' \+ code/.test(robotAlarm) && /socket\.on\('ALARM\/MC1', alarmMc1Handler\)/.test(menu) && /alarmMc1Handler = allarmi\.mc1/.test(menu), 'allarmi MC1: evento ALARM/MC1 -> robot.alarm_<codice>');
+check(/makePlcAlarmHandlers\(dataStored/.test(menu) && /socket\.on\('PLC\/ALARM\/ROBOT', plcAlarmRobotHandler\)/.test(menu)
+	&& /return 'robot\.alarm_' \+ \(Number\.isInteger\(c\) \? c : payload\)/.test(robotAlarm), 'errori robot: robot.alarm_<codice> (util/robotAlarm.js, codice ripulito con parseInt)');
+check(typeof loc.it.robot.alarmBox_99 === 'string' && typeof loc.en.robot.alarmBox_99 === 'string' && loc.it.robot.alarmBox_99 !== loc.it.robot.alarm_99, '99 su ALARM/BOX: un testo suo (robot.alarmBox_99), diverso da "ALLARME GENERICO"');
 
 console.log('\n' + (failed ? failed + ' CHECK FALLITI' : 'TUTTI I CHECK PASSATI'));
 process.exit(failed ? 1 : 0);

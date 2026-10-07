@@ -89,6 +89,13 @@ export const AMMESSE = [
 	// di avvio sia rimasto identico)
 	{ pagina: 'productionTable', tipo: 'cambiato', parte: ' | fetch GET api/conf/gripper/show/all', firma: /^emit TO_PLANT\/CMD\/ORDER \{"id":\d+,"status":3,"pieceID":\d+\} \| fetch GET api\/conf\/gripper\/show\/all$/,
 		motivo: 'Avvia: stesso comando di prima, poi la lettura delle pinze per l\'AVVISO (non blocca) quando la pinza dell\'ordine non ha l\'uncino e il ciclo si fermerebbe all\'estrazione del cassetto (19005). Coperto da test_gripper_hook.mjs' },
+	// (7/10 sera, verso definitivo 1.5, simulazione bis B2 e B8) abilitazioni
+	// col cassetto fuori. Gli scenari della golden oggi non arrivano a queste
+	// conferme: le voci dichiarano il cambio, la copertura e' test_gripper_hook
+	{ pagina: 'robotView', tipo: 'cambiato', scenario: /cassetto \d+ fuori/, firma: /^conferma: emit TO_PLANT\/CMD\/ROBOT 13;3;\d+;\d+/,
+		motivo: 'Gestione pallet col cassetto fuori (o in manovra): il pallet la cui pinza (PALLET.GripperREQ) non e\' quella a bordo e\' spento nel dialog, e il bottone si spegne se nessun pallet si carica con la pinza a bordo, col motivo «Cassetto fuori: prima rientralo». Il carico comincerebbe con un cambio pinza, che il PLC 35 rifiuta col 1519 (e il PLC 34 eseguiva). Stesso comando 13;3;<pallet>;<posizione> per i pallet della pinza a bordo. Coperto da test_gripper_hook.mjs' },
+	{ pagina: 'robotView', tipo: 'cambiato', scenario: /cassetto \d+ fuori/, firma: /^conferma: emit TO_PLANT\/CMD\/ROBOT 3[13];/,
+		motivo: 'collaudo 31/33 col cassetto fuori: si offre solo la pinza a bordo (prima l\'elenco completo, e con un\'altra pinza il PLC restava appeso al 1110/1210). Stessi comandi 31;tasca;pinza e 33;pinza. Coperto da test_gripper_hook.mjs' },
 ];
 const ammessa = (pagina, firma, scenario) => AMMESSE.find(a => (!a.pagina || a.pagina === pagina) && a.firma.test(firma)
 	&& (!a.scenario || (scenario !== undefined && a.scenario.test(scenario))));

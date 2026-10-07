@@ -11,6 +11,10 @@ import { dataStored } from './data';
 </template>
  
 <script>
+    // (7/10 sera, B54) a pannello scollegato i comandi non partono e non
+    // restano in coda per la riconnessione: util/socketCommands.js
+    import { guardOfflineCommands } from './util/socketCommands.js';
+
     export default {
         data() {
             return {
@@ -24,7 +28,7 @@ import { dataStored } from './data';
             }
         },
         mounted(){
-            dataStored.WS.socket = io(dataStored.WS.brokerURL);
+            dataStored.WS.socket = guardOfflineCommands(io(dataStored.WS.brokerURL));
             dataStored.WS.socket.on("connect", () => {
                 dataStored.WS.connected = true;
             });

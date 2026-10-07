@@ -89,7 +89,10 @@ check(rv.loadGrippersList.length === 2 && rv.loadGrippersList[1].ID === 26, 'loa
 rv.dialog.type = 'gripper';
 check(rv.dialogItems.length === 2 && rv.dialogItems[1].ID === 26, 'dialog CARICA PINZA usa la lista deduplicata');
 const rvSrc = strip('src/views/unit/robotView.vue');
-check(/v-for="g in grippersList"/.test(readFileSync('src/views/unit/robotView.vue', 'utf8')), 'il dialog di collaudo itera ancora grippersList (intatto)');
+// (7/10 sera, B8) il collaudo itera testGripperChoices: grippersList completa
+// coi cassetti dentro, solo la pinza a bordo col cassetto fuori
+check(/v-for="g in testGripperChoices"/.test(readFileSync('src/views/unit/robotView.vue', 'utf8')) && /return this\.palletTrayReason \? \[\] : this\.grippersList;/.test(readFileSync('src/views/unit/robotView.vue', 'utf8')),
+	'il dialog di collaudo itera ancora grippersList completa (testGripperChoices, cassetti dentro)');
 check(/g => g\.POS_PLANT != 1000/.test(rvSrc), 'filtro POS_PLANT != 1000 conservato');
 rv.grippersList = onBoard.filter(r => r.POS_PLANT != 1000);
 check(rv.loadGrippersList.length === 1 && rv.loadGrippersList[0].ID === 1, 'doppia a bordo: in CARICA resta solo la pallet');

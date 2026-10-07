@@ -83,7 +83,8 @@
         },
         methods: { },
         mounted(){
-            dataStored.WS.socket.on("DISPATCH", payload =>{
+            // (7/10 sera, B64) handler nominato, con l'off in unmounted
+            this.dispatchHandler = payload =>{
                 switch (payload.unit){
                     case "ROBOT":
                         this.robot[payload.dispatch] = payload.value;
@@ -98,10 +99,11 @@
                         this.box[payload.dispatch] = payload.value;
                         break;
                 }
-            });
+            };
+            dataStored.WS.socket.on("DISPATCH", this.dispatchHandler);
         },
         unmounted(){
-            //dataStored.WS.socket.off('DISPATCH');
+            dataStored.WS.socket.off('DISPATCH', this.dispatchHandler);
         }
     }
   </script>
