@@ -281,6 +281,41 @@ router.get('/showFromTray/:Tray_ID', (req, res) => {
     })
 })
 
+// ===========================================================================
+// (7/10, decisione di Dario) BASE DEI GRIGLIATI: il file Base.dxf nella
+// cartella dei modelli (Grating_model_dir), FUORI dal repo. Si legge a OGNI
+// richiesta: un file sostituito vale subito, senza riavvii e senza build. Il
+// pannello lo legge e lo controlla (HMI/src/util/baseDxf.js); qui si serve
+// il testo grezzo e basta.
+//   200  testo; Cache-Control no-store; Last-Modified, X-Base-Size,
+//        X-Base-Path (percorso, encodeURIComponent)
+//   404  { error: 'BASE_DXF_MISSING', path }          file assente
+//   413  { error: 'BASE_DXF_TOO_LARGE', path, size }  oltre 5 MB
+//   500  { error: 'BASE_DIR_UNSET' }                  Grating_model_dir non
+//        impostata: non si cerca in una cartella di ripiego
+// Il percorso si compone con path.join: nel .env la cartella finisce con "\".
+// ===========================================================================
+const BASE_DXF_MAX_BYTE = 5 * 1024 * 1024;
+router.get('/base', (req, res) => {
+	const fs = require('fs');
+	const path = require('path');
+	res.set('Cache-Control', 'no-store');
+	const dir = String(process.env.Grating_model_dir || '').trim();
+	if (!dir) { res.status(500).json({ error: 'BASE_DIR_UNSET' }); return; }
+	const file = path.join(dir, 'Base.dxf');
+	fs.stat(file, (err, st) => {
+		if (err || !st.isFile()) { res.status(404).json({ error: 'BASE_DXF_MISSING', path: file }); return; }
+		if (st.size > BASE_DXF_MAX_BYTE) { res.status(413).json({ error: 'BASE_DXF_TOO_LARGE', path: file, size: st.size }); return; }
+		fs.readFile(file, (err2, buf) => {
+			if (err2) { log.error('err Base.dxf: ' + err2); res.status(500).json({ error: 'BASE_DXF_READ', path: file }); return; }
+			res.set('Last-Modified', st.mtime.toUTCString());
+			res.set('X-Base-Size', String(st.size));
+			res.set('X-Base-Path', encodeURIComponent(file));
+			res.type('text/plain; charset=utf-8').send(buf);
+		});
+	});
+});
+
 router.post('/saveModel/:model_name', (req, res) => {
 	const { DOMParser, XMLSerializer } = require('xmldom');
 	const fs = require('fs');

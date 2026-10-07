@@ -444,7 +444,43 @@
     "thickness": "Spessore griglia",
     "thicknessHint": "mm; vuoto = non misurato, nessun vincolo. Con un valore, le quote di presa e rilascio del pezzo devono stare almeno 1 mm sopra.",
     "thicknessWarn": "Pezzo sotto lo spessore: minimo {min} mm (spessore + 1 di franco), richiesti prelievo {pick} mm e rilascio {place} mm. Correggere il pezzo o lo spessore: la generazione tasche verrà rifiutata.",
-    "thicknessBadge": "pezzo sotto spessore"
+    "thicknessBadge": "pezzo sotto spessore",
+    "base": {
+      "close": "Chiudi gli avvisi della base",
+      "loading": "Base del grigliato non ancora letta: riprovare fra un attimo.",
+      "blocked": "DXF e stampa PDF bloccati: un file di fabbricazione senza base non deve uscire. Generazione, salvataggio e modello SVG restano possibili.",
+      "errLine": "Base del grigliato assente o non valida: {msg} File cercato: {path}",
+      "errLineNoPath": "Base del grigliato assente o non valida: {msg}",
+      "info": "Base: {path} · modificato il {mtime} · fori: {holes}",
+      "conflictHoles": "Tasche {list}: troppo vicine a un foro (meno di {web} mm di materiale)",
+      "conflictProfile": "Tasche {list}: troppo vicine al profilo (meno di {web} mm di materiale)",
+      "conflictConfirm": "{detail}. Esportare comunque?",
+      "err": {
+        "binary": "è un DXF binario: salvarlo come DXF ASCII.",
+        "notDxf": "non è un DXF ASCII leggibile (riga {riga}).",
+        "extrusion": "estrusione non piana ({dove}): la base va disegnata nel piano XY.",
+        "profile3d": "il profilo è una polilinea 3D o una mesh: serve una polilinea 2D.",
+        "profileLoose": "linee o archi sciolti sul layer PROFILE ({n}): unisci il profilo in una polilinea.",
+        "profileMissing": "manca il profilo: serve una polilinea chiusa sul layer PROFILE.",
+        "profileMany": "polilinee sul layer PROFILE: {n}, ne serve una sola.",
+        "profileOpen": "il profilo è una polilinea aperta: chiudi il profilo (JOIN).",
+        "outOfTray": "Base.dxf non sta nel cassetto {w}×{h}: origine non in alto a sinistra o quote non in mm (riquadro trovato: X {minX}..{maxX}, Y {minY}..{maxY}).",
+        "dirUnset": "Grating_model_dir non è impostata nel .env del backend.",
+        "missing": "Base.dxf non trovato.",
+        "tooLarge": "Base.dxf è troppo grande ({size} byte, massimo 5 MB).",
+        "read": "il backend non riesce a leggere Base.dxf.",
+        "http": "risposta inattesa del backend (HTTP {status}).",
+        "network": "backend non raggiungibile ({msg})."
+      },
+      "warn": {
+        "units": "Base.dxf dichiara le unità in {unita} (INSUNITS {codice}): ignorato, le quote si leggono in mm.",
+        "closedByPoints": "profilo chiuso coi punti ma senza il flag di chiusura: accettato.",
+        "holeLayer": "fori sul layer «{layer}» ({n}): meglio sul layer HOLES.",
+        "holeOutside": "fori fuori dal profilo ({n}): {dove}.",
+        "pieces": "entità sul layer PIECES ignorate ({n}): la base non deve avere tasche.",
+        "insert": "blocco non letto ({n}): esplodilo."
+      }
+    }
   },
   "rowCmd": {
     "play": "Avvia",

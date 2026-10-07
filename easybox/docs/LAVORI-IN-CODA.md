@@ -5,6 +5,22 @@
 > stato corretto sul momento. Gli interventi manuali da fare in impianto
 > stanno invece in `APPUNTI-CELLA.md`.
 
+## [ ] BASE_WEB_MM da confermare (base dei grigliati, 7/10)
+
+**Cosa.** `HMI/src/util/baseDxf.js`, `BASE_WEB_MM = 3`: il materiale minimo fra una cavità (col franco scelto) e un foro o il profilo di `Base.dxf`. Sotto, la tasca è in rosso nell'anteprima e DXF e stampa chiedono conferma; non blocca niente. Il valore è stato messo d'ufficio, non è una decisione. Col file del 7/10 e una griglia d'esempio (pezzo 60×40, distanze 20 e 15) due tasche cadono sui fori centrali: il controllo serve.
+
+**Direzione.** Dario conferma o corregge il valore. È una costante sola; `test_base_dxf.mjs` controlla le soglie (r + 3,01 mm pulito, r + 2,99 conflitto) e va aggiornato col valore nuovo. Nella stessa util `BASE_MIN_FILL = 0.5` (un profilo sotto metà cassetto su un asse è un disegno non in mm): anche questo da confermare.
+
+**Trovato il** 2026-10-07.
+
+## [ ] GratingTest.vue e ImportGrating.vue non usano la base di `Base.dxf`
+
+**Cosa.** Dal 7/10 la base dei grigliati la legge e la disegna solo `views/conf/Grating/Grating.vue`. `GratingTest.vue` (rotta già rimossa il 1/9) e `ImportGrating.vue` (legacy, rotta `/conf/importGrating`) non disegnano la base e restano fuori da questo lavoro.
+
+**Direzione.** Niente finché restano legacy; se una delle due torna in uso, deve leggere la base da `util/baseDxf.js` come Grating.vue.
+
+**Trovato il** 2026-10-07.
+
 ## [ ] ensureSchema all'avvio del backend fallisce in cella: niente permessi per sp_refreshview
 
 **Cosa.** All'avvio il backend lancia `ensureSchema()` (`serverDati/server.js`):
