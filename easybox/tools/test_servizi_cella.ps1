@@ -19,9 +19,13 @@
 #   8. "riavvia": Stop-Service, porte libere, Start-Service, verifica
 #      (Running e proprietari delle porte), uscita in errore altrimenti;
 #      niente Restart-Service;
-#   9. avvii automatici in sola lettura (nessuna scrittura su registro e
-#      operazioni pianificate, nessun Remove-Item), segnalati da stato e da
-#      prova / installa;
+#   9. avvii automatici: nessuna scrittura su registro ed Esecuzione
+#      automatica, nessun Remove-Item; le operazioni pianificate si cercano
+#      (start_server, start_hmi, node, npm, nodemon, vite, easybox) e l'unica
+#      scrittura e' Disable-ScheduledTask in ProponiDisabilita: solo da
+#      installa (non da prova ne' da stato), dopo una "s" esplicita e dopo
+#      averne salvato la definizione; stato elenca solo le attive; installa
+#      le controlla prima di fermarsi per servizi gia' installati;
 #  10. "stato": proprietari delle porte e motivo di un Paused dagli eventi nssm.
 # Uso: powershell -ExecutionPolicy Bypass -File easybox\tools\test_servizi_cella.ps1
 # Exit code = numero di controlli falliti.
@@ -154,14 +158,31 @@ $ultimoFermati = @(& $chiamate 'Fermati' | Where-Object { (& $dentro $_ $ifRiavv
 Check ($ultimoFermati.Count -ge 1 -and $ifRiavvia.Clauses[0].Item2.Extent.Text -match "if \(-not \`$ok\) \{[\s\S]*?Fermati") '   dopo la verifica: Fermati (exit 1) se non tutto Running o porte non dei servizi'
 Check ((& $chiamate 'Restart-Service').Count -eq 0) '   nessun Restart-Service (non aspetta le porte ne'' chiude i node rimasti)'
 
-# 9. avvii automatici in sola lettura
-$scrive = @('Remove-Item', 'Remove-ItemProperty', 'Set-ItemProperty', 'New-ItemProperty', 'Unregister-ScheduledTask', 'Disable-ScheduledTask', 'Stop-ScheduledTask', 'Set-ScheduledTask')
+# 9. avvii automatici
+$scrive = @('Remove-Item', 'Remove-ItemProperty', 'Set-ItemProperty', 'New-ItemProperty', 'Unregister-ScheduledTask', 'Stop-ScheduledTask', 'Set-ScheduledTask', 'Register-ScheduledTask')
 $scritture = @($comandi | Where-Object { $scrive -contains (& $nome $_) })
-Check ($scritture.Count -eq 0) ('9. nessuna scrittura su registro, Esecuzione automatica o operazioni pianificate (' + (($scritture | ForEach-Object { & $nome $_ }) -join ', ') + ')')
-$avvii = $funzioni['AvviiAutomatici']
-Check ($null -ne $avvii -and $avvii.Body.Extent.Text -match 'Start Menu\\Programs\\StartUp' -and $avvii.Body.Extent.Text -match 'CurrentVersion\\Run' -and $avvii.Body.Extent.Text -match 'Get-ScheduledTask') '   AvviiAutomatici guarda Esecuzione automatica, chiavi Run e operazioni pianificate'
+Check ($scritture.Count -eq 0) ('9. nessuna scrittura su registro ed Esecuzione automatica, nessun Remove-Item, nessuna operazione pianificata cancellata o cambiata (' + (($scritture | ForEach-Object { & $nome $_ }) -join ', ') + ')')
+$avvii = $funzioni['AvviiAutomatici']; $sospette = $funzioni['OperazioniSospette']
+Check ($null -ne $avvii -and $avvii.Body.Extent.Text -match 'Start Menu\\Programs\\StartUp' -and $avvii.Body.Extent.Text -match 'CurrentVersion\\Run' -and $null -ne $sospette -and $sospette.Body.Extent.Text -match 'Get-ScheduledTask') '   Esecuzione automatica e chiavi Run in AvviiAutomatici, operazioni pianificate in OperazioniSospette'
+$pattern = (& $assegna '$AVVIO_SOSPETTO')[0].Right.Extent.Text
+$prove = @{ 'cmd /k cd /d D:\Prog\easybox\serverDati && npx nodemon server.js' = $true; 'D:\Prog\easybox\serverDati\start_server.bat' = $true; 'cmd /k npm run dev' = $true
+	'D:\Prog\easybox\HMI\start_hmi.bat' = $true; '"C:\Program Files\nodejs\node.exe" vite.js' = $true; 'C:\Windows\system32\defrag.exe -c' = $false; 'nodejs-updater.exe' = $false }
+$regex = Invoke-Expression $pattern
+$sbagliate = @($prove.Keys | Where-Object { ($_ -match $regex) -ne $prove[$_] })
+Check ($sbagliate.Count -eq 0) ('   il pattern riconosce le quattro operazioni del 7/10 (nodemon, start_server, npm run dev, start_hmi) e node; non defrag ne'' un nome che contiene solo "nodejs" (' + ($sbagliate -join ' | ') + ')')
+$disabilita = @(& $chiamate 'Disable-ScheduledTask')
+$proponi = $funzioni['ProponiDisabilita']
+Check ($disabilita.Count -eq 1 -and $null -ne $proponi -and (& $dentro $disabilita[0] $proponi)) ('   Disable-ScheduledTask una volta sola, dentro ProponiDisabilita (' + $disabilita.Count + ')')
+$testoProponi = if ($proponi) { $proponi.Body.Extent.Text } else { '' }
+$iRisposta = $testoProponi.IndexOf("if (`$risposta -ne 's')"); $iExport = $testoProponi.IndexOf('Export-ScheduledTask'); $iScrivi = $testoProponi.IndexOf('WriteAllText'); $iDisable = $testoProponi.IndexOf('$null = Disable-ScheduledTask')
+Check ($testoProponi -match 'Read-Host' -and $iRisposta -gt 0 -and $iRisposta -lt $iExport -and $iExport -lt $iScrivi -and $iScrivi -lt $iDisable -and $testoProponi -match "if \(-not \`$xml\) \{[^}]*continue \}") '   solo dopo una "s" esplicita (Read-Host), e dopo averne salvato la definizione (Export-ScheduledTask, file); senza definizione salvata non la disabilita'
+$usiProponi = @(& $chiamate 'ProponiDisabilita')
+$ifProvaAvvii = @($ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.IfStatementAst] -and $n.Clauses[0].Item1.Extent.Text -eq '$prova' -and $n.ElseClause }, $true))
+Check ($usiProponi.Count -eq 1 -and $ifProvaAvvii.Count -eq 1 -and (& $dentro $usiProponi[0] $ifProvaAvvii[0].ElseClause) -and $usiProponi[0].Extent.StartOffset -gt $oltreAdmin -and -not (& $dentro $usiProponi[0] $ifStato)) '   ProponiDisabilita chiamata solo da installa (ramo else di "if ($prova)"), dopo il controllo da amministratore'
 $mostraAvvii = @(& $chiamate 'MostraAvvii')
-Check (@($mostraAvvii | Where-Object { & $dentro $_ $ifStato }).Count -eq 1 -and @($mostraAvvii | Where-Object { $_.Extent.StartOffset -gt $oltreAdmin -and $_.Extent.StartOffset -lt $ifProva.Extent.StartOffset -and -not (& $dentro $_ $ifRiavvia) -and -not (& $dentro $_ $ifRimuovi) }).Count -eq 1) '   segnalati da "stato" e, prima del ramo "prova", da prova e installa'
+$gia = (& $assegna '$gia')[0]
+Check (@($mostraAvvii | Where-Object { (& $dentro $_ $ifStato) -and $_.Extent.Text -eq 'MostraAvvii $true' }).Count -eq 1) '   stato: MostraAvvii $true (le operazioni pianificate solo se attive)'
+Check (@($mostraAvvii | Where-Object { $_.Extent.StartOffset -gt $oltreAdmin -and $_.Extent.StartOffset -lt $gia.Extent.StartOffset -and -not (& $dentro $_ $ifRiavvia) -and -not (& $dentro $_ $ifRimuovi) }).Count -eq 1) '   prova e installa: prima del controllo "servizi gia'' installati" (in cella i servizi ci sono)'
 
 # 10. stato
 Check (@(& $chiamate 'MostraProprietari' | Where-Object { & $dentro $_ $ifStato }).Count -eq 1 -and @(& $chiamate 'MostraEventi' | Where-Object { & $dentro $_ $ifStato }).Count -eq 1 -and $ifStato.Clauses[0].Item2.Extent.Text -match "'Pause'") '10. stato: proprietari delle porte e, per un servizio non Running (Paused), gli eventi nssm'
