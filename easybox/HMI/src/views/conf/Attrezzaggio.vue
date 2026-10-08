@@ -257,6 +257,9 @@ export default {
         // torna come letta (micron inclusi), cambia SOLO PALLET_ID — che va
         // passato SEMPRE esplicitamente (clausola condizionale server:
         // assente = montaggio preservato, presente vuoto = NULL).
+        // (8/10, prompt 8) senza le misure della chela: stanno sul tipo di
+        // chele montato, e su una morsa senza tipo un'altezza mandata faceva
+        // rifiutare montaggio e smontaggio (KO_NO_JAW).
         buildViceParams(v, palletIdValue){
             return new URLSearchParams({
                 ID: v.ID,
@@ -264,7 +267,6 @@ export default {
                 DESCR: (v.DESCR || '').trim(),
                 STATUS: v.STATUS,
                 X: v.X, Y: v.Y, Z: v.Z,
-                Z_CLAW: v.Z_CLAW, Z_SINK_CLAW: v.Z_SINK_CLAW,
                 MAG: v.MAG, MAG_POS: v.MAG_POS, POS_PLANT: v.POS_PLANT,
                 PALLET_ID: palletIdValue
             });
@@ -464,7 +466,16 @@ export default {
     mounted(){
         // (edit) /conf/Attrezzaggio?edit=<palletID>: precarico a liste pronte
         this.editPalletId = parseInt(this.$route.query.edit) || 0;
-        this.getDataTable().then(() => this.preloadEdit());
+        // (8/10, prompt 8) di ritorno da «Crea nuova» morsa: newVice e' l'ID
+        // che il backend ha dato alla morsa (insertVice), e la si propone
+        const nuova = parseInt(this.$route.query.newVice) || 0;
+        this.getDataTable().then(() => {
+            this.preloadEdit();
+            if (nuova && !this.editPalletId && this.vices.some(x => x.ID == nuova)) {
+                this.rigType = 'vice';
+                this.viceID = nuova;
+            }
+        });
     }
 }
 </script>

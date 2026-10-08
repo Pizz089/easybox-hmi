@@ -113,14 +113,20 @@ export const PUSH_BIT = 2;
 
 // (7/10, prompt 5 di 5) BATTUTA CORRETTA per le chele montate. La battuta
 // dichiarata (PIECE_ON_VICE.STOP_BEYOND_CLAW) e' misurata dalla FINE della
-// chela con cui e' stata dichiarata (CLAW_LENGTH_REF), ma il riferimento sta
-// sulla MORSA: montate chele di un'altra lunghezza, la fine della chela si
-// sposta e la battuta va riportata. Identica alle viste COORDINATES_PUSH_MC e
+// chela con cui e' stata dichiarata, ma il riferimento sta sulla MORSA:
+// montate chele di un'altra lunghezza, la fine della chela si sposta e la
+// battuta va riportata. Identica alle viste COORDINATES_PUSH_MC e
 // COORDINATES_BLOW_MC:
 //   dichiarata + REF/2 - montata/2          (divisioni intere, verso lo zero)
 // cosi' X_Support del PLC (montata/2 + battuta) resta REF/2 + dichiarata al
-// micron. REF assente o chela montata non misurata: la dichiarata com'e'.
-// null/undefined/'' in ingresso = battuta non dichiarata -> null.
+// micron.
+// (8/10, prompt 8) REF e' la lunghezza ADESSO del TIPO di chele con cui la
+// battuta e' stata dichiarata (PIECE_ON_VICE.CLAW_JAW_REF -> VICE_JAW), non
+// piu' una lunghezza salvata: se si corregge la misura del tipo montato, che e'
+// anche quello di riferimento, la battuta la segue (X_Support cambia di meta'
+// della correzione); con un altro tipo montato, la battuta si riporta.
+// REF o montata non misurate (o nessun tipo di riferimento): la dichiarata
+// com'e'. null/undefined/'' in ingresso = battuta non dichiarata -> null.
 export function stopCorrected(stopBeyondClaw, clawLengthRef, viceClawLength) {
 	if (stopBeyondClaw === null || stopBeyondClaw === undefined || stopBeyondClaw === '') return null;
 	const d = Number(stopBeyondClaw);
@@ -140,9 +146,10 @@ export function stopCorrected(stopBeyondClaw, clawLengthRef, viceClawLength) {
 //   dichiarato; lo ZERO e' un valore legittimo e diverso (appoggio dichiarato
 //   sulla fine della ganascia anche per un pezzo che sporge). Il "non
 //   dichiarato" sta nell'assenza, mai dentro il numero.
-// clawLengthRef: PIECE_ON_VICE.CLAW_LENGTH_REF (7/10), la chela con cui la
-//   battuta e' stata dichiarata: la battuta si corregge per quella montata
-//   (stopCorrected). null/assente = nessuna correzione.
+// clawLengthRef: (8/10) la lunghezza del tipo di chele di riferimento della
+//   battuta (PIECE_ON_VICE.CLAW_JAW_REF -> VICE_JAW.CLAW_LENGTH): la battuta
+//   si corregge per le chele montate (stopCorrected). null/assente = nessuna
+//   correzione.
 // compPush: PIECE_ON_VICE.COMP_PUSH, di quanto il pezzo si ferma PRIMA della
 //   battuta teorica (semilavorati): sempre positivo, si sottrae dal solo
 //   ARRIVO. null/undefined/assente = nessuna compensazione = 0.

@@ -106,6 +106,7 @@ import StatoElenco from './StatoElenco.vue';
 import RelaunchDialog from './RelaunchDialog.vue';
 import { caricaElenco, STATO } from '../util/caricaElenco.js';
 import { avvisoUncinoOrdine } from '../util/grippers.js';
+import { KO_ORDER_VICE_NO_JAW, KO_ORDER_JAW_MISMATCH } from '../util/errorCodes.js';
 
 export default {
     components: { StatoElenco, RelaunchDialog },
@@ -199,10 +200,24 @@ export default {
             this.getDataTable();
         };
         dataStored.WS.socket.on('PRODUCTION/CHANGED', this.productionChangedHandler);
+        // (8/10, prompt 8) il backend ha rifiutato il cambio di stato (Play):
+        // le chele della morsa del pallet non vanno, o i dati non erano validi.
+        // Arriva solo a questo pannello, quello che ha mandato il comando.
+        this.orderRejectedHandler = (d)=>{
+            const code = d && d.code;
+            const k = code === KO_ORDER_VICE_NO_JAW || code === KO_ORDER_JAW_MISMATCH
+                ? 'production.playRefused_' + code : 'production.playRefusedOther';
+            dataStored.alert.title = this.$t('WARNING');
+            dataStored.alert.desc = this.$t(k, { id: d && d.id, code: code || '-' });
+            dataStored.alert.type = 'warning';
+            this.getDataTable();
+        };
+        dataStored.WS.socket.on('ORDER/REJECTED', this.orderRejectedHandler);
     },
     unmounted(){
         // off SPECIFICO (evento + callback), stesso pattern di robotView (e4ab4e5).
         dataStored.WS.socket.off('PRODUCTION/CHANGED', this.productionChangedHandler);
+        dataStored.WS.socket.off('ORDER/REJECTED', this.orderRejectedHandler);
     }
 }
 </script>

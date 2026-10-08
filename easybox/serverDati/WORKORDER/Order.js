@@ -20,6 +20,7 @@ var router 	= express.Router();
 const log 	= require('../LogFunct');
 const errorCodes = require('../errorCodes');
 const pushQuotes = require('../pushQuotes');
+const viceJawSql = require('../viceJawSql');
 
 var templatePATH = '.';
 
@@ -135,7 +136,10 @@ router.post('/resetProduction/:machineId', (req, res) => {
 // trigger su [POSITION] sporca rowsAffected/@@ROWCOUNT.
 //
 // GUARDIE: sempre ordine esistente e a 5; solo 'replaced' cella ferma; solo
-// 'available' grezzi > 0. Guardie, conteggi e scritture nello STESSO batch,
+// 'available' grezzi > 0. (8/10, prompt 8) E le CHELE, come al Play: una morsa
+// senza tipo montato sul pallet dell'ordine (KO_ORDER_VICE_NO_JAW) o chele
+// confermate diverse da quelle montate (KO_ORDER_JAW_MISMATCH) fermano il
+// rilancio, e l'anteprima lo dice gia' (viceJawSql.koChelePlay). Guardie, conteggi e scritture nello STESSO batch,
 // dentro la transazione con XACT_ABORT, e l'ordine letto con UPDLOCK: fra il
 // controllo e la scrittura nessuno lo cambia.
 //
@@ -160,7 +164,7 @@ function relaunchHead(orderId, lock) {
 				DECLARE @ko VARCHAR(40) = CASE
 					WHEN @st IS NULL THEN '${errorCodes.KO_NOT_FOUND}'
 					WHEN @st<>5 THEN '${errorCodes.KO_ORDER_NOT_FINISHED}'
-					ELSE NULL END;
+					ELSE ${viceJawSql.koChelePlay('@id', lock)} END;
 				DECLARE @koReplaced VARCHAR(40) = CASE WHEN ${cellRunningGuard()} THEN '${errorCodes.KO_CELL_RUNNING}' ELSE NULL END;
 				DECLARE @koAvailable VARCHAR(40) = CASE WHEN @raw=0 THEN '${errorCodes.KO_NO_RAW}' ELSE NULL END;`;
 }
@@ -427,8 +431,12 @@ router.get('/insertOrder', (req, res) => {
         // I termini sono gli stessi della vista COORDINATES_PUSH_MC.
         // (7/10, prompt 5 di 5) come nella vista: la lunghezza della chela
         // della morsa viene dal tipo montato (VICE_JAW via VICE.JAW_ID) e la
-        // battuta e' quella CORRETTA per le chele montate
-        // (dichiarata + CLAW_LENGTH_REF/2 - montata/2, viceJawSql).
+        // battuta e' quella CORRETTA per le chele montate.
+        // (8/10, prompt 8) il riferimento della battuta e' un TIPO di chele
+        // (PIECE_ON_VICE.CLAW_JAW_REF): dichiarata + lunghezza(tipo di
+        // riferimento)/2 - lunghezza(tipo montato)/2, con le lunghezze di
+        // ADESSO; una delle due non misurata = nessuna correzione. Stessa
+        // forma delle viste e di pushQuotes.stopCorrected.
         let query = `SET NOCOUNT ON;
 					DECLARE @push int = ISNULL((SELECT CASE WHEN PUSH_TO_STOP = 1 THEN ${pushQuotes.PUSH_BIT} ELSE 0 END FROM PIECE WHERE ID=${pieceID}), 0);
 					DECLARE @viceID int, @claw int;
@@ -436,8 +444,9 @@ router.get('/insertOrder', (req, res) => {
 					DECLARE @tool int = (SELECT TOP 1 CLAW_LENGTH FROM GRIPPER WHERE ID=${gripperID});
 					DECLARE @pieceY int = (SELECT TOP 1 Y FROM PIECE WHERE ID=${pieceID});
 					DECLARE @stop int, @ref int;
-					SELECT TOP 1 @stop = STOP_BEYOND_CLAW, @ref = CLAW_LENGTH_REF FROM PIECE_ON_VICE WHERE VICE_ID=@viceID AND PIECE_ID=${pieceID};
-					IF @stop IS NOT NULL AND @ref IS NOT NULL AND ISNULL(@claw, 0) > 0 SET @stop = @stop + @ref/2 - @claw/2;
+					SELECT TOP 1 @stop = pv.STOP_BEYOND_CLAW, @ref = jr.CLAW_LENGTH FROM PIECE_ON_VICE pv
+					  LEFT JOIN VICE_JAW jr ON jr.ID = pv.CLAW_JAW_REF WHERE pv.VICE_ID=@viceID AND pv.PIECE_ID=${pieceID};
+					IF @stop IS NOT NULL AND ISNULL(@ref, 0) > 0 AND ISNULL(@claw, 0) > 0 SET @stop = @stop + @ref/2 - @claw/2;
 					DECLARE @travel int = (@claw - @pieceY)/2 + CASE WHEN @pieceY > @claw THEN ISNULL(@stop,0) ELSE 0 END;
 					IF NOT EXISTS (SELECT 1 FROM FIXTURE WHERE ID=${fixtureID}) SELECT '${errorCodes.KO_NO_FIXTURE}' AS ris;
 					ELSE IF @push <> 0 AND (ISNULL(@claw,0) <= 0 OR ISNULL(@tool,0) <= 0 OR ISNULL(@pieceY,0) <= 0) SELECT '${errorCodes.KO_PUSH_NO_DATA}' AS ris;

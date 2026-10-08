@@ -1,7 +1,8 @@
 -- ===========================================================================
 -- coordinates-push-mc.sql — vista COORDINATES_PUSH_MC (ciclo di SPINTA IN
 -- BATTUTA, cantiere push-to-stop 15/9; compensazione semilavorati 17/9;
--- chele dal catalogo e battuta corretta 7/10)
+-- chele dal catalogo e battuta corretta 7/10; riferimento della battuta = il
+-- TIPO di chele, 8/10)
 --
 -- (7/10, prompt 5 di 5) CHELE DELLA MORSA DAL CATALOGO. La lunghezza della
 -- chela viene dal tipo montato sulla morsa (VICE_JAW via VICE.JAW_ID), non
@@ -9,19 +10,32 @@
 -- cambiano le chele. STOP_BEYOND_CLAW e' misurata dalla FINE della chela, ma
 -- il riferimento della battuta sta sulla MORSA, a distanza fissa R dal
 -- centro: con le chele centrate R = lunghezza_dichiarazione/2 + dichiarata.
--- Montate chele lunghe M invece di REF (PIECE_ON_VICE.CLAW_LENGTH_REF, la
--- chela con cui la battuta e' stata dichiarata), la fine della chela si
--- sposta e la battuta va riportata a R:
+-- Montate chele lunghe M invece di quelle della dichiarazione (lunghe REF),
+-- la fine della chela si sposta e la battuta va riportata a R:
 --   battuta corretta = STOP_BEYOND_CLAW + REF/2 - M/2
 -- scritta cosi' (e non (REF - M)/2) perche' con le divisioni intere il PLC
 -- ricava X_Support = M/2 + battuta corretta = REF/2 + STOP_BEYOND_CLAW
 -- ESATTAMENTE, al micron, qualunque chela sia montata (COORDINATES_BLOW_MC).
--- CLAW_LENGTH_REF NULL (battuta dichiarata a chela non misurata) o chela
--- montata non misurata: nessuna correzione, come prima. La colonna in uscita
--- resta STOP_BEYOND_CLAW: il PLC non cambia. La scelta fra pezzo dentro e
--- pezzo oltre la chela usa la lunghezza MONTATA.
--- Con la migrazione di vice-jaw.sql REF = lunghezza montata e la correzione
--- vale zero: le righe restano identiche al micron.
+-- La colonna in uscita resta STOP_BEYOND_CLAW: il PLC non cambia. La scelta
+-- fra pezzo dentro e pezzo oltre la chela usa la lunghezza MONTATA.
+--
+-- (8/10, prompt 8) IL RIFERIMENTO E' IL TIPO DI CHELE, NON LA LUNGHEZZA.
+-- PIECE_ON_VICE.CLAW_JAW_REF = il tipo montato quando la battuta e' stata
+-- dichiarata; REF = la lunghezza di QUEL tipo, letta adesso (jr). Il 7/10 era
+-- la lunghezza salvata (CLAW_LENGTH_REF): correggere la misura del tipo
+-- montato veniva preso per un cambio di chele, e X_Support restava ferma
+-- mentre doveva seguire la misura nuova (la battuta e' misurata col calibro
+-- dalla fine FISICA della chela). Adesso:
+--   - si corregge la misura del tipo montato: REF e M cambiano insieme,
+--     correzione zero, X_Support segue la misura nuova;
+--   - si monta un tipo diverso: REF resta quello della dichiarazione,
+--     X_Support resta ferma;
+--   - si corregge dopo la misura del tipo vecchio: la battuta segue anche
+--     quella.
+-- Lunghezza del tipo di riferimento o di quello montato NULL (o tipo di
+-- riferimento assente): nessuna correzione, come prima.
+-- Con la migrazione di vice-jaw.sql il tipo di riferimento e' quello montato
+-- e la correzione vale zero: le righe restano identiche al micron.
 --
 -- *** NASCE IN CHIARO, DEFINIZIONE VERSIONATA QUI. ***
 -- Le viste 4Robot e WORKORDERS erano CIFRATE e questo e' costato ore quando
@@ -195,8 +209,9 @@
 -- gripper-claw-length.sql e piece-on-vice.sql (li nomina tutti), piu' la
 -- colonna PIECE_ON_VICE.COMP_PUSH (int NULL, micron) e, dal 6/10,
 -- piece-on-vice-z-push.sql (colonna PIECE_ON_VICE.Z_PUSH); dal 7/10 DOPO
--- vice-jaw.sql (VICE_JAW, VICE.JAW_ID, PIECE_ON_VICE.CLAW_LENGTH_REF). A
--- cella ferma con -E. "-f 65001": il file e' UTF-8 (trattini lunghi nei
+-- vice-jaw.sql (VICE_JAW, VICE.JAW_ID; dall'8/10 PIECE_ON_VICE.CLAW_JAW_REF).
+-- A cella ferma con -E. (8/10) Dopo l'ALTER la definizione si rilegge: se non
+-- e' quella attesa, FERMO. "-f 65001": il file e' UTF-8 (trattini lunghi nei
 -- commenti della vista). "-y 0": la definizione trovata si stampa intera.
 --   cd D:\Prog\easybox\serverDati\scripts; sqlcmd -S .\SQLEXPRESS -E -d ADMG -f 65001 -y 0 -i coordinates-push-mc.sql -o D:\Backup\coordinates-push-mc_esito.txt; Get-Content D:\Backup\coordinates-push-mc_esito.txt
 -- ===========================================================================
@@ -210,9 +225,9 @@ IF COL_LENGTH('dbo.PIECE', 'PUSH_TO_STOP') IS NULL
    OR COL_LENGTH('dbo.PIECE_ON_VICE', 'Z_PUSH') IS NULL
    OR OBJECT_ID('dbo.VICE_JAW') IS NULL
    OR COL_LENGTH('dbo.VICE', 'JAW_ID') IS NULL
-   OR COL_LENGTH('dbo.PIECE_ON_VICE', 'CLAW_LENGTH_REF') IS NULL
+   OR COL_LENGTH('dbo.PIECE_ON_VICE', 'CLAW_JAW_REF') IS NULL
 BEGIN
-	PRINT 'MANCANO colonne o tabelle: eseguire prima piece-push-to-stop.sql, vice-claw-length.sql, gripper-claw-length.sql, piece-on-vice.sql, la colonna PIECE_ON_VICE.COMP_PUSH (int NULL, micron), piece-on-vice-z-push.sql (colonna PIECE_ON_VICE.Z_PUSH) e vice-jaw.sql (VICE_JAW, VICE.JAW_ID, PIECE_ON_VICE.CLAW_LENGTH_REF).';
+	PRINT 'MANCANO colonne o tabelle: eseguire prima piece-push-to-stop.sql, vice-claw-length.sql, gripper-claw-length.sql, piece-on-vice.sql, la colonna PIECE_ON_VICE.COMP_PUSH (int NULL, micron), piece-on-vice-z-push.sql (colonna PIECE_ON_VICE.Z_PUSH) e vice-jaw.sql (VICE_JAW, VICE.JAW_ID, PIECE_ON_VICE.CLAW_JAW_REF).';
 	SET NOEXEC ON;
 END
 GO
@@ -227,8 +242,9 @@ DECLARE @norm NVARCHAR(MAX) = REPLACE(REPLACE(REPLACE(ISNULL(@def, N''),
 WHILE CHARINDEX(N'  ', @norm) > 0
 	SET @norm = REPLACE(@norm, N'  ', N' ');
 
--- (7/10) SEI VARIANTI: la nuova, con le chele dal catalogo e la battuta
--- corretta; quella del 6/10 (quota Z della spinta), che si aggiorna; e le
+-- (8/10) SETTE VARIANTI: la nuova, col tipo di riferimento della battuta;
+-- quella del 7/10 (riferimento = lunghezza salvata, mai andata in cella), che
+-- si aggiorna; quella del 6/10 (quota Z della spinta), che si aggiorna; e le
 -- quattro della compensazione qui sotto, che si aggiornano anch'esse.
 --
 -- (6/10) le varianti della quota Z della spinta e della compensazione:
@@ -254,13 +270,23 @@ ELSE IF @norm LIKE N'%q.X_PUSH_RAW + q.TRAVEL_RAW - q.COMP_PUSH end as X_STOP%'
 	 AND @norm LIKE N'%then ''NO_COMP''%'
 	 AND @norm LIKE N'%when pv.Z_PUSH > pz.Z_PICK then 0 else pz.Z_PICK - pv.Z_PUSH end as Z_PUSH_DROP%'
 	 AND @norm LIKE N'%left join VICE_JAW j on j.ID = v.JAW_ID%'
-	 AND @norm LIKE N'%else pv.STOP_BEYOND_CLAW + pv.CLAW_LENGTH_REF/2 - j.CLAW_LENGTH/2 end as STOP_BEYOND_CLAW) s%'
+	 AND @norm LIKE N'%left join VICE_JAW jr on jr.ID = pv.CLAW_JAW_REF%'
+	 AND @norm LIKE N'%else pv.STOP_BEYOND_CLAW + jr.CLAW_LENGTH/2 - j.CLAW_LENGTH/2 end as STOP_BEYOND_CLAW) s%'
 BEGIN
-	PRINT 'coordinates-push-mc: conforme (chele dal catalogo, battuta corretta, quota Z della spinta, segno giusto e ramo NO_COMP gia'' presenti), nessuna modifica.';
+	PRINT 'coordinates-push-mc: conforme (chele dal catalogo, battuta corretta col tipo di riferimento, quota Z della spinta, segno giusto e ramo NO_COMP gia'' presenti), nessuna modifica.';
 	SET NOEXEC ON;
 END
+-- (8/10) la variante del 7/10, riferimento = lunghezza salvata: nel repo, mai
+-- andata in cella. Si porta all'8/10
+ELSE IF @norm LIKE N'%left join VICE_JAW j on j.ID = v.JAW_ID%'
+	 AND @norm LIKE N'%else pv.STOP_BEYOND_CLAW + pv.CLAW_LENGTH_REF/2 - j.CLAW_LENGTH/2 end as STOP_BEYOND_CLAW) s%'
+	 AND @norm LIKE N'%as Z_PUSH_DROP%'
+BEGIN
+	PRINT 'coordinates-push-mc: variante del 7/10 (riferimento della battuta = lunghezza salvata): la porto al tipo di riferimento.';
+	SET @altera = 1;
+END
 -- c'e' il catalogo ma non com'e' qui: e' qualcosa che non conosco
-ELSE IF @norm LIKE N'%VICE_JAW%' OR @norm LIKE N'%CLAW_LENGTH_REF%'
+ELSE IF @norm LIKE N'%VICE_JAW%' OR @norm LIKE N'%CLAW_LENGTH_REF%' OR @norm LIKE N'%CLAW_JAW_REF%'
 BEGIN
 	PRINT 'coordinates-push-mc: la vista legge gia'' il catalogo delle chele ma non e'' la variante attesa. FERMO.';
 	PRINT 'Leggerla con: SELECT definition FROM sys.sql_modules WHERE object_id = OBJECT_ID(''dbo.COORDINATES_PUSH_MC'');';
@@ -301,10 +327,10 @@ BEGIN
 	PRINT 'coordinates-push-mc: versione senza compensazione, la aggiungo.';
 	SET @altera = 1;
 END
--- nessuna delle sei: la vista in cella e' qualcosa che non conosco
+-- nessuna delle sette: la vista in cella e' qualcosa che non conosco
 ELSE
 BEGIN
-	PRINT 'coordinates-push-mc: la vista in cella non e'' nessuna delle sei varianti note. FERMO.';
+	PRINT 'coordinates-push-mc: la vista in cella non e'' nessuna delle sette varianti note. FERMO.';
 	PRINT 'Leggerla con: SELECT definition FROM sys.sql_modules WHERE object_id = OBJECT_ID(''dbo.COORDINATES_PUSH_MC'');';
 	PRINT 'e riconciliare a mano: il testo qui sotto sovrascriverebbe modifiche che non conosco.';
 	SET NOEXEC ON;
@@ -332,7 +358,8 @@ select	q.ORDER_ID,
 		case when q.PUSH_STATUS = 'OK' then q.X_PUSH_RAW + q.TRAVEL_RAW - q.COMP_PUSH end	as X_STOP,
 		case when q.PUSH_STATUS = 'OK' then q.TRAVEL_RAW end				as CLEARANCE,
 		q.STOP_REF,
-		-- (7/10) la battuta CORRETTA per le chele montate (vedi la subquery)
+		-- (7/10) la battuta CORRETTA per le chele montate (vedi la subquery;
+		-- dall'8/10 col tipo di riferimento)
 		q.STOP_BEYOND_CLAW,
 		q.COMP_PUSH,
 		q.PUSH_ENABLED,
@@ -408,21 +435,42 @@ from (
 	-- la dichiarazione segue la MORSA (v.ID), non il pallet: se la morsa si
 	-- sposta su un altro pallet si porta dietro la sua battuta
 	left  join PIECE_ON_VICE pv	on pv.VICE_ID = v.ID and pv.PIECE_ID = w.PIECE_ID
+	-- (8/10) il TIPO di chele con cui la battuta e' stata dichiarata
+	left  join VICE_JAW jr	on jr.ID = pv.CLAW_JAW_REF
 	-- (7/10) BATTUTA CORRETTA per le chele montate: il riferimento sta sulla
 	-- morsa, la dichiarazione e' misurata dalla fine della chela con cui e'
-	-- stata fatta (CLAW_LENGTH_REF). Senza REF o con la chela montata non
-	-- misurata: nessuna correzione, come prima.
+	-- stata fatta. (8/10) REF e' la lunghezza ADESSO del tipo di riferimento
+	-- (jr): correggere la misura del tipo montato non e' un cambio di chele.
+	-- Lunghezza di riferimento o montata non misurata: nessuna correzione.
 	-- PERCHE' REF/2 - montata/2 E NON (REF - montata)/2: con le divisioni
 	-- intere il PLC calcola X_Support = montata/2 + battuta (FB_Robot,
 	-- COORDINATES_BLOW_MC). Con questa forma X_Support = REF/2 + dichiarata
 	-- ESATTAMENTE, al micron, anche con lunghezze dispari; con l'altra potrebbe
 	-- scostarsi di 1 micron (test_vice_jaw.js prova le lunghezze dispari)
-	cross apply (select case when pv.CLAW_LENGTH_REF is null or ISNULL(j.CLAW_LENGTH, 0) <= 0
+	cross apply (select case when ISNULL(jr.CLAW_LENGTH, 0) <= 0 or ISNULL(j.CLAW_LENGTH, 0) <= 0
 							 then pv.STOP_BEYOND_CLAW
-							 else pv.STOP_BEYOND_CLAW + pv.CLAW_LENGTH_REF/2 - j.CLAW_LENGTH/2 end as STOP_BEYOND_CLAW) s
+							 else pv.STOP_BEYOND_CLAW + jr.CLAW_LENGTH/2 - j.CLAW_LENGTH/2 end as STOP_BEYOND_CLAW) s
 ) q;
 GO
 SET NOEXEC OFF;
+GO
+
+-- (8/10) la definizione si RILEGGE, dopo l'ALTER come dopo "conforme": se non e'
+-- quella dell'8/10 (o l'ALTER non e' passato, o la guardia ha detto FERMO) lo
+-- si dice qui, in chiaro
+DECLARE @dopo NVARCHAR(MAX) = REPLACE(REPLACE(REPLACE(ISNULL(OBJECT_DEFINITION(OBJECT_ID('dbo.COORDINATES_PUSH_MC')), N''),
+	CHAR(13), N' '), CHAR(10), N' '), CHAR(9), N' ');
+WHILE CHARINDEX(N'  ', @dopo) > 0
+	SET @dopo = REPLACE(@dopo, N'  ', N' ');
+IF @dopo LIKE N'%q.X_PUSH_RAW + q.TRAVEL_RAW - q.COMP_PUSH end as X_STOP%'
+   AND @dopo LIKE N'%then ''NO_COMP''%'
+   AND @dopo LIKE N'%when pv.Z_PUSH > pz.Z_PICK then 0 else pz.Z_PICK - pv.Z_PUSH end as Z_PUSH_DROP%'
+   AND @dopo LIKE N'%left join VICE_JAW j on j.ID = v.JAW_ID%'
+   AND @dopo LIKE N'%left join VICE_JAW jr on jr.ID = pv.CLAW_JAW_REF%'
+   AND @dopo LIKE N'%else pv.STOP_BEYOND_CLAW + jr.CLAW_LENGTH/2 - j.CLAW_LENGTH/2 end as STOP_BEYOND_CLAW) s%'
+	PRINT 'coordinates-push-mc: riletta, e'' la versione dell''8/10 (tipo di riferimento della battuta).';
+ELSE
+	PRINT 'FERMO: coordinates-push-mc: la vista riletta NON e'' la versione dell''8/10 (vedi sopra). Non riprendere la produzione.';
 GO
 
 -- ===========================================================================
@@ -486,9 +534,9 @@ GO
 -- ===========================================================================
 
 -- ===========================================================================
--- ROLLBACK (7/10) alla versione del 6/10, senza catalogo delle chele:
--- vice-jaw-views-rollback.sql (stampa la definizione trovata, riporta la
--- vista com'era e si ferma su una definizione che non conosce).
+-- RITORNO (8/10) alla versione del 6/10, senza catalogo delle chele:
+-- vice-jaw-rollback.sql (misure e battute nella morsa e le viste com'erano,
+-- in una transazione; si ferma su una definizione che non conosce).
 --
 -- ROLLBACK alla versione senza compensazione: rilanciare lo stesso ALTER VIEW
 -- qui sopra con

@@ -64,3 +64,6 @@ exports.KO_JAW_RETIRED        = "KO_JAW_RETIRED";        // tipo dismesso: non s
 exports.KO_JAW_MOUNTED        = "KO_JAW_MOUNTED";        // tipo montato su una morsa: non si dismette
 exports.KO_JAW_IN_USE         = "KO_JAW_IN_USE";         // tipo montato almeno una volta o usato da un ordine: non si cancella, si dismette
 exports.KO_JAW_DUP_CODE       = "KO_JAW_DUP_CODE";       // codice gia' usato da un altro tipo
+// (8/10, prompt 8) passaggio di un ordine a STATUS 3 (Play, rilancio) rifiutato per le chele
+exports.KO_ORDER_VICE_NO_JAW  = "KO_ORDER_VICE_NO_JAW";  // il pallet dell'ordine ha una morsa senza tipo di chele montato
+exports.KO_ORDER_JAW_MISMATCH = "KO_ORDER_JAW_MISMATCH"; // le chele confermate sull'ordine non sono quelle montate sulla morsa del pallet

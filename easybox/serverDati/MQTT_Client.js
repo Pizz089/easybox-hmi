@@ -7,6 +7,7 @@ var HEIDENHAIN		= require('./CN/HEIDENHAIN');
 var HAAS			= require('./CN/HAAS');
 const diag			= require('./MQTTDiag');
 const { trayParentPredicate } = require('./trayParent');
+const orderStatusSql	= require('./WORKORDER/orderStatusSql');
 console.log("DEBUG MQTT_BROKER_URL=", JSON.stringify(process.env.MQTT_BROKER_URL));
 console.log("DEBUG CN_TYPE_MC1=", JSON.stringify(process.env.CN_TYPE_MC1));
 console.log("DEBUG HAAS_MC1_IP=", JSON.stringify(process.env.HAAS_MC1_IP));
@@ -722,38 +723,40 @@ DBf.io.on('connection', (socket) => {
 //	});
 //  });
   
+    // (8/10, prompt 8) cambio di stato di un ordine dalla Produzione (Play =
+    // 3, torna a grezzo = 4, ...): dati controllati, una transazione, e al
+    // passaggio a 3 il CONTROLLO DELLE CHELE (WORKORDER/orderStatusSql.js,
+    // provato sul database in test_vice_jaw_db.js). Rifiutato: l'ordine non
+    // cambia, nessuna tasca prenotata, e il pannello che l'ha chiesto riceve
+    // ORDER/REJECTED {id, code}.
     socket.on('TO_PLANT/CMD/ORDER', (data) => {
 	insertLog( "Sent CMD: "+JSON.stringify(data,null,4), 'HMI', 'ORDER' );
-	
+	const ord = orderStatusSql.leggi(data);
+	if (!ord) {
+		insertLog( "ERR TO_PLANT/CMD/ORDER: dati non validi " + JSON.stringify(data), 'HMI', 'ORDER' );
+		socket.emit('ORDER/REJECTED', { id: data && data.id, code: 'KO_BAD_INPUT' });
+		return;
+	}
+
 	sql.connect(DBf.configDB, function (err) {
         if (err) {
 			insertLog( "ERR TO_PLANT/CMD/ORDER: "+err.toString(), 'HMI', 'ORDER' );
             return;
         }
-		let query = `UPDATE WORKORDERS SET
-					STATUS='@status@'
-					WHERE ID=@id@;`;
-		
-		if (data.status == 3){  //WORKING
-			query += `UPDATE [POSITION] SET Order_ID=@id@ WHERE id IN (
-						SELECT top (SELECT QUANTITY FROM WORKORDERS WHERE ID=@id@) id FROM POSITION WHERE Part_Type=@PIECE_ID@ AND STATUS=4 AND ORDER_ID=0 
-					  )`;
-		}
-		if (data.status == 4){  //RAW
-			query += `UPDATE [POSITION] SET Order_ID=0 WHERE id in (
-						SELECT id FROM position WHERE Part_Type=@PIECE_ID@ AND STATUS=4 AND ORDER_ID=@id@
-					 )`
-		}
-					
-		query = query.replaceAll("@status@", 	data.status); 
-		query = query.replaceAll("@id@", 		data.id);
-		query = query.replaceAll("@PIECE_ID@", 	data.pieceID);
+		const query = orderStatusSql.query(ord);
 		var request = new sql.Request();
-        request.query(query, function (err, recordset) {
+        request.query(query, function (err, result) {
             if (err) {
                 insertLog( "QUERY ERR TO_PLANT/CMD/ORDER: "+query, 'HMI', 'ORDER' );
-            }else
-				DBf.io.emit('PRODUCTION/CHANGED')  //aggiorno la tabella di produzione			
+                return;
+            }
+			const row = orderStatusSql.esito(result);
+			if (row.ris && row.ris !== 'OK') {
+				insertLog( "TO_PLANT/CMD/ORDER rifiutato: ordine " + ord.id + " -> " + ord.status + ": " + row.ris, 'HMI', 'ORDER' );
+				socket.emit('ORDER/REJECTED', { id: ord.id, code: row.ris });
+				return;
+			}
+			DBf.io.emit('PRODUCTION/CHANGED')  //aggiorno la tabella di produzione
 		});
 	});
   });

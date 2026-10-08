@@ -157,7 +157,8 @@ export default {
             // nessuna riga in PIECE_ON_VICE, cioe' non dichiarato: e' diverso
             // da zero, che e' una dichiarazione valida.
             pieceStop:null,
-            // (7/10) la chela con cui la battuta e' stata dichiarata (CLAW_LENGTH_REF)
+            // (8/10) la lunghezza del tipo di chele con cui la battuta e' stata
+            // dichiarata (PIECE_ON_VICE.CLAW_JAW_REF -> VICE_JAW.CLAW_LENGTH)
             pieceStopRef:null,
             // (6/10) quota Z della spinta della coppia morsa+pezzo (micron,
             // null = alla quota di presa) e quota di presa del pezzo
@@ -267,7 +268,7 @@ export default {
                         .then(list => {
                             const row = (list || []).find(x => x.PIECE_ID == wo.pieceID) || null;
                             this.pieceStop = row ? row.STOP_BEYOND_CLAW : null;
-                            this.pieceStopRef = row && row.CLAW_LENGTH_REF != null ? Number(row.CLAW_LENGTH_REF) : null;
+                            this.pieceStopRef = row && row.REF_CLAW_LENGTH != null ? Number(row.REF_CLAW_LENGTH) : null;
                             this.pieceZPush = row && row.Z_PUSH != null ? Number(row.Z_PUSH) : null;
                         });
                 })

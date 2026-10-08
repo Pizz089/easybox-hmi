@@ -245,6 +245,7 @@ import viceModelUrl from "@/assets/models/vice_1.glb?url";
 import { dataStored } from "../../../data.js";
 // (7/10) rifiuti del catalogo delle chele della morsa
 import { KO_NO_JAW, KO_JAW_ACTIVE_ORDER } from "../../../util/errorCodes.js";
+import { stopCorrected } from "../../../util/pushQuotes.js";
 import optionStatus from "@/components/optionStatus.vue";
 
 export default {
@@ -505,6 +506,10 @@ export default {
     // evita la sparizione silenziosa.
     buildStopRows() {
       const claw = this.clawLengthMicron;
+      // (8/10, prompt 8) la battuta CORRETTA per le chele montate, come la
+      // calcolano le viste: setStop la riscrive col tipo montato come
+      // riferimento, quindi quello che si legge e' quello che si salva
+      const battuta = (st) => stopCorrected(Number(st.STOP_BEYOND_CLAW), st.REF_CLAW_LENGTH, claw) / 1000;
       const byPiece = new Map();
       for (const st of this.stops) byPiece.set(Number(st.PIECE_ID), st);
       const rows = [];
@@ -528,7 +533,7 @@ export default {
           exceeds,
           overhang: exceeds ? Math.trunc((pieceY - claw) / 2) : 0,
           declared: !!st,
-          value: st ? Number(st.STOP_BEYOND_CLAW) / 1000 : null,
+          value: st ? battuta(st) : null,
         });
       }
       // dichiarazioni per pezzi non piu' in anagrafica: restano visibili per
@@ -543,7 +548,7 @@ export default {
           exceeds: false,
           overhang: 0,
           declared: true,
-          value: Number(st.STOP_BEYOND_CLAW) / 1000,
+          value: battuta(st),
         });
       }
       this.stopRows = rows;
@@ -684,6 +689,17 @@ export default {
     },
     // (7/10, prompt 5 di 5) rifiuti del catalogo delle chele: messaggio e si
     // resta sulla pagina. true se il corpo era un rifiuto.
+    // (8/10, prompt 8) l'ID della morsa appena creata, dalla risposta di
+    // insertVice ({"ris":"OK","ID":n}); null se la risposta non lo porta
+    idCreato(body) {
+      try {
+        const r = JSON.parse(String(body || ""));
+        const id = r && r.ris === "OK" ? Number(r.ID) : NaN;
+        return Number.isInteger(id) && id > 0 ? id : null;
+      } catch (e) {
+        return null;
+      }
+    },
     rifiutoChele(body) {
       const b = String(body || "").trim();
       if (b !== KO_NO_JAW && b !== KO_JAW_ACTIVE_ORDER) return false;
@@ -697,8 +713,9 @@ export default {
         // AF: nessun input posizione — la morsa nasce con posizione neutra
         // (0/0/0, come i default storici del form quando non si toccavano
         // i campi); Z_CLAW/Z_SINK_CLAW ai default della riga vuota.
+        // (8/10, prompt 8) senza ID: VICE.ID e' IDENTITY, l'ID lo da' il
+        // database e torna nella risposta ({"ris":"OK","ID":n})
         const params = new URLSearchParams({
-          ID: this.vice.ID,
           ...this.editedFields(),
           Z_CLAW: 0,
           Z_SINK_CLAW: 0,
@@ -715,7 +732,20 @@ export default {
             // (7/10) una morsa nuova non ha chele montate: con una lunghezza il
             // backend rifiuta (KO_NO_JAW) e la morsa non nasce
             if (this.rifiutoChele(body)) return;
-            return this.$router.push(this.$route.query.returnTo || "/conf/Vices");
+            const id = this.idCreato(body);
+            if (id === null) {
+              dataStored.alert.title = this.$t("WARNING");
+              dataStored.alert.desc = this.$t("vice.createFailed");
+              dataStored.alert.type = "warning";
+              return;
+            }
+            dataStored.alert.title = "INFO";
+            dataStored.alert.desc = this.$t("vice.created", { id });
+            dataStored.alert.type = "message";
+            // di ritorno ad Attrezzaggio la morsa nuova si propone gia' scelta
+            const back = this.$route.query.returnTo;
+            if (back) return this.$router.push(back + (String(back).includes("?") ? "&" : "?") + "newVice=" + id);
+            return this.$router.push("/conf/Vices");
           })
           .catch(console.info);
         return;

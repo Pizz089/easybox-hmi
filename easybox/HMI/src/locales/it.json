@@ -496,7 +496,8 @@
     "inMachine": "In macchina ({mc})",
     "machineOccupied": "Occupata dal pallet #{id}",
     "machineAmbiguous": "Pallet #{id} in posizione macchina non riconosciuta: verificare",
-    "editIncomplete": "Modifica incompleta: il pallet può essere rimasto senza attrezzaggio — ripetere l'operazione dall'elenco"
+    "editIncomplete": "Modifica incompleta: il pallet può essere rimasto senza attrezzaggio — ripetere l'operazione dall'elenco",
+    "unmountRefused": "Smontaggio non eseguito: il backend ha risposto {code}."
   },
   "sidebar": {
     "section": {
@@ -563,7 +564,9 @@
       "notFound": "Ordine non trovato.",
       "previewFailed": "Impossibile leggere i dati dal backend: rilancio non disponibile.",
       "done": "Ordine #{id} rilanciato: è di nuovo in lavorazione ({reserved} tasche grezze prenotate).",
-      "failed": "Rilancio NON eseguito: errore dal backend."
+      "failed": "Rilancio NON eseguito: errore dal backend.",
+      "KO_ORDER_JAW_MISMATCH": "Rilancio non possibile: le chele confermate per l'ordine non sono quelle montate sulla morsa del suo pallet.",
+      "KO_ORDER_VICE_NO_JAW": "Rilancio non possibile: la morsa sul pallet dell'ordine non ha un tipo di chele montato. Monta un tipo di chele sulla morsa, poi rilancia."
     },
     "reset": {
       "button": "Azzera produzione",
@@ -580,6 +583,9 @@
       "failed": "Azzeramento NON eseguito: errore dal backend."
     },
     "welcome": "Tabella della produzione",
+    "playRefusedOther": "Ordine #{id}: comando non eseguito ({code}).",
+    "playRefused_KO_ORDER_JAW_MISMATCH": "Ordine #{id} non avviato: le chele confermate per l'ordine non sono quelle montate sulla morsa del suo pallet. Monta le chele dell'ordine, o conferma l'ordine con quelle montate, poi riavvia.",
+    "playRefused_KO_ORDER_VICE_NO_JAW": "Ordine #{id} non avviato: la morsa sul suo pallet non ha un tipo di chele montato, e senza le misure delle chele il deposito in macchina non avrebbe l'appoggio giusto. Monta un tipo di chele sulla morsa, poi riavvia.",
     "addOrder": "Aggiungi ordine",
     "order": "Ordine",
     "status": "Stato",
@@ -602,7 +608,7 @@
     "alarm972NoText": "Premi RESET e ripeti il comando.",
     "alarm_949": "Comando rifiutato: porta operatore non chiusa durante l'estrazione o il rientro di un cassetto, oppure EasyBox in errore (il registro dei cassetti fuori non coincide coi sensori). Chiudi la porta operatore; se è chiusa, controlla la pagina EasyBox e rientra il cassetto o reimposta lo stato cella col cassetto giusto. Poi premi RESET e ripeti il comando.",
     "alarm_1722": "Missione pallet chiusa: il database non dice quale pinza serve per questo pallet, o la lettura è fallita. Dal pannello non si imposta: fai controllare l'anagrafica del pallet, poi premi RESET e ripeti.",
-    "alarm_799": "Deposito in macchina fermato: nessuna quota per questo ordine. Controlla pezzo e attrezzatura dell'ordine, e che le chele dell'ordine siano quelle montate sulla morsa. Poi RESET.",
+    "alarm_799": "Deposito in macchina fermato: nessuna quota per questo ordine. Controlla pezzo e attrezzatura dell'ordine. Poi RESET.",
     "dialog": {
       "chooseGripper": "Quale pinza caricare?",
       "choosePalletLoad": "Quale pallet caricare?",
@@ -976,7 +982,9 @@
     "stopsSave": "Salva",
     "stopsDelete": "Cancella",
     "stopsSaveError": "Non è stato possibile salvare la dichiarazione dell'appoggio.",
-    "stopsLevel": "Per dichiarare o cancellare un appoggio serve il livello 1, come nella pagina Spinta in battuta."
+    "stopsLevel": "Per dichiarare o cancellare un appoggio serve il livello 1, come nella pagina Spinta in battuta.",
+    "createFailed": "Morsa NON creata: il backend non ha restituito l'ID della morsa nuova.",
+    "created": "Morsa #{id} creata."
   },
   "pallet": {
     "inMachine": "IN MACCHINA",
@@ -1267,7 +1275,8 @@
     "confirmZPush": "Altezza di spinta di {obj} per {piece}: da {from} a {to} dal fondo del pezzo.",
     "confirmZPushClear": "Altezza di spinta di {obj} per {piece}: da {from} a vuoto, cioè alla quota di presa, come il deposito.",
     "zPushRangeServer": "Il server ha rifiutato l'altezza di spinta: è oltre la quota di presa del pezzo. Ricarica la pagina e controlla il pezzo.",
-    "qZDrop": "Discesa della chela in spinta"
+    "qZDrop": "Discesa della chela in spinta",
+    "stopFromOtherJaw": "Appoggio dichiarato con le chele {code}: qui è riportato alle chele montate, ed è il valore che il salvataggio scrive."
   },
   "palletOnRobot": {
     "dest": "A bordo del robot",
