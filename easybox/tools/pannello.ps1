@@ -52,9 +52,11 @@
 #     riavviare non basta: servirebbe la dist di prima. Dopo pull e npm
 #     install si lancia servizi-cella.ps1 -Azione aggiorna, cioe' la stessa
 #     build di sempre con lo stesso codice (build in dist_build, scambio delle
-#     dist, riavvio di backend e pannello): niente copia qui. Se la build
-#     fallisce dist e backend restano quelli di prima, il pannello si rimette
-#     su e lo script si ferma. Il messaggio finale dice cosa e' servito
+#     dist, riavvio di backend e pannello): niente copia qui. Se aggiorna non
+#     riesce il pannello (e il backend, se e' fermo) si rimette su sulla
+#     versione che c'e' e lo script si ferma: quale pannello e' servito lo
+#     dicono i messaggi di aggiorna (8/10: aggiorna puo' fermarsi anche dopo
+#     lo scambio delle dist). Il messaggio finale dice cosa e' servito
 #     (dist\build.txt: ramo e commit della build).
 # Non usa MAI reset, clean, stash, checkout -- o --force: nel peggiore dei
 # casi si ferma e spiega, e il repo resta com'era.
@@ -130,6 +132,15 @@ function AspettaPorte([int]$secondi = 90) {
 function RimettiSuPannello {
 	$script:PannelloFermato = $false
 	Scrivi ''
+	# (8/10) aggiorna (servizi-cella.ps1) puo' fermarsi coi DUE servizi fermi
+	# ("I servizi sono FERMI", porte occupate): il backend, se e' fermo, si
+	# rimette su prima del pannello, e lo si dice
+	if ((Servizio $S_B) -and (StatoServizio $S_B) -ne 'Running') {
+		Scrivi ($S_B + ' e'' fermo (' + (StatoServizio $S_B) + '): lo rimetto su...') 'Yellow'
+		Start-Service -Name $S_B -ErrorAction SilentlyContinue
+		if ((StatoServizio $S_B) -eq 'Running') { Scrivi ($S_B + ' avviato: il backend e'' di nuovo su.') 'Yellow' }
+		else { Scrivi ($S_B + ' NON avviato: con la cella in HOLD lanciare servizi-cella.ps1 -Azione riavvia, oppure chiamare Dario.') 'Red' }
+	}
 	Scrivi ('Rimetto su ' + $S_P + ' sulla versione che c''e''...') 'Yellow'
 	Start-Service -Name $S_P -ErrorAction SilentlyContinue
 	if ((StatoServizio $S_P) -eq 'Running') { Scrivi ($S_P + ' avviato: il pannello e'' di nuovo su.') 'Yellow' }
@@ -345,7 +356,7 @@ if ($conServizi -and (Servizio $S_P) -and (Get-EasyBoxModoPannello) -eq 'preview
 	Scrivi 'Il pannello gira COMPILATO: build nuova e riavvio con servizi-cella.ps1 -Azione aggiorna...' 'Cyan'
 	$esitoAggiorna = Invoke-EasyBoxAggiorna
 	if ($esitoAggiorna -ne 0) {
-		Fermati 'aggiornamento del pannello compilato non riuscito (servizi-cella.ps1 -Azione aggiorna, messaggi qui sopra).' 'leggere l''errore della build qui sopra (log completo in easybox\HMI\log\build_pannello.log) e mandarlo a Dario. Dopo la correzione: servizi-cella.ps1 -Azione aggiorna.' ('Il repo e'' gia'' sul ramo ' + $ramo + ', ma il pannello servito resta quello di prima finche'' la build non riesce.')
+		Fermati 'aggiornamento del pannello compilato non riuscito (servizi-cella.ps1 -Azione aggiorna, messaggi qui sopra).' 'leggere l''errore della build qui sopra (log completo in easybox\HMI\log\build_pannello.log) e mandarlo a Dario. Dopo la correzione: servizi-cella.ps1 -Azione aggiorna.' ('Il repo e'' gia'' sul ramo ' + $ramo + '. Quale pannello e'' servito (quello di prima o il nuovo) e come stanno i servizi lo dicono i messaggi di aggiorna qui sopra: aggiorna puo'' fermarsi anche dopo lo scambio delle dist.')
 	}
 	$script:PannelloFermato = $false
 	Scrivi ''

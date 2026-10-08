@@ -101,9 +101,16 @@ check(loc.it.robot.alarm_1419 === "Carico pinza rifiutato: c'è un cassetto fuor
 	&& loc.it.robot.alarm_1519 === "Deposito o cambio pinza rifiutato: c'è un cassetto fuori. Premi RESET, rientra il cassetto (Gestione cassetto), poi ripeti il comando."
 	&& loc.en.robot.alarm_1519 === 'Gripper drop or change refused: a tray is out. Press RESET, put the tray back (Tray handling), then repeat the command.',
 	'1419 e 1519: i testi di riferimento, in it ed en');
-check(loc.it.robot.alarm_949 === 'Comando rifiutato: EasyBox in errore, il registro dei cassetti fuori non coincide coi sensori. Controlla la pagina EasyBox, rientra il cassetto o reimposta lo stato cella col cassetto giusto, poi premi RESET e ripeti il comando.'
-	&& /^Command refused: EasyBox error, the record of trays out does not match the sensors\./.test(loc.en.robot.alarm_949) && !/porta|door/i.test(loc.it.robot.alarm_949 + loc.en.robot.alarm_949),
-	'949: EasyBox in errore (registro dei cassetti fuori contro sensori), non la porta');
+// (8/10, prompt 7) il 949 ha DUE cause (FB_Robot.scl): porta operatore non
+// chiusa negli stati 10 di Extract_TRAY e Release_TRAY ("Door_OP_locked"), e
+// EasyBox in errore nelle catene pinza e pezzo (DB_BOX_1.Robot_enabled_to_work)
+check(loc.it.robot.alarm_949 === "Comando rifiutato: porta operatore non chiusa durante l'estrazione o il rientro di un cassetto, oppure EasyBox in errore (il registro dei cassetti fuori non coincide coi sensori). Chiudi la porta operatore; se è chiusa, controlla la pagina EasyBox e rientra il cassetto o reimposta lo stato cella col cassetto giusto. Poi premi RESET e ripeti il comando."
+	&& loc.en.robot.alarm_949 === "Command refused: operator door not closed while a tray is extracted or put back, or EasyBox error (the record of trays out does not match the sensors). Close the operator door; if it is closed, check the EasyBox page and put the tray back or reset the cell state with the right tray. Then press RESET and repeat the command.",
+	'949: le due cause (porta operatore durante estrazione o rientro, EasyBox in errore), it ed en');
+check(/porta operatore/.test(loc.it.robot.alarm_949) && /EasyBox in errore/.test(loc.it.robot.alarm_949)
+	&& /operator door/.test(loc.en.robot.alarm_949) && /EasyBox error/.test(loc.en.robot.alarm_949)
+	&& (loc.it.robot.alarm_949.match(/RESET/g) || []).length === 1,
+	'   tutte e due le cause nominate, RESET una volta sola');
 check(loc.it.robot.alarm_1722 === "Missione pallet chiusa: il database non dice quale pinza serve per questo pallet, o la lettura è fallita. Dal pannello non si imposta: fai controllare l'anagrafica del pallet, poi premi RESET e ripeti."
 	&& /^Pallet mission closed: the database does not say which gripper this pallet needs/.test(loc.en.robot.alarm_1722),
 	'1722: pinza del pallet assente a database, non si imposta dal pannello');

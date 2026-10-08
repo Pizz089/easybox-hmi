@@ -20,7 +20,9 @@
 # fetch); npm install fallito (il pannello si rimette su); pannello che non
 # si ferma (nessun file cambiato); (7/10 sera) pannello COMPILATO: dopo pull
 # e npm install si lancia aggiorna (riuscito, e non riuscito: il pannello si
-# rimette su), e stato dice da che commit viene il pannello servito.
+# rimette su), e stato dice da che commit viene il pannello servito;
+# (8/10) aggiorna fermo coi due servizi fermi: si rimette su anche il backend,
+# e il messaggio di FERMO non dice quale pannello e' servito.
 # Uso: powershell -ExecutionPolicy Bypass -File easybox\tools\test_pannello_servizi.ps1
 # Exit code = numero di controlli falliti. I rami ui-lifting e ui-v3 del
 # repo devono contenere il pannello.ps1 da provare (si prova il committato).
@@ -111,6 +113,8 @@ function global:Get-EasyBoxModoPannello { return $global:MODO }
 function global:Invoke-EasyBoxAggiorna {
 	[void]$global:CHIAMATE.Add('Aggiorna @' + (((& git.exe -C $global:CLONE branch --show-current) -join '').Trim()))
 	if ($global:AGG_ESITO -eq 0) { $global:SERVIZI['EasyBoxBackend'] = 'Running'; $global:SERVIZI['EasyBoxPannello'] = 'Running' }
+	# (8/10) 2 = RiavviaServizi fermo con "I servizi sono FERMI"
+	if ($global:AGG_ESITO -eq 2) { $global:SERVIZI['EasyBoxBackend'] = 'Stopped'; $global:SERVIZI['EasyBoxPannello'] = 'Stopped'; return 1 }
 	return $global:AGG_ESITO
 }
 function global:Show-EasyBoxPannelloServito { [void]$global:CHIAMATE.Add('Servito'); Write-Host 'Pannello servito: ramo finto, commit finto' }
@@ -214,8 +218,19 @@ Check ($r.Codice -eq 1 -and $r.Testo -match 'FERMO: aggiornamento del pannello c
 $iAgg = [array]::IndexOf($r.Chiamate, ($r.Chiamate | Where-Object { $_ -like 'Aggiorna*' } | Select-Object -First 1))
 $iStart = [array]::IndexOf($r.Chiamate, 'Start EasyBoxPannello')
 Check ($iAgg -ge 0 -and $iStart -gt $iAgg -and $global:SERVIZI['EasyBoxPannello'] -eq 'Running' -and $r.Testo -match 'EasyBoxPannello avviato: il pannello e'' di nuovo su') ('il pannello si rimette su, sulla dist che c''e'' (' + ($r.Chiamate -join ' ; ') + ')')
-Check ($r.Testo -match ('Il repo e'' gia'' sul ramo ' + $ramoDopo + ', ma il pannello servito resta quello di prima') -and $r.Testo -match 'build_pannello\.log') 'e dice che il repo e'' sul ramo nuovo ma il pannello servito e'' quello di prima, e dove leggere l''errore'
-Check (@($r.Chiamate | Where-Object { $_ -like 'Restart EasyBoxBackend*' }).Count -eq 0) 'il backend non viene riavviato da pannello.ps1'
+Check ($r.Testo -match ('Il repo e'' gia'' sul ramo ' + $ramoDopo + '\. Quale pannello e'' servito \(quello di prima o il nuovo\)') -and $r.Testo -notmatch 'resta quello di prima' -and $r.Testo -match 'build_pannello\.log') 'e dice che il repo e'' sul ramo nuovo, che il pannello servito lo dicono i messaggi di aggiorna (non piu'' "resta quello di prima"), e dove leggere l''errore'
+Check (@($r.Chiamate | Where-Object { $_ -like 'Restart EasyBoxBackend*' -or $_ -like 'Start EasyBoxBackend*' }).Count -eq 0) 'il backend (che gira) non viene riavviato ne'' avviato da pannello.ps1'
+
+# (8/10) aggiorna fermo coi DUE servizi fermi: si rimettono su tutti e due
+$global:AGG_ESITO = 2
+$ramoPrima = Ramo
+$verso = $(if ($ramoPrima -eq 'ui-v3') { 'stabile' } else { 'v3' })
+$r = Lancia $verso 'CASO 6d: pannello compilato, aggiorna fermo coi servizi FERMI'
+$iB = [array]::IndexOf($r.Chiamate, 'Start EasyBoxBackend')
+$iP = [array]::IndexOf($r.Chiamate, 'Start EasyBoxPannello')
+Check ($r.Codice -eq 1 -and $iB -ge 0 -and $iP -gt $iB -and $global:SERVIZI['EasyBoxBackend'] -eq 'Running' -and $global:SERVIZI['EasyBoxPannello'] -eq 'Running') ('servizi fermi dopo aggiorna: prima il backend, poi il pannello, tutti e due di nuovo Running (' + ($r.Chiamate -join ' ; ') + ')')
+Check ($r.Testo -match 'EasyBoxBackend e'' fermo \(Stopped\): lo rimetto su' -and $r.Testo -match 'EasyBoxBackend avviato: il backend e'' di nuovo su' -and $r.Testo -match 'EasyBoxPannello avviato') '   e lo dice'
+$global:AGG_ESITO = 1
 
 $r = Lancia 'stato' 'CASO 6c: pannello compilato, stato'
 Check ($r.Codice -eq 0 -and @($r.Chiamate | Where-Object { $_ -eq 'Servito' }).Count -eq 1 -and $r.Testo -match 'Pannello servito:') 'stato: dice da che commit viene il pannello servito'

@@ -158,18 +158,25 @@ export default {
         };
         dataStored.WS.socket.on('connect', this.requestSnapshots);
         this.requestSnapshots();
-        dataStored.WS.socket.on('BOX/STATUS', () =>{
+        // (8/10) handler NOMINATI, staccati in unmounted (come B64): con
+        // quelli anonimi a ogni apertura della pagina se ne aggiungeva uno,
+        // e i vecchi restavano attaccati a una view smontata
+        this.boxStatusHandler = () => {
           this.getTrayData()
           this.getStatus();
-        });
-        dataStored.WS.socket.on('BOX/DESCR', (desc) =>{
+        };
+        this.boxDescrHandler = () => {
           this.getStatus();
-        });
+        };
+        dataStored.WS.socket.on('BOX/STATUS', this.boxStatusHandler);
+        dataStored.WS.socket.on('BOX/DESCR', this.boxDescrHandler);
     },
     unmounted(){
-        // off del solo handler nominato; i due listener BOX/* anonimi sopra
-        // restano senza off (debito preesistente, censito in P3)
+        // off SPECIFICO (evento + callback): un off nudo staccherebbe anche
+        // i listener di altri componenti sugli stessi eventi
         dataStored.WS.socket.off('connect', this.requestSnapshots);
+        dataStored.WS.socket.off('BOX/STATUS', this.boxStatusHandler);
+        dataStored.WS.socket.off('BOX/DESCR', this.boxDescrHandler);
     }
   }
 </script>

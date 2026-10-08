@@ -159,6 +159,16 @@ export function parseBaseDxf(text, { width, height } = {}) {
 	if (insunits != null && insunits !== 4 && insunits !== 0)
 		warnings.push(avviso('units', { unita: info.unitaDichiarata, codice: insunits }));
 	const conta = tipo => { info.ignorate[tipo] = (info.ignorate[tipo] || 0) + 1; };
+	// (8/10, prompt 7) le entita' che non si leggono, per tipo e layer: prima
+	// finivano solo nel contatore, e un foro disegnato come polilinea (o
+	// ELLIPSE, SPLINE, HATCH, LINE, ARC) non si disegnava, non entrava nel
+	// controllo delle tasche e non usciva nel DXF da tagliare, senza avvisi
+	const nonLette = new Map();       // 'TIPO|layer' -> quante
+	const ignora = (tipo, lay) => {
+		conta(tipo);
+		const k = tipo + '|' + lay;
+		nonLette.set(k, (nonLette.get(k) || 0) + 1);
+	};
 	const leggi = (e, c, d) => { const x = e.codici.find(p => p[0] === c); return x ? x[1] : d; };
 	const num = (e, c, d = 0) => { const x = leggi(e, c, null); const n = x == null ? d : parseFloat(String(x).trim()); return Number.isFinite(n) ? n : d; };
 	const layer = e => String(leggi(e, 8, '0')).trim();
@@ -209,7 +219,7 @@ export function parseBaseDxf(text, { width, height } = {}) {
 		}
 		if (e.tipo === 'POLYLINE') {      // polilinea R12 su un altro layer: si salta coi suoi vertici
 			while (entita[k + 1] && (entita[k + 1].tipo === 'VERTEX' || entita[k + 1].tipo === 'SEQEND')) k++;
-			conta('POLYLINE'); continue;
+			ignora('POLYLINE', lay); continue;
 		}
 		if ((e.tipo === 'LINE' || e.tipo === 'ARC') && layU === 'PROFILE') { sciolti++; continue; }
 		if (e.tipo === 'CIRCLE') {
@@ -238,8 +248,10 @@ export function parseBaseDxf(text, { width, height } = {}) {
 			texts.push({ x: x * v, y, h: num(e, 40, 2.5), text: testo, attach });
 			continue;
 		}
-		if (e.tipo === 'INSERT') { inserts++; conta('INSERT'); continue; }
+		if (e.tipo === 'INSERT') { inserts++; conta('INSERT'); continue; }     // avviso suo: «esplodilo»
 		conta(e.tipo + (layU === 'PROFILE' ? ' (PROFILE)' : ''));
+		const k2 = e.tipo + '|' + lay;
+		nonLette.set(k2, (nonLette.get(k2) || 0) + 1);
 	}
 	info.holes = holes.length;
 	info.texts = texts.length;
@@ -277,6 +289,10 @@ export function parseBaseDxf(text, { width, height } = {}) {
 	if (fuori.length) warnings.push(avviso('holeOutside', { n: fuori.length, dove: fuori.map(h => '(' + r3(h.cx) + ', ' + r3(h.cy) + ')').join(', ') }));
 	if (info.pieces) warnings.push(avviso('pieces', { n: info.pieces }));
 	if (inserts) warnings.push(avviso('insert', { n: inserts }));
+	if (nonLette.size) {
+		const elenco = [...nonLette].map(([k, n]) => { const [tipo, l] = k.split('|'); return tipo + ', layer ' + l + ' (' + n + ')'; });
+		warnings.push(avviso('ignored', { n: [...nonLette.values()].reduce((a, b) => a + b, 0), dove: elenco.join('; ') }));
+	}
 	return { profile: vert, holes, texts, info, warnings };
 }
 const r3 = v => Math.round(v * 1000) / 1000;

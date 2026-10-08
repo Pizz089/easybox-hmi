@@ -231,12 +231,23 @@ function LeggiBuildTxt([string]$file) {
 # La build contiene l'ultimo commit che tocca easybox/HMI? Si' se e' lo stesso
 # commit o un suo discendente (dopo la build puo' esserci un commit che non
 # tocca il pannello, es. i documenti: la dist resta buona).
-#   $true aggiornato, $false no (commit diverso, non leggibile o sconosciuto)
-function BuildContiene([string]$commitBuild, [string]$ultimoHmi) {
-	if ($commitBuild -notmatch '^[0-9a-f]{7,40}$' -or $ultimoHmi -notmatch '^[0-9a-f]{7,40}$') { return $false }
-	if ($commitBuild -eq $ultimoHmi) { return $true }
+# (8/10) E la build deve stare nella storia del commit attuale ($testa): dopo
+# un ritorno (pannello.ps1 -Versione ritorno) o un cambio di ramo con la
+# build fallita, la dist servita puo' venire da un commit piu' avanti o di un
+# altro ramo, che contiene comunque l'ultimo commit di easybox/HMI: prima
+# diceva "aggiornato".
+#   $true aggiornato, $false no (commit diverso, fuori dalla storia, non
+#   leggibile o sconosciuto)
+function BuildContiene([string]$commitBuild, [string]$ultimoHmi, [string]$testa) {
+	if ($commitBuild -notmatch '^[0-9a-f]{7,40}$' -or $ultimoHmi -notmatch '^[0-9a-f]{7,40}$' -or $testa -notmatch '^[0-9a-f]{7,40}$') { return $false }
 	# un commit che il repo non conosce: git scrive su stderr, e' un "no"
-	try { & git -C $Pannello merge-base --is-ancestor $ultimoHmi $commitBuild 2>$null; return ($LASTEXITCODE -eq 0) }
+	try {
+		& git -C $Pannello merge-base --is-ancestor $commitBuild $testa 2>$null
+		if ($LASTEXITCODE -ne 0) { return $false }
+		if ($commitBuild -eq $ultimoHmi) { return $true }
+		& git -C $Pannello merge-base --is-ancestor $ultimoHmi $commitBuild 2>$null
+		return ($LASTEXITCODE -eq 0)
+	}
 	catch { return $false }
 }
 # Stampa da che commit viene il pannello servito e se e' aggiornato.
@@ -249,9 +260,10 @@ function PannelloServito {
 	}
 	Scrivi ('Pannello servito: ramo ' + $b['ramo'] + ', commit ' + $b['commit'] + ', compilato il ' + $b['data']) 'Cyan'
 	$ultimo = ((& git -C $Pannello log -1 --format=%H -- . 2>$null) -join '').Trim()
-	if (-not $ultimo) { Scrivi '  ultimo commit di easybox/HMI non leggibile (git?): confronto saltato.' 'Yellow'; return $false }
-	if (-not (BuildContiene $b['commit'] $ultimo)) {
-		Scrivi ('pannello servito non aggiornato: -Azione aggiorna (ultimo commit di easybox/HMI: ' + $ultimo + ')') 'Red'
+	$testa = ((& git -C $Pannello rev-parse HEAD 2>$null) -join '').Trim()
+	if (-not $ultimo -or -not $testa) { Scrivi '  ultimo commit di easybox/HMI non leggibile (git?): confronto saltato.' 'Yellow'; return $false }
+	if (-not (BuildContiene $b['commit'] $ultimo $testa)) {
+		Scrivi ('pannello servito non aggiornato: -Azione aggiorna (ultimo commit di easybox/HMI: ' + $ultimo + '; commit attuale: ' + $testa + ')') 'Red'
 		return $false
 	}
 	Scrivi ('  aggiornato: contiene l''ultimo commit di easybox/HMI (' + $ultimo + ').') 'Green'

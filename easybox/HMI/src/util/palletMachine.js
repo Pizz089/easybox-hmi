@@ -18,6 +18,7 @@
 // com'era. Dal 7/10 sera anche «Casella» di un pallet in macchina.
 // ============================================================================
 import { codiciInDialog } from './robotAlarm.js';
+import { timer } from './orologio.js';
 
 export const ECO_MC_MS = 3000;      // come la pagina Macchine dal 16/9
 export const RIFIUTI_MC = [947];    // FB204: ciclo macchina avviato / pallet gia' dichiarato
@@ -25,30 +26,39 @@ export const REGISTRO_MS = 1500;    // risposta allo snapshot del registro
 
 // Attende UN'eco COERENTE con quanto mandato, con timeout. Un rifiuto del PLC
 // fra i codici attesi chiude subito l'attesa.
-// Risolve { ok, codice, scaduto } — mai una rejection.
-export function aspettaEco(socket, { evento, coerente, allarme, codici, ms }) {
+// Risolve { ok, codice, scaduto, annullato } — mai una rejection.
+// (8/10, prompt 7) attese: un Set facoltativo di chi aspetta. Finche' l'attesa
+// e' aperta ci sta dentro la funzione che la ANNULLA: chi chiude il dialog o
+// smonta la pagina la chiama, e i codici tornano subito al riquadro globale
+// (prima restavano zitti fino al timeout piu' il margine, circa 6,5 s).
+// L'attesa annullata risolve { ok: false, annullato: true }: chi aspettava
+// non deve mostrare niente.
+export function aspettaEco(socket, { evento, coerente, allarme, codici, ms, attese }) {
 	return new Promise(resolve => {
 		let fatto = false;
 		// (7/10 sera, B61) il rifiuto lo mostra chi aspetta: il riquadro
 		// globale degli allarmi tace per questi codici (util/robotAlarm.js)
 		const rilascia = codiciInDialog(codici);
-		const fine = (esito) => {
+		const fine = (esito, subito) => {
 			if (fatto) return;
 			fatto = true;
-			rilascia();
-			clearTimeout(t);
+			rilascia({ subito: !!subito });
+			timer.annulla(t);
 			socket.off(evento, suEco);
 			if (allarme) socket.off(allarme, suAllarme);
+			if (attese) attese.delete(annulla);
 			resolve(esito);
 		};
+		const annulla = () => fine({ ok: false, codice: 0, scaduto: false, annullato: true }, true);
 		const suEco = (payload) => { if (!coerente || coerente(String(payload))) fine({ ok: true, codice: 0, scaduto: false }); };
 		const suAllarme = (payload) => {
 			const c = parseInt(String(payload).trim(), 10);
 			if ((codici || []).indexOf(c) >= 0) fine({ ok: false, codice: c, scaduto: false });
 		};
-		const t = setTimeout(() => fine({ ok: false, codice: 0, scaduto: true }), ms);
+		const t = timer.dopo(() => fine({ ok: false, codice: 0, scaduto: true }), ms);
 		socket.on(evento, suEco);
 		if (allarme) socket.on(allarme, suAllarme);
+		if (attese) attese.add(annulla);
 	});
 }
 
@@ -86,9 +96,9 @@ export function inMacchina(pallets, mc = 1) {
 export function leggiRegistroMacchina(socket, ms = REGISTRO_MS) {
 	return new Promise(resolve => {
 		let fatto = false;
-		const fine = (v) => { if (fatto) return; fatto = true; clearTimeout(t); socket.off('DECLARE/MC1', suEco); resolve(v); };
+		const fine = (v) => { if (fatto) return; fatto = true; timer.annulla(t); socket.off('DECLARE/MC1', suEco); resolve(v); };
 		const suEco = (p) => { const n = parseInt(String(p).split(';')[0], 10); fine(Number.isInteger(n) ? n : undefined); };
-		const t = setTimeout(() => fine(undefined), ms);
+		const t = timer.dopo(() => fine(undefined), ms);
 		socket.on('DECLARE/MC1', suEco);
 		socket.emit('GRIPPER/REQUEST_SNAPSHOT');
 	});

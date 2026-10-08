@@ -268,7 +268,7 @@ $iAdmin = [array]::IndexOf($ast.EndBlock.Statements, $ifAdmin)
 Check ($null -ne $ifModo -and $null -ne $ifServito -and $testo -match "ValidateSet\([^)]*'modo', 'servito'\)" -and [array]::IndexOf($ast.EndBlock.Statements, $ifModo) -lt $iAdmin -and [array]::IndexOf($ast.EndBlock.Statements, $ifServito) -lt $iAdmin) '12. azioni modo e servito, prima del controllo da amministratore'
 Check (@(@($nssm) + @($servizi) | Where-Object { (& $dentro $_ $ifModo) -or (& $dentro $_ $ifServito) }).Count -eq 0 -and $ifModo.Clauses[0].Item2.Extent.Text -match 'Write-Output \(ModoPannello\)') '    modo scrive ModoPannello e basta; modo e servito non toccano servizi ne'' nssm'
 $servito = $funzioni['PannelloServito']
-Check ($null -ne $servito -and $servito.Body.Extent.Text -match 'LeggiBuildTxt \$BuildTxt' -and $servito.Body.Extent.Text -match 'log -1 --format=%H -- \.' -and $servito.Body.Extent.Text -match 'BuildContiene' -and $servito.Body.Extent.Text -match "pannello servito non aggiornato: -Azione aggiorna" -and $servito.Body.Extent.Text -match "'Red'") '    PannelloServito: build.txt contro l''ultimo commit di easybox/HMI, riga rossa "pannello servito non aggiornato: -Azione aggiorna"'
+Check ($null -ne $servito -and $servito.Body.Extent.Text -match 'LeggiBuildTxt \$BuildTxt' -and $servito.Body.Extent.Text -match 'log -1 --format=%H -- \.' -and $servito.Body.Extent.Text -match 'rev-parse HEAD' -and $servito.Body.Extent.Text -match 'BuildContiene \$b\[''commit''\] \$ultimo \$testa' -and $servito.Body.Extent.Text -match "pannello servito non aggiornato: -Azione aggiorna" -and $servito.Body.Extent.Text -match "'Red'") '    PannelloServito: build.txt contro l''ultimo commit di easybox/HMI, riga rossa "pannello servito non aggiornato: -Azione aggiorna"'
 Check ((& $assegna '$BuildTxt')[0].Right.Extent.Text -eq "Join-Path `$Dist 'build.txt'" -and $ifStato.Clauses[0].Item2.Extent.Text -match "if \(\`$modo -eq 'preview'\) \{ \`$null = PannelloServito \}" -and $ifAggiorna.Clauses[0].Item2.Extent.Text -match '\$null = PannelloServito') '    dist\build.txt; stato (col pannello compilato) e aggiorna lo stampano'
 # le due funzioni vere, eseguite
 . ([scriptblock]::Create($funzioni['LeggiBuildTxt'].Extent.Text + "`n" + $funzioni['BuildContiene'].Extent.Text))
@@ -280,7 +280,10 @@ Remove-Item -LiteralPath $finto -ErrorAction SilentlyContinue
 Check ($letto['ramo'] -eq 'ui-v3' -and $letto['commit'] -eq 'abc123' -and $letto['data'] -eq '2026-10-07 21:05' -and $null -eq (LeggiBuildTxt $finto)) '    LeggiBuildTxt: ramo, commit e data; file assente = $null'
 $capo = ((& git -C $Pannello rev-parse HEAD) -join '').Trim()
 $prima = ((& git -C $Pannello rev-parse HEAD~1) -join '').Trim()
-Check ((BuildContiene $capo $capo) -and (BuildContiene $capo $prima) -and -not (BuildContiene $prima $capo) -and -not (BuildContiene 'sconosciuto' $capo) -and -not (BuildContiene '' $capo)) '    BuildContiene: stesso commit o discendente si''; build piu'' vecchia, sconosciuta o vuota no'
+Check ((BuildContiene $capo $capo $capo) -and (BuildContiene $capo $prima $capo) -and -not (BuildContiene $prima $capo $capo) -and -not (BuildContiene 'sconosciuto' $capo $capo) -and -not (BuildContiene '' $capo $capo)) '    BuildContiene: stesso commit o discendente si''; build piu'' vecchia, sconosciuta o vuota no'
+# (8/10) dopo un ritorno a $prima la dist puo' venire da $capo, che contiene
+# l'ultimo commit di easybox/HMI di $prima ma non sta nella storia di HEAD
+Check (-not (BuildContiene $capo $prima $prima) -and (BuildContiene $prima $prima $capo) -and -not (BuildContiene $capo $capo '') -and -not (BuildContiene $capo $capo 'sconosciuto')) '    BuildContiene: la build deve stare nella storia del commit attuale (dopo un ritorno o un cambio di ramo, una build piu'' avanti non e'' "aggiornata")'
 
 Write-Host ''
 Write-Host $(if ($script:falliti) { "$($script:falliti) CHECK FALLITI" } else { 'TUTTI I CHECK PASSATI' })

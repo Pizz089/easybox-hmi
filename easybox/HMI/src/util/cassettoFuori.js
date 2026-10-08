@@ -34,14 +34,53 @@ export function motivoPinzaCassetto(stato) {
 	return '';
 }
 
+// (8/10, prompt 7) la pinza che il PLC tiene come lato 1 (Gripper_ID[1]).
+// La fonte e' il registro del PLC: FROM_PLANT/GRIPPER/ROBOT, che il PLC
+// pubblica col valore di Gripper_ID[1] a ogni aggiornamento della pinza a
+// bordo (FB_Robot, updateGripperOnRobot) e che il pannello riceve come
+// GRIPPER/REGISTERED (anche dalla cache del backend, GRIPPER/REQUEST_SNAPSHOT).
+// Il database non lo dice: POS_PLANT = 1000 marca tutte e due le righe di una
+// pinza doppia, e la gemella ha lo stesso SUB_POS.
+// Registro non arrivato: con una riga sola a bordo il lato 1 e' quella (pinza
+// singola, Gripper_ID[2] = 0); con due righe non si sa (null).
+export function pinzaLato1(registro, righeABordo) {
+	const r = Number(registro);
+	if (registro != null && r > 0) return r;
+	const ids = (Array.isArray(righeABordo) ? righeABordo : [])
+		.map(g => Number(g && g.ID)).filter(id => id > 0);
+	return ids.length === 1 ? ids[0] : null;
+}
+
+// (8/10, prompt 7) la pinza richiesta dal pallet, letta senza badare alle
+// maiuscole. Il pannello prende il pallet da `select * from PALLET`
+// (serverDati/CONF/Pallet.js, /show/all): in JavaScript il campo ha il nome
+// della colonna con le sue maiuscole, in SQL no. La grafia vera della colonna
+// non e' nel repo (le viste scrivono pal.GripperREQ, il PLC GRIPPERREQ): se
+// fosse GRIPPERREQ, pallet.GripperREQ sarebbe undefined e la guardia di
+// «Gestione pallet» spenta senza avvisi. Un alias nella SELECT non va bene con
+// `select *`: se la colonna si chiama gia' GripperREQ il driver mssql
+// restituisce la colonna doppia come array.
+export function pinzaRichiesta(pallet) {
+	if (!pallet || typeof pallet !== 'object') return undefined;
+	if (Object.prototype.hasOwnProperty.call(pallet, 'GripperREQ')) return pallet.GripperREQ;
+	const k = Object.keys(pallet).find(c => c.toLowerCase() === 'gripperreq');
+	return k === undefined ? undefined : pallet[k];
+}
+
 // (7/10 sera, simulazione bis B2) il pallet da caricare chiede un cambio
 // pinza? Il PLC prende la pinza del pallet da PALLET.GripperREQ (vista
-// pallets_grippers, FB_Robot Gripper4Pallet_Search): se non e' quella a bordo,
-// il carico comincia con un cambio pinza, che col cassetto fuori e' vietato.
-// pinzeABordo = gli ID delle righe della pinza a bordo (la doppia ne ha due).
-// GripperREQ assente o 0: nessun cambio da dire (il PLC risponde 1722).
-export function palletCambiaPinza(pallet, pinzeABordo) {
-	const req = Number(pallet && pallet.GripperREQ);
+// pallets_grippers, FB_Robot Gripper4Pallet_Search) e la cambia quando
+// GripperRequested <> Gripper_ID[1] (FB_Robot, master 1010): il confronto e'
+// col SOLO lato 1, non con la gemella (8/10, prompt 7: prima il pannello
+// contava anche la riga del lato 2 come «stessa pinza», e col cassetto fuori
+// lasciava acceso un carico che comincia con un cambio pinza).
+// lato1 = pinzaLato1(...). GripperREQ assente o 0: nessun cambio da dire (il
+// PLC risponde 1722). Lato 1 non noto: si conta come cambio, perche' il PLC
+// potrebbe farlo.
+export function palletCambiaPinza(pallet, lato1) {
+	const req = Number(pinzaRichiesta(pallet));
 	if (!(req > 0)) return false;
-	return !(pinzeABordo || []).some(id => Number(id) === req);
+	const l1 = Number(lato1);
+	if (lato1 == null || !(l1 > 0)) return true;
+	return req !== l1;
 }

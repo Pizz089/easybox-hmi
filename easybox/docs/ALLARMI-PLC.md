@@ -99,14 +99,27 @@ mette insieme in un punto solo, `HMI/src/util/robotAlarm.js` (handler di
 - la coda «Premi RESET e ripeti il comando.» solo se il codice non ha un
   testo. Cosi' «RESET» compare una volta sola (972 + 1419: lo dice il 1419).
 
-Si abbina **solo il messaggio che segue il 972 su `PLC/ALARM/ROBOT`**, entro
-1 s: mai `ALARM/MC1` ne' `PLC/ALARM/GENERIC`, che hanno handler loro e non
-passano dal combinatore; un 972 che segue un altro 972 non si abbina. Basta
-cosi' perche' nella 35 il PLC mette in coda i due messaggi uno dopo l'altro,
-nello stesso ciclo e sullo stesso topic `FROM_PLANT/ALARM/ROBOT` (FB_Robot,
-REGION Manager, due `FC_MQTT` con `insert := true`): il secondo e' `#Error`
-di FB_Robot, un codice del robot. Un 972 senza seguito (PLC 33, o un codice
-arrivato dopo 1 s) resta il testo del 972. Il 968, l'altro rifiuto su
+Si abbina **solo il codice che segue il 972 sull'evento `ALARM/ROBOT`**, entro
+1 s (corretto l'8/10: prima l'abbinamento si decideva su `PLC/ALARM/ROBOT`).
+Nella 35 il PLC mette in coda i due messaggi uno dopo l'altro, nello stesso
+ciclo e sullo stesso topic `FROM_PLANT/ALARM/ROBOT` (FB_Robot, REGION Manager,
+due `FC_MQTT` con `insert := true`): il secondo e' `#Error` di FB_Robot, un
+codice del robot. Il backend (`serverDati/MQTT_Client.js`, ramo `ALARM`)
+manda `PLC/ALARM/ROBOT` per **ogni** `FROM_PLANT/ALARM/*` tranne MC1: anche
+per `ALARM/BOX` e per le emergenze 900001, 900002, 900010 e 900011, che il PLC
+pubblica su `FROM_PLANT/ALARM` (`plc/FB/FB_plant.scl`, 134-176). L'evento
+`ALARM/ROBOT` invece arriva solo per `FROM_PLANT/ALARM/ROBOT`, subito prima
+del `PLC/ALARM/ROBOT` dello stesso messaggio. Quindi:
+- l'handler di `ALARM/ROBOT` (`alarmRobot` in `util/robotAlarm.js`) decide
+  l'abbinamento e non tocca il riquadro;
+- quello di `PLC/ALARM/ROBOT` sceglie il testo e mostra il riquadro, una
+  volta sola per messaggio.
+
+Un'emergenza o un 99 del cassetto arrivati entro 1 s da un 972 hanno il loro
+testo (prima diventavano «Comando rifiutato: errore attivo 900010»). Mai
+`ALARM/MC1` ne' `PLC/ALARM/GENERIC`, che hanno handler loro e non passano dal
+combinatore; un 972 che segue un altro 972 non si abbina. Un 972 senza
+seguito (PLC 33, o un codice arrivato dopo 1 s) resta il testo del 972. Il 968, l'altro rifiuto su
 `ALARM/ROBOT`, chiude solo le attese delle dichiarazioni 35, non quelle dei
 comandi di missione.
 
@@ -146,7 +159,7 @@ APPUNTI-CELLA.md, «Consegna 35». Origine: seconda simulazione del 7/10
 |---|---|---|
 | 973 | Manager CMD from HMI | nuovo: comando di missione con una missione in corso o sospesa (tabella dei rifiuti qui sopra) |
 | 972 | Manager CMD from HMI | subito dopo, nello stesso ciclo, il codice dell'errore attivo (vedi «972 seguito dal codice») |
-| 949 | anche master 0 (swap, carico e scarico pinza), 1010, 1100, 1200, 1310 | **EasyBox in errore**: `"DB_BOX_1".Robot_enabled_to_work` falso. `DB_BOX_1` e' l'istanza di FB_easyBox e il bit vale `#Error = 0` di FB_easyBox (`plc/FB/FB_easyBox.scl`, 376-387): il registro del cassetto fuori non coincide coi sensori (1..12 cassetto registrato fuori ma non visto, 999 visto fuori ma non registrato, 998 a meta' corsa, 99 registro fuori range). **La porta operatore non c'entra dal 19/9** (i commenti di FB7 che dicono «949 porta operatore» sono superati). Prima lo alzavano solo le catene pinza e i master restavano appesi; adesso la missione si chiude subito |
+| 949 | (1) Extract_TRAY e Release_TRAY, stato 10 (master 700, 800 e l'estrazione dentro il 500); (2) catene pinza e pezzo del magazzino, stato 10, anche master 0 (swap, carico e scarico pinza), 1010, 1100, 1200, 1310 | **Due cause** (corretto l'8/10: qui c'era scritto che la porta non c'entrava). (1) **Porta operatore non chiusa** mentre si estrae o si rientra un cassetto: `IF NOT "Door_OP_locked" THEN #Error := 949` (`plc/FB/FB_Robot.scl`, 4180 in Extract_TRAY e 4344 in Release_TRAY; guardia del 19/9, l'ingresso letto direttamente). (2) **EasyBox in errore**: `"DB_BOX_1".Robot_enabled_to_work` falso. `DB_BOX_1` e' l'istanza di FB_easyBox e il bit vale `#Error = 0` di FB_easyBox (`plc/FB/FB_easyBox.scl`, 376-387): il registro del cassetto fuori non coincide coi sensori (1..12 cassetto registrato fuori ma non visto; 999 visto fuori ma non registrato (128-129) **o piu' cassetti fuori** (250-252, 336-338); 998 a meta' corsa; 99 registro fuori range). Dal 19/9 il bit **non guarda piu' la porta**: per pezzi e pinze la porta aperta non ferma niente, per i cassetti la guardia e' la (1). Prima lo alzavano solo le catene pinza e i master restavano appesi; adesso la missione si chiude subito |
 | 1419, 1519 | anche master 0 (swap, carico e scarico pinza), 1010, 1100, 1200, 1310 | cassetto fuori: la missione si chiude subito, il robot non si muove. Lo swap a flangia nuda da' 1419 (sarebbe un carico), con una pinza a bordo 1519 |
 | 1722 | 1010 e 1310 | `_Gripper4Pallet_Search` (17) errore 22: la query `select GRIPPERREQ from pallets_grippers where palletID=<pallet>` non da' una riga, va in errore o (dalla 35) da' 0. Adesso **chiude la missione**. Prima `GripperRequested` restava col valore vecchio e il master cambiava pinza verso una pinza che col pallet non c'entra. La pinza richiesta del pallet (`pallet.GripperREQ`) **non si imposta dal pannello** (LAVORI-IN-CODA.md) |
 | 691 | Part_Robot_to_TRAY, stato 10 | catena 6 errore 91, zero righe dalla query della tasca. Dal PLC 35 vuol dire **«tasca di destinazione non trovata o non vuota a database»**: nei depositi a tasca fissa (finito in automatico, grezzo che torna, posizione scelta dal pannello) la query vuole `STATUS=2`. Il robot non si muove: si controlla la tasca, la si dichiara (39), RESET e si ripete. La catena resta a 691 fino al RESET, e intanto i comandi di missione danno 972 |
@@ -154,8 +167,9 @@ APPUNTI-CELLA.md, «Consegna 35». Origine: seconda simulazione del 7/10
 Testi nel pannello (it ed en): `robot.alarm_973`, `robot.alarm_691`, il
 titolo e la coda dell'avviso unico (`robot.alarm972Title`,
 `robot.alarm972NoText`); 1419, 1519 e 20011 aggiornati; dal 7/10 sera anche
-`robot.alarm_949` (EasyBox in errore) e `robot.alarm_1722` (pinza del pallet
-assente a database).
+`robot.alarm_949` (porta operatore durante l'estrazione o il rientro di un
+cassetto, oppure EasyBox in errore: le due cause dall'8/10) e
+`robot.alarm_1722` (pinza del pallet assente a database).
 
 ## Se manca una chiave
 

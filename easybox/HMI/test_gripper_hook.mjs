@@ -186,12 +186,29 @@ rv = robot(); rv.getTraysList(); await tick();
 check(rv.extractedTray && rv.extractedTray.FLOOR_MAG === 8 && rv.gripperBranchEnabled === false, 'il dato e\' quello che la pagina ha gia\' (vista dei cassetti, EXTRACT = 1)');
 
 console.log('\n3-bis) (7/10 sera, B2 e B8) «Gestione pallet» e collaudo 31/33 col cassetto fuori');
-check(C.palletCambiaPinza({ GripperREQ: 1 }, [26, 37]) === true && C.palletCambiaPinza({ GripperREQ: 37 }, [26, 37]) === false
-	&& C.palletCambiaPinza({ GripperREQ: 0 }, [26]) === false && C.palletCambiaPinza({}, [26]) === false,
-	'util: il pallet chiede un cambio pinza se GripperREQ non e\' una delle righe della pinza a bordo (0 o assente: no)');
+// (8/10, prompt 7) il PLC cambia pinza quando GripperRequested <> Gripper_ID[1]
+// (FB_Robot, master 1010): il confronto e' col solo lato 1, non con la gemella
+check(C.palletCambiaPinza({ GripperREQ: 1 }, 26) === true && C.palletCambiaPinza({ GripperREQ: 26 }, 26) === false
+	&& C.palletCambiaPinza({ GripperREQ: 0 }, 26) === false && C.palletCambiaPinza({}, 26) === false,
+	'util: il pallet chiede un cambio pinza se GripperREQ non e\' il lato 1 (0 o assente: no)');
+check(C.palletCambiaPinza({ GripperREQ: 37 }, 26) === true,
+	'   GripperREQ = la gemella (lato 2) di una pinza doppia: e\' un cambio, come nel PLC');
+check(C.palletCambiaPinza({ GripperREQ: 26 }, null) === true && C.palletCambiaPinza({ GripperREQ: 26 }, 0) === true,
+	'   lato 1 non noto: si conta come cambio (il PLC potrebbe farlo)');
+// (8/10, prompt 7) la grafia della colonna non e' nel repo: GripperREQ,
+// GRIPPERREQ o gripperreq danno lo stesso risultato
+check(C.palletCambiaPinza({ GRIPPERREQ: 1 }, 26) === true && C.palletCambiaPinza({ GRIPPERREQ: 26 }, 26) === false
+	&& C.palletCambiaPinza({ gripperreq: 26 }, 26) === false && C.palletCambiaPinza({ GRIPPERREQ: 0 }, 26) === false
+	&& C.pinzaRichiesta({ GRIPPERREQ: 5 }) === 5 && C.pinzaRichiesta({ GripperREQ: 7, GRIPPERREQ: 5 }) === 7 && C.pinzaRichiesta(null) === undefined,
+	'util: la pinza richiesta si legge senza badare alle maiuscole della colonna');
+check(C.pinzaLato1(37, [{ ID: 26 }, { ID: 37 }]) === 37 && C.pinzaLato1('26', [{ ID: 26 }, { ID: 37 }]) === 26,
+	'util: il lato 1 e\' il registro del PLC (GRIPPER/REGISTERED), anche se non e\' la riga con l\'ID minore');
+check(C.pinzaLato1(null, [{ ID: 26 }]) === 26 && C.pinzaLato1(null, [{ ID: 26 }, { ID: 37 }]) === null && C.pinzaLato1(null, {}) === null && C.pinzaLato1(0, [{ ID: 26 }, { ID: 37 }]) === null,
+	'   registro non arrivato: con una riga sola e\' quella, con due non si sa');
 const PALLET = () => [{ ID: 5, FAMILY: 'Pallet A', MAG: 1, MAG_POS: 3, POS_PLANT: 0, GripperREQ: 1 }, { ID: 6, FAMILY: 'Pallet B', MAG: 1, MAG_POS: 4, POS_PLANT: 0, GripperREQ: 26 }];
 const palletRv = (tray, pallets) => {
 	const r = robot(tray);
+	r.gripperRegistered = 26;     // il PLC tiene la 26 come lato 1 (GRIPPER/REGISTERED)
 	r.palletsList = pallets || PALLET();
 	r.getGrippersList = () => {}; r.getPalletsList = () => {}; r.getTraysList = () => {}; r.getRobotData = () => {};
 	return r;
@@ -213,6 +230,27 @@ rv = palletRv({ extractedTray: { FLOOR_MAG: 3, EXTRACT: 1 } }, [PALLET()[0]]);
 check(rv.palletBranchEnabled === false && rv.palletDisabledReason === 'robot.hint.trayOutGripper', 'cassetto fuori, ogni pallet vuole un\'altra pinza: «Gestione pallet» spento, «Cassetto fuori: prima rientralo»');
 rv = palletRv({ trayBusy: true }, [PALLET()[0]]);
 check(rv.palletBranchEnabled === false && rv.palletDisabledReason === 'robot.hint.trayBusy', '   cassetto in manovra: idem, col motivo della manovra');
+// (8/10, prompt 7) pallet che chiede la gemella (lato 2) della pinza a bordo
+const GEMELLA = () => [{ ID: 7, FAMILY: 'Pallet C', MAG: 1, MAG_POS: 5, POS_PLANT: 0, GripperREQ: 37 }];
+rv = palletRv({ extractedTray: { FLOOR_MAG: 3, EXTRACT: 1 } }, GEMELLA());
+rv.dialog.type = 'palletLoad';
+check(rv.palletItemBlocked(rv.palletsList[0]) === true && rv.palletBranchEnabled === false && rv.palletDisabledReason === 'robot.hint.trayOutGripper',
+	'cassetto fuori, il pallet chiede la gemella (37) e il PLC ha la 26 come lato 1: e\' un cambio pinza, «Gestione pallet» spento');
+rv = palletRv({ extractedTray: { FLOOR_MAG: 3, EXTRACT: 1 } }, GEMELLA());
+rv.gripperRegistered = 37;
+check(rv.palletBranchEnabled === true, '   se il lato 1 e\' la 37 lo stesso pallet non cambia pinza: acceso');
+rv = palletRv({ extractedTray: { FLOOR_MAG: 3, EXTRACT: 1 } });
+rv.gripperRegistered = null;
+rv.dialog.type = 'palletLoad';
+check(rv.palletItemBlocked(rv.palletsList[1]) === true && rv.palletBranchEnabled === false,
+	'   registro del PLC non arrivato e pinza doppia: il lato 1 non si sa, col cassetto fuori nessun carico pallet');
+rv = palletRv();
+rv.gripperRegistered = null;
+check(rv.palletBranchEnabled === true, '   cassetti dentro il registro non serve: acceso come prima');
+// (8/10, prompt 7) colonna scritta GRIPPERREQ: la guardia regge lo stesso
+rv = palletRv({ extractedTray: { FLOOR_MAG: 3, EXTRACT: 1 } }, [{ ID: 5, FAMILY: 'Pallet A', MAG: 1, MAG_POS: 3, POS_PLANT: 0, GRIPPERREQ: 1 }]);
+check(rv.palletBranchEnabled === false && rv.palletDisabledReason === 'robot.hint.trayOutGripper',
+	'colonna GRIPPERREQ (maiuscole diverse) e cassetto fuori: «Gestione pallet» spento come con GripperREQ');
 rv = palletRv({ extractedTray: { FLOOR_MAG: 3, EXTRACT: 1 } }, [PALLET()[0]]);
 rv.dataGripper = [{ ID: 26, STATUS: dataStored.status_raw }, { ID: 37, STATUS: 2 }];
 rv.palletsList.push({ ID: 9, FAMILY: 'Pallet a bordo', POS_PLANT: 1000, GripperREQ: 26 });

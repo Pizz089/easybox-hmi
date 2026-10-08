@@ -32,11 +32,10 @@
   // destinazione «A bordo del robot» di Attrezzaggi (35, e 41 se in macchina)
   import { dichiaraPalletABordo, messaggioEsito } from '../../util/palletOnRobot.js'
   // (7/10, consegna 34) cassetto fuori: niente comandi pinza
-  import { statoCassetti, motivoPinzaCassetto, palletCambiaPinza } from '../../util/cassettoFuori.js'
+  import { statoCassetti, motivoPinzaCassetto, palletCambiaPinza, pinzaLato1 } from '../../util/cassettoFuori.js'
   // (7/10 sera, B55) l'eco giusto della Reimposta stato cella
   import { aspettaEco } from '../../util/palletMachine.js'
   // (B61) i codici che la Reimposta stato cella mostra: niente riquadro globale
-  import { codiciInDialog } from '../../util/robotAlarm.js'
   // (fase E1.5) in compatto le schede Movimenti / Missioni / Chele salgono
   // sulla riga delle schede della sezione (AppShell, #section-extra)
   import { ref, onMounted, onUnmounted } from 'vue'
@@ -926,12 +925,6 @@
 </template>
 
 <script>
-// (B61) i codici che la Reimposta stato cella mostra (sezioni macchina,
-// cassetto, robot e tasche): con il dialog aperto il riquadro globale tace.
-// Qui e non nello <script setup>: lo usa il watcher di declDialog.open, che
-// dello <script setup> vede solo gli import.
-const DECL_CODICI = [947, 948, 99, 996, 997, 999, 944, 945, 946, 968, 969, 20001, 20002, 20005, 20006];
-
 // Comandi chele (CARD 5): missioni PLC senza parametri su TO_PLANT/CMD/ROBOT.
 // Un punto solo per i codici; lato -> {open, close}.
 const CLAW_CMD = {
@@ -1646,12 +1639,17 @@ export default {
     gripperOnBoardIds() {
       return [0, 1].map(i => this.dataGripper && this.dataGripper[i] ? this.dataGripper[i].ID : null).filter(id => id != null);
     },
+    // (8/10, prompt 7) la pinza che il PLC tiene come lato 1: il registro del
+    // PLC (GRIPPER/REGISTERED), non le righe del database (util/cassettoFuori.js)
+    gripperSide1Id() {
+      return pinzaLato1(this.gripperRegistered, this.dataGripper);
+    },
     // carico pallet: col cassetto fuori (o in manovra) un pallet che chiede un
     // cambio pinza non si propone. Il dato del cassetto e' quello di
     // util/cassettoFuori.js, come per le pinze.
     palletItemBlocked(item) {
       return this.dialog.type == 'palletLoad' && !!this.palletTrayReason &&
-             palletCambiaPinza(item, this.gripperOnBoardIds());
+             palletCambiaPinza(item, this.gripperSide1Id());
     },
     // M-fix: dispatcher del bottone unico "Gestione pinza". NESSUNA
     // condizione propria: il gate e' solo gripperBranchEnabled (stessa
@@ -1805,6 +1803,20 @@ export default {
     closeDeclDialog() {
       this.declDialog.open = false;
       this.declDialog.waiting = false;
+      this.annullaAtteseDecl();
+    },
+    // (8/10, prompt 7) le attese degli echi aperte dalla Reimposta stato
+    // cella. I codici di rifiuto di un passo li registra l'attesa stessa
+    // (palletMachine.aspettaEco), e solo mentre aspetta: prima il dialog li
+    // zittiva tutti per tutto il tempo in cui era aperto. Alla chiusura del
+    // dialog e allo smontaggio della pagina le attese si annullano, e i
+    // codici tornano subito al riquadro globale.
+    declAttese() {
+      if (!this.declAtteseAperte) this.declAtteseAperte = new Set();
+      return this.declAtteseAperte;
+    },
+    annullaAtteseDecl() {
+      for (const annulla of [...this.declAttese()]) annulla();
     },
     // ===== echi e rifiuti del PLC =====
     // L'ECO VALE ANCHE COME CANCELLAZIONE: il PLC pubblica l'allarme quando
@@ -1875,8 +1887,8 @@ export default {
     // timeout, col messaggio di oggi.
     // Risolve { ok } — mai una rejection da inseguire.
     waitEcho(event, alarmEvent, codes, ms, coerente) {
-      return aspettaEco(dataStored.WS.socket, { evento: event, coerente: coerente || null, allarme: alarmEvent, codici: codes, ms: ms })
-        .then(r => ({ ok: r.ok }));
+      return aspettaEco(dataStored.WS.socket, { evento: event, coerente: coerente || null, allarme: alarmEvent, codici: codes, ms: ms, attese: this.declAttese() })
+        .then(r => ({ ok: r.ok, annullato: !!r.annullato }));
     },
     declareBare() {
       // MOUNTED=0: flangia nuda dichiarata esplicitamente (35;0;0;0;0;0).
@@ -1939,6 +1951,9 @@ export default {
         this.declDialog.phase = st.section;
         dataStored.WS.socket.emit('TO_PLANT/CMD/' + st.unit, st.cmd);
         this.waitEcho(e.event, e.alarm, e.codes, ECHO_MS, st.coerente).then(r => {
+          // (8/10) dialog chiuso o pagina smontata durante l'attesa: niente
+          // messaggi, niente comandi successivi
+          if (r.annullato) { this.declDialog.waiting = false; return; }
           if (!r.ok) {
             // FERMO QUI: niente comandi successivi. Il motivo preciso lo
             // scrive la sezione (declErr, dall'allarme); se non e' arrivato
@@ -2011,6 +2026,7 @@ export default {
       // che inventarsi numeri e mostrare la frase sbagliata.
       this.waitEcho('DECLARE/TRAYTYPE', 'ALARM/ROBOT', [20001], this.declEchoMs, ecoTipoCassetto(this.pockets.tray, tipo)).then(r => {
         this.pockets.typeBusy = false;
+        if (r.annullato) return;
         if (!r.ok) {
           if (!this.declErr.trayType) {
             dataStored.alert.title = this.$t('WARNING');
@@ -2048,6 +2064,7 @@ export default {
       this.sendToRobot('39;' + sub + ';' + stato);
       this.waitEcho('DECLARE/TRAY', 'ALARM/ROBOT', [20001, 20002, 20005, 20006], this.declEchoMs, ecoTasca(this.pockets.tray, sub, stato)).then(r => {
         this.pockets.busy = false;
+        if (r.annullato) return;
         if (!r.ok) {
           if (!this.declErr.pocket) {
             dataStored.alert.title = this.$t('WARNING');
@@ -2278,12 +2295,6 @@ export default {
     // fetch. (AO) lo swap non ha piu' secondo tempo client: niente watcher
     // su dataGripper per lo sblocco.
     'dataRobot.STATUS'() { this.checkMissionPhase(); },
-    // (7/10 sera, B61) con la Reimposta stato cella aperta i rifiuti li mostra
-    // il dialog, sezione per sezione (declErr): il riquadro globale tace
-    'declDialog.open'(aperto) {
-      if (aperto && !this.rilasciaDeclCodici) this.rilasciaDeclCodici = codiciInDialog(DECL_CODICI);
-      if (!aperto && this.rilasciaDeclCodici) { this.rilasciaDeclCodici(); this.rilasciaDeclCodici = null; }
-    }
   },
   computed: {
     // (v3) STATUS del robot non noto (assente o NOT_DEFINED): il HOLD si spegne
@@ -2328,9 +2339,9 @@ export default {
     // cambiare pinza -> «Gestione pallet» spento
     palletLoadAllBlocked() {
       if (!this.palletTrayReason || !this.palletGripperEmptyNow()) return false;
-      const ids = this.gripperOnBoardIds();
+      const lato1 = this.gripperSide1Id();
       const items = this.palletLoadItems || [];
-      return items.length > 0 && items.every(p => palletCambiaPinza(p, ids));
+      return items.length > 0 && items.every(p => palletCambiaPinza(p, lato1));
     },
     // (B8) collaudo 31/33 col cassetto fuori: solo la pinza a bordo
     testGripperChoices() {
@@ -2751,7 +2762,9 @@ export default {
     dataStored.WS.socket.off('GRIPPER/REGISTERED', this.gripperRegisteredHandler);
     // S: niente timer/feedback orfani, la missione visiva muore con la view
     this.clearMission();
-    if (this.rilasciaDeclCodici) { this.rilasciaDeclCodici(); this.rilasciaDeclCodici = null; }
+    // (8/10) le attese della Reimposta stato cella muoiono con la pagina: i
+    // loro codici tornano subito al riquadro globale
+    this.annullaAtteseDecl();
     // (B64) off SPECIFICO (evento + callback): un off nudo staccherebbe anche
     // i listener di altri componenti sugli stessi eventi
     dataStored.WS.socket.off('ROBOT/DESCR', this.robotDescrHandler);

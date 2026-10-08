@@ -126,6 +126,19 @@ check(!bE.error && JSON.stringify(bE.profile.map(v => [v.x, v.y, v.bulge])) === 
 // INSERT: avviso
 const bI = leggi(dxfDoc(baseEnt([insert()])));
 check(!bI.error && bI.warnings.some(w => w.key === 'grating.base.warn.insert' && w.params.n === 1), 'INSERT: avviso «blocco non letto: esplodilo»');
+check(!bI.warnings.some(w => w.key === 'grating.base.warn.ignored'), '   e non anche fra le entita\' non lette (ha l\'avviso suo)');
+// (8/10, prompt 7) un foro disegnato come polilinea chiusa su HOLES non e' un
+// foro: avviso giallo con tipo e layer (prima solo info.ignorate)
+const quadrato = (x, y, l) => [[x, y], [x + l, y], [x + l, y - l], [x, y - l]];
+const bX = leggi(dxfDoc(baseEnt([lw('HOLES', quadrato(240, -200, 6)), line('0', [20, -20], [40, -20]), line('0', [20, -30], [40, -30]), ['0', 'ELLIPSE', '8', 'HOLES', '10', '300', '20', '-300', '11', '5', '21', '0', '40', '0.5']])));
+const wX = bX.warnings.find(w => w.key === 'grating.base.warn.ignored');
+check(!bX.error && bX.holes.length === 2 && wX && wX.params.n === 4
+	&& wX.params.dove === 'LWPOLYLINE, layer HOLES (1); LINE, layer 0 (2); ELLIPSE, layer HOLES (1)',
+	'LWPOLYLINE chiusa su HOLES (e LINE, ELLIPSE): non sono fori, avviso «' + (wX && wX.params.dove) + '»');
+check(bX.info.ignorate.LWPOLYLINE === 1 && bX.info.ignorate.LINE === 2, '   il contatore info.ignorate resta');
+i18n.global.locale.value = 'it';
+check(wX && /^entità non lette \(4\): LWPOLYLINE, layer HOLES/.test(t(wX.key, wX.params)) && /cerchi \(CIRCLE\) sul layer HOLES/.test(t(wX.key, wX.params)),
+	'   il testo: «' + (wX && t(wX.key, wX.params)) + '»');
 // foro fuori dal profilo: avviso (dentro la tacca a semicerchio)
 const bF = leggi(dxfDoc(baseEnt([circle('HOLES', 250, -30, 3)])));
 check(!bF.error && bF.warnings.some(w => w.key === 'grating.base.warn.holeOutside' && w.params.n === 1), 'foro dentro la tacca (fuori dal profilo): avviso');
