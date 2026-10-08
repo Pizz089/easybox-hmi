@@ -13595,7 +13595,7 @@
    "controlli": [
     {
      "id": "form@submit ",
-     "etichetta": "Famiglia {{v.TYPE}} Descrizione X µm Y µm Z µm Ganascia: lunghezza nella direzione in cui il pezzo scorre fino alla batt",
+     "etichetta": "Famiglia {{v.TYPE}} Descrizione X µm Y µm Z µm Chela della morsa: lunghezza nella direzione in cui il pezzo scorre fino ",
      "evento": "submit",
      "handler": "",
      "disabled": "",

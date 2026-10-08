@@ -37,3 +37,10 @@ export const KO_WORKOBJECT        = "KO_WORKOBJECT";        // "0 CASSETTIERA" e
 // (P2 5/10) rilancia ordine finito
 export const KO_ORDER_NOT_FINISHED = "KO_ORDER_NOT_FINISHED"; // ordine non finito (STATUS<>5)
 export const KO_NO_RAW             = "KO_NO_RAW";             // nessun grezzo disponibile: reinserire i grezzi e scegliere Si'
+// (7/10, prompt 5 di 5) catalogo delle chele della morsa
+export const KO_NO_JAW             = "KO_NO_JAW";             // la morsa non ha un tipo di chele montato
+export const KO_JAW_ACTIVE_ORDER   = "KO_JAW_ACTIVE_ORDER";   // ordine a STATUS 3 sul pallet di una morsa con quel tipo
+export const KO_JAW_RETIRED        = "KO_JAW_RETIRED";        // tipo dismesso: non si monta
+export const KO_JAW_MOUNTED        = "KO_JAW_MOUNTED";        // tipo montato: non si dismette
+export const KO_JAW_IN_USE         = "KO_JAW_IN_USE";         // tipo gia' montato o usato da un ordine: non si cancella
+export const KO_JAW_DUP_CODE       = "KO_JAW_DUP_CODE";       // codice gia' usato

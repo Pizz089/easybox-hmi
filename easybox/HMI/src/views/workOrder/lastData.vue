@@ -162,6 +162,8 @@ export default {
             // nessuna riga in PIECE_ON_VICE, cioe' non dichiarato: e' diverso
             // da zero, che e' una dichiarazione valida.
             pieceStop:null,
+            // (7/10) la chela con cui la battuta e' stata dichiarata (CLAW_LENGTH_REF)
+            pieceStopRef:null,
             // (6/10) quota Z della spinta della coppia morsa+pezzo (micron,
             // null = alla quota di presa) e quota di presa del pezzo
             pieceZPush:null,
@@ -190,6 +192,8 @@ export default {
                 viceClawLength: this.viceClaw,
                 gripperClawLength: this.gripperClaw,
                 stopBeyondClaw: this.pieceStop,
+                // (7/10) la battuta si corregge per le chele montate, come la vista
+                clawLengthRef: this.pieceStopRef,
             });
         },
         // (6/10) di quanto scende la chela sotto la Z di deposito, come la vista
@@ -268,10 +272,11 @@ export default {
                         .then(list => {
                             const row = (list || []).find(x => x.PIECE_ID == wo.pieceID) || null;
                             this.pieceStop = row ? row.STOP_BEYOND_CLAW : null;
+                            this.pieceStopRef = row && row.CLAW_LENGTH_REF != null ? Number(row.CLAW_LENGTH_REF) : null;
                             this.pieceZPush = row && row.Z_PUSH != null ? Number(row.Z_PUSH) : null;
                         });
                 })
-                .catch(e => { console.info(e); this.viceFound = false; this.viceClaw = null; this.viceID = null; this.pieceStop = null; });
+                .catch(e => { console.info(e); this.viceFound = false; this.viceClaw = null; this.viceID = null; this.pieceStop = null; this.pieceStopRef = null; });
             get('api/conf/gripper/show/all')
                 .then(rows => {
                     const g = (rows || []).find(x => x.ID == wo.gripperID) || null;

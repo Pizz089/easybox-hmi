@@ -56,8 +56,8 @@ const CODES = {
 	// 1419/1519/19005/19006/19007/20011 dalla consegna 34 (7/10, uncino),
 	// 973 e 691 (tasca non vuota) dalla consegna 35 (7/10); 948, 951, 996,
 	// 997, 999 dalla simulazione bis (B61, 7/10 sera); 949 e 1722 dalle
-	// risposte sulla consegna 35 (7/10 sera)
-	robot: [961, 962, 964, 967, 19004, 20009, 2205, 970, 971, 972, 1419, 1519, 19005, 19006, 19007, 20011, 973, 691, 948, 951, 996, 997, 999, 949, 1722],
+	// risposte sulla consegna 35 (7/10 sera); 799 dal catalogo delle chele
+	robot: [961, 962, 964, 967, 19004, 20009, 2205, 970, 971, 972, 1419, 1519, 19005, 19006, 19007, 20011, 973, 691, 948, 951, 996, 997, 999, 949, 1722, 799],
 	mc1: [952, 953, 954, 955, 956, 957, 958, 959, 947],
 };
 const raw = { it: readFileSync('src/locales/it.json', 'utf8'), en: readFileSync('src/locales/en.json', 'utf8') };

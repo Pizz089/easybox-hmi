@@ -111,6 +111,25 @@ export function zPushDrop({ zPush, zPick }) {
 }
 export const PUSH_BIT = 2;
 
+// (7/10, prompt 5 di 5) BATTUTA CORRETTA per le chele montate. La battuta
+// dichiarata (PIECE_ON_VICE.STOP_BEYOND_CLAW) e' misurata dalla FINE della
+// chela con cui e' stata dichiarata (CLAW_LENGTH_REF), ma il riferimento sta
+// sulla MORSA: montate chele di un'altra lunghezza, la fine della chela si
+// sposta e la battuta va riportata. Identica alle viste COORDINATES_PUSH_MC e
+// COORDINATES_BLOW_MC:
+//   dichiarata + REF/2 - montata/2          (divisioni intere, verso lo zero)
+// cosi' X_Support del PLC (montata/2 + battuta) resta REF/2 + dichiarata al
+// micron. REF assente o chela montata non misurata: la dichiarata com'e'.
+// null/undefined/'' in ingresso = battuta non dichiarata -> null.
+export function stopCorrected(stopBeyondClaw, clawLengthRef, viceClawLength) {
+	if (stopBeyondClaw === null || stopBeyondClaw === undefined || stopBeyondClaw === '') return null;
+	const d = Number(stopBeyondClaw);
+	const ref = Number(clawLengthRef);
+	const m = Number(viceClawLength) || 0;
+	if (clawLengthRef === null || clawLengthRef === undefined || clawLengthRef === '' || !(ref > 0) || m <= 0) return d;
+	return d + div2(ref) - div2(m);
+}
+
 // enabled: bit di spinta dell'ordine (istantanea di PIECE.PUSH_TO_STOP).
 // hasVice: c'e' una morsa sul pallet dell'ordine.
 // xPlace: quota di deposito sulla X del robot.
@@ -121,6 +140,9 @@ export const PUSH_BIT = 2;
 //   dichiarato; lo ZERO e' un valore legittimo e diverso (appoggio dichiarato
 //   sulla fine della ganascia anche per un pezzo che sporge). Il "non
 //   dichiarato" sta nell'assenza, mai dentro il numero.
+// clawLengthRef: PIECE_ON_VICE.CLAW_LENGTH_REF (7/10), la chela con cui la
+//   battuta e' stata dichiarata: la battuta si corregge per quella montata
+//   (stopCorrected). null/assente = nessuna correzione.
 // compPush: PIECE_ON_VICE.COMP_PUSH, di quanto il pezzo si ferma PRIMA della
 //   battuta teorica (semilavorati): sempre positivo, si sottrae dal solo
 //   ARRIVO. null/undefined/assente = nessuna compensazione = 0.
@@ -131,7 +153,7 @@ export const PUSH_BIT = 2;
 // non e' OK, esattamente come la vista. stopRef e' valorizzato anche su
 // NO_FIT, NO_ROOM e NO_COMP, perche' li' la geometria il riferimento lo
 // implica gia'.
-export function pushQuotes({ enabled, hasVice, xPlace, pieceY, viceClawLength, gripperClawLength, stopBeyondClaw, compPush }) {
+export function pushQuotes({ enabled, hasVice, xPlace, pieceY, viceClawLength, gripperClawLength, stopBeyondClaw, compPush, clawLengthRef }) {
 	const none = (s, ref) => ({ status: s, xPush: null, xStop: null, clearance: null, stopRef: ref || null });
 	if (!enabled) return none(PUSH_STATUS.DISABLED);
 	if (!hasVice) return none(PUSH_STATUS.NO_VICE);
@@ -145,7 +167,9 @@ export function pushQuotes({ enabled, hasVice, xPlace, pieceY, viceClawLength, g
 		? null : Number(stopBeyondClaw);
 	if (exceeds && (declared === null || isNaN(declared))) return none(PUSH_STATUS.NO_FIT, ref);
 	// corsa TEORICA: la compensazione non entra qui
-	const clearance = div2(claw - py) + (exceeds ? declared : 0);
+	// (7/10) la battuta corretta per le chele montate (stopCorrected)
+	const stop = exceeds ? stopCorrected(declared, clawLengthRef, claw) : 0;
+	const clearance = div2(claw - py) + (exceeds ? stop : 0);
 	// < 0 e NON <= 0: corsa zero e' valida, vuol dire pezzo gia' a contatto
 	if (clearance < 0) return none(PUSH_STATUS.NO_ROOM, ref);
 	// la compensazione arretra il solo ARRIVO, quindi

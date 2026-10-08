@@ -13,6 +13,14 @@
 
 **Trovato il** 2026-10-07, risposte sulla consegna 35.
 
+## [ ] Chele della morsa: morsa sul pallet ma senza tipo di chele montato
+
+**Cosa.** Con il catalogo (7/10) una morsa senza tipo montato dà, nelle viste, misure della chela a zero (`ISNULL`): in `COORDINATES_Z_MC` la quota di deposito esce senza l'appoggio delle chele, cioè troppo bassa. Oggi è così anche con le misure sulla morsa: una morsa mai misurata dà lo stesso.
+
+**Direzione.** Variante proposta, non applicata: «morsa sul pallet ma senza tipo = nessuna riga» in `COORDINATES_Z_MC`, cioè il 799 prima di muovere, come per le chele diverse. Cambia il comportamento degli ordini di oggi su quelle morse: l'elenco lo dà `serverDati\scripts\vice-jaw-controlli.sql` (sezione 4), da lanciare in cella prima di decidere.
+
+**Trovato il** 2026-10-07, catalogo delle chele della morsa (prompt 5 di 5).
+
 ## [ ] Pannello v3: pagine non rifatte e voci aperte
 
 **Cosa.** Sul ramo `ui-v3` restano fuori dal pannello nuovo:

@@ -56,3 +56,11 @@ exports.KO_WORKOBJECT        = "KO_WORKOBJECT";        // teaching cassettiera e
 // Rilancia ordine finito (P2 5/10): POST /order/relaunch/:orderId
 exports.KO_ORDER_NOT_FINISHED = "KO_ORDER_NOT_FINISHED"; // l'ordine non e' a STATUS 5 (finito): niente da rilanciare
 exports.KO_NO_RAW             = "KO_NO_RAW";             // mode 'available' senza grezzi nei cassetti per il pezzo dell'ordine
+// Catalogo delle CHELE DELLA MORSA (7/10, prompt 5 di 5): CONF/ViceJaw.js e
+// le scritture delle misure della chela in CONF/Vice.js
+exports.KO_NO_JAW             = "KO_NO_JAW";             // la morsa non ha un tipo di chele montato: le misure si scrivono sul tipo
+exports.KO_JAW_ACTIVE_ORDER   = "KO_JAW_ACTIVE_ORDER";   // un ordine a STATUS 3 sul pallet di una morsa con quel tipo: misure e montaggio fermi
+exports.KO_JAW_RETIRED        = "KO_JAW_RETIRED";        // tipo dismesso: non si monta e non si conferma su un ordine
+exports.KO_JAW_MOUNTED        = "KO_JAW_MOUNTED";        // tipo montato su una morsa: non si dismette
+exports.KO_JAW_IN_USE         = "KO_JAW_IN_USE";         // tipo montato almeno una volta o usato da un ordine: non si cancella, si dismette
+exports.KO_JAW_DUP_CODE       = "KO_JAW_DUP_CODE";       // codice gia' usato da un altro tipo

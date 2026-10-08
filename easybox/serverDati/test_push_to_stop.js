@@ -206,13 +206,14 @@ const ORD = { pieceID: '1029', gripperID: '26', viceID: '0', fixtureID: '1', pal
 let r = call('GET /insertOrder', ORD, [{ recordset: [{ ris: 'OK' }] }]);
 let t = r.q[0];
 check(/DECLARE @push int = ISNULL\(\(SELECT CASE WHEN PUSH_TO_STOP = 1 THEN 2 ELSE 0 END FROM PIECE WHERE ID=1029\), 0\)/.test(t), 'il bit lo legge il SQL dall\'anagrafica pezzo: istantanea non falsificabile dal client');
-check(/DECLARE @claw int = \(SELECT TOP 1 CLAW_LENGTH FROM VICE WHERE PALLET_ID=9\)/.test(t), 'ganascia morsa dal pallet dell\'ordine');
+// (7/10, prompt 5 di 5) la chela della morsa viene dal tipo montato
+check(/SELECT TOP 1 @viceID = v\.ID, @claw = j\.CLAW_LENGTH FROM VICE v LEFT JOIN VICE_JAW j ON j\.ID = v\.JAW_ID WHERE v\.PALLET_ID=9;/.test(t), 'chela della morsa: dal tipo montato sulla morsa del pallet dell\'ordine, nella stessa riga della morsa');
 check(/DECLARE @tool int = \(SELECT TOP 1 CLAW_LENGTH FROM GRIPPER WHERE ID=26\)/.test(t), 'lunghezza chela dalla pinza dell\'ordine');
 check(/DECLARE @pieceY int = \(SELECT TOP 1 Y FROM PIECE WHERE ID=1029\)/.test(t), 'dal pezzo entra la Y, quella che corre lungo la X del robot');
 check(!/SELECT TOP 1 X FROM PIECE/.test(t), 'PIECE.X non entra nel conto della spinta');
 check(/ELSE IF @push <> 0 AND \(ISNULL\(@claw,0\) <= 0 OR ISNULL\(@tool,0\) <= 0 OR ISNULL\(@pieceY,0\) <= 0\) SELECT 'KO_PUSH_NO_DATA'/.test(t), 'guardia dati mancanti');
-check(/DECLARE @viceID int = \(SELECT TOP 1 ID FROM VICE WHERE PALLET_ID=9\)/.test(t), 'la morsa si risolve dal pallet dell\'ordine, poi la dichiarazione segue la MORSA');
-check(/DECLARE @stop int = \(SELECT TOP 1 STOP_BEYOND_CLAW FROM PIECE_ON_VICE WHERE VICE_ID=@viceID AND PIECE_ID=1029\)/.test(t), 'appoggio dichiarato letto per la coppia morsa+pezzo');
+check(/SELECT TOP 1 @stop = STOP_BEYOND_CLAW, @ref = CLAW_LENGTH_REF FROM PIECE_ON_VICE WHERE VICE_ID=@viceID AND PIECE_ID=1029;/.test(t), 'appoggio dichiarato e chela con cui e\' stato dichiarato, per la coppia morsa+pezzo');
+check(/IF @stop IS NOT NULL AND @ref IS NOT NULL AND ISNULL\(@claw, 0\) > 0 SET @stop = @stop \+ @ref\/2 - @claw\/2;/.test(t), 'battuta corretta per le chele montate, come la vista (dichiarata + REF/2 - montata/2)');
 check(!/PIECE_ON_VICE WHERE PALLET_ID/.test(t), 'la dichiarazione NON e\' agganciata al pallet: una morsa spostata si porta dietro la sua battuta');
 check(/DECLARE @travel int = \(@claw - @pieceY\)\/2 \+ CASE WHEN @pieceY > @claw THEN ISNULL\(@stop,0\) ELSE 0 END/.test(t), 'corsa: il tratto dichiarato entra SOLO quando il pezzo eccede la ganascia');
 check(/ELSE IF @push <> 0 AND @pieceY > @claw AND @stop IS NULL SELECT 'KO_PUSH_NO_FIT'/.test(t), 'rifiuto solo se eccede la ganascia E l\'appoggio non e\' dichiarato');
@@ -229,9 +230,13 @@ check(/PUSH_TO_STOP=CONVERT\(bit,'1'\)/.test(r.q[0]), 'pezzo: PUSH_TO_STOP in up
 r = call('GET /insertPiece', { FAMILY: 'F', DESCR: 'D', PARTPROGRAM: '12', MC1_ONLY: '0', MC2_ONLY: '0', MC3_ONLY: '0', PRISMA: '1', X: '1', Y: '1', Z: '1', Z_PICK: '1', Z_PLACE: '1' }, [{}]);
 check(/, PUSH_TO_STOP\)/.test(r.q[0]) && /CONVERT\(bit,'0'\)\);/.test(r.q[0]), 'pezzo: colonna in insert, assente -> 0 (nessun ciclo)');
 r = call('GET /updateVice', { ID: '1', FAMILY: 'M', DESCR: 'D', STATUS: '2', X: '1', Y: '1', Z: '1', Z_CLAW: '1', Z_SINK_CLAW: '1', MAG: '1', MAG_POS: '1', POS_PLANT: '1', CLAW_LENGTH: '150000' }, [{}]);
-check(/CLAW_LENGTH=150000/.test(r.q[0]), 'morsa: ganascia in update');
+// (7/10) le misure della chela vanno al TIPO montato, non alla morsa
+check(/DECLARE @cl int = 150000, @zc int = 1, @zs int = 1;/.test(r.q[0]) && /UPDATE VICE_JAW SET CLAW_LENGTH = ISNULL\(@cl, CLAW_LENGTH\)/.test(r.q[0]),
+	'morsa: la lunghezza della chela va al tipo montato (VICE_JAW)');
+check(!/CLAW_LENGTH=|Z_CLAW=|Z_SINK_CLAW=/.test(r.q[0].slice(r.q[0].indexOf('UPDATE VICE\n'), r.q[0].indexOf('WHERE ID=1;'))),
+	'morsa: la UPDATE della morsa non scrive piu\' le colonne della chela');
 r = call('GET /updateVice', { ID: '1', FAMILY: 'M', DESCR: 'D', STATUS: '2', X: '1', Y: '1', Z: '1', Z_CLAW: '1', Z_SINK_CLAW: '1', MAG: '1', MAG_POS: '1', POS_PLANT: '1', CLAW_LENGTH: '' }, [{}]);
-check(/CLAW_LENGTH=NULL/.test(r.q[0]), 'morsa: campo vuoto -> NULL (non misurata)');
+check(/DECLARE @cl int = NULL/.test(r.q[0]), 'morsa: campo vuoto -> nessun cambio (la misura del tipo resta)');
 r = call('GET /updateGripper', { ID: '26', FAMILY: 'P', DESCR: 'D', X_BODY: '1', Y_BODY: '1', Z_BODY: '1', X_CLAW: '1', Y_CLAW: '1', Z_CLAW: '1', STATUS: '2', POS_MAG: '2', POS_PLANT: '0', STROKE_CLAW: '10000', TICKNESS_CLAW: '5000', CLAW_LENGTH: '30000' }, [{ rowsAffected: [1] }]);
 check(/Stroke_CLAW=10000/.test(r.q[0]) && /Tickness_CLAW=5000/.test(r.q[0]), 'pinza: corsa e spessore ORA salvati (prima si perdevano in silenzio)');
 check(/CLAW_LENGTH=30000/.test(r.q[0]), 'pinza: la LUNGHEZZA della chela arriva davvero alla UPDATE');
@@ -270,13 +275,15 @@ console.log('\n3c) salvataggio di UNA misura dalla simulazione');
 // La pagina di simulazione adesso salva. Non puo' usare updateVice/
 // updateGripper/updatePiece, che scrivono OGNI colonna dai parametri: una
 // chiamata parziale svuoterebbe il resto della riga. Da qui le rotte mirate.
-r = callIn('vice', 'GET /setClawLength', { ID: '1', CLAW_LENGTH: '160000' }, [{ recordset: [{ n: 1, old: 150000, fam: 'ADMG' }] }, {}]);
-check(/UPDATE VICE SET CLAW_LENGTH=160000 WHERE ID=1/.test(r.q[0]), 'morsa: scrive SOLO la lunghezza ganascia');
-check(!/FAMILY=|DESCR=|MAG=/.test(r.q[0]), 'morsa: nessun altra colonna viene toccata');
-check(/SELECT @@ROWCOUNT AS n/.test(r.q[0]), 'morsa: il rowcount viene controllato');
+// (7/10, prompt 5 di 5) la misura e' del TIPO di chele montato sulla morsa
+const OKJ = (old) => [{ recordset: [{ ris: 'OK', old, fam: 'ADMG', jaw: 7, code: 'CHELE PROVA', montate: 1 }] }, {}];
+r = callIn('vice', 'GET /setClawLength', { ID: '1', CLAW_LENGTH: '160000' }, OKJ(150000));
+check(/UPDATE VICE_JAW SET CLAW_LENGTH=160000 WHERE ID=@jaw/.test(r.q[0]), 'morsa: scrive SOLO la lunghezza della chela, sul tipo montato');
+check(!/FAMILY=|DESCR=|MAG=/.test(r.q[0]) && !/UPDATE VICE SET/.test(r.q[0]), 'morsa: nessun altra colonna viene toccata, la riga della morsa nemmeno');
+check(/ELSE IF @jaw IS NULL SELECT 'KO_NO_JAW'/.test(r.q[0]) && /IF @found = 0 SELECT 'KO_NOT_FOUND'/.test(r.q[0]), 'morsa: senza tipo montato KO_NO_JAW, morsa assente KO_NOT_FOUND');
 check(r.res.body === 'OK' && r.res.code === 200, 'morsa: esito nel body, stato 200');
-check(r.q.some(q => /INSERT INTO LOG/.test(q) && /Morsa ADMG \(ID 1\)/.test(q) && /150000 um a 160000 um/.test(q)),
-	'morsa: la modifica finisce nel diario, con oggetto e valori vecchio e nuovo');
+check(r.q.some(q => /INSERT INTO LOG/.test(q) && /Morsa ADMG \(ID 1\), chele CHELE PROVA \(tipo ID 7\)/.test(q) && /150000 um a 160000 um/.test(q)),
+	'morsa: la modifica finisce nel diario, con morsa, tipo di chele e valori vecchio e nuovo');
 check(r.q.some(q => /INSERT INTO LOG/.test(q) && /'PUSH_SIM'/.test(q)), 'il diario dice DA DOVE arriva la modifica');
 r = callIn('vice', 'GET /setClawLength', { ID: '99', CLAW_LENGTH: '160000' }, [{ recordset: [] }]);
 check(r.res.body === errorCodes.KO_NOT_FOUND, 'morsa inesistente -> KO_NOT_FOUND, non OK');
@@ -288,14 +295,14 @@ check(r.res.code === 400 && r.n === 0, 'morsa non numerica -> 400');
 
 // (claw-geometry 18/9) le altre due misure della CHELA, ognuna con la sua
 // rotta: il nome della colonna e' scritto nel codice, non arriva dalla query
-r = callIn('vice', 'GET /setClawHeight', { ID: '1', Z_CLAW: '27300' }, [{ recordset: [{ n: 1, old: 25000, fam: 'ADMG' }] }, {}]);
-check(/UPDATE VICE SET Z_CLAW=27300 WHERE ID=1/.test(r.q[0]), 'altezza ganascia: scrive SOLO Z_CLAW');
+r = callIn('vice', 'GET /setClawHeight', { ID: '1', Z_CLAW: '27300' }, OKJ(25000));
+check(/UPDATE VICE_JAW SET Z_CLAW=27300 WHERE ID=@jaw/.test(r.q[0]), 'altezza della chela: scrive SOLO Z_CLAW, sul tipo montato');
 check(!/CLAW_LENGTH=|Z_SINK_CLAW=/.test(r.q[0]), 'e non tocca le altre due misure della chela');
-check(r.q.some(q => /INSERT INTO LOG/.test(q) && /altezza ganascia/.test(q)), 'a diario col nome della misura, non col nome della colonna');
-r = callIn('vice', 'GET /setClawSink', { ID: '1', Z_SINK_CLAW: '5000' }, [{ recordset: [{ n: 1, old: 4000, fam: 'ADMG' }] }, {}]);
-check(/UPDATE VICE SET Z_SINK_CLAW=5000 WHERE ID=1/.test(r.q[0]), 'affondamento: scrive SOLO Z_SINK_CLAW');
-r = callIn('vice', 'GET /setClawSink', { ID: '1', Z_SINK_CLAW: '0' }, [{ recordset: [{ n: 1, old: 5000, fam: 'ADMG' }] }, {}]);
-check(/UPDATE VICE SET Z_SINK_CLAW=0 WHERE ID=1/.test(r.q[0]) && r.res.code === 200,
+check(r.q.some(q => /INSERT INTO LOG/.test(q) && /altezza chela/.test(q)), 'a diario col nome della misura, non col nome della colonna');
+r = callIn('vice', 'GET /setClawSink', { ID: '1', Z_SINK_CLAW: '5000' }, OKJ(4000));
+check(/UPDATE VICE_JAW SET Z_SINK_CLAW=5000 WHERE ID=@jaw/.test(r.q[0]), 'affondo: scrive SOLO Z_SINK_CLAW, sul tipo montato');
+r = callIn('vice', 'GET /setClawSink', { ID: '1', Z_SINK_CLAW: '0' }, OKJ(5000));
+check(/UPDATE VICE_JAW SET Z_SINK_CLAW=0 WHERE ID=@jaw/.test(r.q[0]) && r.res.code === 200,
 	'affondamento ZERO: e\' un valore vero (ganascia piatta), non un dato mancante');
 r = callIn('vice', 'GET /setClawHeight', { ID: '1', Z_CLAW: '0' }, []);
 check(r.res.code === 400 && r.n === 0, 'altezza ZERO invece e\' 400: una ganascia alta zero non esiste');
@@ -373,8 +380,9 @@ const blowBody = (blowSql.match(/ALTER VIEW dbo\.COORDINATES_BLOW_MC AS([\s\S]*?
 // Semantica (Dario e robotista, 5/10): PIECE.X lunghezza, Y larghezza, Z
 // altezza. Dal 18/9 al 5/10 PART_WIDTH era pz.X, cioe' la lunghezza.
 // ISNULL senza spazio dopo la virgola, come la legge OBJECT_DEFINITION.
-for (const col of ['ISNULL(v.CLAW_LENGTH,0) as CLAW_LENGTH', 'ISNULL(pz.Y,0) as PART_WIDTH',
-	'ISNULL(pv.STOP_BEYOND_CLAW,0) as STOP_BEYOND_CLAW', 'ISNULL(pz.X,0) as PART_LENGTH', 'ISNULL(pz.Z,0) as PART_HEIGHT'])
+// (7/10) chela dal tipo montato (j), battuta corretta per le chele montate
+for (const col of ['ISNULL(j.CLAW_LENGTH,0) as CLAW_LENGTH', 'ISNULL(pz.Y,0) as PART_WIDTH',
+	'else pv.STOP_BEYOND_CLAW + pv.CLAW_LENGTH_REF/2 - j.CLAW_LENGTH/2 end,0) as STOP_BEYOND_CLAW', 'ISNULL(pz.X,0) as PART_LENGTH', 'ISNULL(pz.Z,0) as PART_HEIGHT'])
 	check(blowBody.replace(/\s+/g, ' ').includes(col), 'soffiaggio: ' + col + ' — il ponte SQL non converte NULL in zero');
 check(!/pz\.X,0\)\s+as\s+PART_WIDTH/.test(blowBody), 'soffiaggio: PART_WIDTH non e\' piu\' pz.X (era la lunghezza)');
 check(/left  join PIECE_ON_VICE pv on pv\.VICE_ID = v\.ID and pv\.PIECE_ID = w\.PIECE_ID/.test(blowBody),
@@ -383,10 +391,11 @@ check(/inner join PIECE pz/.test(blowBody) && /left  join VICE v/.test(blowBody)
 	'soffiaggio: PIECE in INNER (c\'e\' sempre), VICE in LEFT (puo\' mancare)');
 // guardia a tre vie: nuova -> conforme, vecchia a tre colonne -> ALTER, altro -> FERMO
 const blowGuard = blowSql.slice(0, blowSql.indexOf('ALTER VIEW dbo.COORDINATES_BLOW_MC AS'));
-check(/LIKE N'%ISNULL\(pz\.Y,0\) as PART_WIDTH%'[\s\S]*?conforme, nessuna modifica/.test(blowGuard)
-	&& /LIKE N'%ISNULL\(pz\.X,0\) as PART_WIDTH%'[\s\S]*?NOT LIKE N'%PART_LENGTH%'[\s\S]*?PRINT 'coordinates-blow-mc: trovata la definizione a tre colonne[^\n]*\nELSE/.test(blowGuard)
+check(/LIKE N'%ISNULL\(j\.CLAW_LENGTH,0\) as CLAW_LENGTH%'[\s\S]*?conforme \(chele dal catalogo, battuta corretta\), nessuna modifica/.test(blowGuard)
+	&& /trovata la versione del 5\/10 \(cinque colonne\): la porto alle chele dal catalogo/.test(blowGuard)
+	&& /LIKE N'%ISNULL\(pz\.X,0\) as PART_WIDTH%'[\s\S]*?NOT LIKE N'%PART_LENGTH%'[\s\S]*?PRINT 'coordinates-blow-mc: trovata la definizione a tre colonne/.test(blowGuard)
 	&& /NON e'' quella attesa\. FERMO/.test(blowGuard),
-	'soffiaggio: guardia — nuova conforme, vecchia a tre colonne portata alla nuova, altro FERMO');
+	'soffiaggio: guardia — nuova conforme, 5/10 e vecchia a tre colonne portate alla nuova, altro FERMO');
 const blowQuery = 'select CLAW_LENGTH,PART_WIDTH,STOP_BEYOND_CLAW,PART_LENGTH,PART_HEIGHT from COORDINATES_BLOW_MC where ORDER_ID=32767';
 check(blowQuery.length < 254, 'soffiaggio: la query del PLC (5 colonne, ORDER_ID a 5 cifre) sta in ' + blowQuery.length
 	+ ' caratteri, sotto i 254 di queryTemp (con i join a mano erano 298: sarebbe arrivata troncata)');
@@ -505,8 +514,8 @@ const viewSql = view.split(/\r?\n/).filter(l => !/^\s*--/.test(l)).join('\n');
 check(!/WITH\s+ENCRYPTION/i.test(viewSql), 'nessun WITH ENCRYPTION: la vista nasce IN CHIARO');
 check(/ALTER VIEW dbo\.COORDINATES_PUSH_MC AS/.test(view) && /PUSH_STATUS/.test(view), 'definizione completa versionata nel repo');
 check(/p\.X - pz\.Y\/2 - g\.CLAW_LENGTH\/2/.test(viewSql), 'quota di spinta identica alla formula del modulo condiviso: si muove la X');
-check(/\(v\.CLAW_LENGTH - pz\.Y\)\/2/.test(viewSql), 'corsa identica alla formula del modulo condiviso');
-check(/case when pz\.Y > v\.CLAW_LENGTH[\s\S]{0,80}ISNULL\(pv\.STOP_BEYOND_CLAW, 0\)/.test(viewSql), 'il tratto dichiarato entra solo quando il pezzo eccede la ganascia');
+check(/\(j\.CLAW_LENGTH - pz\.Y\)\/2/.test(viewSql), 'corsa identica alla formula del modulo condiviso (chela dal tipo montato, 7/10)');
+check(/case when pz\.Y > j\.CLAW_LENGTH[\s\S]{0,80}ISNULL\(s\.STOP_BEYOND_CLAW, 0\)/.test(viewSql), 'il tratto dichiarato (battuta corretta) entra solo quando il pezzo eccede la chela');
 check(/left  join PIECE_ON_VICE pv\s+on pv\.VICE_ID = v\.ID and pv\.PIECE_ID = w\.PIECE_ID/.test(viewSql), 'la dichiarazione e\' agganciata alla MORSA, non al pallet');
 check(/'NO_FIT'/.test(viewSql) && /pv\.VICE_ID is null/.test(viewSql), 'NO_FIT solo quando la dichiarazione manca');
 check(/'NO_ROOM'/.test(viewSql), 'esito NO_ROOM presente nella vista');

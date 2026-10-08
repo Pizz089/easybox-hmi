@@ -6,18 +6,14 @@ var router 	= express.Router();
 const log 	= require('../LogFunct');
 const ERR 	= require('../errorCodes');
 const audit = require('../auditLog');
+// (7/10, prompt 5 di 5) catalogo delle chele della morsa: le tre misure della
+// chela sono del TIPO montato (VICE_JAW, VICE.JAW_ID), non piu' della morsa
+const J     = require('../viceJawSql');
 
 var templatePATH = '.';
 
-// (push-to-stop 15/9) lunghezza ganascia della morsa sull'asse di battuta,
-// in micron. Assente, vuota o non intera -> NULL = non misurata: il ciclo di
-// spinta non si abilita (la vista COORDINATES_PUSH_MC risponde NO_DATA e
-// l'ordine viene rifiutato con KO_PUSH_NO_DATA).
-function clawLengthSql(raw) {
-	const n = parseInt(raw, 10);
-	if (raw == undefined || String(raw).trim() === '' || isNaN(n) || n < 0) return 'NULL';
-	return String(n);
-}
+// (7/10) clawLengthSql tolta: la lunghezza della chela non si scrive piu'
+// sulla morsa ma sul tipo di chele montato (viceJawSql.intMin, updateVice).
 
 router.get('/show/:ID', (req, res) => {
 	sql.connect(DBf.configDB, function (err) {
@@ -67,31 +63,72 @@ router.get('/updateVice', (req, res) => {
 			palletClause = `, PALLET_ID=${isNaN(pid) ? 'NULL' : pid}`;
 		}
 
-		let query = `UPDATE VICE
-					 SET FAMILY='${req.query.FAMILY}',
-					 DESCR='${req.query.DESCR}',
-					 STATUS=${req.query.STATUS},
-					 X=${req.query.X},
-					 Y=${req.query.Y},
-					 Z=${req.query.Z},
-					 Z_CLAW=${req.query.Z_CLAW},
-					 Z_SINK_CLAW=${req.query.Z_SINK_CLAW},
-					 MAG=${req.query.MAG},
-					 MAG_POS=${req.query.MAG_POS},
-					 POS_PLANT=${req.query.POS_PLANT},
-					 CLAW_LENGTH=${clawLengthSql(req.query.CLAW_LENGTH)}${palletClause}
-					WHERE ID=${req.query.ID};`
-		
+		// (7/10) LE TRE MISURE DELLA CHELA sono del tipo montato (VICE_JAW),
+		// le colonne della morsa restano com'erano alla migrazione e nessuno le
+		// scrive piu'. Chi chiama updateVice manda la riga intera, misure
+		// comprese, cosi' come l'ha letta da VICES (cioe' dal tipo): un valore
+		// UGUALE a quello del tipo, o vuoto, non cambia niente. Un valore
+		// DIVERSO va al tipo, con le guardie delle rotte di una misura sola:
+		// senza tipo montato KO_NO_JAW, con un ordine a STATUS 3 sul pallet di
+		// una morsa con quel tipo KO_JAW_ACTIVE_ORDER, e in quei casi non si
+		// scrive niente, nemmeno il resto della riga.
+		const id = J.intMin(req.query.ID, 1);
+		const cl = J.intMin(req.query.CLAW_LENGTH, 1);
+		const zc = J.intMin(req.query.Z_CLAW, 1);
+		const zs = J.intMin(req.query.Z_SINK_CLAW, 0);
+		const n = v => (v === null ? 'NULL' : v);
+		let query = `SET NOCOUNT ON;
+					DECLARE @id int = ${n(id)}, @jaw int, @ocl int, @ozc int, @ozs int;
+					SELECT @jaw = JAW_ID FROM VICE WHERE ID = @id;
+					SELECT @ocl = CLAW_LENGTH, @ozc = Z_CLAW, @ozs = Z_SINK_CLAW FROM VICE_JAW WHERE ID = @jaw;
+					DECLARE @cl int = ${n(cl)}, @zc int = ${n(zc)}, @zs int = ${n(zs)};
+					DECLARE @misure bit = CASE WHEN (@cl IS NOT NULL AND ISNULL(@ocl, -1) <> @cl)
+											 OR (@zc IS NOT NULL AND ISNULL(@ozc, -1) <> @zc)
+											 OR (@zs IS NOT NULL AND ISNULL(@ozs, -1) <> @zs) THEN 1 ELSE 0 END;
+					IF @misure = 1 AND @jaw IS NULL SELECT '${ERR.KO_NO_JAW}' AS ris;
+					ELSE IF @misure = 1 AND ${J.ordineAttivoSuTipo('@jaw')} SELECT '${ERR.KO_JAW_ACTIVE_ORDER}' AS ris;
+					ELSE BEGIN
+						UPDATE VICE
+						 SET FAMILY='${req.query.FAMILY}',
+						 DESCR='${req.query.DESCR}',
+						 STATUS=${req.query.STATUS},
+						 X=${req.query.X},
+						 Y=${req.query.Y},
+						 Z=${req.query.Z},
+						 MAG=${req.query.MAG},
+						 MAG_POS=${req.query.MAG_POS},
+						 POS_PLANT=${req.query.POS_PLANT}${palletClause}
+						WHERE ID=${req.query.ID};
+						IF @misure = 1
+							UPDATE VICE_JAW SET CLAW_LENGTH = ISNULL(@cl, CLAW_LENGTH), Z_CLAW = ISNULL(@zc, Z_CLAW),
+								Z_SINK_CLAW = ISNULL(@zs, Z_SINK_CLAW) WHERE ID = @jaw;
+						SELECT 'OK' AS ris, @misure AS misure, @jaw AS jaw, @ocl AS ocl, @ozc AS ozc, @ozs AS ozs,
+							   (SELECT RTRIM(CODE) FROM VICE_JAW WHERE ID = @jaw) AS code;
+					END`
+
 		var request = new sql.Request();
-        					
-        log.info('query ' + query);
-        // query to the database and get the records
-        request.query(query, function (err, recordset) {
-            if (err) {
-                log.error("Err query: " + err)
-                res.status(500).send("KO")
-            }else
-				res.send("OK")
+		log.info('query ' + query);
+		request.query(query, function (err, result) {
+			if (err) {
+				log.error("Err query: " + err)
+				res.status(500).send("KO")
+				return;
+			}
+			const row = (result && result.recordset && result.recordset[0]) || {};
+			if (row.ris !== 'OK') {
+				log.standard('updateVice ' + row.ris + ': morsa ' + req.query.ID);
+				res.send(row.ris || "KO");
+				return;
+			}
+			if (row.misure) {
+				const cambi = [];
+				if (cl !== null && cl !== row.ocl) cambi.push('lunghezza chela da ' + (row.ocl == null ? 'non misurata' : row.ocl + ' um') + ' a ' + cl + ' um');
+				if (zc !== null && zc !== row.ozc) cambi.push('altezza chela da ' + (row.ozc == null ? 'non misurata' : row.ozc + ' um') + ' a ' + zc + ' um');
+				if (zs !== null && zs !== row.ozs) cambi.push('affondo da ' + (row.ozs == null ? 'non misurato' : row.ozs + ' um') + ' a ' + zs + ' um');
+				audit.audit('Morsa ID ' + req.query.ID + ', chele ' + row.code + ' (tipo ID ' + row.jaw + '): ' + cambi.join(', '),
+					audit.SRC_CONF, 'VICE_JAW:' + row.jaw);
+			}
+			res.send("OK")
 		});
 	});
 })
@@ -104,22 +141,30 @@ router.get('/insertVice', (req, res) => {
             return;
         }
 		
+		// (7/10) una morsa nuova non ha chele montate: le misure della chela
+		// non ha dove scriverle. Una lunghezza, un'altezza o un affondo diversi
+		// da zero -> KO_NO_JAW, e la morsa non nasce (si crea senza misure e
+		// poi si monta un tipo da Attrezzaggio > Chele morsa). Lo zero di
+		// altezza e affondo e' quello che il form manda di suo: si ignora.
+		if (J.intMin(req.query.CLAW_LENGTH, 1) !== null || J.intMin(req.query.Z_CLAW, 1) !== null
+			|| J.intMin(req.query.Z_SINK_CLAW, 1) !== null) {
+			log.standard('insertVice ' + ERR.KO_NO_JAW + ': misure della chela su una morsa nuova');
+			res.send(ERR.KO_NO_JAW);
+			return;
+		}
 		var request = new sql.Request();
-        let query = `INSERT INTO VICE
-					(ID, FAMILY, DESCR, STATUS, X, Y, Z, Z_CLAW, Z_SINK_CLAW, MAG, MAG_POS, POS_PLANT, CLAW_LENGTH)
-					VALUES(${req.query.ID}, 
-					'${req.query.FAMILY}', 
-					'${req.query.DESCR}', 
-					${req.query.STATUS}, 
-					${req.query.X}, 
-					${req.query.Y}, 
-					${req.query.Z}, 
-					${req.query.Z_CLAW}, 
-					${req.query.Z_SINK_CLAW}, 
-					${req.query.MAG}, 
-					${req.query.MAG_POS}, 
-					${req.query.POS_PLANT},
-					${clawLengthSql(req.query.CLAW_LENGTH)});`
+		let query = `INSERT INTO VICE
+					(ID, FAMILY, DESCR, STATUS, X, Y, Z, MAG, MAG_POS, POS_PLANT)
+					VALUES(${req.query.ID},
+					'${req.query.FAMILY}',
+					'${req.query.DESCR}',
+					${req.query.STATUS},
+					${req.query.X},
+					${req.query.Y},
+					${req.query.Z},
+					${req.query.MAG},
+					${req.query.MAG_POS},
+					${req.query.POS_PLANT});`
 					
         log.info('query ' + query);
         // query to the database and get the records
@@ -180,6 +225,13 @@ router.delete('/:ID', (req, res) => {
 //
 // Una rotta per misura, e il NOME DELLA COLONNA sta scritto qui dentro, a
 // letterale: non arriva mai dalla richiesta.
+//
+// (7/10, prompt 5 di 5) LA MISURA E' DEL TIPO DI CHELE MONTATO sulla morsa
+// (VICE_JAW via VICE.JAW_ID), non della morsa: le viste del PLC leggono da
+// li'. La rotta resta la stessa (Spinta in battuta, pannello di prima) e
+// scrive sul tipo. Senza tipo montato -> KO_NO_JAW. Le misure di un tipo
+// valgono per TUTTE le morse che lo hanno montato: con un ordine a STATUS 3
+// sul pallet di una di queste -> KO_JAW_ACTIVE_ORDER, nessuna scrittura.
 // ===========================================================================
 function salvaMisuraChela(req, res, m) {
 	const id  = parseInt(req.query.ID, 10);
@@ -198,9 +250,18 @@ function salvaMisuraChela(req, res, m) {
 			return;
 		}
 		let query = `SET NOCOUNT ON;
-					DECLARE @old int = (SELECT ${m.colonna} FROM VICE WHERE ID=${id});
-					UPDATE VICE SET ${m.colonna}=${val} WHERE ID=${id};
-					SELECT @@ROWCOUNT AS n, @old AS old, RTRIM(FAMILY) AS fam FROM VICE WHERE ID=${id};`;
+					DECLARE @found int = 0, @jaw int, @fam nvarchar(100);
+					SELECT @found = 1, @jaw = JAW_ID, @fam = RTRIM(FAMILY) FROM VICE WHERE ID=${id};
+					IF @found = 0 SELECT '${ERR.KO_NOT_FOUND}' AS ris;
+					ELSE IF @jaw IS NULL SELECT '${ERR.KO_NO_JAW}' AS ris;
+					ELSE IF ${J.ordineAttivoSuTipo('@jaw')} SELECT '${ERR.KO_JAW_ACTIVE_ORDER}' AS ris;
+					ELSE BEGIN
+						DECLARE @old int = (SELECT ${m.colonna} FROM VICE_JAW WHERE ID=@jaw);
+						UPDATE VICE_JAW SET ${m.colonna}=${val} WHERE ID=@jaw;
+						SELECT 'OK' AS ris, @old AS old, @fam AS fam, @jaw AS jaw,
+							   (SELECT RTRIM(CODE) FROM VICE_JAW WHERE ID=@jaw) AS code,
+							   (SELECT COUNT(*) FROM VICE WHERE JAW_ID=@jaw) AS montate;
+					END`;
 		var request = new sql.Request();
 		log.info('query ' + query);
 		request.query(query, function (err2, recordset) {
@@ -209,11 +270,16 @@ function salvaMisuraChela(req, res, m) {
 				res.status(500).send("KO");
 				return;
 			}
-			const row = recordset.recordset && recordset.recordset[0];
-			if (!row || !row.n) { res.send(ERR.KO_NOT_FOUND); return; }
-			audit.audit('Morsa ' + row.fam + ' (ID ' + id + '): ' + m.etichetta + ' da '
-				+ (row.old == null ? 'non misurata' : row.old + ' um') + ' a ' + val + ' um',
-				audit.SRC_PUSH_SIM, 'VICE:' + id);
+			const row = (recordset.recordset && recordset.recordset[0]) || {};
+			if (row.ris !== 'OK') {
+				log.standard(m.rotta + ' ' + (row.ris || ERR.KO_NOT_FOUND) + ': morsa ' + id);
+				res.send(row.ris || ERR.KO_NOT_FOUND);
+				return;
+			}
+			audit.audit('Morsa ' + row.fam + ' (ID ' + id + '), chele ' + row.code + ' (tipo ID ' + row.jaw + '): '
+				+ m.etichetta + ' da ' + (row.old == null ? 'non misurata' : row.old + ' um') + ' a ' + val + ' um'
+				+ (row.montate > 1 ? ' (vale per le ' + row.montate + ' morse che le hanno montate)' : ''),
+				audit.SRC_PUSH_SIM, 'VICE_JAW:' + row.jaw);
 			res.send("OK");
 		});
 	});
@@ -223,20 +289,20 @@ function salvaMisuraChela(req, res, m) {
 // spinta (COORDINATES_PUSH_MC) e del soffiaggio (COORDINATES_BLOW_MC)
 router.get('/setClawLength', (req, res) => salvaMisuraChela(req, res, {
 	rotta: 'setClawLength', colonna: 'CLAW_LENGTH', param: 'CLAW_LENGTH',
-	etichetta: 'lunghezza ganascia', minimo: 1,
+	etichetta: 'lunghezza chela', minimo: 1,
 }))
 
 // altezza della ganascia
 router.get('/setClawHeight', (req, res) => salvaMisuraChela(req, res, {
 	rotta: 'setClawHeight', colonna: 'Z_CLAW', param: 'Z_CLAW',
-	etichetta: 'altezza ganascia', minimo: 1,
+	etichetta: 'altezza chela', minimo: 1,
 }))
 
 // quanto il pezzo affonda dentro la ganascia. Lo ZERO e' un valore vero
 // (ganascia piatta), non un dato mancante: minimo 0.
 router.get('/setClawSink', (req, res) => salvaMisuraChela(req, res, {
 	rotta: 'setClawSink', colonna: 'Z_SINK_CLAW', param: 'Z_SINK_CLAW',
-	etichetta: 'affondamento pezzo', minimo: 0,
+	etichetta: 'affondo del pezzo nella chela', minimo: 0,
 }))
 // ===========================================================================
 // (push-to-stop 15/9) APPOGGIO DICHIARATO per i pezzi che ECCEDONO la ganascia
@@ -269,7 +335,9 @@ router.get('/stops/:viceID', (req, res) => {
 			return;
 		}
 		// (6/10) anche Z_PUSH, la quota Z della spinta (NULL = alla quota di presa)
-		let query = `select pv.VICE_ID, pv.PIECE_ID, pv.STOP_BEYOND_CLAW, pv.COMP_PUSH, pv.Z_PUSH,
+		// (7/10) anche CLAW_LENGTH_REF, la chela con cui la battuta e' stata
+		// dichiarata: il pannello mostra la battuta corretta per quelle montate
+		let query = `select pv.VICE_ID, pv.PIECE_ID, pv.STOP_BEYOND_CLAW, pv.COMP_PUSH, pv.Z_PUSH, pv.CLAW_LENGTH_REF,
 							rtrim(p.FAMILY) as PIECE_FAMILY, rtrim(p.DESCR) as PIECE_DESCR,
 							p.X as PIECE_X, p.Y as PIECE_Y, p.PUSH_TO_STOP
 					 from PIECE_ON_VICE pv
@@ -306,21 +374,29 @@ router.get('/setStop', (req, res) => {
 			res.status(500).send("KO");
 			return;
 		}
+		// (7/10) la battuta si dichiara con le chele montate ADESSO: la loro
+		// lunghezza va in CLAW_LENGTH_REF, e le viste correggono la battuta se
+		// poi si montano chele diverse. Chele non misurate o nessun tipo: NULL,
+		// nessuna correzione (come prima).
 		let query = `SET NOCOUNT ON;
-					UPDATE PIECE_ON_VICE SET STOP_BEYOND_CLAW=${stop}
+					DECLARE @ref int = (SELECT j.CLAW_LENGTH FROM VICE v JOIN VICE_JAW j ON j.ID = v.JAW_ID WHERE v.ID=${viceID});
+					UPDATE PIECE_ON_VICE SET STOP_BEYOND_CLAW=${stop}, CLAW_LENGTH_REF=@ref
 					 WHERE VICE_ID=${viceID} AND PIECE_ID=${pieceID};
 					IF @@ROWCOUNT = 0
-						INSERT INTO PIECE_ON_VICE (VICE_ID, PIECE_ID, STOP_BEYOND_CLAW)
-						VALUES (${viceID}, ${pieceID}, ${stop});`;
+						INSERT INTO PIECE_ON_VICE (VICE_ID, PIECE_ID, STOP_BEYOND_CLAW, CLAW_LENGTH_REF)
+						VALUES (${viceID}, ${pieceID}, ${stop}, @ref);
+					SELECT @ref AS ref;`;
 		var request = new sql.Request();
 		log.info('query ' + query);
-		request.query(query, function (err) {
+		request.query(query, function (err, result) {
 			if (err) {
 				log.error("Err query: " + err);
 				res.status(500).send("KO");
 			} else {
+				const ref = result && result.recordset && result.recordset[0] ? result.recordset[0].ref : null;
 				audit.audit('Morsa ID ' + viceID + ', pezzo ID ' + pieceID
-					+ ': appoggio dichiarato a ' + stop + ' um oltre la fine ganascia',
+					+ ': appoggio dichiarato a ' + stop + ' um oltre la fine della chela'
+					+ (ref == null ? ' (chele non misurate)' : ' (chele da ' + ref + ' um)'),
 					audit.SRC_PUSH_SIM, 'PIECE_ON_VICE:' + viceID + ':' + pieceID);
 				res.send("OK");
 			}

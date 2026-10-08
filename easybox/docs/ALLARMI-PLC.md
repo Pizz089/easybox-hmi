@@ -171,6 +171,25 @@ titolo e la coda dell'avviso unico (`robot.alarm972Title`,
 cassetto, oppure EasyBox in errore: le due cause dall'8/10) e
 `robot.alarm_1722` (pinza del pallet assente a database).
 
+## 799: deposito in macchina senza quote (catalogo delle chele, 7/10)
+
+`799` = 7 * 100 + 99: catena `Part_Robot_to_MC` (7), errore 99. FB_Robot,
+stato 30: la query delle quote di deposito (`COORDINATES_Z_MC` per l'ordine)
+non da' righe (`noData`) **oppure** fallisce (`dataError`). Tutti e due i casi
+alzano lo stesso 799, e il robot non si muove.
+
+Perche' una riga manca:
+- l'ordine ha un pezzo o un'attrezzatura che non agganciano niente (FIXTURE e
+  PIECE in join interno): la difesa contro un deposito a quota sbagliata;
+- dal 7/10 il **blocco chele**: l'ordine e' confermato con chele diverse da
+  quelle montate sulla morsa del suo pallet (`WORKORDER.JAW_ID` diverso da
+  `VICE.JAW_ID`, oppure nessuna morsa).
+
+Testo nel pannello (`robot.alarm_799`, it ed en): «Deposito in macchina
+fermato: nessuna quota per questo ordine. Controlla pezzo e attrezzatura
+dell'ordine, e che le chele dell'ordine siano quelle montate sulla morsa
+(Attrezzaggio › Chele morsa). Poi RESET.»
+
 ## Se manca una chiave
 
 1. si decodifica il numero con la regola qui sopra;

@@ -3,9 +3,11 @@
 // script (nessun DB):
 //   1. coordinates-z-mc.sql: la vista COORDINATES_Z_MC versionata. Il pezzo
 //      entra nel deposito del grezzo con PIECE.Z_PICK; la guardia confronta
-//      il CODICE (commenti tolti, spazi normalizzati) e in cella e' un no-op:
-//      i commenti della vista in cella hanno trattini lunghi, anche rovinati
-//      da sqlcmd ("â€”"), e non devono contare;
+//      il CODICE (commenti tolti, spazi normalizzati): i commenti della vista
+//      in cella hanno trattini lunghi, anche rovinati da sqlcmd ("â€”"), e
+//      non devono contare. (7/10) Due versioni note: quella del 6/10 si porta
+//      alla nuova (chele dal catalogo, blocco chele), la nuova e' "conforme",
+//      altro FERMO;
 //   2. piece-on-vice-z-push.sql: colonna Z_PUSH int NULL con CHECK >= 0,
 //      idempotente, nessuna scrittura sui dati;
 //   3. coordinates-push-mc.sql: le tre colonne Z_PUSH, Z_PUSH_REF,
@@ -39,18 +41,23 @@ console.log('1) coordinates-z-mc.sql');
 const zRaw = leggi('coordinates-z-mc.sql');
 const zBuf = fs.readFileSync(path.join(__dirname, 'scripts', 'coordinates-z-mc.sql'));
 check(!zBuf.some(b => b > 127) && !zRaw.includes('$('), 'file solo ASCII e nessun "$(" (lo lancia sqlcmd)');
-const mV = codice(zRaw).match(/DECLARE @v nvarchar\(max\) = N'((?:[^']|'')*)';/);
+const mV = codice(zRaw).match(/DECLARE @nuova nvarchar\(max\) = N'((?:[^']|'')*)';/);
 const v = mV ? mV[1].replace(/''/g, "'") : '';
-check(/p\.Z \+ pz\.Z_PICK\s+\+ f\.Z\s+\+ ISNULL\(v\.Z_CLAW, 0\) - ISNULL\(v\.Z_SINK_CLAW, 0\)\s+as Z_PLACE_MC/.test(v),
-	'Z_PLACE_MC (deposito del grezzo) = P.Z + PIECE.Z_PICK + FIXTURE.Z + Z_CLAW - Z_SINK_CLAW');
-check(/p\.Z \+ pz\.Z_PLACE \+ f\.Z\s+\+ ISNULL\(v\.Z_CLAW, 0\) - ISNULL\(v\.Z_SINK_CLAW, 0\)\s+as Z_PICK_MC/.test(v), '   Z_PICK_MC (prelievo del finito) con PIECE.Z_PLACE');
-check(/WHILE CHARINDEX\(N'--', @a\) > 0/.test(zRaw) && /WHILE CHARINDEX\(N'--', @b\) > 0/.test(zRaw) && /ELSE IF @a = @b/.test(zRaw),
-	'la guardia toglie i commenti "--" da entrambe le definizioni e confronta il codice');
+const mO = codice(zRaw).match(/DECLARE @vecchia nvarchar\(max\) = N'((?:[^']|'')*)';/);
+const vOld = mO ? mO[1].replace(/''/g, "'") : '';
+check(/p\.Z \+ pz\.Z_PICK\s+\+ f\.Z\s+\+ ISNULL\(j\.Z_CLAW, 0\) - ISNULL\(j\.Z_SINK_CLAW, 0\)\s+as Z_PLACE_MC/.test(v),
+	'Z_PLACE_MC (deposito del grezzo) = P.Z + PIECE.Z_PICK + FIXTURE.Z + Z_CLAW - Z_SINK_CLAW, chela dal tipo montato (7/10)');
+check(/p\.Z \+ pz\.Z_PLACE \+ f\.Z\s+\+ ISNULL\(j\.Z_CLAW, 0\) - ISNULL\(j\.Z_SINK_CLAW, 0\)\s+as Z_PICK_MC/.test(v), '   Z_PICK_MC (prelievo del finito) con PIECE.Z_PLACE');
+check(/left  join VICE_JAW j   on j\.ID = v\.JAW_ID/.test(v) && /where w\.JAW_ID is null or w\.JAW_ID = v\.JAW_ID;$/.test(v.trim()),
+	'   (7/10) misure dal catalogo e BLOCCO CHELE: nessuna riga se le chele dell\'ordine non sono quelle montate');
+check(/ISNULL\(v\.Z_CLAW, 0\) - ISNULL\(v\.Z_SINK_CLAW, 0\)\s+as Z_PLACE_MC/.test(vOld) && !/JAW/.test(vOld), '   la versione del 6/10 e\' tenuta nello script, per riconoscerla');
+check(/WHILE @k <= 3/.test(zRaw) && /WHILE CHARINDEX\(N'--', @s\) > 0/.test(zRaw) && /ELSE IF @a = @n/.test(zRaw) && /ELSE IF @a = @o/.test(zRaw),
+	'la guardia toglie i commenti "--" dalle tre definizioni (trovata, 6/10, nuova) e confronta il codice');
 // le istruzioni, senza i messaggi (PRINT 'FERMO: CREATE VIEW non riuscita')
 const zIstr = codice(zRaw).split('\n').filter(r => !/^\s*PRINT\b/.test(r)).join('\n');
 check(/IF @def IS NULL AND OBJECT_ID\('dbo\.COORDINATES_Z_MC'\) IS NULL/.test(zRaw) && (zIstr.match(/CREATE VIEW/g) || []).length === 1
-	&& !/\bALTER VIEW\b|\bDROP VIEW\b/.test(zIstr),
-	'   crea solo se manca; mai ALTER ne\' DROP: una vista diversa la lascia stare (FERMO)');
+	&& (zIstr.match(/ALTER VIEW/g) || []).length === 1 && /ELSE IF @a = @o\nBEGIN[\s\S]*?SELECT @def AS definizione_trovata;\n\tEXEC \(N'ALTER VIEW/.test(zIstr) && !/\bDROP VIEW\b/.test(zIstr),
+	'   crea se manca, ALTER solo dalla versione del 6/10 (stampata prima), mai DROP: una vista diversa la lascia stare (FERMO)');
 // la vista in cella: stesso codice, commenti coi trattini lunghi (anche
 // rovinati da sqlcmd senza -f 65001)
 const cella = 'CREATE VIEW dbo.COORDINATES_Z_MC AS\n' + v.replace(/ - il 10/, ' — il 10').replace(/TRE posti/, 'TRE posti â€”');
@@ -78,12 +85,13 @@ const drop = p.match(/case when pv\.Z_PUSH is null[\s\S]*?as Z_PUSH_DROP/);
 check(!!drop && !/PUSH_STATUS/.test(drop[0]), '   e non dipende da PUSH_STATUS');
 check(/OR COL_LENGTH\('dbo\.PIECE_ON_VICE', 'Z_PUSH'\) IS NULL/.test(p), 'prerequisito: la colonna PIECE_ON_VICE.Z_PUSH (piece-on-vice-z-push.sql)');
 const guard = pRaw.slice(pRaw.indexOf('IF @def IS NULL'), pRaw.indexOf('IF OBJECT_ID(\'dbo.COORDINATES_PUSH_MC\') IS NULL'));
-check(/AND @norm LIKE N'%when pv\.Z_PUSH > pz\.Z_PICK then 0 else pz\.Z_PICK - pv\.Z_PUSH end as Z_PUSH_DROP%'\nBEGIN\n\tPRINT 'coordinates-push-mc: conforme[^\n]*\n\tSET NOEXEC ON;/.test(guard),
-	'guardia: la variante nuova (con la formula di Z_PUSH_DROP) -> "conforme", esce');
+check(/AND @norm LIKE N'%when pv\.Z_PUSH > pz\.Z_PICK then 0 else pz\.Z_PICK - pv\.Z_PUSH end as Z_PUSH_DROP%'\n\t AND @norm LIKE N'%left join VICE_JAW j on j\.ID = v\.JAW_ID%'\n[^\n]*\nBEGIN\n\tPRINT 'coordinates-push-mc: conforme[^\n]*\n\tSET NOEXEC ON;/.test(guard),
+	'guardia: la variante nuova (Z_PUSH_DROP, catalogo, battuta corretta) -> "conforme", esce');
+check(/variante del 6\/10 \(quota Z della spinta\): la porto alle chele dal catalogo/.test(guard), '   la variante del 6/10 si porta alle chele dal catalogo');
 check(/ELSE IF @norm LIKE N'%as Z_PUSH_DROP%'\nBEGIN\n\tPRINT '[^\n]*FERMO\.';[\s\S]*?SET NOEXEC ON;/.test(guard), '   Z_PUSH_DROP presente ma diversa -> FERMO, non sovrascrive');
 check(/variante completa della compensazione[^\n]*aggiungo Z_PUSH/.test(guard) && /segno giusto ma MANCA il ramo NO_COMP/.test(guard)
 	&& /variante col PIU''/.test(guard) && /versione senza compensazione/.test(guard), '   le quattro varianti della compensazione -> ALTER alla definizione completa');
-check((guard.match(/SET NOEXEC ON/g) || []).length === 3 && /nessuna delle cinque varianti note\. FERMO/.test(guard), '   esce solo su conforme, Z_PUSH_DROP diversa e variante sconosciuta');
+check((guard.match(/SET NOEXEC ON/g) || []).length === 4 && /nessuna delle sei varianti note\. FERMO/.test(guard), '   esce solo su conforme, catalogo diverso, Z_PUSH_DROP diversa e variante sconosciuta');
 check(!/Durante la spinta Y e Z restano quelle del deposito/.test(pRaw) && /La Z \(6\/10\) scende di\n-- Z_PUSH_DROP sotto la Z di deposito/.test(pRaw),
 	'intestazione: la Z non resta piu\' quella del deposito, scende di Z_PUSH_DROP');
 

@@ -116,6 +116,13 @@
             <label>&nbsp;</label>
             <small class="claw-hint">{{ $t("vice.clawLengthHint") }}</small>
           </div>
+          <!-- (7/10, prompt 5 di 5) le misure della chela sono del TIPO di
+               chele montato sulla morsa (catalogo VICE_JAW): si dice quale.
+               Il catalogo e il montaggio stanno nel pannello v3. -->
+          <div class="pure-control-group" v-if="!create">
+            <label>&nbsp;</label>
+            <small class="claw-hint" data-jaw>{{ $t("viceJaw.mounted", { code: vice.JAW_CODE ? String(vice.JAW_CODE).trim() : $t("viceJaw.none") }) }}</small>
+          </div>
 
           <!-- (push-to-stop 15/9) APPOGGIO DICHIARATO. Un pezzo piu' lungo
                della ganascia non e' un errore: appoggia piu' avanti, su un
@@ -244,6 +251,8 @@ import {
 import { GLTFFileLoader } from "@babylonjs/loaders/glTF";
 import viceModelUrl from "@/assets/models/vice_1.glb?url";
 import { dataStored } from "../../../data.js";
+// (7/10) rifiuti del catalogo delle chele della morsa
+import { KO_NO_JAW, KO_JAW_ACTIVE_ORDER } from "../../../util/errorCodes.js";
 import optionStatus from "@/components/optionStatus.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 
@@ -682,6 +691,16 @@ export default {
             : Math.round(Number(this.vice.CLAW_LENGTH) * 1000),
       };
     },
+    // (7/10, prompt 5 di 5) rifiuti del catalogo delle chele: messaggio e si
+    // resta sulla pagina. true se il corpo era un rifiuto.
+    rifiutoChele(body) {
+      const b = String(body || "").trim();
+      if (b !== KO_NO_JAW && b !== KO_JAW_ACTIVE_ORDER) return false;
+      dataStored.alert.title = this.$t("WARNING");
+      dataStored.alert.desc = this.$t("viceJaw." + b);
+      dataStored.alert.type = "warning";
+      return true;
+    },
     saveData() {
       if (this.create) {
         // AF: nessun input posizione — la morsa nasce con posizione neutra
@@ -699,6 +718,12 @@ export default {
         fetch(dataStored.server + "api/conf/vice/insertVice?" + params.toString(), { method: "GET" })
           .then((r) => {
             if (!r.ok) throw new Error("Network response was not ok");
+            return r.text();
+          })
+          .then((body) => {
+            // (7/10) una morsa nuova non ha chele montate: con una lunghezza il
+            // backend rifiuta (KO_NO_JAW) e la morsa non nasce
+            if (this.rifiutoChele(body)) return;
             return this.$router.push(this.$route.query.returnTo || "/conf/Vices");
           })
           .catch(console.info);
@@ -732,6 +757,12 @@ export default {
         })
         .then((r) => {
           if (!r.ok) throw new Error("Network response was not ok");
+          return r.text();
+        })
+        .then((body) => {
+          // (7/10) la lunghezza va al tipo di chele montato: senza tipo, o con
+          // un ordine in lavorazione, il backend rifiuta e non scrive niente
+          if (this.rifiutoChele(body)) return;
           // U-FASE2: ritorno opzionale al chiamante (form composito Attrezzaggio)
           return this.$router.push(this.$route.query.returnTo || "/conf/Vices");
         })

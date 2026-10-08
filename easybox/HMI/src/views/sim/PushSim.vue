@@ -92,6 +92,9 @@
             </option>
           </select>
         </div>
+        <!-- (7/10, prompt 5 di 5) le misure della chela sono del TIPO di
+             chele montato sulla morsa (catalogo VICE_JAW): si dice quale -->
+        <p v-if="sel.viceID" class="sim-hint" data-jaw>{{ t("viceJaw.mounted", { code: jawCode || t("viceJaw.none") }) }}</p>
 
         <div class="sim-field">
           <label for="sim-gripper">{{ t("pushSim.gripper") }}</label>
@@ -452,7 +455,7 @@
 <script>
 import { dataStored } from "../../data.js";
 import { pushQuotes, PUSH_STATUS, STOP_REF, zPushDrop } from "../../util/pushQuotes.js";
-import { KO_NOT_FOUND, KO_Z_PUSH_RANGE } from "../../util/errorCodes.js";
+import { KO_NOT_FOUND, KO_Z_PUSH_RANGE, KO_NO_JAW, KO_JAW_ACTIVE_ORDER } from "../../util/errorCodes.js";
 import UiButton from "../../components/ui/UiButton.vue";
 import UiSegmented from "../../components/ui/UiSegmented.vue";
 import UiBadge from "../../components/ui/UiBadge.vue";
@@ -570,7 +573,25 @@ export default {
         gripperClawLength: this.m.toolClaw,
         stopBeyondClaw: this.m.stopBeyond,
         compPush: this.m.compPush,
+        clawLengthRef: this.stopRefSim,
       });
+    },
+
+    // (7/10, prompt 5 di 5) la chela con cui la battuta in prova risulta
+    // dichiarata: quella salvata (CLAW_LENGTH_REF) se la battuta e' quella del
+    // database, altrimenti le chele montate adesso, che setStop scriverebbe.
+    // Cosi' provando un'altra lunghezza di chela si vede la battuta corretta,
+    // come la calcoleranno le viste.
+    stopRefSim() {
+      const salvata = this.stopRow && this.stopRow.CLAW_LENGTH_REF != null ? Number(this.stopRow.CLAW_LENGTH_REF) : null;
+      if (toMicron(this.sim.stopBeyond) === toMicron(this.real.stopBeyond)) return salvata;
+      return toMicron(this.real.viceClaw);
+    },
+
+    // il codice del tipo di chele montato sulla morsa scelta (VICES.JAW_CODE)
+    jawCode() {
+      const v = this.vices.find((x) => x.ID == this.sel.viceID);
+      return v && v.JAW_CODE ? String(v.JAW_CODE).trim() : "";
     },
 
     // (comp-push) LA CORSA, in millimetri, accanto al campo. E' di pochi
@@ -593,6 +614,7 @@ export default {
         viceClawLength: this.m.viceClaw,
         gripperClawLength: this.m.toolClaw,
         stopBeyondClaw: this.m.stopBeyond,
+        clawLengthRef: this.stopRefSim,
       });
       return {
         travelMm: geom.clearance === null ? null : geom.clearance / 1000,
@@ -1054,6 +1076,15 @@ export default {
             dataStored.alert.desc = c.key === "zPush"
               ? this.t("pushSim.compNoRow") + " " + this.t("pushSim.zPushNoRow")
               : this.t(c.key === "compPush" ? "pushSim.compNoRow" : "pushSim.saveNotFound");
+            dataStored.alert.type = "warning";
+            return;
+          }
+          // (7/10) le misure della chela sono del tipo montato: senza tipo, o
+          // con un ordine in lavorazione su una morsa con quel tipo, il server
+          // rifiuta e non scrive niente
+          if (String(body).trim() === KO_NO_JAW || String(body).trim() === KO_JAW_ACTIVE_ORDER) {
+            dataStored.alert.title = this.t("WARNING");
+            dataStored.alert.desc = this.t("viceJaw." + String(body).trim());
             dataStored.alert.type = "warning";
             return;
           }

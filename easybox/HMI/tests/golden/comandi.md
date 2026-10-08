@@ -369,7 +369,7 @@ Scenari: modifica 911 liv2 · modifica 911 liv0 · nuova morsa · nuova morsa da
 
 | Etichetta | Handler | Abilitazione | Abilitato per scenario | Effetto | Conferma |
 |---|---|---|---|---|---|
-| Famiglia {{v.TYPE}} Descrizione X µm Y µm Z µm Ganascia: lunghezza nella direzione in cui il pezzo scorre fino alla batt | `` |  | modifica 911 liv2: sì<br>modifica 911 liv0: sì<br>nuova morsa: sì<br>nuova morsa da Attrezzaggio: sì | – | no |
+| Famiglia {{v.TYPE}} Descrizione X µm Y µm Z µm Chela della morsa: lunghezza nella direzione in cui il pezzo scorre fino  | `` |  | modifica 911 liv2: sì<br>modifica 911 liv0: sì<br>nuova morsa: sì<br>nuova morsa da Attrezzaggio: sì | – | no |
 | (input) | `onDimInput('X', $event)` |  | modifica 911 liv2: sì<br>modifica 911 liv0: sì<br>nuova morsa: sì<br>nuova morsa da Attrezzaggio: sì | stato: vm.vice.X = 1 | no |
 | (input) | `onDimInput('Y', $event)` |  | modifica 911 liv2: sì<br>modifica 911 liv0: sì<br>nuova morsa: sì<br>nuova morsa da Attrezzaggio: sì | stato: vm.vice.Y = 1 | no |
 | (input) | `onDimInput('Z', $event)` |  | modifica 911 liv2: sì<br>modifica 911 liv0: sì<br>nuova morsa: sì<br>nuova morsa da Attrezzaggio: sì | stato: vm.vice.Z = 1 | no |
