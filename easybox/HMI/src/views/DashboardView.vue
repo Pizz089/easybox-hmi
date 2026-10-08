@@ -513,12 +513,20 @@ export default {
 .home-alarms__icon svg { width: 22px; height: 22px; }
 
 @media (max-width: 1599px) {
+  /* (prompt 12) in compatto la Home cresce col contenuto e, se non ci sta,
+     scorre la pagina. Con height: 100% la griglia schiacciava la card
+     dell'ordine sotto la sua altezza, e le tile ci finivano sopra: «Ferma
+     ordine» e «Coda ordini» non si potevano toccare a 960x472 e 853x533, e
+     con l'avviso «perche' il ciclo e' fermo» (48 px in meno) anche a
+     960x540. */
   .home {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto auto auto;
     grid-template-areas: "order" "tiles" "banner";
     gap: var(--space-3);
     align-content: start;
+    height: auto;
+    min-height: 100%;
   }
   .home--logo {
     grid-template-rows: auto auto auto auto;

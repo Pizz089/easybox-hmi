@@ -71,5 +71,12 @@ const codiceStore = store.split('\n').filter(r => !r.trim().startsWith('//')).jo
 check(/'ROBOT\/CHANGESPEED': p => \{ dataStored\.robotSpeed = p; \}/.test(codiceStore), 'lo store ascolta ROBOT/CHANGESPEED e aggiorna dataStored.robotSpeed');
 check(!/\.emit\(\s*'TO_PLANT/.test(codiceStore), 'e non manda comandi');
 
+console.log('\n6) (prompt 12) in compatto la Home cresce col contenuto e scorre');
+// con height: 100% la griglia schiacciava la card dell'ordine: «Ferma
+// ordine» e «Coda ordini» finivano sotto le tile (960x472, 853x533, e con
+// l'avviso «perche' il ciclo e' fermo» anche 960x540)
+const compatto = (src.match(/@media \(max-width: 1599px\) \{([\s\S]*)<\/style>/) || ['', ''])[1];
+check(/\.home \{[^}]*height: auto;[^}]*min-height: 100%;/.test(compatto), 'compatto: .home con height: auto e min-height: 100% (si scorre la pagina, niente sovrapposizioni)');
+
 console.log('\n' + (failed ? failed + ' CHECK FALLITI' : 'TUTTI I CHECK PASSATI'));
 process.exit(failed ? 1 : 0);
