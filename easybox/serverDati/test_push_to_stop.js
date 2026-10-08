@@ -460,13 +460,15 @@ const SPLIT = ref => '"FC_Split_Dint"(IN := ' + ref;
 const SCRIVE_Z = /HIGH_Word => "Z_Push_HIGH",\s*LOW_Word => "Z_Push_LOW"\);/g;
 for (const [regione, n, rami] of [['Part_Robot_to_MC', 32, 2], ['Cycle MASTER ROBOT', 1410, 2]]) {
 	const s = statoFB(regione, n);
-	check(s.split("'select X_PUSH,X_STOP,Z_PUSH_DROP from COORDINATES_PUSH_MC where MC=1 and ORDER_ID=',").length - 1
-			+ s.split("'select top 1 X_PUSH,X_STOP,Z_PUSH_DROP from COORDINATES_PUSH_MC where MC=1 order by ORDER_ID desc'").length - 1 === rami
+	// (consegna 35, 8/10) X_PUSH e X_STOP con isnull(...,0): il ponte SQL non
+	// converte NULL in zero
+	check(s.split("'select isnull(X_PUSH,0),isnull(X_STOP,0),Z_PUSH_DROP from COORDINATES_PUSH_MC where MC=1 and ORDER_ID=',").length - 1
+			+ s.split("'select top 1 isnull(X_PUSH,0),isnull(X_STOP,0),Z_PUSH_DROP from COORDINATES_PUSH_MC where MC=1 order by ORDER_ID desc'").length - 1 === rami
 		&& !/X_PUSH,X_STOP from/.test(s),
 		'quota Z: ' + regione + ' ' + n + ' chiede Z_PUSH_DROP come terza colonna in tutti e ' + rami + ' i rami');
 }
 check(!/select X_PUSH,X_STOP from/.test(fb7), '   e in FB_Robot non resta nessuna query della spinta a due colonne');
-const qManuale = "select X_PUSH,X_STOP,Z_PUSH_DROP from COORDINATES_PUSH_MC where MC=1 and ORDER_ID=(select ORDER_ID from MAN_ORDER_MC1 where TRAY='99' and SUB_POS=999)";
+const qManuale = "select isnull(X_PUSH,0),isnull(X_STOP,0),Z_PUSH_DROP from COORDINATES_PUSH_MC where MC=1 and ORDER_ID=(select ORDER_ID from MAN_ORDER_MC1 where TRAY='99' and SUB_POS=999)";
 check(qManuale.length < 254, '   la query in manuale (cassetto a 2 cifre, tasca a 3) sta in ' + qManuale.length + ' caratteri, sotto i 254 di queryTemp');
 for (const [regione, n, ref] of [['Part_Robot_to_MC', 36, '"DB_RobotMission"."Z_Pick-Place"'], ['Cycle MASTER ROBOT', 1412, '#zPlaceTemp']]) {
 	const s = statoFB(regione, n);
