@@ -5,6 +5,107 @@
 > stato corretto sul momento. Gli interventi manuali da fare in impianto
 > stanno invece in `APPUNTI-CELLA.md`.
 
+## [ ] FB7: gli azzeramenti di `Command` possono cancellare un comando manuale
+
+**Cosa.** Gli azzeramenti di `DB_RobotMission.Command` e il controllo di fine comando manuale (`FB_Robot.scl` 613-626, export della 35, «Completamento comando») possono cancellare un comando manuale: il robot non lo esegue, e il comando va ripetuto.
+
+**Direzione.** Da rivedere nel PLC; intanto un comando manuale che non parte si ripete.
+
+**Trovato il** 2026-10-08, simulazione e revisione della consegna 36.
+
+## [ ] FB204: il ciclo parte col programma robot fermo
+
+**Cosa.** Allo 0 di FB204 manca il consenso Run del programma robot: il ciclo parte anche col programma fermo.
+
+**Direzione.** Il consenso Run allo 0; aspetta il robotista. Dalla 36 l'avviso dice «Programma robot fermo» (codice 7 di `WAIT/MC1`).
+
+**Trovato il** 2026-10-08, simulazione e revisione della consegna 36.
+
+## [ ] FB7, master 500: 510, 520 e 530 senza uscita in errore
+
+**Cosa.** Nel master 500 (MISSION_LoadPartOnRobot, `FB_Robot.scl` 1269-1312, export della 35) gli stati 510, 520 e 530 aspettano le catene della pinza e del pezzo, ma non hanno un'uscita se la catena va in errore: il master resta lì.
+
+**Direzione.** Un'uscita in errore che chiuda la missione, come negli altri master.
+
+**Trovato il** 2026-10-08, simulazione e revisione della consegna 36.
+
+## [ ] FB7: prese in carico SQL senza timeout
+
+**Cosa.** In FB7 le prese in carico del ponte SQL non hanno un timeout: se la risposta non arriva, chi aspetta resta fermo.
+
+**Direzione.** Un timeout con un errore dichiarato.
+
+**Trovato il** 2026-10-08, simulazione e revisione della consegna 36.
+
+## [ ] START col robot spento manda l'HOLD
+
+**Cosa.** Col robot spento il pulsante START della striscia manda il 17 (`sendToRobot(17)`, come HOLD e Riprendi): dopo lo START la cella è in HOLD, e servono START e poi Riprendi. Il fermo dell'8/10 è passato da qui (robot spento con il ciclo in attesa).
+
+**Direzione.** Valutare un testo o un aiuto nella striscia. Dalla 36 l'avviso fisso dice «Cella in HOLD: premere Riprendi» (codice 6 di `WAIT/MC1`).
+
+**Trovato il** 2026-10-08, simulazione e revisione della consegna 36.
+
+## [ ] FB204 in 9999 col 959: la Reimposta stato cella non lo riporta a 0
+
+**Cosa.** Il 959 porta FB204 in 9999, e da lì si esce solo con Reset allarmi (`MC_resetError`) o col riarmo AUX. La Reimposta stato cella, il passo naturale dopo un comando manuale in HOLD, non lo riporta a 0. L'8/10 FB204 è rimasto in 9999 dalle 13:19 alle 14:29.
+
+**Direzione.** Valutare se la Reimposta stato cella debba riportare FB204 a 0. Dalla 36 l'avviso dice «Ciclo MC1 fermo in errore (959 ...)» (codice 10).
+
+**Trovato il** 2026-10-08, simulazione e revisione della consegna 36.
+
+## [ ] Il LOG delle missioni perde dei passaggi
+
+**Cosa.** Le righe `MISSION: <codice>` della tabella LOG vengono da `FROM_PLANT/LOG/MISSION/ROBOT`, pubblicato quando `MissionCode` cambia (`FB_Robot.scl` 5959-5963). Nel LOG dell'8/10 mancano dei passaggi: l'assenza di una riga non prova niente.
+
+**Direzione.** Legato ai messaggi persi del problema 17. Dalla 36 il motivo dell'attesa (`WAIT MC1`) va nella tabella LOG a ogni cambio di codice.
+
+**Trovato il** 2026-10-08, ricostruzione del fermo dell'8/10.
+
+## [ ] Il 951 non compare nel LOG dell'8/10 con FB204 al 5
+
+**Cosa.** L'8/10 FB204 è andato al 5 (morsa chiusa con contenuto sconosciuto), ma nella tabella LOG non c'è il 951, che FB204 pubblica in quel passaggio (`FB_Machine_Autonomous.scl` 316).
+
+**Direzione.** Capire se il 951 non è partito o si è perso (problema 17). Dalla 36 l'avviso lo dice comunque, ogni 3 s (codice 11).
+
+**Trovato il** 2026-10-08, ricostruzione del fermo dell'8/10.
+
+## [ ] FC_MQTT ricalcola il comando ricevuto a ogni chiamata (problema 17 alla radice)
+
+**Cosa.** È la causa del problema 17 («Simulazione 7/10, problema 17», più sotto): FC_MQTT ricalcola il comando ricevuto a ogni chiamata, e una pubblicazione nello stesso ciclo cancella un comando del pannello prima che il destinatario lo legga.
+
+**Direzione.** Correggere FC_MQTT alla radice invece che nei singoli punti.
+
+**Trovato il** 2026-10-08, simulazione e revisione della consegna 36.
+
+## [ ] Ponte SQL (FB6): query con LSql in errore, login letto come risposta, errori persi
+
+**Cosa.** Dalla revisione dell'8/10, tre difetti del ponte SQL:
+- FB6 manda query anche con LSql in errore;
+- dopo una riconnessione accetta come risposta i byte del login;
+- gli errori SQL non arrivano a `dataError`.
+
+Collegati ai problemi 6 e 8 della simulazione del 7/10 (risposta tardiva consegnata alla query dopo, errore SQL letto come «zero righe»).
+
+**Direzione.** Da correggere nel ponte, con una consegna a parte.
+
+**Trovato il** 2026-10-08, simulazione e revisione della consegna 36.
+
+## [ ] Posizionamento manuale e `Unit_code` sovrascritto nello stesso ciclo
+
+**Cosa.** Dalla revisione dell'8/10: un posizionamento manuale e la scrittura di `DB_RobotMission.Unit_code` nello stesso ciclo PLC; `Unit_code` viene sovrascritto.
+
+**Direzione.** Da rivedere insieme alla variante B (DECISIONI.md, «Consegna 36»).
+
+**Trovato il** 2026-10-08, simulazione e revisione della consegna 36.
+
+## [ ] 30 minuti anche dove il robot ha già finito (978, 100) e sul 9781
+
+**Cosa.** Dalla 36 i timeout lunghi (30 minuti, decisione dell'8/10) valgono anche dove il robot ha già finito (978, 100) e sul 9781 (registrazione della pinza dopo lo swap): lì un'attesa lunga è la cella che non conferma, non il robot che lavora.
+
+**Direzione.** Valutare un tempo corto per quegli stati. Dalla 36 l'avviso dice dopo 30 s che la cella aspetta una conferma (codice 21 di `WAIT/MC1`).
+
+**Trovato il** 2026-10-08, simulazione e revisione della consegna 36.
+
 ## [ ] La pinza richiesta del pallet non si imposta dal pannello
 
 **Cosa.** Il PLC sa quale pinza serve per un pallet dalla query `select GRIPPERREQ from pallets_grippers where palletID=<pallet>` (FB_Robot, REGION Gripper4Pallet_Search, e il master 1010). Il dato e' `pallet.GripperREQ` (le viste SQL lo leggono da li', `workorders-view-pp.sql:116`), ma nel pannello e in `serverDati/CONF` non c'e' niente che lo scriva. Se manca (nessuna riga, errore o, dalla consegna 35, 0) ogni missione pallet si chiude col 1722, e dal pannello l'operatore non lo puo' sistemare.

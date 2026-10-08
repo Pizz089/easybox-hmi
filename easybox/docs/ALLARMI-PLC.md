@@ -171,6 +171,106 @@ titolo e la coda dell'avviso unico (`robot.alarm972Title`,
 cassetto, oppure EasyBox in errore: le due cause dall'8/10) e
 `robot.alarm_1722` (pinza del pallet assente a database).
 
+## Consegna 36 (8/10): perche' il ciclo MC1 e' fermo, 947, 959, timeout a 30 minuti
+
+**Non ancora scaricata** (8/10): quello che segue vale dal download. Backend e
+pannello sono gia' pronti (APPUNTI-CELLA.md, «Consegna 36»); le decisioni in
+DECISIONI.md. Origine: il fermo dell'8/10 (APPUNTI-CELLA.md, «Il fermo
+dell'8/10»).
+
+### `FROM_PLANT/WAIT/MC1`: il motivo dell'attesa
+
+FB7 lo pubblica **ogni 3 s**, nello stesso ciclo di `FROM_PLANT/SAFETY/AUX`.
+Payload `codice;stato di FB204;dato`, tre interi: per esempio `11;5;0` oppure
+`8;0;19003`. Il secondo campo e' lo stato di FB204 (`DB_MC1.Dispatcher[0]`).
+
+| codice | significato | dato |
+|---|---|---|
+| 0 | nessuna attesa | 0 |
+| 1 | robot non collegato (battito) | 0 |
+| 2 | AUX assente | 0 |
+| 3 | robot in manuale dal pendant (T1 o 100%) | 0 |
+| 4 | robot non in automatico | 0 |
+| 5 | HOLD dal pulsante o dalla porta | 0 |
+| 6 | HOLD dal pannello | 0 |
+| 7 | programma robot fermo | 0 |
+| 8 | errore robot | codice di errore |
+| 9 | allarme del controllore robot | Alarmcode |
+| 10 | FB204 in errore (9999) | 0 |
+| 11 | FB204 al 5: morsa chiusa con contenuto sconosciuto | 0 |
+| 12 | FB204 allo 0: HAAS non in automatico | 0 |
+| 13 | FB204 allo 0: selettore MC1 su MANUALE | 0 |
+| 14 | FB204 allo 0: comando macchina in corso | codice del comando |
+| 15 | missione data e non partita da 10 s | MissionCode |
+| 16 | robot non pronto da 10 s, senza missioni | StatusCode |
+| 20 | il robot non prende il comando da 30 s | Command |
+| 21 | il robot ha eseguito ma la cella aspetta una conferma (sensore o database) da 30 s | Command |
+| 30 | FB204 in attesa di ordini (97-99) | 0 |
+
+Il backend (`serverDati/MQTT_Client.js`) lo passa al pannello come evento
+`MC1/WAIT`; col codice 10 ci aggiunge l'ultimo `FROM_PLANT/ALARM/MC1`
+(codice e ora: quale allarme ha portato FB204 in 9999, senza i rifiuti 947 e
+948). Dopo 10 s senza messaggi manda «non aggiornato». Nella tabella LOG una
+riga `WAIT MC1: <payload>` (UNIT_A `PLC`, UNIT_B `WAIT`) **solo quando il
+codice cambia**; nel file di log del backend nessuna riga per messaggio. Nel
+pannello v3 diventa l'avviso fisso sotto la striscia, col testo del codice e
+il link alla pagina giusta, **senza pulsanti di comando** (DECISIONI.md).
+Testi dell'errore robot (codice 8) e dell'allarme MC1 (codice 10): quelli di
+`robot.alarm_<codice>`. Per l'avviso si sono aggiunti 940, 941 e 942
+(ripartenza del programma robot non riuscita, `FB_RobotEfort.scl`: conferma
+dei servo entro 2 s, servo pronti entro 5 s, programma partito entro 10 s) e
+19003 (catena cassetto ferma, `FB_Robot.scl`).
+
+### 947: comandi della macchina e dichiarazioni MC1
+
+FB204 da' il 947 in due casi, con condizioni diverse (export della 35):
+
+| cosa | ammesso con FB204 a | dove |
+|---|---|---|
+| comandi della macchina: morsa (10/11), pallet (20/21), porta (30/31), pezzo sul piano | 0, 5, 9999, **oppure con la cella in HOLD** | `FB_Machine_Autonomous.scl` 152-178, REGION Manager CMD from HMI |
+| 36 (pezzo in morsa) | 0, 5, 9999 | REGION Declare MC1 from HMI |
+| 37 (morsa vuota) | 0, 9999: al 5 resta rifiutato (decisione dell'8/10) | idem |
+| 40 (pallet in macchina) | fino al 30, e solo senza un pallet gia' dichiarato | idem |
+| 41, 42, 43 (pallet tolto, morsa manuale) | fino al 30 | idem |
+
+- **Per le dichiarazioni l'HOLD non basta**: servono il ciclo fermo (HOLD,
+  poi Reset allarmi). Il testo di prima («Portare la cella in HOLD e
+  ripetere») per le dichiarazioni era falso.
+- **Dalla 36** le dichiarazioni sono ammesse anche al **97-99**, a fine
+  produzione (decisione dell'8/10).
+- I comandi della macchina, in piu', partono solo col robot in attesa di un
+  comando (`StatusCode = cmd_waitingNewCmd`).
+
+Testo (it, en), lo stesso nel riquadro degli allarmi e nel dialog delle
+dichiarazioni (`robot.alarm_947`, `robot.declErr.947`): «Rifiutato: il ciclo
+MC1 e' in corso. I comandi della macchina si danno in HOLD; le dichiarazioni
+solo a ciclo fermo (HOLD, poi Reset allarmi).»
+
+### 959: FB204 in 9999 finche' non si da' Reset allarmi
+
+Un comando manuale dato in HOLD (Home, posizionamenti, riavvio del programma,
+dichiarazione 35) con FB204 fermo ad aspettare una missione azzera le catene:
+FB7 pubblica il **959** e porta FB204 in **9999** (`FB_Robot.scl` 6140-6177).
+Da li' si esce **solo con Reset allarmi** (`MC_resetError`, stato 9999 di
+FB204), o col riarmo AUX: Riprendi non basta. L'8/10 FB204 e' rimasto in
+9999 dalle 13:19 alle 14:29 perche' dal pannello nessuno ha dato Reset
+allarmi. Con la 36 l'avviso lo dice (codice 10, col 959).
+
+### Timeout a 30 minuti: 943, 19003, 958
+
+Decisione dell'8/10: dalla 36 i tre timeout scattano dopo **30 minuti**; gli
+altri restano corti. Nella 35 sono:
+- 943 (swap, timeout di fase): 60 s, `tonSwapA` e `tonSwapB` (`FB_Robot.scl`
+  684-696);
+- 19003 (catena cassetto): 180 s, `tonExtract` (`FB_Robot.scl` 698-708);
+- 958 (pinza dell'ordine non a bordo): 180 s, `timer[4]` di FB204
+  (`FB_Machine_Autonomous.scl` 505-523).
+
+In HOLD i timeout di 943 e 19003 non contano (consegna 35). Testi: il 958
+dice «dopo 30 minuti», il 19003 «dopo 30 minuti», il 943 non dice un tempo.
+**Fino al download della 36 i testi dicono 30 minuti e il PLC usa ancora 60 s
+e 3 minuti.**
+
 ## Se manca una chiave
 
 1. si decodifica il numero con la regola qui sopra;

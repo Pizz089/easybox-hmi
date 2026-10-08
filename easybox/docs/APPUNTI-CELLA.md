@@ -144,6 +144,67 @@ Nel working tree di cella ci sono file non tracciati che il `.gitignore` non esc
    - stato del robot che si aggiorna;
    - `DB_executeQuery.readyForNextQuery` TRUE.
 
+## [ ] 2026-10-08 — Consegna 36 (FB7 e FB204): perché il ciclo è fermo, variante B, timeout a 30 minuti
+
+**Non ancora scaricata** (8/10). Decisioni in DECISIONI.md, codici in ALLARMI-PLC.md («Consegna 36»).
+
+**PLC** (la scarica Dario):
+- FB7 pubblica ogni 3 s il motivo dell'attesa del ciclo MC1, `FROM_PLANT/WAIT/MC1` (`codice;stato di FB204;dato`);
+- variante B: un comando manuale non viene più sovrascritto da una missione in sospeso;
+- 943, 19003 e 958 a 30 minuti;
+- dichiarazioni MC1 anche al 97-99.
+
+**Backend e pannello** (si possono aggiornare **prima** del download):
+- il backend passa il motivo al pannello (`MC1/WAIT`) e scrive una riga nella tabella LOG quando il codice cambia (`WAIT MC1: ...`, UNIT_B `WAIT`);
+- il pannello v3 lo mostra in un avviso fisso sotto la striscia, col link alla pagina giusta e senza pulsanti. **Senza la 36 il topic non arriva e l'avviso non compare**;
+- testi corretti: 947 (comandi della macchina in HOLD, dichiarazioni a ciclo fermo) e 958 (30 minuti); testi nuovi: 940, 941, 942 (ripartenza del robot) e 19003 (catena cassetto, 30 minuti). **Fino al download** i testi del 958 e del 19003 dicono 30 minuti, ma il PLC usa ancora 3 minuti.
+
+**Dopo il download:** export TIA con `--compare-online`, come per la 35; `plc/` si aggiorna allora.
+
+**Prove proposte dopo il download** (pannello v3 aperto, MqttDiag su `FROM_PLANT/WAIT/MC1`): i passaggi del fermo dell'8/10, uno per volta, e per ognuno il suo avviso. Per esempio robot in T1 (codice 3), HOLD dal pannello (6), Home in HOLD con FB204 in attesa (10, col 959, fino al Reset allarmi), FB204 al 5 (11); nella tabella LOG le righe `WAIT MC1`.
+
+## 2026-10-08 — Il fermo dell'8/10, ricostruito dal LOG
+
+L'8/10 la cella è rimasta ferma per ore senza un messaggio a video. La ricostruzione dalla tabella LOG (comando nella voce qui sotto) ha richiesto ore; dalla 36 le righe `WAIT MC1` la rendono immediata.
+
+| ora | cosa |
+|---|---|
+| 13:18 | robot spento, con un'estrazione del cassetto in sospeso |
+| 13:19:14 | Home dato in HOLD: 959 (FB204 in 9999), e `Command` sovrascritto dal 25 (estrazione) |
+| 13:19:16 | Riprendi: il robot estrae il cassetto senza che nessun ciclo lo aspetti |
+| fino alle 14:29 | FB204 in 9999: dal pannello nessun Reset allarmi |
+| poi | robot in T1 (la striscia mostrava HOLD) |
+| poi | FB204 al 5: morsa chiusa con contenuto sconosciuto |
+
+**Procedure** (8/10):
+- **robot spento con il ciclo in attesa: START, poi Riprendi, niente in mezzo.** Col robot spento lo START manda l'HOLD: dopo lo START la cella è in HOLD, e il Riprendi la fa ripartire;
+- **un comando manuale in HOLD interrompe il ciclo** (959, FB204 in 9999): per ripartire, **Reset allarmi**. Il Riprendi da solo non basta;
+- **fino alla 36**, i comandi manuali con una missione in sospeso vanno mandati **due volte**;
+- **dopo una missione interrotta**: HOME, Riprendi, aspettare il robot a casa, poi HOLD e Reimposta stato cella (procedura «Riarmo dopo un'emergenza», passo 3).
+
+## Come leggere il LOG
+
+Da PowerShell sul PC di cella, in sola lettura: le righe di oggi da mezzogiorno, senza le query del PLC.
+
+```
+cd D:\Backup; sqlcmd -S .\SQLEXPRESS -E -d ADMG -W -s "|" -Q "SELECT CONVERT(varchar(19),[DATA],120) AS T, RTRIM(UNIT_A) AS A, RTRIM(UNIT_B) AS B, CAST(DESCR AS nvarchar(150)) AS DESCR FROM LOG WHERE [DATA] >= DATEADD(hour, 12, CAST(CAST(GETDATE() AS date) AS datetime)) AND RTRIM(UNIT_B) <> 'QUERY' ORDER BY [DATA]" -o D:\Backup\log.txt; Get-Content D:\Backup\log.txt
+```
+
+Quattro colonne separate da `|`: ora, UNIT_A (A), UNIT_B (B), DESCR. Per partire da un'altra ora si cambia il 12 di `DATEADD(hour, 12, ...)`; per un altro giorno si mette la data al posto di `GETDATE()` (per esempio `CAST('2026-10-08' AS datetime)`). Le righe con UNIT_B NULL non escono (`NULL <> 'QUERY'` non è vero): per vederle, `ISNULL(RTRIM(UNIT_B), '') <> 'QUERY'`.
+
+| A | B | DESCR | cosa vuol dire |
+|---|---|---|---|
+| `PLC` | `ROBOT` | `STATUS 17 -> HOLD` | stato del robot (`FROM_PLANT/STATUS/ROBOT`): 0 NOT_DEFINED, 3 WORKING, 6 PAUSED, 10 AUTO, 16 LOCAL, 17 HOLD, 20 MANUAL, 99 ALARM, 999 OFF (tutti in `serverDati/MQTT_Client.js`, `getStatus`) |
+| `PLC` | `MC1` | `STATUS 3` | stato di MC1, il numero senza nome, stessi codici |
+| `PLC` | `ROBOT` | `MISSION: 25` | `MissionCode` del robot cambiato (`FROM_PLANT/LOG/MISSION/ROBOT`, `FB_Robot.scl` 5959-5963); 0 = nessuna missione |
+| `HMI` | `ROBOT`, `BOX`, `MC1` | `Sent CMD: 20 -> To Home Pos` | comando mandato dal pannello (`getCMD`): 17 HOLD (anche START e Riprendi), 18 Restart Main Program, 20 Home, 25 Extract Tray, 26 Release Tray, 35 dichiarazione, 99 Reset; per MC1 e per il cassetto conta il numero (MC1: 10/11 morsa, 20/21 pallet, 30/31 porta, 36-43 dichiarazioni): il nome dopo la freccia è quello del comando robot con lo stesso numero e lì non vale |
+| `PLC` | `ALARM` | `ALARM MC1: 959`, oppure il codice | allarme del PLC: `ALARM MC1: <codice>` per MC1, il codice senza prefisso per robot e cassetto. Testi e codici in ALLARMI-PLC.md |
+| `PLC` | `WAIT` | `WAIT MC1: 10;9999;0` | (dalla 36) perché il ciclo MC1 è fermo: codice, stato di FB204, dato. Una riga **solo quando il codice cambia** |
+| il comando | quote e rotazioni | `Robot_MISSION` | dati della missione mandata al robot, scritti dal PLC (`FB_Robot.scl` 5569-5620), se ci sono |
+| `TRAY` | `plc` | NULL | cambi del cassetto. Non le scrivono né il backend né il PLC dell'export nel repo |
+
+**Il LOG delle missioni perde dei passaggi**: l'assenza di una riga non prova niente (LAVORI-IN-CODA.md).
+
 ## [ ] 2026-10-07 — Consegna 35 (7/10 sera): cassetto fuori anche su swap e pallet, spinta con quote NULL, 973
 
 **Consegna 35 scaricata l'8/10** (Dario).
@@ -313,7 +374,7 @@ Decisione di Dario del 7/10 (DECISIONI.md): nessuna correzione PLC. Il riarmo (`
 
 1. cella in HOLD. **Non premere CONTINUA né il pulsante HOLD**: il PLC riavvia il programma robot dalla riga corrente, e il robot riprenderebbe la missione interrotta;
 2. RESTART MAIN PROGRAM. Confermato dal robotista il 7/10: in HOLD abbandona la missione e mette il robot in attesa della prossima;
-3. HOME, oppure il robotista in T1 se il robot è in macchina o al cassetto. I ritorni in home sono sicuri da qualunque punto (robotista, 7/10);
+3. HOME, oppure il robotista in T1 se il robot è in macchina o al cassetto. I ritorni in home sono sicuri da qualunque punto (robotista, 7/10). (8/10) Dato l'HOME, Riprendi; aspettare il robot a casa, poi di nuovo HOLD;
 4. controllo visivo;
 5. Reimposta stato cella (pezzi in pinza, morsa, cassetto);
 6. pallet in macchina e tasche, se la missione interrotta li ha toccati;
