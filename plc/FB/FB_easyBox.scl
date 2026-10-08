@@ -77,15 +77,21 @@ BEGIN
 	    THEN
 	        IF #Status = DINT_TO_INT("AUTO") THEN
 	            
-	            IF "DB_MQTT".lastCmdReceived = "CMD_RobotExtractTray" THEN
-	                "DB_Robot".MissionCode := "MISSION_ExtractTray";
-	                "DB_Robot".Tray_ID := "DB_MQTT".lastParams[0];
-	                "DB_MQTT".lastCmdReceived := 0;
-	                
-	            ELSIF "DB_MQTT".lastCmdReceived = "CMD_RobotReleaseTray" THEN
-	                "DB_Robot".MissionCode := "MISSION_ReleaseTray";
-	                "DB_Robot".Tray_ID := "DB_MQTT".lastParams[0];
-	                "DB_MQTT".lastCmdReceived := 0;
+	            // (35) ESTRAI E RIPONI DALLA PAGINA CASSETTI PASSANO DAL MANAGER DI FB7.
+	            // Qui si scriveva MissionCode senza guardare l'errore attivo, l'HOLD, il
+	            // pendant e la missione in corso: in automatico la pagina Cassetti
+	            // sovrascriveva la missione di FB204, e con un errore attivo l'estrazione
+	            // restava in attesa e partiva da sola al fronte del pulsante HOLD o
+	            // all'apertura della porta area robot (simulazione 7/10 bis, B6;
+	            // problema 9 della prima, ancora aperto su questo topic).
+	            // Adesso il comando si gira al topic ROBOT: FB7 gira dopo questo blocco
+	            // nello stesso ciclo (OB1: FB_easyBox, FB204, FB_Robot) e lo tratta come
+	            // quelli della pagina Robot, con 972, 973 e 968, e solo con la cella in
+	            // HOLD. Il parametro resta: lastParams[0] e' il cassetto per il 25.
+	            IF "DB_MQTT".lastCmdReceived = "CMD_RobotExtractTray"
+	                OR "DB_MQTT".lastCmdReceived = "CMD_RobotReleaseTray"
+	            THEN
+	                "DB_MQTT".lastTopicReceived := 'ROBOT';
 	            END_IF;
 	        END_IF;
 	        
