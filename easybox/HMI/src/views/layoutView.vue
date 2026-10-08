@@ -1,6 +1,7 @@
 <script setup>
     import { RouterLink, RouterView } from 'vue-router'
     import { dataStored } from '../data.js'
+    import { avvisoBreve } from '@/util/avvisoBreve.js';
 
     import TrayPockets from '../components/layout/TrayPockets.vue'
     import { ROBOT_AXIS_ALONG } from '../util/gratingAxes.js'
@@ -360,9 +361,7 @@
                             return;
                         }
                         this.trayType.open = false;
-                        dataStored.alert.title = 'INFO';
-                        dataStored.alert.desc = this.$t('layout.type.done', { n: out.positions, code: this.trayType.pieceId });
-                        dataStored.alert.type = 'message';
+                        avvisoBreve('INFO', this.$t('layout.type.done', { n: out.positions, code: this.trayType.pieceId }));
                         this.getDataTable();
                     })
                     .catch(e => { console.info(e); this.trayType.busy = false; this.trayType.error = 'layout.type.err.generic'; });
@@ -476,9 +475,7 @@
                         try { row = JSON.parse(body); } catch (_) { row = { ris: body.trim() }; }
                         this.trayReset.open = false;
                         if (row.ris === 'OK') {
-                            dataStored.alert.title = 'INFO';
-                            dataStored.alert.desc = this.$t('layout.reset.done', { n: row.positions });
-                            dataStored.alert.type = 'message';
+                            avvisoBreve('INFO', this.$t('layout.reset.done', { n: row.positions }));
                             this.getDataTable();
                         } else if (row.ris === KO_ACTIVE_ORDER) {
                             dataStored.alert.title = this.$t('WARNING');

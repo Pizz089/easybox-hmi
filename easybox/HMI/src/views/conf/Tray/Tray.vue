@@ -4,6 +4,7 @@
     //import SimpleKeyboard from '../../../components/keyboard.vue'
     import optionStatus from '@/components/optionStatus.vue';
     import { dataStored } from '../../../data.js'
+    import { avvisoBreve } from '@/util/avvisoBreve.js';
     // (v3 fase C) icone degli avvisi work object
     import { TriangleAlert, Info } from 'lucide-vue-next'
 
@@ -448,9 +449,7 @@ export default {
                 .then(r => { if (!r.ok) throw new Error('Network response was not ok'); return r.text(); })
                 .then(body => {
                     const n = (body || '').indexOf('OK;') == 0 ? body.slice(3) : '0';
-                    dataStored.alert.title = 'INFO';
-                    dataStored.alert.desc = this.$t('tray.teach.applied', { n: n });
-                    dataStored.alert.type = 'message';
+                    avvisoBreve('INFO', this.$t('tray.teach.applied', { n: n }));
                 });
         }
     },

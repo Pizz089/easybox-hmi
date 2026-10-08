@@ -12,11 +12,32 @@
 //   - se e' un message: lo sposta nell'avviso breve (breve.title/desc), e
 //     rimette in dataStored.alert l'allarme che c'era (o lo svuota);
 //   - altrimenti si segna l'allarme a video, per poterlo rimettere.
+//
+// (prompt 10) I MESSAGE VANNO DIRETTAMENTE ALL'AVVISO BREVE. Lo smistamento
+// vede solo lo stato finale: un allarme e un message scritti nello stesso giro
+// di eventi (PLC che risponde con un errore mentre arriva l'esito di un
+// salvataggio) lasciavano il riquadro vuoto, perche' l'allarme scritto prima
+// non era mai stato «a video» e non si poteva rimettere. Adesso chi ha un esito
+// positivo chiama avvisoBreve(titolo, testo) e non tocca dataStored.alert.
+// AppShell mostra lo stesso avviso unico; lo smistamento resta come rete per
+// un message scritto ancora alla vecchia maniera.
 // ============================================================================
 import { reactive } from 'vue';
 
-export function creaSmistaAvvisi(store) {
-	const breve = reactive({ title: '', desc: '', n: 0 });
+const breveUnico = reactive({ title: '', desc: '', n: 0 });
+
+// l'esito breve, senza passare dal riquadro degli allarmi
+export function avvisoBreve(title, desc) {
+	breveUnico.title = title;
+	breveUnico.desc = desc;
+	breveUnico.n++;
+}
+// lo stato dell'avviso breve (title, desc, n = quante volte e' stato scritto)
+// e la sua chiusura: per AppShell e per le prove
+export function avvisoBreveAttuale() { return breveUnico; }
+export function chiudiAvvisoBreve() { breveUnico.title = ''; breveUnico.desc = ''; }
+
+export function creaSmistaAvvisi(store, breve = breveUnico) {
 	let allarme = null;
 	const smista = () => {
 		const a = store.alert;

@@ -30,7 +30,7 @@ import { screenInfo, leggiSchermo } from '../src/util/screenInfo.js';
 import { serveAppHeight, installAppHeight } from '../src/util/appHeight.js';
 import { BP_COMPACT_MAX, COMPACT_QUERY } from '../src/util/breakpoints.js';
 import { reactive } from 'vue';
-import { creaSmistaAvvisi } from '../src/util/avvisoBreve.js';
+import { creaSmistaAvvisi, avvisoBreve } from '../src/util/avvisoBreve.js';
 
 let failed = 0;
 const check = (c, l) => { console.log((c ? '  ok   ' : '  FAIL ') + l); if (!c) failed++; };
@@ -207,6 +207,39 @@ Object.assign(store.alert, { title: 'INFO', desc: 'x', type: 'message' }); sm.sm
 check(store.alert.type === 'warning' && store.alert.desc === 'cmd.holdNotConfirmed', '   vale anche per un warning aperto');
 sm.chiudiBreve();
 check(sm.breve.title === '', '   l\'avviso breve si chiude da solo');
+// (prompt 10) allarme e message nello STESSO giro di eventi: il watch di
+// AppShell vede solo lo stato finale. Alla vecchia maniera (tutti e due in
+// dataStored.alert) l'allarme si perdeva e il riquadro restava vuoto; col
+// message scritto direttamente nell'avviso breve l'allarme resta.
+{
+	const st = { alert: { title: '', desc: '', type: 'alarm', check: [] } };
+	const prova = creaSmistaAvvisi(st, { title: '', desc: '', n: 0 });
+	Object.assign(st.alert, { title: 'ALARM', desc: 'robot.alarm_1519', type: 'alarm' });
+	Object.assign(st.alert, { title: 'INFO', desc: 'robot.decl.done', type: 'message' });
+	prova.smista();
+	check(st.alert.title === '' && prova.breve.title === 'INFO', '   (prompt 10) com\'era: allarme e message nello stesso tick dentro dataStored.alert, l\'allarme si perde (riquadro vuoto)');
+	const st2 = { alert: { title: '', desc: '', type: 'alarm', check: [] } };
+	const sm2 = creaSmistaAvvisi(st2);
+	sm2.chiudiBreve();
+	const n0 = sm2.breve.n;
+	Object.assign(st2.alert, { title: 'ALARM', desc: 'robot.alarm_1519', type: 'alarm' });
+	avvisoBreve('INFO', 'robot.decl.done');
+	sm2.smista();
+	check(st2.alert.title === 'ALARM' && st2.alert.desc === 'robot.alarm_1519' && st2.alert.type === 'alarm' && sm2.breve.title === 'INFO' && sm2.breve.desc === 'robot.decl.done' && sm2.breve.n === n0 + 1,
+		'   (prompt 10) adesso: allarme e avviso breve nello stesso tick, l\'allarme a video e il message nell\'avviso breve');
+	sm2.chiudiBreve();
+}
+// (prompt 10) gli undici punti che scrivono un esito positivo chiamano
+// avvisoBreve() e non scrivono piu' un message in dataStored.alert
+{
+	const PUNTI = { 'src/components/ChangeUserModal.vue': 1, 'src/components/RelaunchDialog.vue': 1, 'src/views/conf/AttrezzaggiView.vue': 1, 'src/views/conf/Tray/Tray.vue': 1,
+		'src/views/conf/TraysView.vue': 1, 'src/views/layoutView.vue': 2, 'src/views/productionView.vue': 1, 'src/views/unit/robotView.vue': 3 };
+	const sbagliati = Object.entries(PUNTI).filter(([f, n]) => {
+		const s = readFileSync(f, 'utf8');
+		return (s.match(/avvisoBreve\(/g) || []).length !== n || /alert\.type = ['"]message['"]/.test(s) || !/import \{ avvisoBreve \} from '@\/util\/avvisoBreve\.js';/.test(s);
+	});
+	check(sbagliati.length === 0, '   (prompt 10) gli 11 esiti positivi vanno direttamente all\'avviso breve (' + (sbagliati.map(([f]) => f).join(', ') || 'tutti') + ')');
+}
 check(/<alert\s+v-if="dataStored\.alert && dataStored\.alert\.title && dataStored\.alert\.type !== 'message'"/.test(sh)
 	&& /<alert v-if="breve\.title" :key="breve\.n" :title="breve\.title" :desc="breve\.desc" type="message" @cmd_close="chiudiBreve" \/>/.test(sh)
 	&& /watch\(\(\) => dataStored\.alert && \[dataStored\.alert\.title, dataStored\.alert\.desc, dataStored\.alert\.type\], smista, \{ immediate: true \}\);/.test(sh),
@@ -214,6 +247,16 @@ check(/<alert\s+v-if="dataStored\.alert && dataStored\.alert\.title && dataStore
 // B5, B6
 check(/\.alert-overlay \{ z-index: 50000; top: var\(--status-strip-height\); \}/.test(css), 'B5 il velo parte sotto la striscia: HOLD e campanella raggiungibili (provato col tocco nel report)');
 check(!/\.alert-toast \{[^}]*top: calc/.test(css) && /\.alert-toast \{[^}]*bottom: 16px;[^}]*right: 16px;/.test(css), 'B6 avviso breve in basso a destra: non copre il selettore del Robot');
+// (prompt 10) le misure col tocco vero (Chrome senza finestra, elementFromPoint
+// e Input.dispatchMouseEvent) sono nel report; qui le regole che le reggono
+check(/\.alert-toast \{[^}]*pointer-events: none;[^}]*\}/.test(css) && /\.alert-toast__x \{[^}]*pointer-events: auto;[^}]*\}/.test(css),
+	'(prompt 10) l\'avviso breve non mangia i tocchi: passano a «Reset allarmi» e «Riavvia programma robot»; la X resta toccabile');
+check(/\.mission-dialog-overlay \{[^}]*inset: 0;\s*top: var\(--status-strip-height\);/.test(css),
+	'(prompt 10) il velo di OGNI dialog parte sotto la striscia: HOLD e campanella raggiungibili coi dialog aperti');
+const cuP10 = leggi('src/components/ChangeUserModal.vue');
+const zCu = Number((cuP10.match(/\.change-user \{ z-index: (\d+); \}/) || [])[1]);
+check(zCu > 50000 && /class="mission-dialog-overlay change-user"/.test(cuP10),
+	'(prompt 10) il cambio utente (aperto dall\'icona della striscia) sta sopra il riquadro degli allarmi (' + zCu + ' > 50000) e il suo velo lascia libera la striscia');
 // B8: la misura di layout dalla stessa media query del layout
 const finestra = { innerWidth: 1600, innerHeight: 900, devicePixelRatio: 1.25, screen: { width: 1536, height: 864 }, matchMedia: q => ({ matches: q === COMPACT_QUERY }) };
 const ls = leggiSchermo(finestra);

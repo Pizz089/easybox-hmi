@@ -128,7 +128,10 @@ Nel working tree di cella ci sono file non tracciati che il `.gitignore` non esc
    powershell -ExecutionPolicy Bypass -File D:\Prog\easybox\tools\pannello.ps1 -Versione stato
    ```
    `-Versione stato` dice su che versione si è e lo stato dei servizi, senza cambiare niente; `-Versione stabile` (ramo `ui-lifting`) o `-Versione v3` (ramo `ui-v3`) aggiorna o cambia versione: fetch, cambio di ramo, pull solo in avanti, `npm install` se serve.
-   - **Con i servizi** ferma `EasyBoxPannello` prima di toccare i file, alla fine riavvia `EasyBoxBackend`, avvia `EasyBoxPannello` e aspetta le porte (al massimo 90 secondi). Se qualcosa fallisce dopo aver fermato il pannello, lo rimette su comunque, sulla versione che c'è.
+   - **Con i servizi** ferma `EasyBoxPannello` prima di toccare i file, alla fine riavvia `EasyBoxBackend`, avvia `EasyBoxPannello` e aspetta le porte (al massimo 90 secondi). Se qualcosa fallisce dopo aver fermato il pannello, lo rimette su comunque, sulla versione che c'è (e il backend, se è fermo).
+     - (prompt 10) Un servizio fermo si rimette su **solo con le sue porte libere** (backend 8080 e 3000, pannello 5173).
+     - Se le tiene un altro processo, ed è il caso «I servizi sono FERMI» di `-Azione aggiorna`, non si avvia niente e il messaggio rosso dice «porte occupate da un altro processo: chiamare Dario». Chi le tiene lo dice `servizi-cella.ps1 -Azione stato`.
+     - «Di nuovo su» si scrive solo quando le porte sono in ascolto e del servizio.
    - **Col pannello compilato** (dal 7/10 sera) `pannello.ps1`, dopo pull e `npm install`, lancia da solo `servizi-cella.ps1 -Azione aggiorna`: la stessa build, scambio delle dist, riavvio di backend e pannello. Se la build fallisce si ferma, il pannello servito resta quello di prima e lo dice. Prima del 7/10 sera riavviava il pannello sulla `dist` di prima senza dirlo.
    - **Da che commit viene il pannello servito:** la build scrive `easybox\HMI\dist\build.txt` (ramo, commit, data). `servizi-cella.ps1 -Azione stato` (o `-Azione servito`, senza amministratore) e `pannello.ps1 -Versione stato` lo stampano e lo confrontano col commit più recente che tocca `easybox/HMI`: riga rossa «pannello servito non aggiornato: -Azione aggiorna» se la build non lo contiene.
    - **Senza servizi** (le finestre): nella finestra di `start_server.bat` Ctrl+C, poi rilanciare il `.bat`; rilanciare `start_hmi.bat` solo se sono cambiati `package.json`, `package-lock.json` o `vite.config.js`, altrimenti basta Ctrl+F5 sui client.
@@ -516,7 +519,17 @@ Il DXF esportato dalla pagina sta nello stesso frame e si sovrappone 1:1 a `Base
 - niente «Carica pallet» (né pallet da MC1);
 - niente avvio dell'automatico se la pinza a bordo non è quella dell'ordine.
 
-Il PLC 34 non li ferma e il robot può andare allo scaffale pinze col cassetto aperto. Nel pannello (7/10 sera) i comandi pinza (pagina Robot e «sposta» della lista pinze) sono spenti col cassetto fuori o in manovra, con «Cassetto fuori: prima rientralo»; «Gestione pallet» propone solo i pallet che non chiedono un cambio pinza e si spegne se non ce n'è. Il confronto è quello del PLC (master 1010: cambio quando `GripperRequested <> Gripper_ID[1]`): `PALLET.GripperREQ`, letta senza badare alle maiuscole del nome della colonna, contro la pinza che il PLC tiene come **lato 1** (`FROM_PLANT/GRIPPER/ROBOT`, nel pannello `GRIPPER/REGISTERED`). Dall'8/10 un pallet che chiede la gemella del lato 2 conta come cambio pinza, come nel PLC; se il registro del PLC non è arrivato e la pinza è doppia, il lato 1 non si sa e col cassetto fuori nessun pallet si propone; il collaudo 31/33 offre solo la pinza a bordo. L'automatico non lo ferma il pannello.
+Il PLC 34 non li ferma e il robot può andare allo scaffale pinze col cassetto aperto. Nel pannello (7/10 sera) i comandi pinza (pagina Robot e «sposta» della lista pinze) sono spenti col cassetto fuori o in manovra, con «Cassetto fuori: prima rientralo»; «Gestione pallet» propone solo i pallet che non chiedono un cambio pinza e si spegne se non ce n'è. Il confronto è quello del PLC al master 1010.
+
+(prompt 10) La regola vera del 1010:
+- **consegna 34**: cambio solo se `GripperRequested <> Gripper_ID[1] AND Gripper_ID[1] > 0`. Con la flangia nuda si saltava al 1050 e si lanciava il prelievo del pallet senza pinza;
+- **consegna 35**: ogni `GripperRequested <> Gripper_ID[1]` è un cambio, anche con la flangia nuda, che carica la pinza (1030). Col cassetto fuori il 1010 lo rifiuta con **1519** prima di muovere.
+
+Il pannello confronta `PALLET.GripperREQ`, letta senza badare alle maiuscole del nome della colonna, contro la pinza che il PLC tiene come **lato 1** (`FROM_PLANT/GRIPPER/ROBOT`, nel pannello `GRIPPER/REGISTERED`). Dall'8/10:
+- un pallet che chiede la gemella del lato 2 conta come cambio pinza, come nel PLC;
+- se il registro del PLC non è arrivato e la pinza è doppia, il lato 1 non si sa e col cassetto fuori nessun pallet si propone;
+- **un registro a 0** (il PLC lo pubblica per la flangia nuda) il pannello lo tratta come «non arrivato» e guarda le righe a bordo del database. Senza righe il lato 1 non si sa, conta come cambio e «Gestione pallet» resta spenta: prudente con la 34, ed è proprio quello che fa la 35;
+- il collaudo 31/33 offre solo la pinza a bordo. L'automatico non lo ferma il pannello.
 
 **Codici** (tutti in `Error`, testi `robot.alarm_<codice>`, vedi ALLARMI-PLC.md): 1419 carico pinza rifiutato, cassetto fuori; 1519 deposito pinza rifiutato, cassetto fuori; 19005 estrazione rifiutata, pinza a bordo senza uncino; 19006 nessuna pinza con uncino, né a bordo né a scaffale; 19007 per prendere la pinza con l'uncino quella a bordo deve essere vuota; 20011 rilascio rifiutato, pinza a bordo senza uncino.
 

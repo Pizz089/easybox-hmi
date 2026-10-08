@@ -184,8 +184,14 @@ const pmsrc = readFileSync('src/util/palletMachine.js', 'utf8');
 check(/const newMagPos = sel;/.test(att) && /MAG_POS: tipo === 'set' \? row\.MAG_POS : tipo === 'casella' \? Number\(casella\) : -1,/.test(pmsrc) && /POS_PLANT: tipo === 'set' \? 100 \+ mc : 0,/.test(pmsrc),
 	'   le destinazioni esistenti scrivono gli stessi valori: casella (pagina), In macchina e Rimuovi (palletMachine, dopo l\'eco)');
 check(/placeSel='robot'/.test(att) && /palletOnRobot\.confirmText/.test(att), '   voce nuova nel dialog Posiziona, con il testo che dice cosa fa');
-check(/palletDisabledReason !== 'robot\.hint\.palletUnknownOnBoard'/.test(rob) && /palletDisabledReason === 'robot\.hint\.palletUnknownOnBoard'"[\s\S]{0,200}openPalletDecl\(\)/.test(rob),
-	'Robot: al posto dell\'avviso palletUnknownOnBoard, l\'azione «Dichiara quale pallet e\' in pinza»');
+// (prompt 10, v3) la tile della dichiarazione prende il posto di «Gestione
+// pallet» (v-if / v-else su palletDeclInstead); il pannello vecchio le mostra
+// tutte e due
+const sostituisce = /<UiTile v-if="!palletDeclInstead"[\s\S]{0,1200}?<UiTile v-else[\s\S]{0,200}openPalletDecl\(\)/.test(rob)
+	&& /palletDeclInstead\(\) \{\s*return !this\.palletBranchEnabled && this\.palletDisabledReason === 'robot\.hint\.palletUnknownOnBoard';/.test(rob);
+const accanto = /palletDisabledReason !== 'robot\.hint\.palletUnknownOnBoard'/.test(rob) && /palletDisabledReason === 'robot\.hint\.palletUnknownOnBoard'"[\s\S]{0,200}openPalletDecl\(\)/.test(rob);
+check(sostituisce || accanto,
+	'Robot: al posto dell\'avviso palletUnknownOnBoard, l\'azione «Dichiara quale pallet e\' in pinza»' + (sostituisce ? ' (v3: al posto di «Gestione pallet»)' : ''));
 check(/missioneInCorso: this\.missionRunning !== ''/.test(rob), '   la pagina Robot passa la missione appena mandata (missionRunning)');
 const it = JSON.parse(readFileSync('src/locales/it.json', 'utf8')), en = JSON.parse(readFileSync('src/locales/en.json', 'utf8'));
 const chiavi = o => Object.entries(o).flatMap(([k, v]) => typeof v === 'object' ? chiavi(v).map(x => k + '.' + x) : [k]);

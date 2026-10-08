@@ -11,6 +11,7 @@
 
     import { ref, onMounted } from 'vue'
     import { dataStored } from '../../data';
+    import { avvisoBreve } from '@/util/avvisoBreve.js';
     // (grating-model) associazione grigliato <-> cassetto: griglia dalla
     // stessa util dell'anteprima modello, ingombro e avviso taratura
     import { buildGrid, gridCenters, taughtMismatch, pickClearance } from '../../util/gratingGrid.js'
@@ -527,9 +528,7 @@ export default {
                 .then(out => {
                     a.busy = false;
                     if (out && out.ris == 'OK') {
-                        dataStored.alert.title = 'INFO';
-                        dataStored.alert.desc = 'tray.assoc.done.' + a.mode;
-                        dataStored.alert.type = 'message';
+                        avvisoBreve('INFO', 'tray.assoc.done.' + a.mode);
                         this.closeAssoc();
                         this.getDataTable();
                         return;

@@ -7,9 +7,13 @@
    Il comando pericoloso resta rosso pieno (.specialCMD / UiButton danger),
    "Annulla" resta in contorno. Import in main.js dopo buttons.css. */
 
+/* (prompt 10) il velo parte SOTTO la striscia di stato, come quello degli
+   allarmi (.alert-overlay, 8/10 B5): con un dialog aperto HOLD e campanella
+   restano raggiungibili. Prima un dialog di missione copriva il HOLD. */
 .mission-dialog-overlay {
     position: fixed;
     inset: 0;
+    top: var(--status-strip-height);
     background: var(--bg-backdrop);
     z-index: 1000;
     display: flex;
@@ -203,9 +207,13 @@
     border: 2px solid var(--color-success);
     box-shadow: var(--elevation-3);
     cursor: pointer;
+    /* (prompt 10) i tocchi passano attraverso: a 1920x970 l'avviso copre
+       «Reset allarmi» e «Riavvia programma robot», e un tocco li' chiudeva
+       l'avviso invece di mandare il comando. Si chiude con la X o da solo. */
+    pointer-events: none;
 }
 .alert-toast__icon { flex: none; width: 28px; height: 28px; margin-top: 2px; color: var(--color-success-fg); }
 .alert-toast__body { flex: 1; min-width: 0; }
 .alert-toast__title { margin: 0; font-size: var(--font-size-body); font-weight: var(--font-weight-extrabold); color: var(--color-success-fg); }
 .alert-toast__desc { margin: 4px 0 0; font-size: var(--font-size-md); line-height: 1.45; color: var(--text-primary); overflow-wrap: anywhere; }
-.alert-toast__x { width: 48px; height: 48px; }
+.alert-toast__x { width: 48px; height: 48px; pointer-events: auto; }
