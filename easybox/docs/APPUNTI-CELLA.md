@@ -208,13 +208,13 @@ cd D:\Backup; sqlcmd -S .\SQLEXPRESS -E -d ADMG -W -s "|" -i vice-jaw-controlli.
    ```
    cd D:\Prog\easybox\serverDati\scripts; sqlcmd -S .\SQLEXPRESS -E -d ADMG -W -i vice-jaw-rollback.sql -o D:\Backup\vice-jaw-rollback_esito.txt; Get-Content D:\Backup\vice-jaw-rollback_esito.txt
    ```
-3. backend e pannello di prima, con `pannello.ps1 -Versione ritorno`. Riporta la copia di lavoro al commit prima del catalogo, ricompila il pannello e riavvia backend e pannello. Si ferma se ci sono modifiche locali o se il commit non è nella storia del ramo; il ramo non si sposta. Il commit dipende dal ramo di cella (`pannello.ps1 -Versione stato` lo dice). Sul ramo `ui-v3`:
+3. backend e pannello di prima, con `pannello.ps1 -Versione ritorno`. Riporta la copia di lavoro al commit prima del catalogo, ricompila il pannello e riavvia backend e pannello. Si ferma se ci sono modifiche locali o se il commit non è nella storia del ramo; il ramo non si sposta. Il commit dipende dal ramo di cella (`pannello.ps1 -Versione stato` lo dice); dall'8/10 è quello con le correzioni dell'audit (prompt 7), che stanno prima del catalogo. Sul ramo `ui-v3`:
    ```
-   cd D:\Prog\easybox\tools; powershell -ExecutionPolicy Bypass -File D:\Prog\easybox\tools\pannello.ps1 -Versione ritorno -Commit fd0138a26b1bbb29d6370ecacb97f0032b14dfe5
+   cd D:\Prog\easybox\tools; powershell -ExecutionPolicy Bypass -File D:\Prog\easybox\tools\pannello.ps1 -Versione ritorno -Commit 3ed74c207a40d49ccd8bba9b548073c3928fc215
    ```
    Sul ramo `ui-lifting`:
    ```
-   cd D:\Prog\easybox\tools; powershell -ExecutionPolicy Bypass -File D:\Prog\easybox\tools\pannello.ps1 -Versione ritorno -Commit 632d60cf552b0e53f598a2dcc11cefafc49d50cd
+   cd D:\Prog\easybox\tools; powershell -ExecutionPolicy Bypass -File D:\Prog\easybox\tools\pannello.ps1 -Versione ritorno -Commit 751e9591a28b6d8407ff1301c308521ec9abb2b0
    ```
    Dopo il ritorno la copia di lavoro è fuori dal ramo: un `git pull` dice che non è su un ramo e non fa niente. Per rimettere il catalogo, la finestra da capo; il passo 4 diventa `pannello.ps1 -Versione v3` (o `-Versione stabile`), che torna sul ramo, aggiorna e ricompila. Se va male anche il ritorno: il backup del passo 1.
 
