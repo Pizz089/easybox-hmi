@@ -246,7 +246,7 @@ BEGIN
 	            #timer[3](IN := FALSE,
 	                      PT := T#120s);
 	            #timer[4](IN := FALSE,
-	                      PT := T#180s);
+	                      PT := T#30m);
 	            
 	            // PAUSA FRA DUE INTERROGAZIONI (5/10): senza ordini il giro 0-10-20-0
 	            // girava senza sosta, una query e tre messaggi DISPATCH a giro. Il timer
@@ -483,7 +483,7 @@ BEGIN
 	                ELSIF "DB_Robot".Gripper_ID[1] = DINT_TO_INT(#order.GRIPPER) THEN
 	                    // pinza giusta gia' a bordo
 	                    #timer[4](IN := FALSE,
-	                              PT := T#180s);
+	                              PT := T#30m);
 	                    #Dispatcher["_master"] := 50;
 	                    
 	                ELSIF "DB_Robot".GripperOccuped[1] OR "DB_Robot".GripperOccuped[2] THEN
@@ -503,23 +503,25 @@ BEGIN
 	                END_IF;
 	            END_IF;
 	            
-	            // TIMEOUT: se dopo 3 minuti la pinza giusta non e' a bordo, qualcosa
+	            // TIMEOUT: se dopo 30 minuti la pinza giusta non e' a bordo, qualcosa
 	            // non va (swap che fallisce, pinza assente a scaffale) e si ritenta
 	            // all'infinito in silenzio. Meglio dirlo all'operatore.
+	            // (36) 30 minuti invece di 3 (decisione di Dario e del cliente, 8/10):
+	            // e' il tempo minimo per i controlli del robotista.
 	            // NB (5/9): il timer gira SOLO a robot fermo. Prima girava sempre e
 	            // misurava anche il tempo di esecuzione dello swap, che con ricerca
 	            // gancio, carico e aggiornamento TCP supera i 3 minuti -> 9999 a
 	            // torto con la pinza montata correttamente.
 	            #timer[4](IN := "DB_Robot".MissionCode = 0,
-	                      PT := T#180s);
+	                      PT := T#30m);
 	            IF #timer[4].Q THEN
 	                #timer[4](IN := FALSE,
-	                          PT := T#180s);
+	                          PT := T#30m);
 	                "FC_MQTT"(insert := TRUE,
 	                          send := FALSE,
 	                          topic := CONCAT(IN1 := 'FROM_PLANT/ALARM/MC',
 	                                          IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#MC_number)),
-	                          payload := STRING_TO_WSTRING('958'));   // pinza dell'ordine non a bordo dopo 3 min
+	                          payload := STRING_TO_WSTRING('958'));   // pinza dell'ordine non a bordo dopo 30 min (36)
 	                #Dispatcher["_master"] := 9999;
 	            END_IF;
 	            
@@ -560,6 +562,13 @@ BEGIN
 	            // e la finestra si perde (stesso difetto trovato al 10 il 4/9).
 	            IF "SqlCommands".sqlCommands[0] = #queryTemp THEN
 	                #Dispatcher["_master"] := 42;
+	            ELSIF NOT #queryStartExecution AND "SqlCommands".sqlCommands[0] <> #queryTemp THEN
+	                // (36) QUERY RITIRATA: un reset di FB7 (resetDispatcher) abbassa la
+	                // prenotazione e svuota il ponte prima che la query entri. Il 41 non
+	                // e' fra gli stati che prendono il 959: senza questa uscita restava
+	                // qui per sempre. Stesso schema del 20, del 42 e del 99.
+	                #queryTemp := '';
+	                #Dispatcher["_master"] := 40;
 	            END_IF;
 	            
 	        42: // esito: cassetto trovato, oppure nessun grezzo disponibile
@@ -1244,6 +1253,13 @@ BEGIN
 	        98: // presa in carico della query di attesa
 	            IF "SqlCommands".sqlCommands[0] = #queryTemp THEN
 	                #Dispatcher["_master"] := 99;
+	            ELSIF NOT #queryStartExecution AND "SqlCommands".sqlCommands[0] <> #queryTemp THEN
+	                // (36) QUERY RITIRATA prima di entrare nel ponte (resetDispatcher di
+	                // FB7, per esempio con una Reimposta stato cella a fine produzione):
+	                // senza questa uscita il 98 aspettava per sempre e l'ordine nuovo non
+	                // veniva mai preso.
+	                #queryTemp := '';
+	                #Dispatcher["_master"] := 97;
 	            END_IF;
 	            
 	        99: // esito: c'e' un ordine da lavorare -> riparto dallo 0 (pull completo);
@@ -1613,7 +1629,10 @@ BEGIN
 	    IF "DB_MQTT".lastTopicReceived = 'MC1' AND #MC_number = 1 THEN
 	        CASE "DB_MQTT".lastCmdReceived OF
 	            "CMD_DeclarePallet_MC":   // 40;palletID
-	                IF "DB_MC1".Dispatcher["_master"] > 30 OR #pallet > 0 THEN
+	                // (36) a fine produzione (97-99) FB204 e' fermo: dichiarazione ammessa
+	                IF ("DB_MC1".Dispatcher["_master"] > 30 AND ("DB_MC1".Dispatcher["_master"] < 97 OR "DB_MC1".Dispatcher["_master"] > 99))
+	                    OR #pallet > 0
+	                THEN
 	                    "FC_MQTT"(insert := true,
 	                   send := false,
 	                   topic := 'FROM_PLANT/ALARM/MC1',
@@ -1624,7 +1643,7 @@ BEGIN
 	                END_IF;
 	                "DB_MQTT".lastCmdReceived := 0;
 	            "CMD_RemovePallet_MC":    // 41
-	                IF "DB_MC1".Dispatcher["_master"] > 30 THEN
+	                IF "DB_MC1".Dispatcher["_master"] > 30 AND ("DB_MC1".Dispatcher["_master"] < 97 OR "DB_MC1".Dispatcher["_master"] > 99) THEN   // (36) anche al 97-99
 	                    "FC_MQTT"(insert := true,
 	                   send := false,
 	                   topic := 'FROM_PLANT/ALARM/MC1',
@@ -1646,9 +1665,13 @@ BEGIN
 	                // decisione a meta'. Solo a riposo o in errore.
 	                // AMMESSO ANCHE AL 5 (5/10): il 5 (morsa chiusa a contenuto ignoto, 951)
 	                // indica proprio il 36 come uscita, ma questa guardia la bloccava con 947.
+	                // (36) AMMESSO ANCHE A FINE PRODUZIONE (97-99): FB204 aspetta un ordine,
+	                // nessuna missione in corso. Prima la Reimposta stato cella lo
+	                // rifiutava col 947 proprio a cella ferma.
 	                IF "DB_MC1".Dispatcher["_master"] <> 0
 	                    AND "DB_MC1".Dispatcher["_master"] <> 9999
 	                    AND "DB_MC1".Dispatcher["_master"] <> 5
+	                    AND ("DB_MC1".Dispatcher["_master"] < 97 OR "DB_MC1".Dispatcher["_master"] > 99)
 	                THEN
 	                    "FC_MQTT"(insert := true,
 	                   send := false,
@@ -1674,7 +1697,12 @@ BEGIN
 	                "DB_MQTT".lastCmdReceived := 0;
 	                
 	            "CMD_RemovePiece_MC":     // 37  dichiara la morsa vuota
-	                IF "DB_MC1".Dispatcher["_master"] <> 0 AND "DB_MC1".Dispatcher["_master"] <> 9999 THEN
+	                // (36) ammesso anche a fine produzione (97-99), come il 36. Al 5 resta
+	                // rifiutato: da li' si esce aprendo la morsa o dichiarando il pezzo.
+	                IF "DB_MC1".Dispatcher["_master"] <> 0
+	                    AND "DB_MC1".Dispatcher["_master"] <> 9999
+	                    AND ("DB_MC1".Dispatcher["_master"] < 97 OR "DB_MC1".Dispatcher["_master"] > 99)
+	                THEN
 	                    "FC_MQTT"(insert := true,
 	                   send := false,
 	                   topic := 'FROM_PLANT/ALARM/MC1',
@@ -1686,7 +1714,7 @@ BEGIN
 	                END_IF;
 	                "DB_MQTT".lastCmdReceived := 0;
 	            "CMD_ManualViceOn":       // 42
-	                IF "DB_MC1".Dispatcher["_master"] > 30 THEN
+	                IF "DB_MC1".Dispatcher["_master"] > 30 AND ("DB_MC1".Dispatcher["_master"] < 97 OR "DB_MC1".Dispatcher["_master"] > 99) THEN   // (36) anche al 97-99
 	                    "FC_MQTT"(insert := true,
 	                   send := false,
 	                   topic := 'FROM_PLANT/ALARM/MC1',
@@ -1697,7 +1725,7 @@ BEGIN
 	                END_IF;
 	                "DB_MQTT".lastCmdReceived := 0;
 	            "CMD_ManualViceOff":      // 43
-	                IF "DB_MC1".Dispatcher["_master"] > 30 THEN
+	                IF "DB_MC1".Dispatcher["_master"] > 30 AND ("DB_MC1".Dispatcher["_master"] < 97 OR "DB_MC1".Dispatcher["_master"] > 99) THEN   // (36) anche al 97-99
 	                    "FC_MQTT"(insert := true,
 	                   send := false,
 	                   topic := 'FROM_PLANT/ALARM/MC1',
