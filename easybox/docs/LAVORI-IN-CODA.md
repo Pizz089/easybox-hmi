@@ -22,7 +22,8 @@
   - porta MC2: `MC2_PORTA_CABLATA = false` in `views/unit/CNC2View.vue`, i comandi della porta restano nascosti finché non è cablata;
   - testi «Cosa fare» degli allarmi: la pagina Allarmi li mostra solo se esiste la chiave `robot.alarm_<codice>_fix`; oggi nessuna, i testi li scrive Dario;
   - «Riconosci» negli Allarmi: nessun endpoint lo fa, quindi il pulsante non c'è;
-- **file orfani:** `components/units.vue`, che nel v3 non monta più nessuno ma è ancora nella golden dei comandi e in `test_oneshot_refresh.mjs`; `views/AboutView.vue`, senza rotta.
+- **file orfani:** `components/units.vue`, che nel v3 non monta più nessuno ma è ancora nella golden dei comandi e in `test_oneshot_refresh.mjs`; `views/AboutView.vue`, senza rotta;
+- **`alert()` nativi:** restano per la fase E2 (57 secondo l'audit dell'8/10), compresi quelli di `views/conf/Grating/ImportGrating.vue` (righe 482, 489, 498-499). Quello di `Grating.vue` (867, nome del grigliato obbligatorio) non si tocca: è dei grigliati.
 
 **Direzione.** Le pagine nella fase E; le decisioni con Dario; gli orfani si tolgono insieme ai loro test, dopo il merge di `ui-v3` in `ui-lifting`.
 
@@ -67,6 +68,14 @@
 **Direzione.** Con la misura delle viti si corregge la costante; `test_base_dxf.mjs` controlla le soglie (r + 3,01 mm pulito, r + 2,99 conflitto) e va aggiornato col valore nuovo.
 
 **Trovato il** 2026-10-07.
+
+## [ ] Comandi espliciti di HOLD nel PLC (oggi il 17 è un interruttore)
+
+**Cosa.** Nel PLC il 17 inverte HOLD (FB_Robot, CMD_HOLD: `#HOLD := NOT #HOLD`). Il pannello lo protegge da solo: dopo un tocco il pulsante resta spento finché lo STATUS non cambia e almeno 1,5 s dal tocco e 1 s dal cambio (`util/holdGuard.js`, 8/10). Ma ogni pannello ha la sua attesa: **due tocchi da due dispositivi diversi** (PC di cella e tablet, quasi insieme) mandano due 17, e il secondo rimette in moto la cella. Il pannello non lo può chiudere.
+
+**Direzione.** Due comandi distinti nel PLC, «metti HOLD» e «togli HOLD», al posto dell'interruttore: il comando dice lo stato voluto, e un secondo «metti HOLD» non cambia niente. Da decidere con Dario e il robotista; il pannello manderebbe quello giusto secondo lo STATUS che vede.
+
+**Trovato il** 2026-10-08, audit dei rami di revisione (S1).
 
 ## [ ] L'ACK alla HAAS parte anche dopo, alla riconnessione del broker
 
