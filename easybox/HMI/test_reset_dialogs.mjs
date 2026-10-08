@@ -11,10 +11,17 @@ globalThis.window = { location: { hostname: 'localhost' } };
 globalThis.sessionStorage = { getItem: () => null, setItem: () => {} };
 globalThis.localStorage = { getItem: () => null, setItem: () => {} };
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 const { createServer } = await import('vite');
 const server = await createServer({ root: process.cwd(), logLevel: 'error', server: { middlewareMode: true }, appType: 'custom' });
 const { dataStored } = await server.ssrLoadModule('/src/data.js');
+// (prompt 10, v3) un esito positivo va all'avviso breve (util/avvisoBreve.js),
+// non piu' in dataStored.alert; nel pannello vecchio, che non ha il modulo,
+// resta in dataStored.alert. pulisciEsito() prima dell'azione: un avviso
+// rimasto da un passo prima non fa passare il controllo.
+const AB = existsSync('src/util/avvisoBreve.js') ? await server.ssrLoadModule('/src/util/avvisoBreve.js') : null;
+const pulisciEsito = () => { if (AB) AB.chiudiAvvisoBreve(); };
+const esitoDesc = () => (AB && AB.avvisoBreveAttuale().desc ? String(AB.avvisoBreveAttuale().desc) : String(dataStored.alert.desc));
 const { KO_CELL_RUNNING, KO_ACTIVE_ORDER } = await server.ssrLoadModule('/src/util/errorCodes.js');
 const Prod = (await server.ssrLoadModule('/src/views/productionView.vue')).default;
 const Layout = (await server.ssrLoadModule('/src/views/layoutView.vue')).default;
@@ -51,9 +58,10 @@ check(pv.resetConfirmEnabled === true, 'conferma abilitata (ordini presenti, cel
 pv.closeResetDialog();
 check(!pv.reset.open && posts().length === 0, 'annulla: niente POST');
 pv.openResetDialog(); await tick();
+pulisciEsito();
 pv.confirmReset(); await tick();
 check(posts().length === 1 && posts()[0].url === 'api/order/resetProduction/1', 'conferma -> POST resetProduction/1');
-check(!pv.reset.open && String(dataStored.alert.desc).includes('production.reset.done'), 'esito OK mostrato, dialog chiuso');
+check(!pv.reset.open && esitoDesc().includes('production.reset.done'), 'esito OK mostrato, dialog chiuso');
 
 console.log('\n2) AZZERA PRODUZIONE: bloccato a cella in lavorazione / senza ordini');
 calls.length = 0;
@@ -78,9 +86,10 @@ check(lv.trayReset.open && calls.length === 0, 'apertura: niente chiamate');
 lv.trayReset.open = false;
 check(calls.length === 0, 'annulla: niente chiamate');
 responder = url => url.includes('resetTray') ? { body: JSON.stringify({ ris: 'OK', positions: 91 }) } : { body: '[]' };
+pulisciEsito();
 lv.openTrayReset(); lv.confirmTrayReset(); await tick();
 check(posts().length === 1 && posts()[0].url === 'api/conf/position/resetTray/9', 'conferma -> POST resetTray/9');
-check(!lv.trayReset.open && String(dataStored.alert.desc).includes('layout.reset.done'), 'esito OK, dialog chiuso, ricarica layout');
+check(!lv.trayReset.open && esitoDesc().includes('layout.reset.done'), 'esito OK, dialog chiuso, ricarica layout');
 responder = () => ({ body: JSON.stringify({ ris: KO_ACTIVE_ORDER, positions: 0 }) });
 lv.openTrayReset(); lv.confirmTrayReset(); await tick();
 check(dataStored.alert.desc === 'layout.reset.activeOrder', 'rifiuto backend (ordine attivo) mostrato');

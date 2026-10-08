@@ -30,10 +30,17 @@ globalThis.window = { location: { hostname: 'localhost' } };
 globalThis.sessionStorage = { getItem: () => null, setItem: () => {} };
 globalThis.localStorage = { getItem: () => null, setItem: () => {} };
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 const { createServer } = await import('vite');
 const server = await createServer({ root: process.cwd(), logLevel: 'error', server: { middlewareMode: true }, appType: 'custom' });
 const { dataStored } = await server.ssrLoadModule('/src/data.js');
+// (prompt 10, v3) un esito positivo va all'avviso breve (util/avvisoBreve.js),
+// non piu' in dataStored.alert; nel pannello vecchio, che non ha il modulo,
+// resta in dataStored.alert. pulisciEsito() prima dell'azione: un avviso
+// rimasto da un passo prima non fa passare il controllo.
+const AB = existsSync('src/util/avvisoBreve.js') ? await server.ssrLoadModule('/src/util/avvisoBreve.js') : null;
+const pulisciEsito = () => { if (AB) AB.chiudiAvvisoBreve(); };
+const esitoDesc = () => (AB && AB.avvisoBreveAttuale().desc ? String(AB.avvisoBreveAttuale().desc) : String(dataStored.alert.desc));
 const Robot = (await server.ssrLoadModule('/src/views/unit/robotView.vue')).default;
 const O = await server.ssrLoadModule('/src/util/orologio.js');
 const orologio = O.orologioFinto();
@@ -115,9 +122,10 @@ fire('TRAY/EXTRACT', '9');
 await tick();
 check(cmdsTo('ROBOT').length === 1 && /^35;7;/.test(cmdsTo('ROBOT')[0]), 'per ULTIMO il 35, col contratto di sempre');
 check(cmdsTo('ROBOT')[0] === '35;7;0;0;0;0', 'contratto del 35 invariato: 35;gripper;cont1;id1;cont2;id2');
+pulisciEsito();
 fire('DECLARE/ROBOT', '7;0;0');
 await tick();
-check(vm.declDialog.open === false && String(dataStored.alert.desc) === 'robot.decl.done', 'tre echi: dichiarazione conclusa, dialog chiuso');
+check(vm.declDialog.open === false && esitoDesc() === 'robot.decl.done', 'tre echi: dichiarazione conclusa, dialog chiuso');
 
 console.log('\n2) MORSA VUOTA: 37, senza parametri');
 vm = vmOf();
@@ -276,9 +284,10 @@ vm.declareTrayType();
 await tick();
 check(cmdsTo('ROBOT')[0] === '44;1033', 'parte 44;1033 sul canale robot');
 check(vm.pockets.typeBusy === true, 'e si aspetta la conferma prima di dire che e\' fatta');
+pulisciEsito();
 fire('DECLARE/TRAYTYPE', '9;1033');
 await tick();
-check(vm.pockets.typeBusy === false && String(dataStored.alert.desc) === 'robot.decl.trayTypeDone', 'eco DECLARE/TRAYTYPE: dichiarato');
+check(vm.pockets.typeBusy === false && esitoDesc() === 'robot.decl.trayTypeDone', 'eco DECLARE/TRAYTYPE: dichiarato');
 // rifiuto instradato sulla sua sezione, non su quella delle tasche
 vm.declErr.trayType = 0; vm.declErr.pocket = 0;
 vm.pockets.typeBusy = true;
@@ -364,9 +373,10 @@ check(cmdsTo('ROBOT')[0] === '35;7;0;0;2;0', '38;0: l\'eco «0» (nessun cassett
 fire('DECLARE/ROBOT', '7;0;0');                  // contenuto lato 2 diverso da quello mandato
 await tick();
 check(vm.declDialog.open === true, '35 col lato 2 = 2 ed eco «7;0;0»: non conclude');
+pulisciEsito();
 fire('DECLARE/ROBOT', '7;0;2');
 await tick();
-check(vm.declDialog.open === false && String(dataStored.alert.desc) === 'robot.decl.done', '   eco «7;0;2»: conclusa');
+check(vm.declDialog.open === false && esitoDesc() === 'robot.decl.done', '   eco «7;0;2»: conclusa');
 // 39 e 44: il cassetto nel payload e' quello disegnato
 vm = vmOf();
 vm.extractedTray = { FLOOR_MAG: 9 };

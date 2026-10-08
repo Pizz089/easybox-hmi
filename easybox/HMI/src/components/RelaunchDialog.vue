@@ -1,5 +1,6 @@
 <script setup>
 import { dataStored } from '../data.js'
+import { avvisoBreve } from '@/util/avvisoBreve.js';
 </script>
 
 <!--
@@ -131,9 +132,7 @@ export default {
                 .then(row => {
                     this.$emit('close');
                     if (row && row.ris === 'OK') {
-                        dataStored.alert.title = 'INFO';
-                        dataStored.alert.desc = this.$t('production.relaunch.done', { id: this.order.ID, reserved: row.reserved });
-                        dataStored.alert.type = 'message';
+                        avvisoBreve('INFO', this.$t('production.relaunch.done', { id: this.order.ID, reserved: row.reserved }));
                     } else {
                         dataStored.alert.title = this.$t('WARNING');
                         dataStored.alert.desc = this.blockedKey(row && row.ris);

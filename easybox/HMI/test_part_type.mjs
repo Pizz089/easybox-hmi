@@ -25,10 +25,17 @@ globalThis.window = { location: { hostname: 'localhost' } };
 globalThis.sessionStorage = { getItem: () => null, setItem: () => {} };
 globalThis.localStorage = { getItem: () => null, setItem: () => {} };
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 const { createServer } = await import('vite');
 const server = await createServer({ root: process.cwd(), logLevel: 'error', server: { middlewareMode: true }, appType: 'custom' });
 const { dataStored } = await server.ssrLoadModule('/src/data.js');
+// (prompt 10, v3) un esito positivo va all'avviso breve (util/avvisoBreve.js),
+// non piu' in dataStored.alert; nel pannello vecchio, che non ha il modulo,
+// resta in dataStored.alert. pulisciEsito() prima dell'azione: un avviso
+// rimasto da un passo prima non fa passare il controllo.
+const AB = existsSync('src/util/avvisoBreve.js') ? await server.ssrLoadModule('/src/util/avvisoBreve.js') : null;
+const pulisciEsito = () => { if (AB) AB.chiudiAvvisoBreve(); };
+const esitoDesc = () => (AB && AB.avvisoBreveAttuale().desc ? String(AB.avvisoBreveAttuale().desc) : String(dataStored.alert.desc));
 const { KO_NO_PIECE_DECLARED, KO_ACTIVE_ORDER, KO_TRAY_EXTRACTED } = await server.ssrLoadModule('/src/util/errorCodes.js');
 const Import = (await server.ssrLoadModule('/src/views/conf/Grating/ImportGrating.vue')).default;
 const Layout = (await server.ssrLoadModule('/src/views/layoutView.vue')).default;
@@ -125,11 +132,12 @@ check(lv.trayType.pieceId === 1030, 'e parte dal codice GIA\' dichiarato: si con
 check(/#1030/.test(lv.currentTypeLabel), 'il dialog dice cosa dichiara adesso');
 posted = [];
 lv.trayType.pieceId = 1033;
+pulisciEsito();
 lv.confirmTrayType();
 await tick();
 check(posted.length === 1 && posted[0].url === 'api/conf/position/declareTrayType/12/1033',
 	'POST declareTrayType/<cassetto>/<codice>: una sola chiamata per tutto il cassetto');
-check(lv.trayType.open === false && String(dataStored.alert.desc).includes('layout.type.done'), 'esito mostrato, dialog chiuso');
+check(lv.trayType.open === false && esitoDesc().includes('layout.type.done'), 'esito mostrato, dialog chiuso');
 // un rifiuto non deve passare per dichiarazione fatta
 for (const [code, atteso] of [[KO_ACTIVE_ORDER, 'activeOrder'], [KO_TRAY_EXTRACTED, 'extracted'], [KO_NO_PIECE_DECLARED, 'noPiece']]) {
 	DECL_RIS = { ris: code, positions: 0 };

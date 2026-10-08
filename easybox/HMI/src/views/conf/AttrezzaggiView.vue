@@ -9,6 +9,7 @@
     // dalla Modifica. Piu' attrezzature sullo stesso pallet = DATO SPORCO:
     // badge di anomalia, mai sanatorie automatiche, si sistema con gli smonta.
     import { dataStored } from '../../data';
+    import { avvisoBreve } from '@/util/avvisoBreve.js';
     import { palletGridOrder, palletPositionLabel } from '../../util/warehouseGrid';
     import { buildRigRows, rigState } from '../../util/rigging';
     import { KO_OCCUPIED, KO_DISABLED } from '../../util/errorCodes';
@@ -550,9 +551,7 @@ export default {
             }
             if (esito.ok) {
                 this.closePlace();
-                dataStored.alert.title = 'INFO';
-                dataStored.alert.desc = this.$t('palletOnRobot.done', { name: '#' + t.ID + ' ' + (t.FAMILY || '').trim() });
-                dataStored.alert.type = 'message';
+                avvisoBreve('INFO', this.$t('palletOnRobot.done', { name: '#' + t.ID + ' ' + (t.FAMILY || '').trim() }));
             } else {
                 const m = messaggioEsito(esito);
                 dataStored.alert.title = this.$t('WARNING');

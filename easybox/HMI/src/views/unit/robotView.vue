@@ -1,5 +1,6 @@
 <script setup>
   import { dataStored } from '../../data.js'
+  import { avvisoBreve } from '@/util/avvisoBreve.js';
   // (v3) HOLD a stato ignoto: il 17 e' un toggle nel PLC (util/holdState.js)
   import { robotStatoIgnoto } from '../../util/holdState.js'
   // (stato cella 16/9) la griglia delle tasche e' quella della pagina layout,
@@ -293,17 +294,22 @@
             <span>{{ $t('robot.mission.gripper') }}</span>
             <small class="rv-why" v-if="!gripperBranchEnabled && tileWhy(gripperDisabledReason)" :title="$t(gripperDisabledReason)">{{ $t(gripperDisabledReason) }}</small>
           </UiTile>
-          <UiTile :icon="RectangleHorizontal" :disabled="!palletBranchEnabled"
+          <!-- (prompt 10) pinza occupata e nessun pallet a bordo: la tile della
+               dichiarazione prende il POSTO di «Gestione pallet», che in quel
+               caso e' spenta. Prima comparivano tutte e due: undici tile, una
+               terza riga, e nel largo basso (1920x970) la pagina scorreva di
+               107 px e Ripristino usciva di sotto. -->
+          <UiTile v-if="!palletDeclInstead" :icon="RectangleHorizontal" :disabled="!palletBranchEnabled"
             :class="{'btn-mission-running': missionRunning=='pallet'}"
             @click="palletBranchEnabled?openPalletMission():''">
             <span>{{ $t('robot.mission.pallet') }}</span>
-            <small class="rv-why" v-if="!palletBranchEnabled && tileWhy(palletDisabledReason) && palletDisabledReason !== 'robot.hint.palletUnknownOnBoard'" :title="$t(palletDisabledReason)">{{ $t(palletDisabledReason) }}</small>
+            <small class="rv-why" v-if="!palletBranchEnabled && tileWhy(palletDisabledReason)" :title="$t(palletDisabledReason)">{{ $t(palletDisabledReason) }}</small>
           </UiTile>
           <!-- (7/10) pinza pallet occupata e nessun pallet a bordo: al posto del
                solo avviso ("Dichiarare lo stato cella, poi riprovare") l'azione
                per dire QUALE pallet e' in pinza. Stessa funzione della
                destinazione «A bordo del robot» di Attrezzaggi. -->
-          <UiTile v-if="!palletBranchEnabled && palletDisabledReason === 'robot.hint.palletUnknownOnBoard'"
+          <UiTile v-else
             :icon="RectangleHorizontal"
             @click="openPalletDecl()">
             <span>{{ $t('palletOnRobot.action') }}</span>
@@ -1700,9 +1706,7 @@ export default {
       if (esito.ok) {
         this.palletDecl.open = false;
         const p = esito.piano && esito.piano.pallet;
-        dataStored.alert.title = 'INFO';
-        dataStored.alert.desc = this.$t('palletOnRobot.done', { name: p ? '#' + p.ID + ' ' + (p.FAMILY || '').trim() : '#' + id });
-        dataStored.alert.type = 'message';
+        avvisoBreve('INFO', this.$t('palletOnRobot.done', { name: p ? '#' + p.ID + ' ' + (p.FAMILY || '').trim() : '#' + id }));
       } else {
         const m = messaggioEsito(esito);
         dataStored.alert.title = this.$t('WARNING');
@@ -1938,9 +1942,7 @@ export default {
           this.declDialog.waiting = false;
           this.declDialog.phase = 'done';
           this.closeDeclDialog();
-          dataStored.alert.title = 'INFO';
-          dataStored.alert.desc = 'robot.decl.done';
-          dataStored.alert.type = 'message';
+          avvisoBreve('INFO', 'robot.decl.done');
           this.getRobotData();
           this.getGrippersList();
           this.getTraysList();
@@ -2037,9 +2039,7 @@ export default {
         }
         // riuscito: le tasche adesso sono di quel codice. Si rilegge il
         // cassetto invece di indovinare cosa sia cambiato a DB.
-        dataStored.alert.title = 'INFO';
-        dataStored.alert.desc = 'robot.decl.trayTypeDone';
-        dataStored.alert.type = 'message';
+        avvisoBreve('INFO', 'robot.decl.trayTypeDone');
         this.openPockets();
       });
     },
@@ -2543,6 +2543,14 @@ export default {
     // configurate (la macchina non viene da questa vista)
     palletDestCount() {
       return this.palletDestinations.filter(d => d.usable).length + MACHINE_POSITIONS.length;
+    },
+    // (prompt 10) al posto di «Gestione pallet», la tile «Dichiara quale
+    // pallet e' in pinza». NB: palletDisabledReason guarda solo che la pinza a
+    // bordo non sia vuota, non che sia una pinza da pallet: la tile compare
+    // anche con una pinza da pezzi che tiene un grezzo (verifica del prompt
+    // 10, non cambiata)
+    palletDeclInstead() {
+      return !this.palletBranchEnabled && this.palletDisabledReason === 'robot.hint.palletUnknownOnBoard';
     },
     palletBranchEnabled() {
       const inHold = this.dataRobot.STATUS == dataStored.status_hold;

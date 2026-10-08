@@ -1287,21 +1287,9 @@
      "disabled": "!palletBranchEnabled",
      "classe": "{'btn-mission-running': missionRunning=='pallet'}",
      "esiti": {
-      "HOLD liv2": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": []
-      },
-      "HOLD liv0": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": []
-      },
-      "HOLD liv2 cassetto 8 fuori": {
-       "abilitato": false,
-       "effetti": [],
-       "stato": []
-      },
+      "HOLD liv2": "nascosto",
+      "HOLD liv0": "nascosto",
+      "HOLD liv2 cassetto 8 fuori": "nascosto",
       "AUTO liv2": {
        "abilitato": false,
        "effetti": [],

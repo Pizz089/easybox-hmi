@@ -3,6 +3,7 @@ import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { dataStored } from '@/data'
+import { avvisoBreve } from '@/util/avvisoBreve.js';
 // (v3 E1.2) icone del livello in lucide, come la striscia (util/userLevel.js)
 import { X } from 'lucide-vue-next'
 import UiButton from '@/components/ui/UiButton.vue'
@@ -65,11 +66,9 @@ function submit() {
 }
 
 function onSuccess(level) {
-  dataStored.alert.title = t('changeUser.successAlert.title')
-  dataStored.alert.desc = t('changeUser.successAlert.desc', {
+  avvisoBreve(t('changeUser.successAlert.title'), t('changeUser.successAlert.desc', {
     level: t('changeUser.levelLabel.' + level),
-  })
-  dataStored.alert.type = 'message'
+  }))
   close()
 }
 
@@ -183,9 +182,14 @@ onUnmounted(() => {
 
 <style scoped>
 /* (v3 E1.2) scatola, velo e X dalla sede unica (dialogs.css); qui solo il
-   contenuto del cambio utente. Sopra gli altri dialog (2000), sotto il
-   riquadro degli allarmi (50000). */
-.change-user { z-index: 2000; }
+   contenuto del cambio utente. Il velo parte sotto la striscia, come tutti
+   (dialogs.css): HOLD e campanella restano raggiungibili.
+   (prompt 10) SOPRA il riquadro degli allarmi (50000) e l'avviso breve: si
+   apre dall'icona utente della striscia, che con un allarme aperto resta
+   toccabile. Prima si apriva sotto il velo dell'allarme, non si poteva usare
+   e copriva la striscia; adesso un manutentore entra anche con un allarme
+   aperto. */
+.change-user { z-index: 50010; }
 .change-user__title { color: var(--text-primary); }
 .change-user__subtitle {
   margin: 0;

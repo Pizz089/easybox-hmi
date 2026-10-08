@@ -18,10 +18,17 @@ globalThis.window = { location: { hostname: 'localhost' } };
 globalThis.sessionStorage = { getItem: () => null, setItem: () => {} };
 globalThis.localStorage = { getItem: () => null, setItem: () => {} };
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 const { createServer } = await import('vite');
 const server = await createServer({ root: process.cwd(), logLevel: 'error', server: { middlewareMode: true }, appType: 'custom' });
 const { dataStored } = await server.ssrLoadModule('/src/data.js');
+// (prompt 10, v3) un esito positivo va all'avviso breve (util/avvisoBreve.js),
+// non piu' in dataStored.alert; nel pannello vecchio, che non ha il modulo,
+// resta in dataStored.alert. pulisciEsito() prima dell'azione: un avviso
+// rimasto da un passo prima non fa passare il controllo.
+const AB = existsSync('src/util/avvisoBreve.js') ? await server.ssrLoadModule('/src/util/avvisoBreve.js') : null;
+const pulisciEsito = () => { if (AB) AB.chiudiAvvisoBreve(); };
+const esitoDesc = () => (AB && AB.avvisoBreveAttuale().desc ? String(AB.avvisoBreveAttuale().desc) : String(dataStored.alert.desc));
 const { buildGrid, gridCenters, gripperMinSafe, taughtMismatch } = await server.ssrLoadModule('/src/util/gratingGrid.js');
 const { drawingToRobot, gridFit } = await server.ssrLoadModule('/src/util/gratingAxes.js');
 const gratingsMod = await server.ssrLoadModule('/src/views/conf/GratingsView.vue');
@@ -128,12 +135,13 @@ check(/tray\.assoc\.willCopy', \{ n: assoc\.sourceFloor/.test(tsrc) && /tray\.as
 check(tv.assocReady === true, 'modello + sorgente -> conferma abilitata');
 tv.assoc.sourceFloor = 9;
 calls.length = 0;
+pulisciEsito();
 await tv.confirmAssoc();
 let post = calls.find(c => c.u.includes('associateGrating'));
 check(post && post.u.endsWith('associateGrating/1') && post.opt.method === 'POST', 'POST associateGrating/<target>');
 let body = JSON.parse(post.opt.body);
 check(body.gratingId === 7 && body.replace === false && body.source.floor === 9 && !body.source.centers, 'payload copia: {gratingId, replace:false, source:{floor:9}} (sorgente modificabile dall\'operatore)');
-check(tv.assoc.open === false && dataStored.alert.desc === 'tray.assoc.done.associate', 'esito OK: dialog chiuso, conferma a video');
+check(tv.assoc.open === false && esitoDesc() === 'tray.assoc.done.associate', 'esito OK: dialog chiuso, conferma a video');
 
 // ASSOCIA cassetto 2 con G71x90: NESSUNA sorgente -> genera dall'header
 await tv.openAssoc('associate', trays[3]);

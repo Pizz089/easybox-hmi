@@ -1,6 +1,7 @@
 <script setup>
 import prodtable from '../components/productionTable.vue'
 import { dataStored } from '../data';
+import { avvisoBreve } from '@/util/avvisoBreve.js';
 import { MACHINE_POSITIONS } from '../util/machineBrands';
 import { KO_CELL_RUNNING } from '../util/errorCodes';
 // (v3 fase C) intestazione con i componenti v3
@@ -147,9 +148,7 @@ export default {
                     try { row = JSON.parse(body); } catch (_) { row = { ris: body.trim() }; }
                     this.closeResetDialog();
                     if (row.ris === 'OK') {
-                        dataStored.alert.title = 'INFO';
-                        dataStored.alert.desc = this.$t('production.reset.done', { orders: row.orders, positions: row.positions });
-                        dataStored.alert.type = 'message';
+                        avvisoBreve('INFO', this.$t('production.reset.done', { orders: row.orders, positions: row.positions }));
                     } else if (row.ris === KO_CELL_RUNNING) {
                         dataStored.alert.title = this.$t('WARNING');
                         dataStored.alert.desc = 'production.reset.cellRunning';
