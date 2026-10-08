@@ -33,7 +33,7 @@
   // destinazione «A bordo del robot» di Attrezzaggi (35, e 41 se in macchina)
   import { dichiaraPalletABordo, messaggioEsito } from '../../util/palletOnRobot.js'
   // (7/10, consegna 34) cassetto fuori: niente comandi pinza
-  import { statoCassetti, motivoPinzaCassetto, palletCambiaPinza, pinzaLato1 } from '../../util/cassettoFuori.js'
+  import { statoCassetti, motivoPinzaCassetto, palletCambiaPinza, pinzaLato1, pinzaRichiesta } from '../../util/cassettoFuori.js'
   // (7/10 sera, B55) l'eco giusto della Reimposta stato cella
   import { aspettaEco } from '../../util/palletMachine.js'
   // (B61) i codici che la Reimposta stato cella mostra: niente riquadro globale
@@ -305,10 +305,14 @@
             <span>{{ $t('robot.mission.pallet') }}</span>
             <small class="rv-why" v-if="!palletBranchEnabled && tileWhy(palletDisabledReason)" :title="$t(palletDisabledReason)">{{ $t(palletDisabledReason) }}</small>
           </UiTile>
-          <!-- (7/10) pinza pallet occupata e nessun pallet a bordo: al posto del
-               solo avviso ("Dichiarare lo stato cella, poi riprovare") l'azione
-               per dire QUALE pallet e' in pinza. Stessa funzione della
-               destinazione «A bordo del robot» di Attrezzaggi. -->
+          <!-- (7/10) pinza DA PALLET occupata e nessun pallet a bordo: al posto
+               del solo avviso ("Dichiarare lo stato cella, poi riprovare")
+               l'azione per dire QUALE pallet e' in pinza. Stessa funzione della
+               destinazione «A bordo del robot» di Attrezzaggi. (prompt 11) Pinza
+               da pallet = la pinza del lato 1 (registro GRIPPER/REGISTERED) e'
+               quella richiesta da almeno un pallet (PALLET.GripperREQ): con una
+               pinza da pezzi che tiene un grezzo la tile non c'e', e dichiarare
+               un pallet scriverebbe nel PLC uno stato sbagliato. -->
           <UiTile v-else
             :icon="RectangleHorizontal"
             @click="openPalletDecl()">
@@ -1647,6 +1651,14 @@ export default {
     },
     // (8/10, prompt 7) la pinza che il PLC tiene come lato 1: il registro del
     // PLC (GRIPPER/REGISTERED), non le righe del database (util/cassettoFuori.js)
+    // (prompt 11) la pinza del lato 1 (registro GRIPPER/REGISTERED, come per il
+    // cassetto fuori) e' una pinza da pallet: la chiede almeno un pallet
+    // (PALLET.GripperREQ, letto senza badare alle maiuscole del nome)
+    lato1PinzaDaPallet() {
+      const l1 = Number(this.gripperSide1Id());
+      if (!(l1 > 0)) return false;
+      return (this.palletsList || []).some(p => Number(pinzaRichiesta(p)) === l1);
+    },
     gripperSide1Id() {
       return pinzaLato1(this.gripperRegistered, this.dataGripper);
     },
@@ -1737,7 +1749,7 @@ export default {
       // ricontrolla sul dato fresco.
       if (!this.palletOnBoard) {
         dataStored.alert.title = this.$t('WARNING');
-        dataStored.alert.desc = 'robot.hint.palletUnknownOnBoard';
+        dataStored.alert.desc = this.palletDisabledReason || 'robot.hint.palletUnknownOnBoard';
         dataStored.alert.type = 'warning';
         return;
       }
@@ -2359,7 +2371,11 @@ export default {
       // (16/9) pinza pallet occupata ma nessun pallet risulta a bordo: non si
       // sa COSA scaricare, e non lo si chiede all'operatore. Il comando non e'
       // proponibile e il motivo e' scritto.
-      if (!this.palletGripperEmptyNow() && !this.palletOnBoard) return 'robot.hint.palletUnknownOnBoard';
+      // (prompt 11) solo se la pinza del lato 1 e' una pinza da pallet: con una
+      // pinza da pezzi che tiene un grezzo «nessun pallet a bordo» non vuol
+      // dire niente, e la dichiarazione di un pallet sarebbe sbagliata
+      if (!this.palletGripperEmptyNow() && !this.palletOnBoard)
+        return this.lato1PinzaDaPallet() ? 'robot.hint.palletUnknownOnBoard' : 'robot.hint.gripperBusyNotPallet';
       // nessuna destinazione raggiungibile: proporre lo scarico vorrebbe dire
       // proporre un comando che puo' solo fallire
       if (!this.palletGripperEmptyNow() && this.palletDestCount === 0) return 'robot.hint.palletNoDest';
@@ -2545,10 +2561,9 @@ export default {
       return this.palletDestinations.filter(d => d.usable).length + MACHINE_POSITIONS.length;
     },
     // (prompt 10) al posto di «Gestione pallet», la tile «Dichiara quale
-    // pallet e' in pinza». NB: palletDisabledReason guarda solo che la pinza a
-    // bordo non sia vuota, non che sia una pinza da pallet: la tile compare
-    // anche con una pinza da pezzi che tiene un grezzo (verifica del prompt
-    // 10, non cambiata)
+    // pallet e' in pinza». (prompt 11) Solo con una pinza DA PALLET occupata:
+    // palletDisabledReason da' palletUnknownOnBoard solo in quel caso
+    // (lato1PinzaDaPallet), con una pinza da pezzi da' gripperBusyNotPallet
     palletDeclInstead() {
       return !this.palletBranchEnabled && this.palletDisabledReason === 'robot.hint.palletUnknownOnBoard';
     },

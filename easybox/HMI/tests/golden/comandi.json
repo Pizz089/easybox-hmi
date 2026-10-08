@@ -1287,9 +1287,21 @@
      "disabled": "!palletBranchEnabled",
      "classe": "{'btn-mission-running': missionRunning=='pallet'}",
      "esiti": {
-      "HOLD liv2": "nascosto",
-      "HOLD liv0": "nascosto",
-      "HOLD liv2 cassetto 8 fuori": "nascosto",
+      "HOLD liv2": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "HOLD liv0": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
+      "HOLD liv2 cassetto 8 fuori": {
+       "abilitato": false,
+       "effetti": [],
+       "stato": []
+      },
       "AUTO liv2": {
        "abilitato": false,
        "effetti": [],
@@ -1320,75 +1332,9 @@
      "disabled": "",
      "classe": "",
      "esiti": {
-      "HOLD liv2": {
-       "abilitato": true,
-       "effetti": [
-        "fetch GET api/conf/pallet/show/all"
-       ],
-       "stato": [
-        "vm.palletDecl.open = true"
-       ],
-       "conferme": [
-        {
-         "controllo": "button@click (palletDecl.sel>0 && !palletDecl.waiting)? confirmPalletDecl() : ''",
-         "etichetta": "Conferma",
-         "abilitato": false,
-         "effetti": []
-        },
-        {
-         "controllo": "button@click closePalletDecl()",
-         "etichetta": "Annulla",
-         "abilitato": true,
-         "effetti": []
-        }
-       ]
-      },
-      "HOLD liv0": {
-       "abilitato": true,
-       "effetti": [
-        "fetch GET api/conf/pallet/show/all"
-       ],
-       "stato": [
-        "vm.palletDecl.open = true"
-       ],
-       "conferme": [
-        {
-         "controllo": "button@click (palletDecl.sel>0 && !palletDecl.waiting)? confirmPalletDecl() : ''",
-         "etichetta": "Conferma",
-         "abilitato": false,
-         "effetti": []
-        },
-        {
-         "controllo": "button@click closePalletDecl()",
-         "etichetta": "Annulla",
-         "abilitato": true,
-         "effetti": []
-        }
-       ]
-      },
-      "HOLD liv2 cassetto 8 fuori": {
-       "abilitato": true,
-       "effetti": [
-        "fetch GET api/conf/pallet/show/all"
-       ],
-       "stato": [
-        "vm.palletDecl.open = true"
-       ],
-       "conferme": [
-        {
-         "controllo": "button@click (palletDecl.sel>0 && !palletDecl.waiting)? confirmPalletDecl() : ''",
-         "etichetta": "Conferma",
-         "abilitato": false,
-         "effetti": []
-        },
-        {
-         "controllo": "button@click closePalletDecl()",
-         "etichetta": "Annulla",
-         "abilitato": true,
-         "effetti": []
-        }
-       ]
-      },
+      "HOLD liv2": "nascosto",
+      "HOLD liv0": "nascosto",
+      "HOLD liv2 cassetto 8 fuori": "nascosto",
       "AUTO liv2": "nascosto",
       "OFF liv2": "nascosto",
       "STATUS ignoto liv2": "nascosto",

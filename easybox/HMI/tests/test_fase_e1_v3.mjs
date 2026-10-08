@@ -249,10 +249,15 @@ check(/\.alert-overlay \{ z-index: 50000; top: var\(--status-strip-height\); \}/
 check(!/\.alert-toast \{[^}]*top: calc/.test(css) && /\.alert-toast \{[^}]*bottom: 16px;[^}]*right: 16px;/.test(css), 'B6 avviso breve in basso a destra: non copre il selettore del Robot');
 // (prompt 10) le misure col tocco vero (Chrome senza finestra, elementFromPoint
 // e Input.dispatchMouseEvent) sono nel report; qui le regole che le reggono
-check(/\.alert-toast \{[^}]*pointer-events: none;[^}]*\}/.test(css) && /\.alert-toast__x \{[^}]*pointer-events: auto;[^}]*\}/.test(css),
-	'(prompt 10) l\'avviso breve non mangia i tocchi: passano a «Reset allarmi» e «Riavvia programma robot»; la X resta toccabile');
+// (prompt 11) il prompt 10 faceva passare i tocchi attraverso l'avviso: a
+// 960x472 toccarlo in Macchina MC1 mandava «Sblocca morsa». Il tocco torna
+// all'avviso, che si chiude e basta (la scansione col tocco vero e' nel report)
+check(!/pointer-events/.test((css.match(/\.alert-toast[\w-]* \{[^}]*\}/g) || []).join(' ')) && /<div v-if="isMessage" class="alert-toast"[^>]*@click="chiudi"/.test(tAl),
+	'(prompt 11) l\'avviso breve prende il tocco e si chiude: nessun tocco arriva al comando che sta sotto');
 check(/\.mission-dialog-overlay \{[^}]*inset: 0;\s*top: var\(--status-strip-height\);/.test(css),
 	'(prompt 10) il velo di OGNI dialog parte sotto la striscia: HOLD e campanella raggiungibili coi dialog aperti');
+check(/\.mission-dialog-overlay::before \{[^}]*position: fixed;[^}]*left: 0;[^}]*top: 0;[^}]*width: var\(--rail-width\);[^}]*height: var\(--status-strip-height\);[^}]*background: var\(--bg-backdrop\);/.test(css),
+	'(prompt 11) e copre anche l\'angolo sopra la barra di navigazione (voce Home): libera resta solo la striscia');
 const cuP10 = leggi('src/components/ChangeUserModal.vue');
 const zCu = Number((cuP10.match(/\.change-user \{ z-index: (\d+); \}/) || [])[1]);
 check(zCu > 50000 && /class="mission-dialog-overlay change-user"/.test(cuP10),

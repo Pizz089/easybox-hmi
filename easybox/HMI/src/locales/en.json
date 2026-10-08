@@ -794,6 +794,7 @@
       "notHold": "Robot not in HOLD: press HOLD to enable commands",
       "noGripperSystem": "No gripper on board according to the system",
       "palletUnknownOnBoard": "The pallet gripper is busy but no pallet is recorded on board: the system does not know which one to unload. Declare the cell state, then try again.",
+      "gripperBusyNotPallet": "The gripper on board is busy and is not a pallet gripper: pallet handling needs an empty gripper or a pallet in the gripper.",
       "palletNoDest": "No reachable destination for this pallet: neither a configured and free warehouse position nor a machine. Configure the warehouse position, then try again.",
       "trayBusy": "Tray operation in progress",
       "trayOutGripper": "Tray out: put it back in first",
