@@ -391,6 +391,10 @@ export default {
         // Smonta morsa: updateVice ESISTENTE con l'intera riga (i valori
         // tornano identici, sono gia' in micron dalla vista VICES) e
         // PALLET_ID vuoto -> NULL (clausola condizionale del commit 2).
+        // (8/10, prompt 8) senza le misure della chela: stanno sul tipo di
+        // chele montato, e su una morsa senza tipo un'altezza mandata faceva
+        // rifiutare lo smontaggio (KO_NO_JAW). E il corpo della risposta si
+        // legge: un rifiuto arriva con stato 200 e prima passava in silenzio.
         unmountVice(viceID){
             const v = this.vices.find(x => x.ID == viceID);
             if (!v) return;
@@ -400,13 +404,25 @@ export default {
                 DESCR: (v.DESCR || '').trim(),
                 STATUS: v.STATUS,
                 X: v.X, Y: v.Y, Z: v.Z,
-                Z_CLAW: v.Z_CLAW, Z_SINK_CLAW: v.Z_SINK_CLAW,
                 MAG: v.MAG, MAG_POS: v.MAG_POS, POS_PLANT: v.POS_PLANT,
                 PALLET_ID: ''
             });
             fetch(dataStored.server+'api/conf/vice/updateVice?'+params.toString(), { method: 'GET' })
-                .then(r => { if (!r.ok) throw new Error('Network response was not ok'); this.getDataTable(); })
-                .catch(error => { console.info(error); });
+                .then(r => { if (!r.ok) throw new Error('Network response was not ok'); return r.text(); })
+                .then(body => {
+                    const b = String(body || '').trim();
+                    if (b.indexOf('KO') === 0) this.unmountRefused(b);
+                    this.getDataTable();
+                })
+                .catch(error => { console.info(error); this.unmountRefused(''); });
+        },
+        // il motivo del rifiuto: il testo del catalogo delle chele se c'e',
+        // altrimenti il codice com'e'
+        unmountRefused(code){
+            const k = 'viceJaw.' + code;
+            dataStored.alert.title = this.$t('WARNING');
+            dataStored.alert.desc = code && this.$te(k) ? this.$t(k) : this.$t('attrezzaggi.unmountRefused', { code: code || '-' });
+            dataStored.alert.type = 'warning';
         },
         // ===== AC: posizione a magazzino =====
         openPlace(pallet){

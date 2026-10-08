@@ -1,17 +1,21 @@
 -- ===========================================================================
 -- coordinates-blow-mc.sql — vista COORDINATES_BLOW_MC (SOFFIAGGIO, 18/9;
--- dati pezzo al robot, 5/10; chele dal catalogo e battuta corretta, 7/10)
+-- dati pezzo al robot, 5/10; chele dal catalogo e battuta corretta, 7/10;
+-- riferimento della battuta = il TIPO di chele, 8/10)
 --
 -- (7/10, prompt 5 di 5) CLAW_LENGTH viene dal tipo di chele montato sulla
 -- morsa (VICE_JAW via VICE.JAW_ID) e STOP_BEYOND_CLAW e' la battuta CORRETTA
 -- per le chele montate, con la stessa formula di COORDINATES_PUSH_MC:
---   STOP_BEYOND_CLAW + CLAW_LENGTH_REF/2 - CLAW_LENGTH_montata/2
--- Il PLC ricava X_Support = CLAW_LENGTH/2 + STOP_BEYOND_CLAW (FB_Robot,
--- divisione intera), quindi X_Support = CLAW_LENGTH_REF/2 + dichiarata: il
--- riferimento sulla morsa non si sposta, qualunque chela sia montata. Senza
--- REF, o con la chela montata non misurata, nessuna correzione. Stesse
--- colonne, stesso ordine: il PLC non cambia. Con la migrazione di
--- vice-jaw.sql le righe restano identiche al micron.
+--   STOP_BEYOND_CLAW + REF/2 - CLAW_LENGTH_montata/2
+-- (8/10, prompt 8) REF e' la lunghezza, letta adesso, del TIPO di chele
+-- montato quando la battuta e' stata dichiarata (PIECE_ON_VICE.CLAW_JAW_REF,
+-- jr). Il PLC ricava X_Support = CLAW_LENGTH/2 + STOP_BEYOND_CLAW (FB_Robot,
+-- divisione intera), quindi X_Support = REF/2 + dichiarata: montando un altro
+-- tipo il riferimento sulla morsa non si sposta; correggendo la misura del
+-- tipo montato X_Support segue la misura nuova (la battuta e' misurata dalla
+-- fine fisica della chela). Lunghezza di riferimento o montata non misurata:
+-- nessuna correzione. Stesse colonne, stesso ordine: il PLC non cambia. Con
+-- la migrazione di vice-jaw.sql le righe restano identiche al micron.
 --
 -- *** NASCE IN CHIARO, DEFINIZIONE VERSIONATA QUI. ***
 -- Come COORDINATES_PUSH_MC, e per lo stesso motivo: le viste 4Robot e
@@ -103,9 +107,10 @@
 -- con la vista a tre la lettura del soffiaggio fallisce.
 --
 -- ORDINE DI DEPLOY: dopo vice-claw-length.sql e piece-on-vice.sql, che creano
--- le colonne lette qui, e dal 7/10 dopo vice-jaw.sql (VICE_JAW, VICE.JAW_ID,
--- PIECE_ON_VICE.CLAW_LENGTH_REF). A cella ferma, con -E; "-f 65001": il file
--- e' UTF-8; "-y 0": la definizione trovata si stampa intera.
+-- le colonne lette qui, e dal 7/10 dopo vice-jaw.sql (VICE_JAW, VICE.JAW_ID;
+-- dall'8/10 PIECE_ON_VICE.CLAW_JAW_REF). A cella ferma, con -E; "-f 65001": il
+-- file e' UTF-8; "-y 0": la definizione trovata si stampa intera. (8/10) Dopo
+-- l'ALTER la definizione si rilegge: se non e' quella attesa, FERMO.
 --   cd D:\Prog\easybox\serverDati\scripts; sqlcmd -S .\SQLEXPRESS -E -d ADMG -f 65001 -y 0 -i coordinates-blow-mc.sql -o D:\Backup\coordinates-blow-mc_esito.txt; Get-Content D:\Backup\coordinates-blow-mc_esito.txt
 -- ===========================================================================
 SET NOCOUNT ON;
@@ -114,7 +119,7 @@ IF COL_LENGTH('dbo.VICE', 'CLAW_LENGTH') IS NULL
    OR OBJECT_ID('dbo.PIECE_ON_VICE') IS NULL
    OR OBJECT_ID('dbo.VICE_JAW') IS NULL
    OR COL_LENGTH('dbo.VICE', 'JAW_ID') IS NULL
-   OR COL_LENGTH('dbo.PIECE_ON_VICE', 'CLAW_LENGTH_REF') IS NULL
+   OR COL_LENGTH('dbo.PIECE_ON_VICE', 'CLAW_JAW_REF') IS NULL
 BEGIN
 	PRINT 'MANCANO colonne o tabelle: eseguire prima vice-claw-length.sql, piece-on-vice.sql e vice-jaw.sql.';
 	SET NOEXEC ON;
@@ -139,22 +144,32 @@ BEGIN
 	PRINT 'coordinates-blow-mc: la vista non esiste, la creo.';
 	SET @altera = 1;
 END
--- (7/10) gia' quella con le chele dal catalogo e la battuta corretta
+-- (8/10) gia' quella col tipo di riferimento della battuta
 ELSE IF @norm LIKE N'%ISNULL(j.CLAW_LENGTH,0) as CLAW_LENGTH%'
 	 AND @norm LIKE N'%ISNULL(pz.Y,0) as PART_WIDTH%'
-	 AND @norm LIKE N'%else pv.STOP_BEYOND_CLAW + pv.CLAW_LENGTH_REF/2 - j.CLAW_LENGTH/2 end,0) as STOP_BEYOND_CLAW%'
+	 AND @norm LIKE N'%else pv.STOP_BEYOND_CLAW + jr.CLAW_LENGTH/2 - j.CLAW_LENGTH/2 end,0) as STOP_BEYOND_CLAW%'
 	 AND @norm LIKE N'%ISNULL(pz.X,0) as PART_LENGTH%'
 	 AND @norm LIKE N'%ISNULL(pz.Z,0) as PART_HEIGHT%'
 	 AND @norm LIKE N'%inner join PIECE pz on pz.ID = w.PIECE_ID%'
 	 AND @norm LIKE N'%left join VICE v on v.PALLET_ID = w.PALLET_ID%'
 	 AND @norm LIKE N'%left join VICE_JAW j on j.ID = v.JAW_ID%'
 	 AND @norm LIKE N'%pv.VICE_ID = v.ID and pv.PIECE_ID = w.PIECE_ID%'
+	 AND @norm LIKE N'%left join VICE_JAW jr on jr.ID = pv.CLAW_JAW_REF%'
 BEGIN
-	PRINT 'coordinates-blow-mc: vista gia'' presente e conforme (chele dal catalogo, battuta corretta), nessuna modifica.';
+	PRINT 'coordinates-blow-mc: vista gia'' presente e conforme (chele dal catalogo, battuta corretta col tipo di riferimento), nessuna modifica.';
 	SET NOEXEC ON;
 END
+-- (8/10) la variante del 7/10 (riferimento = lunghezza salvata): nel repo, mai
+-- andata in cella. Si porta all'8/10
+ELSE IF @norm LIKE N'%ISNULL(j.CLAW_LENGTH,0) as CLAW_LENGTH%'
+	 AND @norm LIKE N'%else pv.STOP_BEYOND_CLAW + pv.CLAW_LENGTH_REF/2 - j.CLAW_LENGTH/2 end,0) as STOP_BEYOND_CLAW%'
+	 AND @norm LIKE N'%left join VICE_JAW j on j.ID = v.JAW_ID%'
+BEGIN
+	PRINT 'coordinates-blow-mc: trovata la variante del 7/10 (riferimento della battuta = lunghezza salvata): la porto al tipo di riferimento.';
+	SET @altera = 1;
+END
 -- legge gia' il catalogo ma non com'e' qui: qualcosa che non conosco
-ELSE IF @norm LIKE N'%VICE_JAW%' OR @norm LIKE N'%CLAW_LENGTH_REF%'
+ELSE IF @norm LIKE N'%VICE_JAW%' OR @norm LIKE N'%CLAW_LENGTH_REF%' OR @norm LIKE N'%CLAW_JAW_REF%'
 BEGIN
 	PRINT 'coordinates-blow-mc: la vista legge gia'' il catalogo delle chele ma non e'' la variante attesa. FERMO.';
 	PRINT 'Leggerla con: SELECT definition FROM sys.sql_modules WHERE object_id = OBJECT_ID(''dbo.COORDINATES_BLOW_MC'');';
@@ -208,23 +223,41 @@ select  w.ID                            as ORDER_ID,
         ISNULL(j.CLAW_LENGTH,0)         as CLAW_LENGTH,
         ISNULL(pz.Y,0)                  as PART_WIDTH,
         -- (7/10) battuta CORRETTA per le chele montate: X_Support del PLC
-        -- (CLAW_LENGTH/2 + questa) resta CLAW_LENGTH_REF/2 + dichiarata.
+        -- (CLAW_LENGTH/2 + questa) resta REF/2 + dichiarata. (8/10) REF e' la
+        -- lunghezza del TIPO con cui la battuta e' stata dichiarata (jr).
         -- REF/2 - montata/2 e non (REF - montata)/2: con le divisioni intere
         -- e' l'unica forma che lo tiene identico al micron (lunghezze dispari)
-        ISNULL(case when pv.CLAW_LENGTH_REF is null or ISNULL(j.CLAW_LENGTH,0) <= 0
+        ISNULL(case when ISNULL(jr.CLAW_LENGTH,0) <= 0 or ISNULL(j.CLAW_LENGTH,0) <= 0
                     then pv.STOP_BEYOND_CLAW
-                    else pv.STOP_BEYOND_CLAW + pv.CLAW_LENGTH_REF/2 - j.CLAW_LENGTH/2 end,0) as STOP_BEYOND_CLAW,
+                    else pv.STOP_BEYOND_CLAW + jr.CLAW_LENGTH/2 - j.CLAW_LENGTH/2 end,0) as STOP_BEYOND_CLAW,
         ISNULL(pz.X,0)                  as PART_LENGTH,
         ISNULL(pz.Z,0)                  as PART_HEIGHT
 from WORKORDER w
 inner join PIECE pz     on pz.ID = w.PIECE_ID
 left  join VICE v       on v.PALLET_ID = w.PALLET_ID
 left  join VICE_JAW j   on j.ID = v.JAW_ID
-left  join PIECE_ON_VICE pv on pv.VICE_ID = v.ID and pv.PIECE_ID = w.PIECE_ID;
-GO
-PRINT 'coordinates-blow-mc: fatto.';
+left  join PIECE_ON_VICE pv on pv.VICE_ID = v.ID and pv.PIECE_ID = w.PIECE_ID
+left  join VICE_JAW jr  on jr.ID = pv.CLAW_JAW_REF;
 GO
 SET NOEXEC OFF;
+GO
+
+-- (8/10) la definizione si RILEGGE, dopo l'ALTER come dopo "conforme" (prima
+-- "fatto" si stampava in un batch a parte, senza ricontrollare)
+DECLARE @dopo NVARCHAR(MAX) = REPLACE(REPLACE(REPLACE(ISNULL(OBJECT_DEFINITION(OBJECT_ID('dbo.COORDINATES_BLOW_MC')), N''),
+	CHAR(13), N' '), CHAR(10), N' '), CHAR(9), N' ');
+WHILE CHARINDEX(N'  ', @dopo) > 0
+	SET @dopo = REPLACE(@dopo, N'  ', N' ');
+IF @dopo LIKE N'%ISNULL(j.CLAW_LENGTH,0) as CLAW_LENGTH%'
+   AND @dopo LIKE N'%ISNULL(pz.Y,0) as PART_WIDTH%'
+   AND @dopo LIKE N'%else pv.STOP_BEYOND_CLAW + jr.CLAW_LENGTH/2 - j.CLAW_LENGTH/2 end,0) as STOP_BEYOND_CLAW%'
+   AND @dopo LIKE N'%ISNULL(pz.X,0) as PART_LENGTH%'
+   AND @dopo LIKE N'%ISNULL(pz.Z,0) as PART_HEIGHT%'
+   AND @dopo LIKE N'%left join VICE_JAW j on j.ID = v.JAW_ID%'
+   AND @dopo LIKE N'%left join VICE_JAW jr on jr.ID = pv.CLAW_JAW_REF%'
+	PRINT 'coordinates-blow-mc: riletta, e'' la versione dell''8/10 (tipo di riferimento della battuta).';
+ELSE
+	PRINT 'FERMO: coordinates-blow-mc: la vista riletta NON e'' la versione dell''8/10 (vedi sopra). Non riprendere la produzione.';
 GO
 
 -- ===========================================================================
@@ -263,8 +296,8 @@ GO
 -- ===========================================================================
 
 -- ===========================================================================
--- ROLLBACK (7/10) alla versione del 5/10, senza catalogo delle chele:
--- vice-jaw-views-rollback.sql.
+-- RITORNO (8/10) alla versione del 5/10, senza catalogo delle chele:
+-- vice-jaw-rollback.sql.
 --
 -- ROLLBACK (manuale). Alla definizione del 18/9: quella salvata in
 -- D:\Backup\COORDINATES_BLOW_MC_20261005.txt sul PC di cella. ATTENZIONE:

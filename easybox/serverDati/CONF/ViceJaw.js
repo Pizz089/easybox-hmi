@@ -1,6 +1,7 @@
 //////// HMI ////////
 // ============================================================================
-// CONF/ViceJaw.js — CATALOGO DELLE CHELE DELLA MORSA (7/10, prompt 5 di 5)
+// CONF/ViceJaw.js — CATALOGO DELLE CHELE DELLA MORSA (7/10, prompt 5 di 5;
+// correzioni dell'audit 8/10, prompt 8)
 //
 // Decisione di Dario (7/10): catalogo per riferimento. Un tipo di chele
 // (VICE_JAW) porta le tre misure che il sistema usa (lunghezza sull'asse di
@@ -14,7 +15,10 @@
 //   GET  /insertJaw           crea (CODE unico, tre misure obbligatorie)
 //   GET  /updateJaw           modifica; le MISURE di un tipo montato su una
 //                             morsa con un ordine a STATUS 3 sul suo pallet non
-//                             si toccano (KO_JAW_ACTIVE_ORDER)
+//                             si toccano (KO_JAW_ACTIVE_ORDER). (8/10) Una
+//                             misura vuota e' NULL (un tipo nato dalla
+//                             migrazione puo' averne una NULL); DESCR e NOTE
+//                             non mandati restano com'erano
 //   GET  /setJawStatus        dismetti (0) o riattiva (1); un tipo montato non
 //                             si dismette (KO_JAW_MOUNTED)
 //   DELETE /:ID               solo un tipo MAI montato e MAI usato da un
@@ -22,13 +26,20 @@
 //                             cancellato cassetti che non doveva
 //   GET  /mountJaw            monta un tipo su una morsa (VICE.JAW_ID; vuoto =
 //                             smonta), con la guardia sugli ordini a STATUS 3
-//                             del suo pallet, escluso quello che si sta
-//                             avviando (ORDER_ID); un tipo dismesso non si
-//                             monta (KO_JAW_RETIRED)
+//                             del suo pallet; un tipo dismesso non si monta
+//                             (KO_JAW_RETIRED). (8/10) Senza piu' l'ORDER_ID
+//                             da escludere dalla guardia: un intero qualsiasi
+//                             mandato dal client la saltava
 //   GET  /confirmOrderJaw     le chele con cui l'ordine e' confermato
-//                             (WORKORDER.JAW_ID): la vista COORDINATES_Z_MC
-//                             non da' righe se non sono quelle montate (799)
+//                             (WORKORDER.JAW_ID). (8/10) Il controllo e' al
+//                             passaggio a STATUS 3 (Play e rilancio:
+//                             KO_ORDER_JAW_MISMATCH, viceJawSql.koChelePlay),
+//                             non piu' nella vista COORDINATES_Z_MC
 //
+// (8/10) Le scritture con una guardia sono in UNA transazione (SET XACT_ABORT
+// ON; BEGIN TRAN) con gli ordini letti WITH (UPDLOCK, HOLDLOCK), e ogni UPDATE
+// controlla @@ROWCOUNT: una riga che non c'e' piu' non risponde OK e non
+// scrive l'audit.
 // Ogni scrittura va in LOG (auditLog), con il prima e il dopo. I livelli
 // utente li applica il pannello, come per le altre pagine di configurazione.
 // Le risposte seguono le rotte di CONF/Vice.js: 200 "OK" oppure 200 col
@@ -93,8 +104,8 @@ router.get('/show/:ID', (req, res) => {
 	elenco(res, 'WHERE j.ID = ' + id);
 })
 
-// le tre misure in micron, tutte obbligatorie: lunghezza e altezza > 0,
-// affondo >= 0 (lo zero e' un valore vero: chela piatta)
+// le tre misure in micron, tutte obbligatorie (un tipo NUOVO): lunghezza e
+// altezza > 0, affondo >= 0 (lo zero e' un valore vero: chela piatta)
 function misure(q) {
 	return {
 		cl: J.intMin(q.CLAW_LENGTH, 1),
@@ -102,7 +113,19 @@ function misure(q) {
 		zs: J.intMin(q.Z_SINK_CLAW, 0),
 	};
 }
+// (8/10) in MODIFICA una misura vuota (o "null") e' NULL: un tipo nato dalla
+// migrazione puo' avere la lunghezza NULL (la morsa non l'aveva), e il resto
+// si deve poter salvare. Un valore che non e' un intero valido: undefined
+// (KO_BAD_INPUT).
+function misuraOpz(raw, minimo) {
+	if (raw === undefined || raw === null) return null;
+	const t = String(raw).trim();
+	if (t === '' || t.toLowerCase() === 'null') return null;
+	const n = J.intMin(t, minimo);
+	return n === null ? undefined : n;
+}
 const codice = raw => String(raw === undefined || raw === null ? '' : raw).trim().slice(0, 100);
+const sqlN = v => (v === null ? 'NULL' : String(v));
 
 router.get('/insertJaw', (req, res) => {
 	const code = codice(req.query.CODE);
@@ -131,21 +154,38 @@ router.get('/insertJaw', (req, res) => {
 router.get('/updateJaw', (req, res) => {
 	const id = J.intMin(req.query.ID, 1);
 	const code = codice(req.query.CODE);
-	const m = misure(req.query);
-	if (id === null || !code || m.cl === null || m.zc === null || m.zs === null) { res.status(400).send("KO_BAD_INPUT"); return; }
-	const query = `SET NOCOUNT ON;
+	const m = {
+		cl: misuraOpz(req.query.CLAW_LENGTH, 1),
+		zc: misuraOpz(req.query.Z_CLAW, 1),
+		zs: misuraOpz(req.query.Z_SINK_CLAW, 0),
+	};
+	if (id === null || !code || m.cl === undefined || m.zc === undefined || m.zs === undefined) { res.status(400).send("KO_BAD_INPUT"); return; }
+	// (8/10) DESCR e NOTE non mandati: restano com'erano (prima diventavano vuoti)
+	const descr = req.query.DESCR === undefined ? 'DESCR' : J.sqlStr(req.query.DESCR, 200);
+	const note = req.query.NOTE === undefined ? 'NOTE' : J.sqlStr(req.query.NOTE, 1000);
+	const query = `SET NOCOUNT ON; SET XACT_ABORT ON;
+				BEGIN TRAN;
 				DECLARE @id int = ${id}, @found int = 0, @ocl int, @ozc int, @ozs int, @ocode nvarchar(100);
-				SELECT @found = 1, @ocl = CLAW_LENGTH, @ozc = Z_CLAW, @ozs = Z_SINK_CLAW, @ocode = RTRIM(CODE) FROM VICE_JAW WHERE ID = @id;
-				DECLARE @misure bit = CASE WHEN ISNULL(@ocl, -1) <> ${m.cl} OR ISNULL(@ozc, -1) <> ${m.zc} OR ISNULL(@ozs, -1) <> ${m.zs} THEN 1 ELSE 0 END;
-				IF @found = 0 SELECT '${ERR.KO_NOT_FOUND}' AS ris;
-				ELSE IF EXISTS (SELECT 1 FROM VICE_JAW WHERE CODE = ${J.sqlStr(code, 100)} AND ID <> @id) SELECT '${ERR.KO_JAW_DUP_CODE}' AS ris;
-				ELSE IF @misure = 1 AND ${J.ordineAttivoSuTipo('@id')} SELECT '${ERR.KO_JAW_ACTIVE_ORDER}' AS ris;
+				SELECT @found = 1, @ocl = CLAW_LENGTH, @ozc = Z_CLAW, @ozs = Z_SINK_CLAW, @ocode = RTRIM(CODE)
+				  FROM VICE_JAW WITH (UPDLOCK, HOLDLOCK) WHERE ID = @id;
+				DECLARE @misure bit = CASE WHEN ISNULL(@ocl, -1) <> ISNULL(${sqlN(m.cl)}, -1) OR ISNULL(@ozc, -1) <> ISNULL(${sqlN(m.zc)}, -1)
+										 OR ISNULL(@ozs, -1) <> ISNULL(${sqlN(m.zs)}, -1) THEN 1 ELSE 0 END;
+				DECLARE @ko varchar(40) = CASE
+					WHEN @found = 0 THEN '${ERR.KO_NOT_FOUND}'
+					WHEN EXISTS (SELECT 1 FROM VICE_JAW WHERE CODE = ${J.sqlStr(code, 100)} AND ID <> @id) THEN '${ERR.KO_JAW_DUP_CODE}'
+					WHEN @misure = 1 AND ${J.ordineAttivoSuTipo('@id')} THEN '${ERR.KO_JAW_ACTIVE_ORDER}'
+					ELSE NULL END;
+				IF @ko IS NOT NULL BEGIN ROLLBACK; SELECT @ko AS ris; END
 				ELSE BEGIN
-					UPDATE VICE_JAW SET CODE = ${J.sqlStr(code, 100)}, DESCR = ${J.sqlStr(req.query.DESCR || '', 200)},
-						NOTE = ${J.sqlStr(req.query.NOTE || '', 1000)}, CLAW_LENGTH = ${m.cl}, Z_CLAW = ${m.zc}, Z_SINK_CLAW = ${m.zs}
+					UPDATE VICE_JAW SET CODE = ${J.sqlStr(code, 100)}, DESCR = ${descr}, NOTE = ${note},
+						CLAW_LENGTH = ${sqlN(m.cl)}, Z_CLAW = ${sqlN(m.zc)}, Z_SINK_CLAW = ${sqlN(m.zs)}
 					 WHERE ID = @id;
-					SELECT 'OK' AS ris, @misure AS misure, @ocl AS ocl, @ozc AS ozc, @ozs AS ozs, @ocode AS ocode,
-						   (SELECT COUNT(*) FROM VICE WHERE JAW_ID = @id) AS montate;
+					IF @@ROWCOUNT = 0 BEGIN ROLLBACK; SELECT '${ERR.KO_NOT_FOUND}' AS ris; END
+					ELSE BEGIN
+						COMMIT;
+						SELECT 'OK' AS ris, @misure AS misure, @ocl AS ocl, @ozc AS ozc, @ozs AS ozs, @ocode AS ocode,
+							   (SELECT COUNT(*) FROM VICE WHERE JAW_ID = @id) AS montate;
+					END
 				END`;
 	esegui(res, 'updateJaw', query, result => {
 		const row = (result.recordset && result.recordset[0]) || {};
@@ -166,13 +206,16 @@ router.get('/setJawStatus', (req, res) => {
 	const id = J.intMin(req.query.ID, 1);
 	const st = String(req.query.STATUS);
 	if (id === null || (st !== '0' && st !== '1')) { res.status(400).send("KO_BAD_INPUT"); return; }
-	const query = `SET NOCOUNT ON;
+	const query = `SET NOCOUNT ON; SET XACT_ABORT ON;
+				BEGIN TRAN;
 				DECLARE @id int = ${id}, @found int = 0, @code nvarchar(100);
-				SELECT @found = 1, @code = RTRIM(CODE) FROM VICE_JAW WHERE ID = @id;
-				IF @found = 0 SELECT '${ERR.KO_NOT_FOUND}' AS ris;
-				ELSE IF ${st} = ${J.JAW_DISMESSO} AND EXISTS (SELECT 1 FROM VICE WHERE JAW_ID = @id) SELECT '${ERR.KO_JAW_MOUNTED}' AS ris;
+				SELECT @found = 1, @code = RTRIM(CODE) FROM VICE_JAW WITH (UPDLOCK, HOLDLOCK) WHERE ID = @id;
+				IF @found = 0 BEGIN ROLLBACK; SELECT '${ERR.KO_NOT_FOUND}' AS ris; END
+				ELSE IF ${st} = ${J.JAW_DISMESSO} AND EXISTS (SELECT 1 FROM VICE WITH (UPDLOCK, HOLDLOCK) WHERE JAW_ID = @id)
+					BEGIN ROLLBACK; SELECT '${ERR.KO_JAW_MOUNTED}' AS ris; END
 				ELSE BEGIN
 					UPDATE VICE_JAW SET STATUS = ${st} WHERE ID = @id;
+					COMMIT;
 					SELECT 'OK' AS ris, @code AS code;
 				END`;
 	esegui(res, 'setJawStatus', query, result => {
@@ -187,15 +230,21 @@ router.get('/setJawStatus', (req, res) => {
 router.delete('/:ID', (req, res) => {
 	const id = J.intMin(req.params.ID, 1);
 	if (id === null) { res.status(400).send("KO_BAD_INPUT"); return; }
-	const query = `SET NOCOUNT ON;
+	// (8/10) in transazione, con morse e ordini letti WITH (UPDLOCK, HOLDLOCK):
+	// nessuno lo monta o lo conferma fra il controllo e la cancellazione
+	const query = `SET NOCOUNT ON; SET XACT_ABORT ON;
+				BEGIN TRAN;
 				DECLARE @id int = ${id}, @found int = 0, @code nvarchar(100), @ever bit;
-				SELECT @found = 1, @code = RTRIM(CODE), @ever = EVER_MOUNTED FROM VICE_JAW WHERE ID = @id;
-				IF @found = 0 SELECT '${ERR.KO_NOT_FOUND}' AS ris;
-				ELSE IF @ever = 1 OR EXISTS (SELECT 1 FROM VICE WHERE JAW_ID = @id) OR EXISTS (SELECT 1 FROM WORKORDER WHERE JAW_ID = @id)
-					SELECT '${ERR.KO_JAW_IN_USE}' AS ris;
+				SELECT @found = 1, @code = RTRIM(CODE), @ever = EVER_MOUNTED FROM VICE_JAW WITH (UPDLOCK, HOLDLOCK) WHERE ID = @id;
+				IF @found = 0 BEGIN ROLLBACK; SELECT '${ERR.KO_NOT_FOUND}' AS ris; END
+				ELSE IF @ever = 1 OR EXISTS (SELECT 1 FROM VICE WITH (UPDLOCK, HOLDLOCK) WHERE JAW_ID = @id)
+					 OR EXISTS (SELECT 1 FROM WORKORDER WITH (UPDLOCK, HOLDLOCK) WHERE JAW_ID = @id)
+					 OR EXISTS (SELECT 1 FROM PIECE_ON_VICE WITH (UPDLOCK, HOLDLOCK) WHERE CLAW_JAW_REF = @id)
+					BEGIN ROLLBACK; SELECT '${ERR.KO_JAW_IN_USE}' AS ris; END
 				ELSE BEGIN
 					DELETE FROM VICE_JAW WHERE ID = @id;
-					SELECT 'OK' AS ris, @code AS code;
+					IF @@ROWCOUNT = 0 BEGIN ROLLBACK; SELECT '${ERR.KO_NOT_FOUND}' AS ris; END
+					ELSE BEGIN COMMIT; SELECT 'OK' AS ris, @code AS code; END
 				END`;
 	esegui(res, 'deleteJaw', query, result => {
 		const row = (result.recordset && result.recordset[0]) || {};
@@ -206,28 +255,33 @@ router.delete('/:ID', (req, res) => {
 	});
 });
 
-// MONTA un tipo sulla morsa (JAW_ID vuoto = smonta). ORDER_ID: l'ordine che
-// si sta avviando, escluso dalla guardia (part 2: dialog di avvio).
+// MONTA un tipo sulla morsa (JAW_ID vuoto = smonta). Con un ordine a STATUS 3
+// sul pallet della morsa: KO_JAW_ACTIVE_ORDER, sempre (8/10: niente piu'
+// ORDER_ID da escludere).
 router.get('/mountJaw', (req, res) => {
 	const vice = J.intMin(req.query.VICE_ID, 1);
 	const vuoto = req.query.JAW_ID === undefined || String(req.query.JAW_ID).trim() === '';
 	const jaw = vuoto ? null : J.intMin(req.query.JAW_ID, 1);
-	const escludi = J.intMin(req.query.ORDER_ID, 1) || 0;
 	if (vice === null || (!vuoto && jaw === null)) { res.status(400).send("KO_BAD_INPUT"); return; }
-	const query = `SET NOCOUNT ON;
-				DECLARE @vice int = ${vice}, @jaw int = ${jaw === null ? 'NULL' : jaw}, @found int = 0, @pallet int, @old int, @fam nvarchar(100);
-				SELECT @found = 1, @pallet = PALLET_ID, @old = JAW_ID, @fam = RTRIM(FAMILY) FROM VICE WHERE ID = @vice;
-				DECLARE @jst int = (SELECT STATUS FROM VICE_JAW WHERE ID = @jaw);
-				IF @found = 0 OR (@jaw IS NOT NULL AND @jst IS NULL) SELECT '${ERR.KO_NOT_FOUND}' AS ris;
-				ELSE IF @jaw IS NOT NULL AND @jst <> ${J.JAW_ATTIVO} SELECT '${ERR.KO_JAW_RETIRED}' AS ris;
-				ELSE IF ISNULL(@old, -1) = ISNULL(@jaw, -1) SELECT 'OK' AS ris, 0 AS cambiato;
-				ELSE IF @pallet IS NOT NULL AND ${J.ordineAttivoSuPallet('@pallet', escludi)} SELECT '${ERR.KO_JAW_ACTIVE_ORDER}' AS ris;
+	const query = `SET NOCOUNT ON; SET XACT_ABORT ON;
+				BEGIN TRAN;
+				DECLARE @vice int = ${vice}, @jaw int = ${jaw === null ? 'NULL' : jaw}, @found int = 0, @pallet int, @old int, @fam nvarchar(200);
+				SELECT @found = 1, @pallet = PALLET_ID, @old = JAW_ID, @fam = RTRIM(FAMILY) FROM VICE WITH (UPDLOCK, HOLDLOCK) WHERE ID = @vice;
+				DECLARE @jst int = (SELECT STATUS FROM VICE_JAW WITH (UPDLOCK, HOLDLOCK) WHERE ID = @jaw);
+				IF @found = 0 OR (@jaw IS NOT NULL AND @jst IS NULL) BEGIN ROLLBACK; SELECT '${ERR.KO_NOT_FOUND}' AS ris; END
+				ELSE IF @jaw IS NOT NULL AND @jst <> ${J.JAW_ATTIVO} BEGIN ROLLBACK; SELECT '${ERR.KO_JAW_RETIRED}' AS ris; END
+				ELSE IF ISNULL(@old, -1) = ISNULL(@jaw, -1) BEGIN COMMIT; SELECT 'OK' AS ris, 0 AS cambiato; END
+				ELSE IF @pallet IS NOT NULL AND ${J.ordineAttivoSuPallet('@pallet')} BEGIN ROLLBACK; SELECT '${ERR.KO_JAW_ACTIVE_ORDER}' AS ris; END
 				ELSE BEGIN
 					UPDATE VICE SET JAW_ID = @jaw WHERE ID = @vice;
-					IF @jaw IS NOT NULL UPDATE VICE_JAW SET EVER_MOUNTED = 1 WHERE ID = @jaw;
-					SELECT 'OK' AS ris, 1 AS cambiato, @fam AS fam,
-						   (SELECT RTRIM(CODE) FROM VICE_JAW WHERE ID = @old) AS da,
-						   (SELECT RTRIM(CODE) FROM VICE_JAW WHERE ID = @jaw) AS a;
+					IF @@ROWCOUNT = 0 BEGIN ROLLBACK; SELECT '${ERR.KO_NOT_FOUND}' AS ris; END
+					ELSE BEGIN
+						IF @jaw IS NOT NULL UPDATE VICE_JAW SET EVER_MOUNTED = 1 WHERE ID = @jaw;
+						COMMIT;
+						SELECT 'OK' AS ris, 1 AS cambiato, @fam AS fam,
+							   (SELECT RTRIM(CODE) FROM VICE_JAW WHERE ID = @old) AS da,
+							   (SELECT RTRIM(CODE) FROM VICE_JAW WHERE ID = @jaw) AS a;
+					END
 				END`;
 	esegui(res, 'mountJaw', query, result => {
 		const row = (result.recordset && result.recordset[0]) || {};
@@ -240,22 +294,27 @@ router.get('/mountJaw', (req, res) => {
 })
 
 // le chele con cui l'ordine e' confermato. Su un ordine gia' a STATUS 3 non si
-// cambiano: il blocco della vista lo fermerebbe col robot al lavoro.
+// cambiano: il PLC lo sta eseguendo.
 router.get('/confirmOrderJaw', (req, res) => {
 	const ord = J.intMin(req.query.ORDER_ID, 1);
 	const jaw = J.intMin(req.query.JAW_ID, 1);
 	if (ord === null || jaw === null) { res.status(400).send("KO_BAD_INPUT"); return; }
-	const query = `SET NOCOUNT ON;
+	const query = `SET NOCOUNT ON; SET XACT_ABORT ON;
+				BEGIN TRAN;
 				DECLARE @o int = ${ord}, @jaw int = ${jaw}, @found int = 0, @st int, @old int;
-				SELECT @found = 1, @st = STATUS, @old = JAW_ID FROM WORKORDER WHERE ID = @o;
-				DECLARE @jst int = (SELECT STATUS FROM VICE_JAW WHERE ID = @jaw);
-				IF @found = 0 OR @jst IS NULL SELECT '${ERR.KO_NOT_FOUND}' AS ris;
-				ELSE IF @jst <> ${J.JAW_ATTIVO} SELECT '${ERR.KO_JAW_RETIRED}' AS ris;
-				ELSE IF @st = ${J.ORDINE_ATTIVO} AND ISNULL(@old, -1) <> @jaw SELECT '${ERR.KO_JAW_ACTIVE_ORDER}' AS ris;
+				SELECT @found = 1, @st = STATUS, @old = JAW_ID FROM WORKORDER WITH (UPDLOCK, HOLDLOCK) WHERE ID = @o;
+				DECLARE @jst int = (SELECT STATUS FROM VICE_JAW WITH (UPDLOCK, HOLDLOCK) WHERE ID = @jaw);
+				IF @found = 0 OR @jst IS NULL BEGIN ROLLBACK; SELECT '${ERR.KO_NOT_FOUND}' AS ris; END
+				ELSE IF @jst <> ${J.JAW_ATTIVO} BEGIN ROLLBACK; SELECT '${ERR.KO_JAW_RETIRED}' AS ris; END
+				ELSE IF @st = ${J.ORDINE_ATTIVO} AND ISNULL(@old, -1) <> @jaw BEGIN ROLLBACK; SELECT '${ERR.KO_JAW_ACTIVE_ORDER}' AS ris; END
 				ELSE BEGIN
 					UPDATE WORKORDER SET JAW_ID = @jaw WHERE ID = @o;
-					SELECT 'OK' AS ris, (SELECT RTRIM(CODE) FROM VICE_JAW WHERE ID = @old) AS da,
-						   (SELECT RTRIM(CODE) FROM VICE_JAW WHERE ID = @jaw) AS a;
+					IF @@ROWCOUNT = 0 BEGIN ROLLBACK; SELECT '${ERR.KO_NOT_FOUND}' AS ris; END
+					ELSE BEGIN
+						COMMIT;
+						SELECT 'OK' AS ris, (SELECT RTRIM(CODE) FROM VICE_JAW WHERE ID = @old) AS da,
+							   (SELECT RTRIM(CODE) FROM VICE_JAW WHERE ID = @jaw) AS a;
+					END
 				END`;
 	esegui(res, 'confirmOrderJaw', query, result => {
 		const row = (result.recordset && result.recordset[0]) || {};

@@ -212,8 +212,10 @@ check(/DECLARE @tool int = \(SELECT TOP 1 CLAW_LENGTH FROM GRIPPER WHERE ID=26\)
 check(/DECLARE @pieceY int = \(SELECT TOP 1 Y FROM PIECE WHERE ID=1029\)/.test(t), 'dal pezzo entra la Y, quella che corre lungo la X del robot');
 check(!/SELECT TOP 1 X FROM PIECE/.test(t), 'PIECE.X non entra nel conto della spinta');
 check(/ELSE IF @push <> 0 AND \(ISNULL\(@claw,0\) <= 0 OR ISNULL\(@tool,0\) <= 0 OR ISNULL\(@pieceY,0\) <= 0\) SELECT 'KO_PUSH_NO_DATA'/.test(t), 'guardia dati mancanti');
-check(/SELECT TOP 1 @stop = STOP_BEYOND_CLAW, @ref = CLAW_LENGTH_REF FROM PIECE_ON_VICE WHERE VICE_ID=@viceID AND PIECE_ID=1029;/.test(t), 'appoggio dichiarato e chela con cui e\' stato dichiarato, per la coppia morsa+pezzo');
-check(/IF @stop IS NOT NULL AND @ref IS NOT NULL AND ISNULL\(@claw, 0\) > 0 SET @stop = @stop \+ @ref\/2 - @claw\/2;/.test(t), 'battuta corretta per le chele montate, come la vista (dichiarata + REF/2 - montata/2)');
+// (8/10, prompt 8) il riferimento della battuta e' il TIPO di chele
+// (CLAW_JAW_REF): la sua lunghezza di adesso, non una lunghezza salvata
+check(/SELECT TOP 1 @stop = pv\.STOP_BEYOND_CLAW, @ref = jr\.CLAW_LENGTH FROM PIECE_ON_VICE pv\s+LEFT JOIN VICE_JAW jr ON jr\.ID = pv\.CLAW_JAW_REF WHERE pv\.VICE_ID=@viceID AND pv\.PIECE_ID=1029;/.test(t), 'appoggio dichiarato e lunghezza del tipo di chele con cui e\' stato dichiarato, per la coppia morsa+pezzo');
+check(/IF @stop IS NOT NULL AND ISNULL\(@ref, 0\) > 0 AND ISNULL\(@claw, 0\) > 0 SET @stop = @stop \+ @ref\/2 - @claw\/2;/.test(t), 'battuta corretta per le chele montate, come la vista (dichiarata + REF/2 - montata/2; una lunghezza NULL = nessuna correzione)');
 check(!/PIECE_ON_VICE WHERE PALLET_ID/.test(t), 'la dichiarazione NON e\' agganciata al pallet: una morsa spostata si porta dietro la sua battuta');
 check(/DECLARE @travel int = \(@claw - @pieceY\)\/2 \+ CASE WHEN @pieceY > @claw THEN ISNULL\(@stop,0\) ELSE 0 END/.test(t), 'corsa: il tratto dichiarato entra SOLO quando il pezzo eccede la ganascia');
 check(/ELSE IF @push <> 0 AND @pieceY > @claw AND @stop IS NULL SELECT 'KO_PUSH_NO_FIT'/.test(t), 'rifiuto solo se eccede la ganascia E l\'appoggio non e\' dichiarato');
@@ -280,7 +282,12 @@ const OKJ = (old) => [{ recordset: [{ ris: 'OK', old, fam: 'ADMG', jaw: 7, code:
 r = callIn('vice', 'GET /setClawLength', { ID: '1', CLAW_LENGTH: '160000' }, OKJ(150000));
 check(/UPDATE VICE_JAW SET CLAW_LENGTH=160000 WHERE ID=@jaw/.test(r.q[0]), 'morsa: scrive SOLO la lunghezza della chela, sul tipo montato');
 check(!/FAMILY=|DESCR=|MAG=/.test(r.q[0]) && !/UPDATE VICE SET/.test(r.q[0]), 'morsa: nessun altra colonna viene toccata, la riga della morsa nemmeno');
-check(/ELSE IF @jaw IS NULL SELECT 'KO_NO_JAW'/.test(r.q[0]) && /IF @found = 0 SELECT 'KO_NOT_FOUND'/.test(r.q[0]), 'morsa: senza tipo montato KO_NO_JAW, morsa assente KO_NOT_FOUND');
+check(/ELSE IF @jaw IS NULL BEGIN ROLLBACK; SELECT 'KO_NO_JAW' AS ris; END/.test(r.q[0]) && /IF @found = 0 BEGIN ROLLBACK; SELECT 'KO_NOT_FOUND' AS ris; END/.test(r.q[0]), 'morsa: senza tipo montato KO_NO_JAW, morsa assente KO_NOT_FOUND');
+// (8/10, prompt 8) in una transazione, ordini letti con UPDLOCK e HOLDLOCK, e
+// @@ROWCOUNT dopo l'UPDATE del tipo: un JAW_ID orfano non risponde OK
+check(/SET XACT_ABORT ON;\s*BEGIN TRAN;/.test(r.q[0]) && /WITH \(UPDLOCK, HOLDLOCK\)/.test(r.q[0])
+	&& /UPDATE VICE_JAW SET CLAW_LENGTH=160000 WHERE ID=@jaw;\s*IF @@ROWCOUNT = 0 BEGIN ROLLBACK; SELECT 'KO_NOT_FOUND' AS ris; END/.test(r.q[0]),
+	'morsa: transazione, guardia con UPDLOCK/HOLDLOCK, @@ROWCOUNT dopo l\'UPDATE del tipo');
 check(r.res.body === 'OK' && r.res.code === 200, 'morsa: esito nel body, stato 200');
 check(r.q.some(q => /INSERT INTO LOG/.test(q) && /Morsa ADMG \(ID 1\), chele CHELE PROVA \(tipo ID 7\)/.test(q) && /150000 um a 160000 um/.test(q)),
 	'morsa: la modifica finisce nel diario, con morsa, tipo di chele e valori vecchio e nuovo');
@@ -382,7 +389,7 @@ const blowBody = (blowSql.match(/ALTER VIEW dbo\.COORDINATES_BLOW_MC AS([\s\S]*?
 // ISNULL senza spazio dopo la virgola, come la legge OBJECT_DEFINITION.
 // (7/10) chela dal tipo montato (j), battuta corretta per le chele montate
 for (const col of ['ISNULL(j.CLAW_LENGTH,0) as CLAW_LENGTH', 'ISNULL(pz.Y,0) as PART_WIDTH',
-	'else pv.STOP_BEYOND_CLAW + pv.CLAW_LENGTH_REF/2 - j.CLAW_LENGTH/2 end,0) as STOP_BEYOND_CLAW', 'ISNULL(pz.X,0) as PART_LENGTH', 'ISNULL(pz.Z,0) as PART_HEIGHT'])
+	'else pv.STOP_BEYOND_CLAW + jr.CLAW_LENGTH/2 - j.CLAW_LENGTH/2 end,0) as STOP_BEYOND_CLAW', 'ISNULL(pz.X,0) as PART_LENGTH', 'ISNULL(pz.Z,0) as PART_HEIGHT'])
 	check(blowBody.replace(/\s+/g, ' ').includes(col), 'soffiaggio: ' + col + ' — il ponte SQL non converte NULL in zero');
 check(!/pz\.X,0\)\s+as\s+PART_WIDTH/.test(blowBody), 'soffiaggio: PART_WIDTH non e\' piu\' pz.X (era la lunghezza)');
 check(/left  join PIECE_ON_VICE pv on pv\.VICE_ID = v\.ID and pv\.PIECE_ID = w\.PIECE_ID/.test(blowBody),
@@ -391,7 +398,8 @@ check(/inner join PIECE pz/.test(blowBody) && /left  join VICE v/.test(blowBody)
 	'soffiaggio: PIECE in INNER (c\'e\' sempre), VICE in LEFT (puo\' mancare)');
 // guardia a tre vie: nuova -> conforme, vecchia a tre colonne -> ALTER, altro -> FERMO
 const blowGuard = blowSql.slice(0, blowSql.indexOf('ALTER VIEW dbo.COORDINATES_BLOW_MC AS'));
-check(/LIKE N'%ISNULL\(j\.CLAW_LENGTH,0\) as CLAW_LENGTH%'[\s\S]*?conforme \(chele dal catalogo, battuta corretta\), nessuna modifica/.test(blowGuard)
+check(/LIKE N'%ISNULL\(j\.CLAW_LENGTH,0\) as CLAW_LENGTH%'[\s\S]*?conforme \(chele dal catalogo, battuta corretta col tipo di riferimento\), nessuna modifica/.test(blowGuard)
+	&& /trovata la variante del 7\/10 \(riferimento della battuta = lunghezza salvata\): la porto al tipo di riferimento/.test(blowGuard)
 	&& /trovata la versione del 5\/10 \(cinque colonne\): la porto alle chele dal catalogo/.test(blowGuard)
 	&& /LIKE N'%ISNULL\(pz\.X,0\) as PART_WIDTH%'[\s\S]*?NOT LIKE N'%PART_LENGTH%'[\s\S]*?PRINT 'coordinates-blow-mc: trovata la definizione a tre colonne/.test(blowGuard)
 	&& /NON e'' quella attesa\. FERMO/.test(blowGuard),
@@ -469,13 +477,15 @@ const SPLIT = ref => '"FC_Split_Dint"(IN := ' + ref;
 const SCRIVE_Z = /HIGH_Word => "Z_Push_HIGH",\s*LOW_Word => "Z_Push_LOW"\);/g;
 for (const [regione, n, rami] of [['Part_Robot_to_MC', 32, 2], ['Cycle MASTER ROBOT', 1410, 2]]) {
 	const s = statoFB(regione, n);
-	check(s.split("'select X_PUSH,X_STOP,Z_PUSH_DROP from COORDINATES_PUSH_MC where MC=1 and ORDER_ID=',").length - 1
-			+ s.split("'select top 1 X_PUSH,X_STOP,Z_PUSH_DROP from COORDINATES_PUSH_MC where MC=1 order by ORDER_ID desc'").length - 1 === rami
+	// (consegna 35, 8/10) X_PUSH e X_STOP con isnull(...,0): il ponte SQL non
+	// converte NULL in zero
+	check(s.split("'select isnull(X_PUSH,0),isnull(X_STOP,0),Z_PUSH_DROP from COORDINATES_PUSH_MC where MC=1 and ORDER_ID=',").length - 1
+			+ s.split("'select top 1 isnull(X_PUSH,0),isnull(X_STOP,0),Z_PUSH_DROP from COORDINATES_PUSH_MC where MC=1 order by ORDER_ID desc'").length - 1 === rami
 		&& !/X_PUSH,X_STOP from/.test(s),
 		'quota Z: ' + regione + ' ' + n + ' chiede Z_PUSH_DROP come terza colonna in tutti e ' + rami + ' i rami');
 }
 check(!/select X_PUSH,X_STOP from/.test(fb7), '   e in FB_Robot non resta nessuna query della spinta a due colonne');
-const qManuale = "select X_PUSH,X_STOP,Z_PUSH_DROP from COORDINATES_PUSH_MC where MC=1 and ORDER_ID=(select ORDER_ID from MAN_ORDER_MC1 where TRAY='99' and SUB_POS=999)";
+const qManuale = "select isnull(X_PUSH,0),isnull(X_STOP,0),Z_PUSH_DROP from COORDINATES_PUSH_MC where MC=1 and ORDER_ID=(select ORDER_ID from MAN_ORDER_MC1 where TRAY='99' and SUB_POS=999)";
 check(qManuale.length < 254, '   la query in manuale (cassetto a 2 cifre, tasca a 3) sta in ' + qManuale.length + ' caratteri, sotto i 254 di queryTemp');
 for (const [regione, n, ref] of [['Part_Robot_to_MC', 36, '"DB_RobotMission"."Z_Pick-Place"'], ['Cycle MASTER ROBOT', 1412, '#zPlaceTemp']]) {
 	const s = statoFB(regione, n);

@@ -629,6 +629,7 @@
     "machineOccupied": "Occupied by pallet #{id}",
     "machineAmbiguous": "Pallet #{id} in unrecognized machine position: check",
     "editIncomplete": "Edit incomplete: the pallet may be left unrigged — repeat the operation from the list",
+    "unmountRefused": "Unmount not done: the backend answered {code}.",
     "createNew": "Create new...",
     "offsets": "Position on pallet (mm / °)",
     "save": "Save rig"
@@ -699,7 +700,9 @@
       "notFound": "Order not found.",
       "previewFailed": "Cannot read data from the backend: relaunch not available.",
       "done": "Order #{id} relaunched: it is running again ({reserved} raw pockets reserved).",
-      "failed": "Relaunch NOT done: backend error."
+      "failed": "Relaunch NOT done: backend error.",
+      "KO_ORDER_JAW_MISMATCH": "Relaunch not possible: the jaws confirmed for the order are not the ones mounted on the vice of its pallet.",
+      "KO_ORDER_VICE_NO_JAW": "Relaunch not possible: the vice on the order's pallet has no jaw type mounted. Mount a jaw type on the vice, then relaunch."
     },
     "reset": {
       "button": "Reset production",
@@ -716,6 +719,9 @@
       "failed": "Reset NOT executed: backend error."
     },
     "welcome": "Production Table",
+    "playRefusedOther": "Order #{id}: command not executed ({code}).",
+    "playRefused_KO_ORDER_JAW_MISMATCH": "Order #{id} not started: the jaws confirmed for the order are not the ones mounted on the vice of its pallet. Mount the order's jaws, or confirm the order with the mounted ones, then start again.",
+    "playRefused_KO_ORDER_VICE_NO_JAW": "Order #{id} not started: the vice on its pallet has no jaw type mounted, and without the jaw measures the machine deposit would not have the right stop. Mount a jaw type on the vice, then start again.",
     "addOrder": "Add order",
     "order": "Order",
     "status": "Status",
@@ -759,7 +765,7 @@
     "alarm972NoText": "Press RESET and repeat the command.",
     "alarm_949": "Command refused: operator door not closed while a tray is extracted or put back, or EasyBox error (the record of trays out does not match the sensors). Close the operator door; if it is closed, check the EasyBox page and put the tray back or reset the cell state with the right tray. Then press RESET and repeat the command.",
     "alarm_1722": "Pallet mission closed: the database does not say which gripper this pallet needs, or the read failed. It cannot be set from the panel: have the pallet master data checked, then press RESET and repeat.",
-    "alarm_799": "Machine deposit stopped: no coordinates for this order. Check the order's part and fixture, and that the order's jaws are the ones mounted on the vice. Then RESET.",
+    "alarm_799": "Machine deposit stopped: no coordinates for this order. Check the order's part and fixture. Then RESET.",
     "noGripper": "NO GRIPPER MOUNTED!",
     "speedLabel": "ROBOT SPEED:",
     "speedTitle": "Robot speed",
@@ -1170,7 +1176,9 @@
     "stopsSave": "Save",
     "stopsDelete": "Delete",
     "stopsSaveError": "The rest-point declaration could not be saved.",
-    "stopsLevel": "Declaring or deleting a rest point needs level 1, as on the Push to stop page."
+    "stopsLevel": "Declaring or deleting a rest point needs level 1, as on the Push to stop page.",
+    "createFailed": "Vice NOT created: the backend did not return the new vice's ID.",
+    "created": "Vice #{id} created."
   },
   "pallet": {
     "inMachine": "IN MACHINE",
@@ -1461,7 +1469,8 @@
     "confirmZPush": "Push height of {obj} for {piece}: from {from} to {to} from the bottom of the part.",
     "confirmZPushClear": "Push height of {obj} for {piece}: from {from} to empty, that is at the pick height, as the load.",
     "zPushRangeServer": "The server refused the push height: it is above the part's pick height. Reload the page and check the part.",
-    "qZDrop": "Finger drop during the push"
+    "qZDrop": "Finger drop during the push",
+    "stopFromOtherJaw": "Stop declared with the {code} jaws: shown here converted to the mounted jaws, which is the value Save writes."
   },
   "home": {
     "orderNow": "Running order",

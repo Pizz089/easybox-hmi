@@ -25,6 +25,9 @@
 # e il messaggio di FERMO non dice quale pannello e' servito.
 # (8/10) ritorno a un commit: commit corto, fuori dalla storia, modifiche
 # locali (si ferma), ritorno riuscito (ramo non spostato) e ritorno al ramo.
+# (8/10, prompt 8) ritorno con aggiorna non riuscito: EasyBoxBackend si
+# riavvia comunque e lo dice; su ui-v3 un commit di ui-lifting entrato con
+# un merge e' nella storia ma non sulla linea principale: si ferma.
 # Uso: powershell -ExecutionPolicy Bypass -File easybox\tools\test_pannello_servizi.ps1
 # Exit code = numero di controlli falliti. I rami ui-lifting e ui-v3 del
 # repo devono contenere il pannello.ps1 da provare (si prova il committato).
@@ -250,7 +253,7 @@ $r = Lancia 'ritorno' 'CASO 7a: commit corto' @{ Commit = $indietro.Substring(0,
 Check ($r.Codice -eq 1 -and $r.Testo -match 'per esteso \(40 caratteri\)' -and ((GitC rev-parse HEAD) -join '').Trim() -eq $punta -and $r.Chiamate.Count -eq 0) 'commit corto: FERMO, niente toccato'
 $altro = ((GitC rev-parse refs/remotes/origin/ui-v3) -join '').Trim()
 $r = Lancia 'ritorno' 'CASO 7b: commit fuori dalla storia del ramo' @{ Commit = $altro }
-Check ($r.Codice -eq 1 -and $r.Testo -match 'non e'' nella storia del ramo ui-lifting' -and ((GitC rev-parse HEAD) -join '').Trim() -eq $punta -and @($r.Chiamate | Where-Object { $_ -like 'Stop*' }).Count -eq 0) 'commit di un altro ramo: FERMO prima di fermare il pannello'
+Check ($r.Codice -eq 1 -and $r.Testo -match 'non e'' sulla linea principale del ramo ui-lifting' -and ((GitC rev-parse HEAD) -join '').Trim() -eq $punta -and @($r.Chiamate | Where-Object { $_ -like 'Stop*' }).Count -eq 0) 'commit di un altro ramo: FERMO prima di fermare il pannello'
 $file = Join-Path $global:CLONE 'easybox\HMI\package.json'
 $prima = [IO.File]::ReadAllBytes($file)
 Add-Content -Path $file -Value ' ' -Encoding ASCII
@@ -267,6 +270,29 @@ Check ($r.Testo -match 'Per tornare al ramo: pannello\.ps1 -Versione stabile') '
 $global:MODO = 'dev'
 $r = Lancia 'stabile' 'CASO 7e: di nuovo sul ramo'
 Check ($r.Codice -eq 0 -and (Ramo) -eq 'ui-lifting' -and ((GitC rev-parse HEAD) -join '').Trim() -eq $punta) 'pannello.ps1 -Versione stabile riporta sul ramo, alla punta di prima'
+
+# (8/10, prompt 8) aggiorna non riuscito DOPO il distacco sul commit: il
+# backend si riavvia comunque (il database e' gia' tornato indietro) e lo dice
+$global:MODO = 'preview'; $global:AGG_ESITO = 1
+$r = Lancia 'ritorno' 'CASO 7f: ritorno con aggiorna non riuscito' @{ Commit = $indietro }
+$iAgg = [array]::IndexOf($r.Chiamate, ($r.Chiamate | Where-Object { $_ -like 'Aggiorna*' } | Select-Object -First 1))
+$iRb = [array]::IndexOf($r.Chiamate, 'Restart EasyBoxBackend')
+Check ($r.Codice -eq 1 -and $iAgg -ge 0 -and $iRb -gt $iAgg -and ((GitC rev-parse HEAD) -join '').Trim() -eq $indietro) ('aggiorna non riuscito nel ritorno: FERMO, poi EasyBoxBackend riavviato comunque (' + ($r.Chiamate -join ' ; ') + ')')
+Check ($r.Testo -match 'riavvio comunque EasyBoxBackend' -and $r.Testo -match 'EasyBoxBackend riavviato: il backend e'' quello del commit del ritorno') '   e lo dice'
+Check ($global:SERVIZI['EasyBoxPannello'] -eq 'Running') '   e il pannello si rimette su'
+$global:MODO = 'dev'; $global:AGG_ESITO = 0
+$r = Lancia 'stabile' 'CASO 7g: di nuovo sul ramo'
+Check ($r.Codice -eq 0 -and (Ramo) -eq 'ui-lifting' -and ((GitC rev-parse HEAD) -join '').Trim() -eq $punta) 'di nuovo su ui-lifting, alla punta di prima'
+
+# (8/10, prompt 8) su ui-v3: il secondo genitore del merge in punta e' un
+# commit di ui-lifting, nella storia di ui-v3 ma non sulla sua linea principale
+$r = Lancia 'v3' 'CASO 7h (preparazione): su ui-v3'
+$puntaV3 = ((GitC rev-parse HEAD) -join '').Trim()
+$unito = ((GitC rev-parse 'HEAD^2') -join '').Trim()
+$null = GitC merge-base --is-ancestor $unito HEAD
+$antenato = ($LASTEXITCODE -eq 0)
+$r = Lancia 'ritorno' 'CASO 7h: commit di ui-lifting entrato in ui-v3 con un merge' @{ Commit = $unito }
+Check ($antenato -and $r.Codice -eq 1 -and $r.Testo -match 'non e'' sulla linea principale del ramo ui-v3' -and ((GitC rev-parse HEAD) -join '').Trim() -eq $puntaV3 -and @($r.Chiamate | Where-Object { $_ -like 'Stop*' }).Count -eq 0) 'ui-v3, commit di ui-lifting arrivato col merge: e'' nella storia ma FERMO, niente toccato'
 
 # ------------------------------------------------------------ pulizia
 foreach ($f in @('Get-Service', 'Stop-Service', 'Start-Service', 'Restart-Service', 'Get-NetTCPConnection', 'Test-EasyBoxAmministratore', 'npm.cmd', 'Get-EasyBoxModoPannello', 'Invoke-EasyBoxAggiorna', 'Show-EasyBoxPannelloServito')) { Remove-Item -LiteralPath ('function:\' + $f) -ErrorAction SilentlyContinue }

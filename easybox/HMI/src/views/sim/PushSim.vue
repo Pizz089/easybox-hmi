@@ -183,6 +183,11 @@
         <p v-if="stopDeclaredReal === null && exceeds" class="sim-warn">
           {{ t("pushSim.stopMissing") }}
         </p>
+        <!-- (8/10) la battuta e' stata dichiarata con un altro tipo di chele:
+             il campo la mostra gia' riportata alle chele montate -->
+        <p v-if="stopFromOtherJaw" class="sim-hint" data-stop-ref>
+          {{ t("pushSim.stopFromOtherJaw", { code: stopFromOtherJaw }) }}
+        </p>
 
         <div v-if="diverged" class="sim-diverged">
           <strong>{{ t("pushSim.diverged") }}</strong>
@@ -454,7 +459,7 @@
 
 <script>
 import { dataStored } from "../../data.js";
-import { pushQuotes, PUSH_STATUS, STOP_REF, zPushDrop } from "../../util/pushQuotes.js";
+import { pushQuotes, PUSH_STATUS, STOP_REF, zPushDrop, stopCorrected } from "../../util/pushQuotes.js";
 import { KO_NOT_FOUND, KO_Z_PUSH_RANGE, KO_NO_JAW, KO_JAW_ACTIVE_ORDER } from "../../util/errorCodes.js";
 import UiButton from "../../components/ui/UiButton.vue";
 import UiSegmented from "../../components/ui/UiSegmented.vue";
@@ -552,8 +557,12 @@ export default {
       return this.m.viceClaw > 0 && this.m.pieceLen > this.m.viceClaw;
     },
 
+    // (8/10, prompt 8) la battuta che usera' il PLC con la chela in prova: il
+    // campo e' riferito alle chele MONTATE (stopRefSim), e se si prova
+    // un'altra lunghezza di chela si riporta come fanno le viste. Disegno e
+    // testi («appoggia a...», NO_ROOM) usano questa, non il numero grezzo.
     stopDeclared() {
-      return this.m.stopBeyond;
+      return stopCorrected(this.m.stopBeyond, this.stopRefSim, this.m.viceClaw);
     },
 
     stopDeclaredReal() {
@@ -577,15 +586,21 @@ export default {
       });
     },
 
-    // (7/10, prompt 5 di 5) la chela con cui la battuta in prova risulta
-    // dichiarata: quella salvata (CLAW_LENGTH_REF) se la battuta e' quella del
-    // database, altrimenti le chele montate adesso, che setStop scriverebbe.
-    // Cosi' provando un'altra lunghezza di chela si vede la battuta corretta,
-    // come la calcoleranno le viste.
+    // (8/10, prompt 8) il riferimento del campo della battuta: le chele
+    // MONTATE adesso (la loro lunghezza). Il campo mostra la battuta gia'
+    // corretta per loro (loadStop) e setStop la salva con il tipo montato come
+    // riferimento: quello che si legge e' quello che si scrive. Provando
+    // un'altra lunghezza di chela, la battuta si riporta da qui.
     stopRefSim() {
-      const salvata = this.stopRow && this.stopRow.CLAW_LENGTH_REF != null ? Number(this.stopRow.CLAW_LENGTH_REF) : null;
-      if (toMicron(this.sim.stopBeyond) === toMicron(this.real.stopBeyond)) return salvata;
       return toMicron(this.real.viceClaw);
+    },
+
+    // il codice del tipo di chele con cui la battuta e' stata dichiarata, se
+    // non e' quello montato (altrimenti "")
+    stopFromOtherJaw() {
+      const r = this.stopRow;
+      if (!r || r.CLAW_JAW_REF == null || r.CLAW_JAW_REF == r.MOUNTED_JAW_ID) return "";
+      return r.REF_JAW_CODE ? String(r.REF_JAW_CODE).trim() : "#" + r.CLAW_JAW_REF;
     },
 
     // il codice del tipo di chele montato sulla morsa scelta (VICES.JAW_CODE)
@@ -891,7 +906,12 @@ export default {
           const row = (rows || []).find((x) => x.PIECE_ID == this.sel.pieceID) || null;
           // la riga serve anche a sapere se la compensazione ha dove scriversi
           this.stopRow = row;
-          this.real.stopBeyond = row ? Number(row.STOP_BEYOND_CLAW) / 1000 : null;
+          // (8/10, prompt 8) la battuta CORRETTA per le chele montate: e' quella
+          // che usano le viste, e quella che il salvataggio riscrive col tipo
+          // montato come riferimento
+          this.real.stopBeyond = row
+            ? stopCorrected(Number(row.STOP_BEYOND_CLAW), row.REF_CLAW_LENGTH, toMicron(this.real.viceClaw)) / 1000
+            : null;
           // COMP_PUSH e' NULL quando non c'e' compensazione: resta null, non
           // diventa zero — il campo deve restare vuoto, non mostrare "0"
           this.real.compPush = row && row.COMP_PUSH !== null && row.COMP_PUSH !== undefined

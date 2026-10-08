@@ -178,18 +178,20 @@ stato 30: la query delle quote di deposito (`COORDINATES_Z_MC` per l'ordine)
 non da' righe (`noData`) **oppure** fallisce (`dataError`). Tutti e due i casi
 alzano lo stesso 799, e il robot non si muove.
 
-Perche' una riga manca:
-- l'ordine ha un pezzo o un'attrezzatura che non agganciano niente (FIXTURE e
-  PIECE in join interno): la difesa contro un deposito a quota sbagliata;
-- dal 7/10 il **blocco chele**: l'ordine e' confermato con chele diverse da
-  quelle montate sulla morsa del suo pallet (`WORKORDER.JAW_ID` diverso da
-  `VICE.JAW_ID`, oppure nessuna morsa).
+Perche' una riga manca: l'ordine ha un pezzo o un'attrezzatura che non
+agganciano niente (FIXTURE e PIECE in join interno), la difesa contro un
+deposito a quota sbagliata.
 
-Testo nel pannello (`robot.alarm_799`, it ed en): «Deposito in macchina
-fermato: nessuna quota per questo ordine. Controlla pezzo e attrezzatura
-dell'ordine, e che le chele dell'ordine siano quelle montate sulla morsa.
-Poi RESET.» Il percorso del menu («Attrezzaggio › Chele morsa») lo aggiunge
-il pannello v3 quando la pagina esiste (parte 2).
+(8/10, prompt 8) Il **blocco chele** del 7/10 non sta piu' nella vista: tre
+query del PLC prendono «l'ordine piu' recente» da `COORDINATES_Z_MC` e, con
+la riga nascosta, avrebbero preso le quote di un altro ordine. Le chele si
+controllano nel backend, quando l'ordine passa a STATUS 3 (Play e rilancio
+rifiutati, `KO_ORDER_JAW_MISMATCH` e `KO_ORDER_VICE_NO_JAW`). Le chele quindi
+non danno piu' il 799.
+
+Testo nel pannello (`robot.alarm_799`, it ed en), di nuovo neutro:
+«Deposito in macchina fermato: nessuna quota per questo ordine. Controlla
+pezzo e attrezzatura dell'ordine. Poi RESET.»
 
 ## Se manca una chiave
 

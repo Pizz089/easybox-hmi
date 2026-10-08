@@ -22,12 +22,15 @@
 --     spazi tolti, minuscole, dalla prima "select"): versione nuova ->
 --     "conforme"; versione di prima (SELECT v.*) -> stampa la definizione
 --     trovata e ALTER; vista assente -> CREATE; altro -> FERMO.
+--   - (8/10) dopo CREATE o ALTER la definizione si RILEGGE e si confronta col
+--     codice atteso: se non e' quella, FERMO (prima "misure dal catalogo" si
+--     stampava senza ricontrollare).
 --
 -- ORDINE DI DEPLOY: DOPO vice-jaw.sql. Insieme agli script delle tre viste
 -- del PLC (vedi APPUNTI-CELLA, procedura del catalogo chele).
 --   cd D:\Prog\easybox\serverDati\scripts; sqlcmd -S .\SQLEXPRESS -E -d ADMG -y 0 -i vices-view.sql -o D:\Backup\vices-view_esito.txt; Get-Content D:\Backup\vices-view_esito.txt
 --
--- ROLLBACK: vice-jaw-views-rollback.sql (riporta SELECT v.*).
+-- RITORNO: vice-jaw-rollback.sql (riporta SELECT v.*).
 -- ===========================================================================
 SET NOCOUNT ON;
 
@@ -91,11 +94,14 @@ END
 DECLARE @a nvarchar(max) = (SELECT s FROM @t WHERE k = 1),
 		@o nvarchar(max) = (SELECT s FROM @t WHERE k = 2),
 		@n nvarchar(max) = (SELECT s FROM @t WHERE k = 3);
+-- il codice atteso, per rileggere la vista dopo (batch dopo)
+IF OBJECT_ID('tempdb..#attesa') IS NOT NULL DROP TABLE #attesa;
+CREATE TABLE #attesa (s nvarchar(max));
+INSERT INTO #attesa VALUES (@n);
 
 IF @def IS NULL AND OBJECT_ID('dbo.VICES') IS NULL
 BEGIN
 	EXEC (N'CREATE VIEW dbo.VICES AS ' + @nuova);
-	PRINT 'VICES: vista creata (misure della chela dal catalogo).';
 END
 ELSE IF @a = @n
 	PRINT 'VICES: gia'' con le misure dal catalogo, conforme, nessuna modifica.';
@@ -104,7 +110,6 @@ BEGIN
 	PRINT 'VICES: trovata la versione SELECT v.*. Definizione trovata, da tenere per il ritorno:';
 	SELECT @def AS definizione_trovata;
 	EXEC (N'ALTER VIEW dbo.VICES AS ' + @nuova);
-	PRINT 'VICES: misure della chela dal catalogo, colonne per esteso, JAW_ID e JAW_CODE.';
 END
 ELSE
 BEGIN
@@ -113,6 +118,28 @@ BEGIN
 END
 GO
 SET NOEXEC OFF;
+GO
+
+-- (8/10) la definizione si RILEGGE (stessa normalizzazione della guardia)
+IF OBJECT_ID('tempdb..#attesa') IS NOT NULL
+BEGIN
+	DECLARE @s nvarchar(max) = ISNULL(OBJECT_DEFINITION(OBJECT_ID('dbo.VICES')), N''), @i int, @j int;
+	WHILE CHARINDEX(N'--', @s) > 0
+	BEGIN
+		SET @i = CHARINDEX(N'--', @s);
+		SET @j = CHARINDEX(CHAR(10), @s, @i);
+		IF @j = 0 SET @j = LEN(@s) + 1;
+		SET @s = STUFF(@s, @i, @j - @i, N'');
+	END
+	SET @s = LOWER(REPLACE(REPLACE(REPLACE(REPLACE(@s, CHAR(13), N''), CHAR(10), N''), CHAR(9), N''), N' ', N''));
+	IF RIGHT(@s, 1) = N';' SET @s = LEFT(@s, LEN(@s) - 1);
+	IF CHARINDEX(N'select', @s) > 0 SET @s = SUBSTRING(@s, CHARINDEX(N'select', @s), LEN(@s));
+	IF @s = (SELECT s FROM #attesa)
+		PRINT 'VICES: riletta, misure della chela dal catalogo, colonne per esteso, JAW_ID e JAW_CODE.';
+	ELSE
+		PRINT 'FERMO: VICES riletta NON e'' la versione con le misure dal catalogo (vedi sopra).';
+	DROP TABLE #attesa;
+END
 GO
 
 -- VERIFICA (sola lettura): le misure della vista sono quelle del tipo montato

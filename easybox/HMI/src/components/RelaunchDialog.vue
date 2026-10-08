@@ -72,7 +72,7 @@ import { dataStored } from '../data.js'
 </template>
 
 <script>
-import { KO_CELL_RUNNING, KO_NOT_FOUND, KO_ORDER_NOT_FINISHED, KO_NO_RAW } from '../util/errorCodes';
+import { KO_CELL_RUNNING, KO_NOT_FOUND, KO_ORDER_NOT_FINISHED, KO_NO_RAW, KO_ORDER_VICE_NO_JAW, KO_ORDER_JAW_MISMATCH } from '../util/errorCodes';
 
 // codice del backend -> chiave del messaggio (anteprima e risposta del rilancio)
 const BLOCKED_KEYS = {
@@ -80,6 +80,9 @@ const BLOCKED_KEYS = {
     [KO_NOT_FOUND]: 'production.relaunch.notFound',
     [KO_ORDER_NOT_FINISHED]: 'production.relaunch.notFinished',
     [KO_NO_RAW]: 'production.relaunch.noRaw',
+    // (8/10, prompt 8) le chele, come al Play
+    [KO_ORDER_VICE_NO_JAW]: 'production.relaunch.' + KO_ORDER_VICE_NO_JAW,
+    [KO_ORDER_JAW_MISMATCH]: 'production.relaunch.' + KO_ORDER_JAW_MISMATCH,
 };
 
 export default {

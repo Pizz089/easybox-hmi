@@ -15,6 +15,24 @@ var templatePATH = '.';
 // (7/10) clawLengthSql tolta: la lunghezza della chela non si scrive piu'
 // sulla morsa ma sul tipo di chele montato (viceJawSql.intMin, updateVice).
 
+// (8/10, prompt 8) la riga di una morsa per updateVice e insertVice, campo per
+// campo: FAMILY e DESCR come stringhe SQL (apici raddoppiati, al massimo 200
+// caratteri, le colonne sono nchar(200)); STATUS, X, Y, Z, MAG, MAG_POS e
+// POS_PLANT come interi (vuoto o "null" = NULL). null se un campo numerico non
+// e' un intero: il chiamante risponde KO_BAD_INPUT.
+function rigaMorsa(q) {
+	const r = {
+		FAMILY: J.sqlStr(q.FAMILY === undefined ? '' : String(q.FAMILY), 200),
+		DESCR: J.sqlStr(q.DESCR === undefined ? '' : String(q.DESCR), 200),
+	};
+	for (const k of ['STATUS', 'X', 'Y', 'Z', 'MAG', 'MAG_POS', 'POS_PLANT']) {
+		const v = J.intSql(q[k]);
+		if (v === undefined) return null;
+		r[k] = v;
+	}
+	return r;
+}
+
 router.get('/show/:ID', (req, res) => {
 	sql.connect(DBf.configDB, function (err) {
         if (err) {
@@ -62,6 +80,11 @@ router.get('/updateVice', (req, res) => {
 			const pid = parseInt(req.query.PALLET_ID);
 			palletClause = `, PALLET_ID=${isNaN(pid) ? 'NULL' : pid}`;
 		}
+		// (8/10, prompt 8) OGNI CAMPO controllato, compreso l'ID della WHERE:
+		// prima andavano nella query grezzi, un apice in DESCR faceva perdere il
+		// salvataggio e "ID=1 OR 1=1" aggiornava tutte le morse
+		const campi = rigaMorsa(req.query);
+		if (!campi) { res.status(400).send("KO_BAD_INPUT"); return; }
 
 		// (7/10) LE TRE MISURE DELLA CHELA sono del tipo montato (VICE_JAW),
 		// le colonne della morsa restano com'erano alla migrazione e nessuno le
@@ -73,37 +96,55 @@ router.get('/updateVice', (req, res) => {
 		// una morsa con quel tipo KO_JAW_ACTIVE_ORDER, e in quei casi non si
 		// scrive niente, nemmeno il resto della riga.
 		const id = J.intMin(req.query.ID, 1);
+		if (id === null) { res.status(400).send("KO_BAD_INPUT"); return; }
 		const cl = J.intMin(req.query.CLAW_LENGTH, 1);
 		const zc = J.intMin(req.query.Z_CLAW, 1);
 		const zs = J.intMin(req.query.Z_SINK_CLAW, 0);
 		const n = v => (v === null ? 'NULL' : v);
-		let query = `SET NOCOUNT ON;
-					DECLARE @id int = ${n(id)}, @jaw int, @ocl int, @ozc int, @ozs int;
-					SELECT @jaw = JAW_ID FROM VICE WHERE ID = @id;
-					SELECT @ocl = CLAW_LENGTH, @ozc = Z_CLAW, @ozs = Z_SINK_CLAW FROM VICE_JAW WHERE ID = @jaw;
+		// (8/10) una transazione, con gli ordini letti WITH (UPDLOCK, HOLDLOCK)
+		// (viceJawSql.ordineAttivoSuTipo), e @@ROWCOUNT dopo ogni UPDATE: una
+		// morsa o un tipo che non c'e' piu' non rispondono OK e non scrivono
+		// l'audit
+		let query = `SET NOCOUNT ON; SET XACT_ABORT ON;
+					BEGIN TRAN;
+					DECLARE @id int = ${id}, @found int = 0, @jaw int, @ocl int, @ozc int, @ozs int;
+					SELECT @found = 1, @jaw = JAW_ID FROM VICE WITH (UPDLOCK, HOLDLOCK) WHERE ID = @id;
+					SELECT @ocl = CLAW_LENGTH, @ozc = Z_CLAW, @ozs = Z_SINK_CLAW FROM VICE_JAW WITH (UPDLOCK, HOLDLOCK) WHERE ID = @jaw;
 					DECLARE @cl int = ${n(cl)}, @zc int = ${n(zc)}, @zs int = ${n(zs)};
 					DECLARE @misure bit = CASE WHEN (@cl IS NOT NULL AND ISNULL(@ocl, -1) <> @cl)
 											 OR (@zc IS NOT NULL AND ISNULL(@ozc, -1) <> @zc)
 											 OR (@zs IS NOT NULL AND ISNULL(@ozs, -1) <> @zs) THEN 1 ELSE 0 END;
-					IF @misure = 1 AND @jaw IS NULL SELECT '${ERR.KO_NO_JAW}' AS ris;
-					ELSE IF @misure = 1 AND ${J.ordineAttivoSuTipo('@jaw')} SELECT '${ERR.KO_JAW_ACTIVE_ORDER}' AS ris;
+					DECLARE @ko varchar(40) = CASE
+						WHEN @found = 0 THEN '${ERR.KO_NOT_FOUND}'
+						WHEN @misure = 1 AND @jaw IS NULL THEN '${ERR.KO_NO_JAW}'
+						WHEN @misure = 1 AND ${J.ordineAttivoSuTipo('@jaw')} THEN '${ERR.KO_JAW_ACTIVE_ORDER}'
+						ELSE NULL END;
+					IF @ko IS NOT NULL BEGIN ROLLBACK; SELECT @ko AS ris; END
 					ELSE BEGIN
 						UPDATE VICE
-						 SET FAMILY='${req.query.FAMILY}',
-						 DESCR='${req.query.DESCR}',
-						 STATUS=${req.query.STATUS},
-						 X=${req.query.X},
-						 Y=${req.query.Y},
-						 Z=${req.query.Z},
-						 MAG=${req.query.MAG},
-						 MAG_POS=${req.query.MAG_POS},
-						 POS_PLANT=${req.query.POS_PLANT}${palletClause}
-						WHERE ID=${req.query.ID};
-						IF @misure = 1
+						 SET FAMILY=${campi.FAMILY},
+						 DESCR=${campi.DESCR},
+						 STATUS=${campi.STATUS},
+						 X=${campi.X},
+						 Y=${campi.Y},
+						 Z=${campi.Z},
+						 MAG=${campi.MAG},
+						 MAG_POS=${campi.MAG_POS},
+						 POS_PLANT=${campi.POS_PLANT}${palletClause}
+						WHERE ID=@id;
+						DECLARE @nv int = @@ROWCOUNT, @nj int = 1;
+						IF @nv > 0 AND @misure = 1
+						BEGIN
 							UPDATE VICE_JAW SET CLAW_LENGTH = ISNULL(@cl, CLAW_LENGTH), Z_CLAW = ISNULL(@zc, Z_CLAW),
 								Z_SINK_CLAW = ISNULL(@zs, Z_SINK_CLAW) WHERE ID = @jaw;
-						SELECT 'OK' AS ris, @misure AS misure, @jaw AS jaw, @ocl AS ocl, @ozc AS ozc, @ozs AS ozs,
-							   (SELECT RTRIM(CODE) FROM VICE_JAW WHERE ID = @jaw) AS code;
+							SET @nj = @@ROWCOUNT;
+						END
+						IF @nv = 0 OR @nj = 0 BEGIN ROLLBACK; SELECT '${ERR.KO_NOT_FOUND}' AS ris; END
+						ELSE BEGIN
+							COMMIT;
+							SELECT 'OK' AS ris, @misure AS misure, @jaw AS jaw, @ocl AS ocl, @ozc AS ozc, @ozs AS ozs,
+								   (SELECT RTRIM(CODE) FROM VICE_JAW WHERE ID = @jaw) AS code;
+						END
 					END`
 
 		var request = new sql.Request();
@@ -152,28 +193,38 @@ router.get('/insertVice', (req, res) => {
 			res.send(ERR.KO_NO_JAW);
 			return;
 		}
+		// (8/10, prompt 8) VICE.ID e' IDENTITY (in cella: controlli dell'8/10):
+		// l'INSERT con l'ID esplicito falliva gia' oggi. L'ID non si manda piu'
+		// e torna quello vero (SCOPE_IDENTITY: VICE ha solo un trigger AFTER
+		// UPDATE). Ogni campo controllato, come in updateVice.
+		const campi = rigaMorsa(req.query);
+		if (!campi) { res.status(400).send("KO_BAD_INPUT"); return; }
 		var request = new sql.Request();
-		let query = `INSERT INTO VICE
-					(ID, FAMILY, DESCR, STATUS, X, Y, Z, MAG, MAG_POS, POS_PLANT)
-					VALUES(${req.query.ID},
-					'${req.query.FAMILY}',
-					'${req.query.DESCR}',
-					${req.query.STATUS},
-					${req.query.X},
-					${req.query.Y},
-					${req.query.Z},
-					${req.query.MAG},
-					${req.query.MAG_POS},
-					${req.query.POS_PLANT});`
+		let query = `SET NOCOUNT ON;
+					INSERT INTO VICE
+					(FAMILY, DESCR, STATUS, X, Y, Z, MAG, MAG_POS, POS_PLANT)
+					VALUES(${campi.FAMILY},
+					${campi.DESCR},
+					${campi.STATUS},
+					${campi.X},
+					${campi.Y},
+					${campi.Z},
+					${campi.MAG},
+					${campi.MAG_POS},
+					${campi.POS_PLANT});
+					SELECT 'OK' AS ris, CAST(SCOPE_IDENTITY() AS int) AS ID;`
 					
         log.info('query ' + query);
         // query to the database and get the records
-        request.query(query, function (err, recordset) {
+        request.query(query, function (err, result) {
             if (err) {
                 log.error("Err query: " + err)
                 res.status(500).send("KO")
-            }else
-				res.send("OK")
+            }else {
+				const row = (result && result.recordset && result.recordset[0]) || {};
+				// (8/10) {"ris":"OK","ID":<nuovo>}: il pannello usa l'ID restituito
+				res.json({ ris: row.ris || 'OK', ID: row.ID == null ? null : Number(row.ID) });
+			}
         });
 	});
 })
@@ -188,7 +239,10 @@ router.delete('/:ID', (req, res) => {
         }
 		
 		var request = new sql.Request();
-        let query = `DELETE FROM VICE WHERE ID=${req.params.ID};`
+		// (8/10) l'ID controllato, come nelle altre rotte della morsa
+		const delId = J.intMin(req.params.ID, 1);
+		if (delId === null) { log.standard('delete VICE: ID non valido [' + req.params.ID + ']'); return; }
+        let query = `DELETE FROM VICE WHERE ID=${delId};`
 					
         log.info('query ' + query);
         // query to the database and get the records
@@ -209,8 +263,10 @@ router.delete('/:ID', (req, res) => {
 // La pagina di simulazione salva da qui. updateVice non andrebbe bene: scrive
 // OGNI colonna dai parametri della query, quindi una chiamata parziale
 // scriverebbe stringhe vuote sul resto della riga.
-// Il ROWCOUNT viene controllato: una UPDATE che non tocca righe non deve
-// rispondere OK, e' il difetto silenzioso che e' costato l'errore 799.
+// (8/10) Il ROWCOUNT si controlla davvero (prima lo diceva questo commento ma
+// la query non lo faceva: con un JAW_ID orfano rispondeva OK e scriveva
+// l'audit): una UPDATE che non tocca righe non risponde OK, e' il difetto
+// silenzioso che e' costato l'errore 799.
 // La modifica viene tracciata in LOG (auditLog): la conferma a video copre
 // l'intenzione, la riga di log rende la provenienza ricostruibile dopo.
 //
@@ -232,6 +288,7 @@ router.delete('/:ID', (req, res) => {
 // scrive sul tipo. Senza tipo montato -> KO_NO_JAW. Le misure di un tipo
 // valgono per TUTTE le morse che lo hanno montato: con un ordine a STATUS 3
 // sul pallet di una di queste -> KO_JAW_ACTIVE_ORDER, nessuna scrittura.
+// (8/10) In una transazione, con gli ordini letti WITH (UPDLOCK, HOLDLOCK).
 // ===========================================================================
 function salvaMisuraChela(req, res, m) {
 	const id  = parseInt(req.query.ID, 10);
@@ -249,18 +306,23 @@ function salvaMisuraChela(req, res, m) {
 			res.status(500).send("KO");
 			return;
 		}
-		let query = `SET NOCOUNT ON;
-					DECLARE @found int = 0, @jaw int, @fam nvarchar(100);
-					SELECT @found = 1, @jaw = JAW_ID, @fam = RTRIM(FAMILY) FROM VICE WHERE ID=${id};
-					IF @found = 0 SELECT '${ERR.KO_NOT_FOUND}' AS ris;
-					ELSE IF @jaw IS NULL SELECT '${ERR.KO_NO_JAW}' AS ris;
-					ELSE IF ${J.ordineAttivoSuTipo('@jaw')} SELECT '${ERR.KO_JAW_ACTIVE_ORDER}' AS ris;
+		let query = `SET NOCOUNT ON; SET XACT_ABORT ON;
+					BEGIN TRAN;
+					DECLARE @found int = 0, @jaw int, @fam nvarchar(200);
+					SELECT @found = 1, @jaw = JAW_ID, @fam = RTRIM(FAMILY) FROM VICE WITH (UPDLOCK, HOLDLOCK) WHERE ID=${id};
+					IF @found = 0 BEGIN ROLLBACK; SELECT '${ERR.KO_NOT_FOUND}' AS ris; END
+					ELSE IF @jaw IS NULL BEGIN ROLLBACK; SELECT '${ERR.KO_NO_JAW}' AS ris; END
+					ELSE IF ${J.ordineAttivoSuTipo('@jaw')} BEGIN ROLLBACK; SELECT '${ERR.KO_JAW_ACTIVE_ORDER}' AS ris; END
 					ELSE BEGIN
-						DECLARE @old int = (SELECT ${m.colonna} FROM VICE_JAW WHERE ID=@jaw);
+						DECLARE @old int = (SELECT ${m.colonna} FROM VICE_JAW WITH (UPDLOCK, HOLDLOCK) WHERE ID=@jaw);
 						UPDATE VICE_JAW SET ${m.colonna}=${val} WHERE ID=@jaw;
-						SELECT 'OK' AS ris, @old AS old, @fam AS fam, @jaw AS jaw,
-							   (SELECT RTRIM(CODE) FROM VICE_JAW WHERE ID=@jaw) AS code,
-							   (SELECT COUNT(*) FROM VICE WHERE JAW_ID=@jaw) AS montate;
+						IF @@ROWCOUNT = 0 BEGIN ROLLBACK; SELECT '${ERR.KO_NOT_FOUND}' AS ris; END
+						ELSE BEGIN
+							COMMIT;
+							SELECT 'OK' AS ris, @old AS old, @fam AS fam, @jaw AS jaw,
+								   (SELECT RTRIM(CODE) FROM VICE_JAW WHERE ID=@jaw) AS code,
+								   (SELECT COUNT(*) FROM VICE WHERE JAW_ID=@jaw) AS montate;
+						END
 					END`;
 		var request = new sql.Request();
 		log.info('query ' + query);
@@ -335,13 +397,19 @@ router.get('/stops/:viceID', (req, res) => {
 			return;
 		}
 		// (6/10) anche Z_PUSH, la quota Z della spinta (NULL = alla quota di presa)
-		// (7/10) anche CLAW_LENGTH_REF, la chela con cui la battuta e' stata
-		// dichiarata: il pannello mostra la battuta corretta per quelle montate
-		let query = `select pv.VICE_ID, pv.PIECE_ID, pv.STOP_BEYOND_CLAW, pv.COMP_PUSH, pv.Z_PUSH, pv.CLAW_LENGTH_REF,
+		// (8/10) anche il TIPO di chele con cui la battuta e' stata dichiarata
+		// (CLAW_JAW_REF) e la sua lunghezza adesso (REF_CLAW_LENGTH), piu' il
+		// tipo montato sulla morsa (MOUNTED_JAW_ID): il pannello mostra la
+		// battuta corretta per le chele montate, come le viste
+		let query = `select pv.VICE_ID, pv.PIECE_ID, pv.STOP_BEYOND_CLAW, pv.COMP_PUSH, pv.Z_PUSH,
+							pv.CLAW_JAW_REF, jr.CLAW_LENGTH as REF_CLAW_LENGTH, rtrim(jr.CODE) as REF_JAW_CODE,
+							v.JAW_ID as MOUNTED_JAW_ID,
 							rtrim(p.FAMILY) as PIECE_FAMILY, rtrim(p.DESCR) as PIECE_DESCR,
 							p.X as PIECE_X, p.Y as PIECE_Y, p.PUSH_TO_STOP
 					 from PIECE_ON_VICE pv
 					 inner join PIECE p on p.ID = pv.PIECE_ID
+					 left join VICE v on v.ID = pv.VICE_ID
+					 left join VICE_JAW jr on jr.ID = pv.CLAW_JAW_REF
 					 where pv.VICE_ID = ${viceID}
 					 order by p.FAMILY;`;
 		var request = new sql.Request();
@@ -374,18 +442,21 @@ router.get('/setStop', (req, res) => {
 			res.status(500).send("KO");
 			return;
 		}
-		// (7/10) la battuta si dichiara con le chele montate ADESSO: la loro
-		// lunghezza va in CLAW_LENGTH_REF, e le viste correggono la battuta se
-		// poi si montano chele diverse. Chele non misurate o nessun tipo: NULL,
-		// nessuna correzione (come prima).
+		// (7/10) la battuta si dichiara con le chele montate ADESSO. (8/10) Il
+		// riferimento e' il TIPO montato (CLAW_JAW_REF), non la sua lunghezza:
+		// le viste correggono la battuta se poi si monta un tipo diverso, e la
+		// fanno seguire alla misura se si corregge quella del tipo. Nessun tipo
+		// montato: NULL, nessuna correzione (come prima). Il valore che arriva e'
+		// quello che il pannello mostra, cioe' gia' riferito alle chele montate.
 		let query = `SET NOCOUNT ON;
-					DECLARE @ref int = (SELECT j.CLAW_LENGTH FROM VICE v JOIN VICE_JAW j ON j.ID = v.JAW_ID WHERE v.ID=${viceID});
-					UPDATE PIECE_ON_VICE SET STOP_BEYOND_CLAW=${stop}, CLAW_LENGTH_REF=@ref
+					DECLARE @ref int = (SELECT v.JAW_ID FROM VICE v WHERE v.ID=${viceID});
+					DECLARE @len int = (SELECT j.CLAW_LENGTH FROM VICE_JAW j WHERE j.ID = @ref);
+					UPDATE PIECE_ON_VICE SET STOP_BEYOND_CLAW=${stop}, CLAW_JAW_REF=@ref
 					 WHERE VICE_ID=${viceID} AND PIECE_ID=${pieceID};
 					IF @@ROWCOUNT = 0
-						INSERT INTO PIECE_ON_VICE (VICE_ID, PIECE_ID, STOP_BEYOND_CLAW, CLAW_LENGTH_REF)
+						INSERT INTO PIECE_ON_VICE (VICE_ID, PIECE_ID, STOP_BEYOND_CLAW, CLAW_JAW_REF)
 						VALUES (${viceID}, ${pieceID}, ${stop}, @ref);
-					SELECT @ref AS ref;`;
+					SELECT @ref AS ref, @len AS len, (SELECT RTRIM(CODE) FROM VICE_JAW WHERE ID = @ref) AS code;`;
 		var request = new sql.Request();
 		log.info('query ' + query);
 		request.query(query, function (err, result) {
@@ -393,10 +464,11 @@ router.get('/setStop', (req, res) => {
 				log.error("Err query: " + err);
 				res.status(500).send("KO");
 			} else {
-				const ref = result && result.recordset && result.recordset[0] ? result.recordset[0].ref : null;
+				const r0 = (result && result.recordset && result.recordset[0]) || {};
 				audit.audit('Morsa ID ' + viceID + ', pezzo ID ' + pieceID
 					+ ': appoggio dichiarato a ' + stop + ' um oltre la fine della chela'
-					+ (ref == null ? ' (chele non misurate)' : ' (chele da ' + ref + ' um)'),
+					+ (r0.ref == null ? ' (nessun tipo di chele montato)' : ' (chele ' + r0.code + ', tipo ID ' + r0.ref
+						+ (r0.len == null ? ', non misurate' : ', ' + r0.len + ' um') + ')'),
 					audit.SRC_PUSH_SIM, 'PIECE_ON_VICE:' + viceID + ':' + pieceID);
 				res.send("OK");
 			}

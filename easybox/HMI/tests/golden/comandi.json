@@ -9726,7 +9726,7 @@
           "etichetta": "SMONTA",
           "abilitato": true,
           "effetti": [
-           "fetch GET api/conf/vice/updateVice?ID=911&FAMILY=MORSA-PROVA&DESCR=morsa+prova+A&STATUS=2&X=150000&Y=100000&Z=80000&Z_CLAW=5000&Z_SINK_CLAW=1000&MAG=1&MAG_POS=1&POS_PLANT=0&PALLET_ID=",
+           "fetch GET api/conf/vice/updateVice?ID=911&FAMILY=MORSA-PROVA&DESCR=morsa+prova+A&STATUS=2&X=150000&Y=100000&Z=80000&MAG=1&MAG_POS=1&POS_PLANT=0&PALLET_ID=",
            "fetch GET api/conf/pallet/show/all",
            "fetch GET api/conf/vice/show/all",
            "fetch GET api/conf/fixture/show/all",
@@ -9756,7 +9756,7 @@
           "etichetta": "SMONTA",
           "abilitato": true,
           "effetti": [
-           "fetch GET api/conf/vice/updateVice?ID=912&FAMILY=MORSA-PROVA&DESCR=morsa+prova+B&STATUS=2&X=150000&Y=100000&Z=80000&Z_CLAW=5000&Z_SINK_CLAW=1000&MAG=0&MAG_POS=0&POS_PLANT=0&PALLET_ID=",
+           "fetch GET api/conf/vice/updateVice?ID=912&FAMILY=MORSA-PROVA&DESCR=morsa+prova+B&STATUS=2&X=150000&Y=100000&Z=80000&MAG=0&MAG_POS=0&POS_PLANT=0&PALLET_ID=",
            "fetch GET api/conf/pallet/show/all",
            "fetch GET api/conf/vice/show/all",
            "fetch GET api/conf/fixture/show/all",
@@ -9787,7 +9787,7 @@
           "etichetta": "SMONTA",
           "abilitato": true,
           "effetti": [
-           "fetch GET api/conf/vice/updateVice?ID=911&FAMILY=MORSA-PROVA&DESCR=morsa+prova+A&STATUS=2&X=150000&Y=100000&Z=80000&Z_CLAW=5000&Z_SINK_CLAW=1000&MAG=1&MAG_POS=1&POS_PLANT=0&PALLET_ID=",
+           "fetch GET api/conf/vice/updateVice?ID=911&FAMILY=MORSA-PROVA&DESCR=morsa+prova+A&STATUS=2&X=150000&Y=100000&Z=80000&MAG=1&MAG_POS=1&POS_PLANT=0&PALLET_ID=",
            "fetch GET api/conf/pallet/show/all",
            "fetch GET api/conf/vice/show/all",
            "fetch GET api/conf/fixture/show/all",
@@ -9817,7 +9817,7 @@
           "etichetta": "SMONTA",
           "abilitato": true,
           "effetti": [
-           "fetch GET api/conf/vice/updateVice?ID=912&FAMILY=MORSA-PROVA&DESCR=morsa+prova+B&STATUS=2&X=150000&Y=100000&Z=80000&Z_CLAW=5000&Z_SINK_CLAW=1000&MAG=0&MAG_POS=0&POS_PLANT=0&PALLET_ID=",
+           "fetch GET api/conf/vice/updateVice?ID=912&FAMILY=MORSA-PROVA&DESCR=morsa+prova+B&STATUS=2&X=150000&Y=100000&Z=80000&MAG=0&MAG_POS=0&POS_PLANT=0&PALLET_ID=",
            "fetch GET api/conf/pallet/show/all",
            "fetch GET api/conf/vice/show/all",
            "fetch GET api/conf/fixture/show/all",
@@ -9848,7 +9848,7 @@
           "etichetta": "SMONTA",
           "abilitato": true,
           "effetti": [
-           "fetch GET api/conf/vice/updateVice?ID=911&FAMILY=MORSA-PROVA&DESCR=morsa+prova+A&STATUS=2&X=150000&Y=100000&Z=80000&Z_CLAW=5000&Z_SINK_CLAW=1000&MAG=1&MAG_POS=1&POS_PLANT=0&PALLET_ID=",
+           "fetch GET api/conf/vice/updateVice?ID=911&FAMILY=MORSA-PROVA&DESCR=morsa+prova+A&STATUS=2&X=150000&Y=100000&Z=80000&MAG=1&MAG_POS=1&POS_PLANT=0&PALLET_ID=",
            "fetch GET api/conf/pallet/show/all",
            "fetch GET api/conf/vice/show/all",
            "fetch GET api/conf/fixture/show/all",
@@ -9878,7 +9878,7 @@
           "etichetta": "SMONTA",
           "abilitato": true,
           "effetti": [
-           "fetch GET api/conf/vice/updateVice?ID=912&FAMILY=MORSA-PROVA&DESCR=morsa+prova+B&STATUS=2&X=150000&Y=100000&Z=80000&Z_CLAW=5000&Z_SINK_CLAW=1000&MAG=0&MAG_POS=0&POS_PLANT=0&PALLET_ID=",
+           "fetch GET api/conf/vice/updateVice?ID=912&FAMILY=MORSA-PROVA&DESCR=morsa+prova+B&STATUS=2&X=150000&Y=100000&Z=80000&MAG=0&MAG_POS=0&POS_PLANT=0&PALLET_ID=",
            "fetch GET api/conf/pallet/show/all",
            "fetch GET api/conf/vice/show/all",
            "fetch GET api/conf/fixture/show/all",
@@ -9915,7 +9915,7 @@
           "etichetta": "SMONTA",
           "abilitato": true,
           "effetti": [
-           "fetch GET api/conf/vice/updateVice?ID=912&FAMILY=MORSA-PROVA&DESCR=morsa+prova+B&STATUS=2&X=150000&Y=100000&Z=80000&Z_CLAW=5000&Z_SINK_CLAW=1000&MAG=0&MAG_POS=0&POS_PLANT=0&PALLET_ID=",
+           "fetch GET api/conf/vice/updateVice?ID=912&FAMILY=MORSA-PROVA&DESCR=morsa+prova+B&STATUS=2&X=150000&Y=100000&Z=80000&MAG=0&MAG_POS=0&POS_PLANT=0&PALLET_ID=",
            "fetch GET api/conf/pallet/show/all",
            "fetch GET api/conf/vice/show/all",
            "fetch GET api/conf/fixture/show/all",
@@ -9957,7 +9957,7 @@
           "etichetta": "SMONTA",
           "abilitato": true,
           "effetti": [
-           "fetch GET api/conf/vice/updateVice?ID=912&FAMILY=MORSA-PROVA&DESCR=morsa+prova+B&STATUS=2&X=150000&Y=100000&Z=80000&Z_CLAW=5000&Z_SINK_CLAW=1000&MAG=0&MAG_POS=0&POS_PLANT=0&PALLET_ID=",
+           "fetch GET api/conf/vice/updateVice?ID=912&FAMILY=MORSA-PROVA&DESCR=morsa+prova+B&STATUS=2&X=150000&Y=100000&Z=80000&MAG=0&MAG_POS=0&POS_PLANT=0&PALLET_ID=",
            "fetch GET api/conf/pallet/show/all",
            "fetch GET api/conf/vice/show/all",
            "fetch GET api/conf/fixture/show/all",
@@ -9992,7 +9992,7 @@
           "etichetta": "SMONTA",
           "abilitato": true,
           "effetti": [
-           "fetch GET api/conf/vice/updateVice?ID=911&FAMILY=MORSA-PROVA&DESCR=morsa+prova+A&STATUS=2&X=150000&Y=100000&Z=80000&Z_CLAW=5000&Z_SINK_CLAW=1000&MAG=1&MAG_POS=1&POS_PLANT=0&PALLET_ID=",
+           "fetch GET api/conf/vice/updateVice?ID=911&FAMILY=MORSA-PROVA&DESCR=morsa+prova+A&STATUS=2&X=150000&Y=100000&Z=80000&MAG=1&MAG_POS=1&POS_PLANT=0&PALLET_ID=",
            "fetch GET api/conf/pallet/show/all",
            "fetch GET api/conf/vice/show/all",
            "fetch GET api/conf/fixture/show/all",
@@ -10022,7 +10022,7 @@
           "etichetta": "SMONTA",
           "abilitato": true,
           "effetti": [
-           "fetch GET api/conf/vice/updateVice?ID=912&FAMILY=MORSA-PROVA&DESCR=morsa+prova+B&STATUS=2&X=150000&Y=100000&Z=80000&Z_CLAW=5000&Z_SINK_CLAW=1000&MAG=0&MAG_POS=0&POS_PLANT=0&PALLET_ID=",
+           "fetch GET api/conf/vice/updateVice?ID=912&FAMILY=MORSA-PROVA&DESCR=morsa+prova+B&STATUS=2&X=150000&Y=100000&Z=80000&MAG=0&MAG_POS=0&POS_PLANT=0&PALLET_ID=",
            "fetch GET api/conf/pallet/show/all",
            "fetch GET api/conf/vice/show/all",
            "fetch GET api/conf/fixture/show/all",
@@ -10053,7 +10053,7 @@
           "etichetta": "SMONTA",
           "abilitato": true,
           "effetti": [
-           "fetch GET api/conf/vice/updateVice?ID=911&FAMILY=MORSA-PROVA&DESCR=morsa+prova+A&STATUS=2&X=150000&Y=100000&Z=80000&Z_CLAW=5000&Z_SINK_CLAW=1000&MAG=1&MAG_POS=1&POS_PLANT=0&PALLET_ID=",
+           "fetch GET api/conf/vice/updateVice?ID=911&FAMILY=MORSA-PROVA&DESCR=morsa+prova+A&STATUS=2&X=150000&Y=100000&Z=80000&MAG=1&MAG_POS=1&POS_PLANT=0&PALLET_ID=",
            "fetch GET api/conf/pallet/show/all",
            "fetch GET api/conf/vice/show/all",
            "fetch GET api/conf/fixture/show/all",
@@ -10083,7 +10083,7 @@
           "etichetta": "SMONTA",
           "abilitato": true,
           "effetti": [
-           "fetch GET api/conf/vice/updateVice?ID=912&FAMILY=MORSA-PROVA&DESCR=morsa+prova+B&STATUS=2&X=150000&Y=100000&Z=80000&Z_CLAW=5000&Z_SINK_CLAW=1000&MAG=0&MAG_POS=0&POS_PLANT=0&PALLET_ID=",
+           "fetch GET api/conf/vice/updateVice?ID=912&FAMILY=MORSA-PROVA&DESCR=morsa+prova+B&STATUS=2&X=150000&Y=100000&Z=80000&MAG=0&MAG_POS=0&POS_PLANT=0&PALLET_ID=",
            "fetch GET api/conf/pallet/show/all",
            "fetch GET api/conf/vice/show/all",
            "fetch GET api/conf/fixture/show/all",
@@ -10114,7 +10114,7 @@
           "etichetta": "SMONTA",
           "abilitato": true,
           "effetti": [
-           "fetch GET api/conf/vice/updateVice?ID=911&FAMILY=MORSA-PROVA&DESCR=morsa+prova+A&STATUS=2&X=150000&Y=100000&Z=80000&Z_CLAW=5000&Z_SINK_CLAW=1000&MAG=1&MAG_POS=1&POS_PLANT=0&PALLET_ID=",
+           "fetch GET api/conf/vice/updateVice?ID=911&FAMILY=MORSA-PROVA&DESCR=morsa+prova+A&STATUS=2&X=150000&Y=100000&Z=80000&MAG=1&MAG_POS=1&POS_PLANT=0&PALLET_ID=",
            "fetch GET api/conf/pallet/show/all",
            "fetch GET api/conf/vice/show/all",
            "fetch GET api/conf/fixture/show/all",
@@ -10144,7 +10144,7 @@
           "etichetta": "SMONTA",
           "abilitato": true,
           "effetti": [
-           "fetch GET api/conf/vice/updateVice?ID=912&FAMILY=MORSA-PROVA&DESCR=morsa+prova+B&STATUS=2&X=150000&Y=100000&Z=80000&Z_CLAW=5000&Z_SINK_CLAW=1000&MAG=0&MAG_POS=0&POS_PLANT=0&PALLET_ID=",
+           "fetch GET api/conf/vice/updateVice?ID=912&FAMILY=MORSA-PROVA&DESCR=morsa+prova+B&STATUS=2&X=150000&Y=100000&Z=80000&MAG=0&MAG_POS=0&POS_PLANT=0&PALLET_ID=",
            "fetch GET api/conf/pallet/show/all",
            "fetch GET api/conf/vice/show/all",
            "fetch GET api/conf/fixture/show/all",
@@ -10175,7 +10175,7 @@
           "etichetta": "SMONTA",
           "abilitato": true,
           "effetti": [
-           "fetch GET api/conf/vice/updateVice?ID=911&FAMILY=MORSA-PROVA&DESCR=morsa+prova+A&STATUS=2&X=150000&Y=100000&Z=80000&Z_CLAW=5000&Z_SINK_CLAW=1000&MAG=1&MAG_POS=1&POS_PLANT=0&PALLET_ID=",
+           "fetch GET api/conf/vice/updateVice?ID=911&FAMILY=MORSA-PROVA&DESCR=morsa+prova+A&STATUS=2&X=150000&Y=100000&Z=80000&MAG=1&MAG_POS=1&POS_PLANT=0&PALLET_ID=",
            "fetch GET api/conf/pallet/show/all",
            "fetch GET api/conf/vice/show/all",
            "fetch GET api/conf/fixture/show/all",
@@ -10205,7 +10205,7 @@
           "etichetta": "SMONTA",
           "abilitato": true,
           "effetti": [
-           "fetch GET api/conf/vice/updateVice?ID=912&FAMILY=MORSA-PROVA&DESCR=morsa+prova+B&STATUS=2&X=150000&Y=100000&Z=80000&Z_CLAW=5000&Z_SINK_CLAW=1000&MAG=0&MAG_POS=0&POS_PLANT=0&PALLET_ID=",
+           "fetch GET api/conf/vice/updateVice?ID=912&FAMILY=MORSA-PROVA&DESCR=morsa+prova+B&STATUS=2&X=150000&Y=100000&Z=80000&MAG=0&MAG_POS=0&POS_PLANT=0&PALLET_ID=",
            "fetch GET api/conf/pallet/show/all",
            "fetch GET api/conf/vice/show/all",
            "fetch GET api/conf/fixture/show/all",
@@ -10236,7 +10236,7 @@
           "etichetta": "SMONTA",
           "abilitato": true,
           "effetti": [
-           "fetch GET api/conf/vice/updateVice?ID=911&FAMILY=MORSA-PROVA&DESCR=morsa+prova+A&STATUS=2&X=150000&Y=100000&Z=80000&Z_CLAW=5000&Z_SINK_CLAW=1000&MAG=1&MAG_POS=1&POS_PLANT=0&PALLET_ID=",
+           "fetch GET api/conf/vice/updateVice?ID=911&FAMILY=MORSA-PROVA&DESCR=morsa+prova+A&STATUS=2&X=150000&Y=100000&Z=80000&MAG=1&MAG_POS=1&POS_PLANT=0&PALLET_ID=",
            "fetch GET api/conf/pallet/show/all",
            "fetch GET api/conf/vice/show/all",
            "fetch GET api/conf/fixture/show/all",
@@ -10266,7 +10266,7 @@
           "etichetta": "SMONTA",
           "abilitato": true,
           "effetti": [
-           "fetch GET api/conf/vice/updateVice?ID=912&FAMILY=MORSA-PROVA&DESCR=morsa+prova+B&STATUS=2&X=150000&Y=100000&Z=80000&Z_CLAW=5000&Z_SINK_CLAW=1000&MAG=0&MAG_POS=0&POS_PLANT=0&PALLET_ID=",
+           "fetch GET api/conf/vice/updateVice?ID=912&FAMILY=MORSA-PROVA&DESCR=morsa+prova+B&STATUS=2&X=150000&Y=100000&Z=80000&MAG=0&MAG_POS=0&POS_PLANT=0&PALLET_ID=",
            "fetch GET api/conf/pallet/show/all",
            "fetch GET api/conf/vice/show/all",
            "fetch GET api/conf/fixture/show/all",
@@ -10297,7 +10297,7 @@
           "etichetta": "SMONTA",
           "abilitato": true,
           "effetti": [
-           "fetch GET api/conf/vice/updateVice?ID=911&FAMILY=MORSA-PROVA&DESCR=morsa+prova+A&STATUS=2&X=150000&Y=100000&Z=80000&Z_CLAW=5000&Z_SINK_CLAW=1000&MAG=1&MAG_POS=1&POS_PLANT=0&PALLET_ID=",
+           "fetch GET api/conf/vice/updateVice?ID=911&FAMILY=MORSA-PROVA&DESCR=morsa+prova+A&STATUS=2&X=150000&Y=100000&Z=80000&MAG=1&MAG_POS=1&POS_PLANT=0&PALLET_ID=",
            "fetch GET api/conf/pallet/show/all",
            "fetch GET api/conf/vice/show/all",
            "fetch GET api/conf/fixture/show/all",
@@ -10327,7 +10327,7 @@
           "etichetta": "SMONTA",
           "abilitato": true,
           "effetti": [
-           "fetch GET api/conf/vice/updateVice?ID=912&FAMILY=MORSA-PROVA&DESCR=morsa+prova+B&STATUS=2&X=150000&Y=100000&Z=80000&Z_CLAW=5000&Z_SINK_CLAW=1000&MAG=0&MAG_POS=0&POS_PLANT=0&PALLET_ID=",
+           "fetch GET api/conf/vice/updateVice?ID=912&FAMILY=MORSA-PROVA&DESCR=morsa+prova+B&STATUS=2&X=150000&Y=100000&Z=80000&MAG=0&MAG_POS=0&POS_PLANT=0&PALLET_ID=",
            "fetch GET api/conf/pallet/show/all",
            "fetch GET api/conf/vice/show/all",
            "fetch GET api/conf/fixture/show/all",
@@ -10842,7 +10842,7 @@
        {
         "abilitato": true,
         "effetti": [
-         "fetch GET api/conf/vice/updateVice?ID=911&FAMILY=MORSA-PROVA&DESCR=morsa+prova+A&STATUS=2&X=150000&Y=100000&Z=80000&Z_CLAW=5000&Z_SINK_CLAW=1000&MAG=1&MAG_POS=1&POS_PLANT=0&PALLET_ID=",
+         "fetch GET api/conf/vice/updateVice?ID=911&FAMILY=MORSA-PROVA&DESCR=morsa+prova+A&STATUS=2&X=150000&Y=100000&Z=80000&MAG=1&MAG_POS=1&POS_PLANT=0&PALLET_ID=",
          "fetch GET api/conf/pallet/show/all",
          "fetch GET api/conf/vice/show/all",
          "fetch GET api/conf/fixture/show/all",
@@ -12365,7 +12365,7 @@
       "nuovo, 905 morsa 913 + geometria 924 liv2": {
        "abilitato": true,
        "effetti": [
-        "fetch GET api/conf/vice/updateVice?ID=913&FAMILY=MORSA-PROVA&DESCR=morsa+prova+C&STATUS=2&X=150000&Y=100000&Z=80000&Z_CLAW=5000&Z_SINK_CLAW=1000&MAG=1&MAG_POS=2&POS_PLANT=0&PALLET_ID=905",
+        "fetch GET api/conf/vice/updateVice?ID=913&FAMILY=MORSA-PROVA&DESCR=morsa+prova+C&STATUS=2&X=150000&Y=100000&Z=80000&MAG=1&MAG_POS=2&POS_PLANT=0&PALLET_ID=905",
         "fetch GET api/conf/fixture/updateFixtureOnPallet?PALLET_ID=905&FIXTURE_ID=924&POS_X=10&POS_Y=20&POS_Z=0&POS_X_CORR=0&POS_Y_CORR=0&POS_Z_CORR=0&POS_X_ROT=0&POS_Y_ROT=0&POS_Z_ROT=90",
         "router \"/conf/Attrezzaggi\""
        ],
@@ -12374,7 +12374,7 @@
       "nuovo, 905 morsa 913 + geometria 924 liv0": {
        "abilitato": true,
        "effetti": [
-        "fetch GET api/conf/vice/updateVice?ID=913&FAMILY=MORSA-PROVA&DESCR=morsa+prova+C&STATUS=2&X=150000&Y=100000&Z=80000&Z_CLAW=5000&Z_SINK_CLAW=1000&MAG=1&MAG_POS=2&POS_PLANT=0&PALLET_ID=905",
+        "fetch GET api/conf/vice/updateVice?ID=913&FAMILY=MORSA-PROVA&DESCR=morsa+prova+C&STATUS=2&X=150000&Y=100000&Z=80000&MAG=1&MAG_POS=2&POS_PLANT=0&PALLET_ID=905",
         "fetch GET api/conf/fixture/updateFixtureOnPallet?PALLET_ID=905&FIXTURE_ID=924&POS_X=10&POS_Y=20&POS_Z=0&POS_X_CORR=0&POS_Y_CORR=0&POS_Z_CORR=0&POS_X_ROT=0&POS_Y_ROT=0&POS_Z_ROT=90",
         "router \"/conf/Attrezzaggi\""
        ],
@@ -12393,8 +12393,8 @@
        "effetti": [
         "fetch GET api/conf/vice/show/all",
         "fetch GET api/conf/fixture/showFixtureOnPallet/all",
-        "fetch GET api/conf/vice/updateVice?ID=911&FAMILY=MORSA-PROVA&DESCR=morsa+prova+A&STATUS=2&X=150000&Y=100000&Z=80000&Z_CLAW=5000&Z_SINK_CLAW=1000&MAG=1&MAG_POS=1&POS_PLANT=0&PALLET_ID=",
-        "fetch GET api/conf/vice/updateVice?ID=913&FAMILY=MORSA-PROVA&DESCR=morsa+prova+C&STATUS=2&X=150000&Y=100000&Z=80000&Z_CLAW=5000&Z_SINK_CLAW=1000&MAG=1&MAG_POS=2&POS_PLANT=0&PALLET_ID=901",
+        "fetch GET api/conf/vice/updateVice?ID=911&FAMILY=MORSA-PROVA&DESCR=morsa+prova+A&STATUS=2&X=150000&Y=100000&Z=80000&MAG=1&MAG_POS=1&POS_PLANT=0&PALLET_ID=",
+        "fetch GET api/conf/vice/updateVice?ID=913&FAMILY=MORSA-PROVA&DESCR=morsa+prova+C&STATUS=2&X=150000&Y=100000&Z=80000&MAG=1&MAG_POS=2&POS_PLANT=0&PALLET_ID=901",
         "fetch GET api/conf/fixture/updateFixtureOnPallet?PALLET_ID=901&FIXTURE_ID=921&POS_X=10&POS_Y=20&POS_Z=0&POS_X_CORR=0.1&POS_Y_CORR=0&POS_Z_CORR=0&POS_X_ROT=0&POS_Y_ROT=0&POS_Z_ROT=90",
         "router \"/conf/Attrezzaggi\""
        ],
@@ -12405,7 +12405,7 @@
        "effetti": [
         "fetch GET api/conf/vice/show/all",
         "fetch GET api/conf/fixture/showFixtureOnPallet/all",
-        "fetch GET api/conf/vice/updateVice?ID=911&FAMILY=MORSA-PROVA&DESCR=morsa+prova+A&STATUS=2&X=150000&Y=100000&Z=80000&Z_CLAW=5000&Z_SINK_CLAW=1000&MAG=1&MAG_POS=1&POS_PLANT=0&PALLET_ID=",
+        "fetch GET api/conf/vice/updateVice?ID=911&FAMILY=MORSA-PROVA&DESCR=morsa+prova+A&STATUS=2&X=150000&Y=100000&Z=80000&MAG=1&MAG_POS=1&POS_PLANT=0&PALLET_ID=",
         "fetch DELETE api/conf/fixture/fixtureOnPallet/901/921",
         "fetch GET api/conf/fixture/updateFixtureOnPallet?PALLET_ID=901&FIXTURE_ID=924&POS_X=10&POS_Y=20&POS_Z=0&POS_X_CORR=0&POS_Y_CORR=0&POS_Z_CORR=0&POS_X_ROT=0&POS_Y_ROT=0&POS_Z_ROT=90",
         "router \"/conf/Attrezzaggi\""
@@ -13922,18 +13922,26 @@
       "nuova morsa": {
        "abilitato": true,
        "effetti": [
-        "fetch GET api/conf/vice/insertVice?ID=0&FAMILY=MORSA-PROVA&DESCR=morsa+nuova&STATUS=0&X=150&Y=100&Z=80&CLAW_LENGTH=40000&Z_CLAW=0&Z_SINK_CLAW=0&MAG=0&MAG_POS=0&POS_PLANT=0",
+        "fetch GET api/conf/vice/insertVice?FAMILY=MORSA-PROVA&DESCR=morsa+nuova&STATUS=0&X=150&Y=100&Z=80&CLAW_LENGTH=40000&Z_CLAW=0&Z_SINK_CLAW=0&MAG=0&MAG_POS=0&POS_PLANT=0",
         "router \"/conf/Vices\""
        ],
-       "stato": []
+       "stato": [
+        "dataStored.alert.title = \"INFO\"",
+        "dataStored.alert.desc = \"vice.created {\\\"id\\\":912}\"",
+        "dataStored.alert.type = \"message\""
+       ]
       },
       "nuova morsa da Attrezzaggio": {
        "abilitato": true,
        "effetti": [
-        "fetch GET api/conf/vice/insertVice?ID=0&FAMILY=MORSA-PROVA&DESCR=morsa+nuova&STATUS=0&X=150&Y=100&Z=80&CLAW_LENGTH=40000&Z_CLAW=0&Z_SINK_CLAW=0&MAG=0&MAG_POS=0&POS_PLANT=0",
-        "router \"/conf/Attrezzaggio\""
+        "fetch GET api/conf/vice/insertVice?FAMILY=MORSA-PROVA&DESCR=morsa+nuova&STATUS=0&X=150&Y=100&Z=80&CLAW_LENGTH=40000&Z_CLAW=0&Z_SINK_CLAW=0&MAG=0&MAG_POS=0&POS_PLANT=0",
+        "router \"/conf/Attrezzaggio?newVice=912\""
        ],
-       "stato": []
+       "stato": [
+        "dataStored.alert.title = \"INFO\"",
+        "dataStored.alert.desc = \"vice.created {\\\"id\\\":912}\"",
+        "dataStored.alert.type = \"message\""
+       ]
       }
      }
     }

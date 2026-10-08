@@ -44,3 +44,6 @@ export const KO_JAW_RETIRED        = "KO_JAW_RETIRED";        // tipo dismesso: 
 export const KO_JAW_MOUNTED        = "KO_JAW_MOUNTED";        // tipo montato: non si dismette
 export const KO_JAW_IN_USE         = "KO_JAW_IN_USE";         // tipo gia' montato o usato da un ordine: non si cancella
 export const KO_JAW_DUP_CODE       = "KO_JAW_DUP_CODE";       // codice gia' usato
+// (8/10, prompt 8) Play o rilancio rifiutati per le chele
+export const KO_ORDER_VICE_NO_JAW  = "KO_ORDER_VICE_NO_JAW";  // morsa del pallet senza tipo di chele montato
+export const KO_ORDER_JAW_MISMATCH = "KO_ORDER_JAW_MISMATCH"; // chele dell'ordine diverse da quelle montate

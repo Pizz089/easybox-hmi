@@ -60,6 +60,8 @@ dataStored.WS = {
 // golden non vedrebbe il suo payload)
 const RISPOSTE = [
 	[/api\/order\/resetProduction\/preview\//, { orders: [{ ID: 101 }], positions: 3, blocked: false }],
+	// (8/10, prompt 8) insertVice risponde con l'ID dato dal database
+	[/api\/conf\/vice\/insertVice\?/, { ris: 'OK', ID: 912 }],
 ];
 globalThis.fetch = (url, opt) => {
 	const m = ((opt && opt.method) || 'GET').toUpperCase();

@@ -4,12 +4,21 @@ Decisioni di Dario che vincolano codice, dati e procedure in cella; la più rece
 
 **Catalogo delle chele della morsa (7/10).** Il cliente vuole un punto dove dichiarare le chele della morsa con le loro misure, e ritrovarle quando le rimonta.
 1. **Catalogo per riferimento.** Le misure della chela (lunghezza sull'asse di battuta, altezza, affondo) stanno in un catalogo di tipi di chele (`VICE_JAW`); la morsa punta al tipo montato (`VICE.JAW_ID`) e le viste lette dal PLC prendono le misure dal catalogo. Dato unico: le colonne della morsa restano solo per il ritorno indietro.
-2. **Il «punto di appoggio» è la battuta dei pezzi più lunghi della chela.** Resta per coppia morsa + pezzo in `PIECE_ON_VICE`: il riferimento sta sulla morsa, non sulla chela. Ne segue che la battuta va corretta quando cambiano le chele: chi la dichiara la misura dalla fine della chela montata in quel momento (`CLAW_LENGTH_REF`), e le viste usano dichiarata + `CLAW_LENGTH_REF`/2 − montata/2. Geometria data per confermata: chele centrate sulla morsa, battuta fissa sulla morsa.
+2. **Il «punto di appoggio» è la battuta dei pezzi più lunghi della chela.** Resta per coppia morsa + pezzo in `PIECE_ON_VICE`: il riferimento sta sulla morsa, non sulla chela. Ne segue che la battuta va corretta quando cambiano le chele. Geometria data per confermata: chele centrate sulla morsa, battuta fissa sulla morsa.
+   - (8/10, prompt 8) **Il riferimento della battuta è il TIPO di chele, non una lunghezza.** Chi la dichiara la misura dalla fine della chela montata in quel momento, e si salva quel tipo (`PIECE_ON_VICE.CLAW_JAW_REF`, FK verso `VICE_JAW`).
+   - Le viste usano dichiarata + lunghezza(tipo di riferimento)/2 − lunghezza(tipo montato)/2, con le lunghezze di adesso e le divisioni intere; una lunghezza NULL = nessuna correzione.
+   - Così: correggendo la misura del tipo montato, X_Support segue la misura nuova (sono le stesse chele, misurate meglio); montando un tipo diverso, X_Support resta fermo; correggendo poi la misura del tipo vecchio, la battuta segue anche quella.
+   - Il pannello mostra e salva la battuta già corretta per le chele montate, col tipo montato come riferimento.
+   - Prima (7/10) si salvava la lunghezza (`CLAW_LENGTH_REF`), e ogni correzione della misura veniva trattata come un cambio di chele.
 3. **Nomi.** «Chele morsa» e «Chele pinza». Chele della morsa e ganasce sono la stessa cosa: a video una parola sola per oggetto, «chela della morsa» / «chele morsa» e «chela della pinza» / «chele pinza»; «ganascia» non compare più.
 4. **Menu.** Attrezzaggio con le schede Attrezzaggi | Pallet | Morse | Chele morsa | Attrezzature.
-5. **Blocco chele nella vista.** In `COORDINATES_Z_MC` la riga di un ordine esce solo se l'ordine non ha chele confermate (`WORKORDER.JAW_ID` vuoto) o se sono quelle montate: con chele diverse il PLC si ferma col 799 prima di muovere. Serve anche nella vista, non solo nel pannello, perché il PLC prende gli ordini a STATUS 3 e un ordine può arrivarci senza passare dalla conferma.
+5. **Il controllo delle chele sta nel backend, al passaggio a STATUS 3** (8/10, prompt 8; prima era un blocco nella vista `COORDINATES_Z_MC`). Il Play da Produzione e il rilancio vengono rifiutati, con un messaggio:
+   - se l'ordine ha chele confermate (`WORKORDER.JAW_ID`) diverse da quelle montate sulla morsa del suo pallet (`KO_ORDER_JAW_MISMATCH`);
+   - se il pallet ha una morsa senza tipo di chele montato (`KO_ORDER_VICE_NO_JAW`).
 
-Da decidere: la variante «morsa sul pallet ma senza tipo di chele = nessuna riga» invece di misure a zero (LAVORI-IN-CODA.md). Il come: APPUNTI-CELLA.md, «Catalogo delle chele della morsa».
+   Le viste tornano solo dati. Nascondere la riga fermava il PLC solo nelle query filtrate per ordine. Tre query del PLC prendono invece «l'ordine più recente» dalla vista (prelievo del finito dal pannello, soffiaggio, missione 16 manuale) e avrebbero preso le quote di un altro ordine. Il pannello (parte 2) farà la domanda prima, nel dialog di avvio. Il blocco anche nel PLC, se servirà, dopo aver cambiato quelle tre query (LAVORI-IN-CODA.md).
+
+Il come: APPUNTI-CELLA.md, «Catalogo delle chele della morsa».
 
 **Consegna 35: guardie del PLC (7/10).** Dalla seconda simulazione del 7/10.
 1. **I timeout non contano in HOLD.** I timeout di swap (943) e del cassetto (19003) si fermano in HOLD: l'HOLD è una pausa, e CONTINUA riprende.

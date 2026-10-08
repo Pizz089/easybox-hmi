@@ -20,7 +20,17 @@
 # storia del ramo attuale; il git pull di dopo resta un avanzamento semplice.
 # Per tornare al ramo: -Versione v3 o -Versione stabile, come sempre. Il
 # commit si cerca prima in locale: senza rete il ritorno funziona lo stesso
-# (git fetch solo se manca). Poi le stesse cautele e gli stessi passi del
+# (git fetch solo se manca). (8/10, prompt 8) Il commit deve stare sulla
+# linea PRINCIPALE del ramo (git rev-list --first-parent HEAD): un commit di
+# ui-lifting entrato in ui-v3 con un merge e' nella storia di ui-v3, ma
+# tornarci metterebbe la cella v3 sul codice stabile. E dopo il distacco sul
+# commit, se lo script si ferma (npm install o aggiorna non riusciti) riavvia
+# comunque EasyBoxBackend e lo dice: il database e' gia' stato riportato
+# indietro e il backend acceso girerebbe ancora il codice di prima.
+# DOPO il ritorno, tools\ e' quello del commit di arrivo: un pannello.ps1
+# vecchio non conosce -Versione ritorno e con -Versione stato dice
+# "nessuna delle due (ramo non previsto)", perche' la copia di lavoro non e'
+# su un ramo. Per tornare al ramo vale -Versione v3 o -Versione stabile. Poi le stesse cautele e gli stessi passi del
 # cambio di versione qui sotto: HOLD, amministratore coi servizi, si ferma
 # con modifiche locali o con file non tracciati d'intralcio, pannello
 # fermato prima e rimesso su se qualcosa va storto, npm install se serve,
@@ -106,6 +116,8 @@ function Fermati([string]$perche, [string]$cosaFare, [string]$nota = 'Il repo no
 	if ($nota) { Scrivi $nota 'Yellow' }
 	# (servizi) il pannello fermato per il cambio di versione si rimette su
 	# comunque, sulla versione che c'e': mai uscire lasciandolo spento
+	# (8/10) ritorno gia' staccato sul commit: il backend si riavvia comunque
+	if ($script:Staccato) { RiavviaBackendRitorno }
 	if ($script:PannelloFermato) { RimettiSuPannello }
 	exit 1
 }
@@ -125,6 +137,8 @@ $S_B = 'EasyBoxBackend'
 $S_P = 'EasyBoxPannello'
 $PORTE = @(8080, 3000, 5173)
 $script:PannelloFermato = $false
+# (8/10) la copia di lavoro e' gia' staccata sul commit del ritorno
+$script:Staccato = $false
 function Servizio([string]$nome) { return Get-Service -Name $nome -ErrorAction SilentlyContinue }
 function StatoServizio([string]$nome) { $s = Servizio $nome; if ($s) { return [string]$s.Status } else { return 'non installato' } }
 # amministratore: se esiste gia' una funzione con questo nome (la prova ne
@@ -163,6 +177,23 @@ function RimettiSuPannello {
 	Start-Service -Name $S_P -ErrorAction SilentlyContinue
 	if ((StatoServizio $S_P) -eq 'Running') { Scrivi ($S_P + ' avviato: il pannello e'' di nuovo su.') 'Yellow' }
 	else { Scrivi ($S_P + ' NON avviato: con la cella in HOLD lanciare servizi-cella.ps1 -Azione riavvia, oppure chiamare Dario.') 'Red' }
+}
+
+# (8/10, prompt 8) ritorno fermo DOPO il distacco sul commit (npm install o
+# aggiorna non riusciti): il database e' gia' stato riportato indietro, e il
+# backend acceso girerebbe il codice di prima del ritorno contro colonne e
+# tabelle che non ci sono piu'. Si riavvia comunque, e lo si dice.
+function RiavviaBackendRitorno {
+	$script:Staccato = $false
+	Scrivi ''
+	if (Servizio $S_B) {
+		Scrivi ('Ritorno: riavvio comunque ' + $S_B + ', perche'' giri il backend del commit ' + $script:Commit + '...') 'Yellow'
+		Restart-Service -Name $S_B -Force -ErrorAction SilentlyContinue
+		if ((StatoServizio $S_B) -eq 'Running') { Scrivi ($S_B + ' riavviato: il backend e'' quello del commit del ritorno.') 'Yellow' }
+		else { Scrivi ($S_B + ' NON riavviato (' + (StatoServizio $S_B) + '): con la cella in HOLD lanciare servizi-cella.ps1 -Azione riavvia, oppure chiamare Dario.') 'Red' }
+	} else {
+		Scrivi 'Ritorno: riavviare comunque il backend (Ctrl+C nella finestra di start_server.bat, poi rilanciarlo), perche'' giri il codice del commit del ritorno.' 'Yellow'
+	}
 }
 
 # (7/10 sera) pannello compilato: il modo del servizio, il pannello servito e
@@ -283,8 +314,11 @@ if ($ritorno) {
 	if ((G @('cat-file', '-e', ($Commit + '^{commit}'))).Codice -ne 0) {
 		Fermati ('il commit ' + $Commit + ' non c''e'', nemmeno dopo git fetch.') 'controllare di averlo copiato intero dalla procedura; se e'' giusto, chiamare Dario.'
 	}
-	if ((G @('merge-base', '--is-ancestor', $Commit, 'HEAD')).Codice -ne 0) {
-		Fermati ('il commit ' + $Commit + ' non e'' nella storia del ramo ' + $ramo + '.') 'un ritorno va solo indietro sul ramo di cella: controllare il commit (la procedura ne da'' uno per ui-lifting e uno per ui-v3).'
+	# (8/10) sulla linea principale del ramo, non solo nella sua storia: su
+	# ui-v3 i commit di ui-lifting entrati coi merge non valgono
+	$principale = G @('rev-list', '--first-parent', 'HEAD')
+	if ($principale.Codice -ne 0 -or @($principale.Uscita | ForEach-Object { $_.Trim() }) -notcontains $Commit) {
+		Fermati ('il commit ' + $Commit + ' non e'' sulla linea principale del ramo ' + $ramo + ' (git rev-list --first-parent).') 'un ritorno va solo indietro sul ramo di cella, sui suoi commit: controllare il commit (la procedura ne da'' uno per ui-lifting e uno per ui-v3, e quello di ui-v3 e'' un merge).'
 	}
 }
 
@@ -344,6 +378,7 @@ if ($ritorno) {
 		$s.Uscita | ForEach-Object { Scrivi ('  ' + $_) }
 		Fermati ('git switch --detach ' + $Commit + ' non riuscito.') 'chiamare Dario con questo messaggio.'
 	}
+	$script:Staccato = $true
 } elseif ($attuale -eq $ramo) {
 	Scrivi ('Sono gia'' sul ramo ' + $ramo + ': lo aggiorno.')
 } else {
