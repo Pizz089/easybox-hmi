@@ -187,8 +187,9 @@ Perche' una riga manca:
 
 Testo nel pannello (`robot.alarm_799`, it ed en): «Deposito in macchina
 fermato: nessuna quota per questo ordine. Controlla pezzo e attrezzatura
-dell'ordine, e che le chele dell'ordine siano quelle montate sulla morsa
-(Attrezzaggio › Chele morsa). Poi RESET.»
+dell'ordine, e che le chele dell'ordine siano quelle montate sulla morsa.
+Poi RESET.» Il percorso del menu («Attrezzaggio › Chele morsa») lo aggiunge
+il pannello v3 quando la pagina esiste (parte 2).
 
 ## Se manca una chiave
 

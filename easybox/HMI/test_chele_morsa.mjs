@@ -50,8 +50,10 @@ console.log('\n2) testi dei rifiuti e del 799');
 for (const k of ['KO_NO_JAW', 'KO_JAW_ACTIVE_ORDER', 'KO_JAW_RETIRED', 'KO_JAW_MOUNTED', 'KO_JAW_IN_USE', 'KO_JAW_DUP_CODE'])
 	check(E[k] === k && it.viceJaw[k] && en.viceJaw[k], k + ': codice nel pannello e testo in it ed en');
 check(it.viceJaw.mounted === 'Chele montate: {code}' && en.viceJaw.mounted === 'Mounted jaws: {code}' && it.viceJaw.none && en.viceJaw.none, 'riga «Chele montate: <codice>»');
-check(it.robot.alarm_799 === "Deposito in macchina fermato: nessuna quota per questo ordine. Controlla pezzo e attrezzatura dell'ordine, e che le chele dell'ordine siano quelle montate sulla morsa (Attrezzaggio › Chele morsa). Poi RESET."
-	&& /Then RESET\.$/.test(en.robot.alarm_799), '799: il testo di Dario, in it ed en');
+// (8/10, prompt 6) su ui-lifting senza il percorso del menu: «Attrezzaggio ›
+// Chele morsa» lo aggiunge il v3 nella parte 2, quando la pagina esiste
+check(it.robot.alarm_799 === "Deposito in macchina fermato: nessuna quota per questo ordine. Controlla pezzo e attrezzatura dell'ordine, e che le chele dell'ordine siano quelle montate sulla morsa. Poi RESET."
+	&& /mounted on the vice\. Then RESET\.$/.test(en.robot.alarm_799), '799: il testo di Dario, in it ed en');
 
 console.log('\n3) pannello: tipo montato e battuta corretta');
 const ps = readFileSync('src/views/sim/PushSim.vue', 'utf8');

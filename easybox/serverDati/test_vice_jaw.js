@@ -219,6 +219,15 @@ const codice = t => t.split('\n').filter(r => !r.trim().startsWith('--')).join('
 	check(/BEGIN TRAN;/.test(vjc) && /IF @@TRANCOUNT > 0 ROLLBACK;/.test(vjc), 'migrazione in una transazione: o tutto o niente');
 	check(!/UPDATE (dbo\.)?VICE SET (CLAW_LENGTH|Z_CLAW|Z_SINK_CLAW)/.test(vjc) && !/DROP COLUMN|sp_rename/.test(vjc), 'le colonne vecchie di VICE restano com\'erano: non si scrivono, non si tolgono, non si rinominano');
 	check(/UPDATE pv SET CLAW_LENGTH_REF = v\.CLAW_LENGTH/.test(vjc), 'CLAW_LENGTH_REF delle battute = la chela della loro morsa');
+	// (8/10, prompt 6) zeri: lunghezza e altezza a 0 non sono misure (NULL nel
+	// tipo); l'affondo a 0 e' un valore vero (chela piatta) e resta 0
+	check(/CASE WHEN v\.CLAW_LENGTH > 0 THEN v\.CLAW_LENGTH END AS CLAW_LENGTH/.test(vjc) && /CASE WHEN v\.Z_CLAW > 0 THEN v\.Z_CLAW END AS Z_CLAW/.test(vjc)
+		&& /CASE WHEN v\.Z_SINK_CLAW >= 0 THEN v\.Z_SINK_CLAW END AS Z_SINK_CLAW/.test(vjc), 'migrazione: lunghezza e altezza a 0 -> NULL, affondo 0 resta 0');
+	// EVER_MOUNTED: 1 dalla migrazione e al primo montaggio, mai di nuovo 0
+	check(/VALUES \(s\.CODE, s\.DESCR, s\.CLAW_LENGTH, s\.Z_CLAW, s\.Z_SINK_CLAW, 1, N'creato da vice-jaw\.sql \(migrazione\)', 1\)/.test(vjc), 'migrazione: EVER_MOUNTED = 1 sui tipi che crea (sono gia\' montati)');
+	const jawJs = fs.readFileSync(path.join(__dirname, 'CONF', 'ViceJaw.js'), 'utf8') + fs.readFileSync(path.join(__dirname, 'CONF', 'Vice.js'), 'utf8');
+	check(/UPDATE VICE_JAW SET EVER_MOUNTED = 1 WHERE ID = @jaw/.test(jawJs) && !/EVER_MOUNTED\s*=\s*0/.test(jawJs.replace(/EVER_MOUNTED\)\s*\n/g, '')) && !/SET EVER_MOUNTED = 0/.test(jawJs),
+		'EVER_MOUNTED: a 1 al primo montaggio, nessuna rotta lo rimette a 0');
 
 	const z = scripts('coordinates-z-mc.sql'), p = codice(scripts('coordinates-push-mc.sql')), b = codice(scripts('coordinates-blow-mc.sql'));
 	const CORR = 'pv.STOP_BEYOND_CLAW + pv.CLAW_LENGTH_REF/2 - j.CLAW_LENGTH/2';
