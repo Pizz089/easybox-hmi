@@ -30,12 +30,17 @@
 # Uso: powershell -ExecutionPolicy Bypass -File easybox\tools\test_pannello_servizi.ps1
 # Exit code = numero di controlli falliti. I rami ui-lifting e ui-v3 del
 # repo devono contenere il pannello.ps1 da provare (si prova il committato).
+# (prompt 10) Il repo da clonare si puo' indicare con EASYBOX_PROVA_REPO: per
+# provare i rami del catalogo delle chele (catalogo-chele-lifting e -v3) si
+# fa un clone --bare temporaneo dove ui-lifting e ui-v3 puntano a quei due
+# rami, e lo si passa qui. Senza la variabile, il repo di questo file.
 # Prima dei casi, un controllo sul TESTO del pannello.ps1 accanto a questo
 # file: nessuna variabile assegnata con un nome che differisce da un altro
 # solo per maiuscole e minuscole (per PowerShell e' la stessa).
 # ============================================================================
 $ErrorActionPreference = 'Continue'
-$REPO = ((& git -C $PSScriptRoot rev-parse --show-toplevel) | Select-Object -First 1).Trim()
+$REPO = $(if ($env:EASYBOX_PROVA_REPO) { $env:EASYBOX_PROVA_REPO } else { ((& git -C $PSScriptRoot rev-parse --show-toplevel) | Select-Object -First 1).Trim() })
+Write-Host ('repo provato: ' + $REPO)
 $BASE = Join-Path ([IO.Path]::GetTempPath()) ('easybox-prova-servizi-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
 $global:CLONE = Join-Path $BASE 'Prog'
 $SCRIPT = Join-Path $global:CLONE 'easybox\tools\pannello.ps1'
