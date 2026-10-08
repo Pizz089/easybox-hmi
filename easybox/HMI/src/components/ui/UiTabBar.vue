@@ -51,4 +51,8 @@ const attiva = t => {
 }
 .ui-tabs__tab.on { background: var(--bg-segment-on); color: var(--text-primary); }
 @media (max-width: 1599px) { .ui-tabs__tab { padding: 0 16px; font-size: 15px; } }
+/* (8/10, B9) sotto i 1024 px le schede di sezione stringono i margini: accanto
+   c'e' il selettore Movimenti / Missioni / Chele pinza della pagina Robot, che
+   deve stare sopra la colonna dei comandi (a 960 e 853 px mancavano 9 e 50 px) */
+@media (max-width: 1023px) { .ui-tabs__tab { padding: 0 8px; } }
 </style>

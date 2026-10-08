@@ -2648,6 +2648,9 @@ export default {
       this.Mission_enabled();
       if (payload == dataStored.status_alarm){
         dataStored.alert.title= 'ALARM';
+        // (8/10, B3) il tipo si scrive sempre: rimasto 'message' da un esito
+        // di prima, l'allarme usciva come avviso breve verde e spariva in 4 s
+        dataStored.alert.type = 'alarm';
         // (AN, fix P3) il CODICE allarme vive in DESCR: prima la chiave era
         // composta con lo STATUS (99) e mostrava sempre la chiave grezza.
         // Stessa logica di getStatus(); fallback generico se DESCR non-codice.
@@ -2659,6 +2662,7 @@ export default {
       if (this.dataRobot.STATUS == dataStored.status_aborted ) {
         dataStored.alert.title = 'ALARM';
         dataStored.alert.desc = 'abort';
+        dataStored.alert.type = 'alarm';
       }
     };
     dataStored.WS.socket.on('ROBOT/STATUS', this.statusHandler);
@@ -2947,6 +2951,12 @@ h6 {
   .rv__col--cmd { gap: var(--space-3); }
   .rv-panel { --card-padding: 18px; }
   .rv-grid .ui-tile { min-height: 88px; padding: 12px 18px; gap: 8px; }
+  /* (8/10, B7) in HOLD i motivi delle tile delle missioni (nessuna pinza,
+     nessun cassetto estratto) andavano su due righe: a 1920x970 la colonna
+     sforava di 23 px e Ripristino era tagliato. Qui il motivo sta su una
+     riga (il testo intero resta nel title). .rv-grid davanti: la regola
+     di base di .rv-why sta piu' sotto */
+  .rv-grid .rv-why { -webkit-line-clamp: 1; }
 }
 .rv-why {
   display: -webkit-box;

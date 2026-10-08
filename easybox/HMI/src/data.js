@@ -131,6 +131,9 @@ export const dataStored = reactive({
       dataStored.alert.title='';
       dataStored.alert.desc='';
       dataStored.alert.check=[];
+      // (8/10, B3) si torna al tipo di partenza: chi scrive solo title e desc
+      // (layoutView, robotView) non eredita il 'message' dell'esito di prima
+      dataStored.alert.type='alarm';
     }
   })
 

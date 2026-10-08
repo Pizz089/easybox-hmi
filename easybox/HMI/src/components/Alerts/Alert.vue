@@ -16,8 +16,12 @@
          a tutta larghezza in compatto) o con la X: il tocco sul velo NON
          chiude, un allarme non si chiude per sbaglio senza leggerlo;
        - message (esito positivo, es. «Livello modificato»): avviso breve
-         senza velo, in alto a destra sotto la striscia, fondo pieno; si
-         chiude da solo dopo 4 s o al tocco. Non blocca la pagina.
+         senza velo, in basso a destra (8/10: in alto copriva il selettore
+         della pagina Robot), fondo pieno; si chiude da solo dopo 4 s o al
+         tocco. Non blocca la pagina. AppShell lo mostra a parte: non
+         cancella un allarme aperto (util/avvisoBreve.js);
+       - il velo parte sotto la striscia di stato (8/10): HOLD e campanella
+         restano raggiungibili.
      CODICE: se desc e' robot.alarm_<n> (o robot.alarmBox_<n>) il codice va
      in un badge accanto al titolo; per l'avviso unito della 35 il badge lo
      passa chi lo compone (prop badge: «972 → <codice>»).

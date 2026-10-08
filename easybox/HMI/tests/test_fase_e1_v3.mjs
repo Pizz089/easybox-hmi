@@ -16,6 +16,10 @@
 // 6. Largo basso (E1.6): Controlli · Robot senza scorrere a 1920x970.
 // 7. Menu (E1.7): Pinze e Spinta voci della barra, «Chele pinza» nella
 //    pagina Robot (l'ordine delle voci e le rotte: tests/test_shell_v3.mjs).
+// 8. (8/10, prompt 7, parte B) correzioni dall'audit: striscia che non
+//    rimisura all'infinito, tipo dell'allarme, esito breve a parte, velo
+//    sotto la striscia, avviso breve in basso, card Schermo dalla media query
+//    del layout, riga delle schede senza :has(). Il HOLD: test_hold_guard.
 // Le misure a schermo (scorrimento, ripiego per misura) sono nel report
 // della fase E1: qui le regole che le rendono vere.
 //
@@ -24,7 +28,9 @@
 import { readFileSync } from 'node:fs';
 import { screenInfo, leggiSchermo } from '../src/util/screenInfo.js';
 import { serveAppHeight, installAppHeight } from '../src/util/appHeight.js';
-import { BP_COMPACT_MAX } from '../src/util/breakpoints.js';
+import { BP_COMPACT_MAX, COMPACT_QUERY } from '../src/util/breakpoints.js';
+import { reactive } from 'vue';
+import { creaSmistaAvvisi } from '../src/util/avvisoBreve.js';
 
 let failed = 0;
 const check = (c, l) => { console.log((c ? '  ok   ' : '  FAIL ') + l); if (!c) failed++; };
@@ -45,7 +51,7 @@ s = screenInfo({ width: 960, height: 540, dpr: 0 });
 check(s.dpr === '1' && s.fisici === '960 × 540', 'devicePixelRatio mancante: 1');
 s = screenInfo({});
 check(s.css === '0 × 0' && s.compatto === true, 'senza numeri non esplode');
-check(JSON.stringify(leggiSchermo({ innerWidth: 1024, innerHeight: 768, devicePixelRatio: 2 })) === '{"width":1024,"height":768,"dpr":2}', 'leggiSchermo legge innerWidth, innerHeight, devicePixelRatio');
+check(JSON.stringify(leggiSchermo({ innerWidth: 1024, innerHeight: 768, devicePixelRatio: 2 })) === '{"width":1024,"height":768,"dpr":2,"schermoW":0,"schermoH":0}', 'leggiSchermo legge innerWidth, innerHeight, devicePixelRatio');
 const su = leggi('src/views/SettingsUserView.vue');
 check(/addEventListener\('resize'/.test(su) && /addEventListener\('orientationchange'/.test(su), 'la card si aggiorna al ridimensionamento e alla rotazione');
 check(/removeEventListener\('resize'/.test(su) && /removeEventListener\('orientationchange'/.test(su), 'e stacca gli ascoltatori');
@@ -80,7 +86,7 @@ const superfici = regole.filter(r => /\.alert-(box|toast)(?![\w-])(?!__)/.test(r
 check(superfici.length >= 3, 'regole della superficie trovate (' + superfici.length + ')');
 check(superfici.every(r => !/background[^;]*--color-[a-z]+-bg/.test(r.corpo)), 'nessuna superficie del pop-up ha un --color-*-bg come fondo');
 check(!/--color-[a-z]+-bg/.test(al.replace(/<!--[\s\S]*?-->/g, '')), 'Alert.vue non usa --color-*-bg');
-check(/\.alert-toast \{[\s\S]*?background: var\(--bg-dialog\);/.test(css) && /top: calc\(var\(--status-strip-height\) \+ 16px\);/.test(css), 'avviso breve: fondo pieno, sotto la striscia');
+check(/\.alert-toast \{[\s\S]*?background: var\(--bg-dialog\);/.test(css) && /\.alert-toast \{[^}]*bottom: 16px;/.test(css), 'avviso breve: fondo pieno (8/10: in basso a destra, B6)');
 check(/\.alert-box__desc \{[\s\S]*?font-size: var\(--font-size-md\);/.test(css), 'testo a --font-size-md');
 const lv = leggi('src/views/layoutView.vue');
 check(!/(^|[^.\w])alert\(/m.test(lv.replace(/\/\/.*$/gm, '')) && /layout\.positionLocked/.test(lv), 'layoutView: niente alert() nativo, testo layout.positionLocked');
@@ -98,7 +104,7 @@ check(/return b && b\.desc === dataStored\.alert\.desc && b\.title === dataStore
 console.log('\n3) striscia di stato');
 const ss = leggi('src/layout/v3/StatusStrip.vue');
 const tSs = tpl(ss);
-check(/<img v-if="mostraLogo" src="@\/assets\/logo\.png" class="strip__logo"/.test(tSs), 'logo @/assets/logo.png a sinistra');
+check(/<img v-show="mostraLogo" src="@\/assets\/logo\.png" class="strip__logo"/.test(tSs), 'logo @/assets/logo.png a sinistra');
 check(/\.strip__logo \{ height: 40px;/.test(ss) && /\.strip__logo \{ height: 28px;/.test(ss), 'logo 40 px nel largo, 28 px in compatto');
 check(/<UiChip v-if="!compact" :tone="cella\.tone"/.test(tSs) && /<UiChip :tone="compact \? cella\.tone : 'neutral'"[^>]*data-strip="robot"/.test(tSs), 'compatto: Robot con lo stato, al posto della cella e col tono della cella');
 check(/data-strip="user"/.test(tSs) && !/v-if="[^"]*"[^>]*data-strip="user"/.test(tSs), 'utente sempre visibile');
@@ -170,6 +176,55 @@ check(![it.nav.grippers, it.nav.push, it.nav.short.push, it.robot.section.claws]
 check(/Nove voci/.test(nr) && !/Sette voci/.test(nr), 'commento di NavRail aggiornato (nove voci)');
 const uds = leggi('../docs/UI-DESIGN-SYSTEM.md');
 check(/Nove voci con icona ed etichetta/.test(uds) && /\| Pinze \| `\/conf\/Grippers`/.test(uds) && /Allarmi esce dalla barra/.test(uds), 'UI-DESIGN-SYSTEM §5: barra a nove voci e regola degli schermi bassi');
+
+console.log('\n8) (8/10, prompt 7) correzioni dall\'audit');
+// B2: con v-if il logo si ricreava a ogni misura e il suo load rilanciava la
+// misura: a 960x540 la striscia misurava all'infinito
+check(!/@load/.test(tSs) && /<span v-show="mostraOra" class="strip__clock">/.test(tSs) && !/v-if="mostra(Logo|Ora)"/.test(tSs),
+	'B2 striscia: logo e ora con v-show, nessun @load che rilanci la misura');
+check(/statoStriscia\.misure\+\+;/.test(ss) && /misure: 0,/.test(leggi('src/util/stripLayout.js')), '   il numero di misure si conta (striscia.misure): a schermo fermo non cresce (misurato nel report)');
+// B3: un allarme del robot scritto senza tipo restava 'message'
+const rvB = leggi('src/views/unit/robotView.vue');
+const handlerStato = rvB.slice(rvB.indexOf('this.statusHandler = payload => {'), rvB.indexOf("dataStored.WS.socket.on('ROBOT/STATUS', this.statusHandler);"));
+check((handlerStato.match(/dataStored\.alert\.type = 'alarm';/g) || []).length === 2, 'B3 robotView: allarme e abort del robot scrivono anche il tipo (alarm)');
+check(/emptyAlertList\(\)\{[\s\S]*?dataStored\.alert\.type='alarm';[\s\S]*?\}/.test(leggi('src/data.js')), '   emptyAlertList rimette il tipo alarm (copre anche layoutView)');
+// B4: un message non cancella l'allarme aperto
+const store = reactive({ alert: { title: '', desc: '', type: 'alarm', check: [] } });
+const sm = creaSmistaAvvisi(store);
+Object.assign(store.alert, { title: 'ALARM', desc: 'robot.alarm_1519', type: 'alarm' }); sm.smista();
+Object.assign(store.alert, { title: 'Livello modificato', desc: 'Ora sei: Manutentore', type: 'message' }); sm.smista();
+check(store.alert.title === 'ALARM' && store.alert.desc === 'robot.alarm_1519' && store.alert.type === 'alarm'
+	&& sm.breve.title === 'Livello modificato' && sm.breve.desc === 'Ora sei: Manutentore',
+	'B4 message con un allarme aperto: l\'allarme resta a video, il message va nell\'avviso breve');
+sm.smista();
+check(store.alert.title === 'ALARM' && sm.breve.n === 1, '   e non si ripete');
+Object.assign(store.alert, { title: '', desc: '', check: [] }); sm.smista();
+Object.assign(store.alert, { title: 'INFO', desc: 'robot.decl.done', type: 'message' }); sm.smista();
+check(store.alert.title === '' && store.alert.type === 'alarm' && sm.breve.desc === 'robot.decl.done' && sm.breve.n === 2,
+	'   senza allarme aperto: solo l\'avviso breve, e il riquadro torna al tipo alarm');
+Object.assign(store.alert, { title: 'WARNING', desc: 'cmd.holdNotConfirmed', type: 'warning', badge: null }); sm.smista();
+Object.assign(store.alert, { title: 'INFO', desc: 'x', type: 'message' }); sm.smista();
+check(store.alert.type === 'warning' && store.alert.desc === 'cmd.holdNotConfirmed', '   vale anche per un warning aperto');
+sm.chiudiBreve();
+check(sm.breve.title === '', '   l\'avviso breve si chiude da solo');
+check(/<alert\s+v-if="dataStored\.alert && dataStored\.alert\.title && dataStored\.alert\.type !== 'message'"/.test(sh)
+	&& /<alert v-if="breve\.title" :key="breve\.n" :title="breve\.title" :desc="breve\.desc" type="message" @cmd_close="chiudiBreve" \/>/.test(sh)
+	&& /watch\(\(\) => dataStored\.alert && \[dataStored\.alert\.title, dataStored\.alert\.desc, dataStored\.alert\.type\], smista, \{ immediate: true \}\);/.test(sh),
+	'   AppShell: allarme e avviso breve in due riquadri, lo smistamento a ogni scrittura (contratto invariato)');
+// B5, B6
+check(/\.alert-overlay \{ z-index: 50000; top: var\(--status-strip-height\); \}/.test(css), 'B5 il velo parte sotto la striscia: HOLD e campanella raggiungibili (provato col tocco nel report)');
+check(!/\.alert-toast \{[^}]*top: calc/.test(css) && /\.alert-toast \{[^}]*bottom: 16px;[^}]*right: 16px;/.test(css), 'B6 avviso breve in basso a destra: non copre il selettore del Robot');
+// B8: la misura di layout dalla stessa media query del layout
+const finestra = { innerWidth: 1600, innerHeight: 900, devicePixelRatio: 1.25, screen: { width: 1536, height: 864 }, matchMedia: q => ({ matches: q === COMPACT_QUERY }) };
+const ls = leggiSchermo(finestra);
+check(ls.compatto === true && ls.schermoW === 1536 && ls.schermoH === 864, 'B8 leggiSchermo: compatto da matchMedia(COMPACT_QUERY), screen.width x screen.height');
+s = screenInfo(ls);
+check(s.compatto === true && s.misura === 'settings.screen.compact' && s.schermo === '1536 × 864' && s.schermoFisico === '1920 × 1080',
+	'   1600 px di finestra ma la media query dice compatto: Compatto (prima: Largo); schermo intero 1536 x 864 x 1,25 = 1920 x 1080');
+check(/data-screen="screen"/.test(tpl(su)) && it.settings.screen.screen && en.settings.screen.screenValue && /\{fisici\}/.test(it.settings.screen.screenValue), '   la card ha la riga «Schermo intero» (it, en)');
+// B9: riga delle schede senza :has()
+check(!/:has\(/.test(sh.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '')) && /\.shell__tabs--vuota \{ display: none; \}/.test(sh) && /new MutationObserver\(guardaRiga\)/.test(sh) && /osservaRiga\.disconnect\(\)/.test(sh),
+	'B9 riga delle schede vuota nascosta senza :has() (un browser vecchio lasciava ~20 px vuoti)');
 
 console.log('\n' + (failed ? failed + ' CHECK FALLITI' : 'TUTTI I CHECK PASSATI'));
 process.exit(failed ? 1 : 0);

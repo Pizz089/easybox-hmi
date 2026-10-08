@@ -98,7 +98,9 @@
    della superficie, sono trasparenti e la pagina si leggeva attraverso.
    Sopra a tutto (z-index 50000, come prima), anche sopra gli altri dialog.
    Il velo non ha @click: un allarme si chiude solo con OK o con la X. */
-.alert-overlay { z-index: 50000; }
+/* (8/10, B5) il velo parte sotto la striscia: con un allarme aperto HOLD e
+   campanella restano raggiungibili (prima di E1 il HOLD lo era) */
+.alert-overlay { z-index: 50000; top: var(--status-strip-height); }
 .alert-box {
     border: 2px solid var(--border-strong);
     gap: 20px;
@@ -185,7 +187,9 @@
    sotto la striscia, fondo pieno; si chiude da solo dopo 4 s o al tocco */
 .alert-toast {
     position: fixed;
-    top: calc(var(--status-strip-height) + 16px);
+    /* (8/10, B6) in basso a destra: in alto copriva per 4 s il selettore
+       Movimenti / Missioni / Chele pinza, e un tocco li' chiudeva l'avviso */
+    bottom: 16px;
     right: 16px;
     z-index: 50000;
     width: min(460px, calc(100vw - 32px));

@@ -161,6 +161,8 @@
       "cssUnit": "px CSS",
       "dpr": "devicePixelRatio",
       "physical": "Circa in px fisici",
+      "screen": "Schermo intero",
+      "screenValue": "{css} px CSS × {dpr} = {fisici} px fisici",
       "layout": "Misura del layout",
       "wide": "Largo (da {n} px)",
       "compact": "Compatto (sotto {n} px)",

@@ -7591,46 +7591,6 @@
    ],
    "controlli": [
     {
-     "id": "img@load misura",
-     "etichetta": "",
-     "evento": "load",
-     "handler": "misura",
-     "disabled": "",
-     "classe": "",
-     "esiti": {
-      "robot in HOLD": {
-       "abilitato": true,
-       "effetti": [],
-       "stato": []
-      },
-      "robot in lavoro": {
-       "abilitato": true,
-       "effetti": [],
-       "stato": []
-      },
-      "robot in AUTO": {
-       "abilitato": true,
-       "effetti": [],
-       "stato": []
-      },
-      "robot spento": {
-       "abilitato": true,
-       "effetti": [],
-       "stato": []
-      },
-      "stato non ancora noto": {
-       "abilitato": true,
-       "effetti": [],
-       "stato": []
-      },
-      "NOT_DEFINED (0)": {
-       "abilitato": true,
-       "effetti": [],
-       "stato": []
-      }
-     }
-    },
-    {
      "id": "button@click $emit('open-user')",
      "etichetta": "{{t('changeUser.levelLabel.' + livello)}}",
      "evento": "click",

@@ -32,6 +32,8 @@
           <dd data-screen="dpr">{{ schermo.dpr }}</dd>
           <dt>{{ t('settings.screen.physical') }}</dt>
           <dd data-screen="physical">{{ schermo.fisici }}</dd>
+          <dt>{{ t('settings.screen.screen') }}</dt>
+          <dd data-screen="screen">{{ t('settings.screen.screenValue', { css: schermo.schermo, dpr: schermo.dpr, fisici: schermo.schermoFisico }) }}</dd>
           <dt>{{ t('settings.screen.layout') }}</dt>
           <dd data-screen="layout">{{ t(schermo.misura, { n: schermo.soglia }) }}</dd>
         </dl>

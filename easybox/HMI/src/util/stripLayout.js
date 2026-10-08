@@ -18,4 +18,5 @@ export const striscia = reactive({
 	ripiego: 0,           // l'ultimo passo usato (RIPIEGHI)
 	logoNascosto: false,  // il logo non c'e' nella striscia
 	sfora: false,         // anche coi testi brevi non ci sta (da segnalare)
+	misure: 0,            // (8/10, B2) quante misure dall'avvio: a schermo fermo non cresce
 });

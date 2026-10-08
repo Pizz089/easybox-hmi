@@ -40,7 +40,12 @@
      ========================================================================== -->
 <template>
   <header ref="striscia" class="strip" :class="{ 'strip--compact': compact, 'strip--stretta': stretta }" :data-ripiego="ripiego">
-    <img v-if="mostraLogo" src="@/assets/logo.png" class="strip__logo" alt="ADMG" @load="misura" />
+    <!-- (8/10, B2) v-show e niente @load: con v-if il logo si ricreava a ogni
+         misura (che riparte dal ripiego 0), il load rilanciava la misura, e
+         a 960x540 la striscia misurava all'infinito (thread principale al
+         99 %). La larghezza del logo e' gia' fissata da altezza e
+         aspect-ratio, senza aspettare l'immagine -->
+    <img v-show="mostraLogo" src="@/assets/logo.png" class="strip__logo" alt="ADMG" />
 
     <!-- largo: stato cella; compatto: Robot col tono della cella -->
     <UiChip v-if="!compact" :tone="cella.tone" :dot="cella.dot" strong>
@@ -76,7 +81,7 @@
       <span v-if="!compact">{{ t('changeUser.levelLabel.' + livello) }}</span>
     </button>
     <UiChip v-if="!compact" clickable :aria-label="t('strip.lang')" @click="cambiaLingua">{{ locale.toUpperCase() }}</UiChip>
-    <span v-if="mostraOra" class="strip__clock">{{ ora }}</span>
+    <span v-show="mostraOra" class="strip__clock">{{ ora }}</span>
 
     <!-- HOLD / Riprendi / START: stesso comando del pulsante di robotView.
          STATUS ignoto o NOT_DEFINED: il 17 e' un toggle nel PLC, "HOLD"
@@ -172,6 +177,7 @@ async function misura() {
 	if (!striscia.value) return;
 	if (misurando) { ancora = true; return; }
 	misurando = true;
+	statoStriscia.misure++;
 	try {
 		ripiego.value = 0;
 		await nextTick();
