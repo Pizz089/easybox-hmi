@@ -43,6 +43,18 @@ export function motivoPinzaCassetto(stato) {
 // pinza doppia, e la gemella ha lo stesso SUB_POS.
 // Registro non arrivato: con una riga sola a bordo il lato 1 e' quella (pinza
 // singola, Gripper_ID[2] = 0); con due righe non si sa (null).
+// (prompt 10) REGISTRO A 0. Il PLC pubblica 0 per la FLANGIA NUDA, ma qui lo
+// 0 vale come «registro non arrivato» e si guardano le righe a bordo del
+// database: senza righe il lato 1 non si sa (null), palletCambiaPinza lo conta
+// come cambio e col cassetto fuori «Gestione pallet» resta spenta. E' la
+// scelta prudente, e con la consegna 35 e' anche quella giusta. La regola vera
+// del master 1010 (FB_Robot):
+//   - consegna 34: cambio solo se GripperRequested <> Gripper_ID[1] AND
+//     Gripper_ID[1] > 0; con la flangia nuda saltava al 1050 e lanciava il
+//     prelievo del pallet senza pinza;
+//   - consegna 35: ogni GripperRequested <> Gripper_ID[1] e' un cambio, anche
+//     con la flangia nuda (carica la pinza, 1030); col cassetto fuori il 1010
+//     lo rifiuta con 1519 prima di muovere.
 export function pinzaLato1(registro, righeABordo) {
 	const r = Number(registro);
 	if (registro != null && r > 0) return r;
