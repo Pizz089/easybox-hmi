@@ -193,13 +193,14 @@ $script:Radice = ($r | Select-Object -First 1).Trim()
 
 function Stato {
 	$ramo = (G @('branch', '--show-current')).Uscita -join ''
-	$commit = (G @('log', '-1', '--format=%h  %s')).Uscita -join ''
+	# (8/10) $ultimo e non $commit: per PowerShell $commit e' il parametro $Commit
+	$ultimo = (G @('log', '-1', '--format=%h  %s')).Uscita -join ''
 	$data = (G @('log', '-1', '--date=format:%d/%m/%Y %H:%M', '--format=%cd')).Uscita -join ''
 	$nome = if ($NOMI.ContainsKey($ramo)) { $NOMI[$ramo] } elseif (-not $ramo) { 'RITORNO: copia di lavoro ferma su un commit, fuori dal ramo (per tornare al ramo: -Versione v3 o -Versione stabile)' } else { 'nessuna delle due (ramo non previsto)' }
 	Scrivi ('Repo:     ' + $script:Radice)
 	Scrivi ('Versione: ' + $nome) 'Cyan'
 	Scrivi ('Ramo:     ' + $ramo)
-	Scrivi ('Commit:   ' + $commit)
+	Scrivi ('Commit:   ' + $ultimo)
 	Scrivi ('Data:     ' + $data)
 }
 # (8/10) dopo un ritorno: dove si e' e come si torna al ramo
