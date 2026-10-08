@@ -139,6 +139,11 @@ check(bX.info.ignorate.LWPOLYLINE === 1 && bX.info.ignorate.LINE === 2, '   il c
 i18n.global.locale.value = 'it';
 check(wX && /^entità non lette \(4\): LWPOLYLINE, layer HOLES/.test(t(wX.key, wX.params)) && /cerchi \(CIRCLE\) sul layer HOLES/.test(t(wX.key, wX.params)),
 	'   il testo: «' + (wX && t(wX.key, wX.params)) + '»');
+// (prompt 10) layer col carattere '|' (riferimento esterno): il nome resta intero
+const bPipe = leggi(dxfDoc(baseEnt([line('XREF|HOLES', [20, -20], [40, -20]), line('A|B|C', [20, -30], [40, -30])])));
+const wPipe = bPipe.warnings.find(w => w.key === 'grating.base.warn.ignored');
+check(!bPipe.error && wPipe && wPipe.params.dove === 'LINE, layer XREF|HOLES (1); LINE, layer A|B|C (1)',
+	'layer col «|» nell\'avviso delle entita\' non lette: nome intero («' + (wPipe && wPipe.params.dove) + '»)');
 // foro fuori dal profilo: avviso (dentro la tacca a semicerchio)
 const bF = leggi(dxfDoc(baseEnt([circle('HOLES', 250, -30, 3)])));
 check(!bF.error && bF.warnings.some(w => w.key === 'grating.base.warn.holeOutside' && w.params.n === 1), 'foro dentro la tacca (fuori dal profilo): avviso');

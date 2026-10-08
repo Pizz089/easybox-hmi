@@ -290,7 +290,10 @@ export function parseBaseDxf(text, { width, height } = {}) {
 	if (info.pieces) warnings.push(avviso('pieces', { n: info.pieces }));
 	if (inserts) warnings.push(avviso('insert', { n: inserts }));
 	if (nonLette.size) {
-		const elenco = [...nonLette].map(([k, n]) => { const [tipo, l] = k.split('|'); return tipo + ', layer ' + l + ' (' + n + ')'; });
+		// (prompt 10) la chiave e' tipo|layer e il NOME del layer puo' contenere
+		// '|' (i layer di un riferimento esterno: «XREF|HOLES»): si divide solo
+		// sul primo, il tipo dell'entita' non lo contiene mai
+		const elenco = [...nonLette].map(([k, n]) => { const i = k.indexOf('|'); return k.slice(0, i) + ', layer ' + k.slice(i + 1) + ' (' + n + ')'; });
 		warnings.push(avviso('ignored', { n: [...nonLette.values()].reduce((a, b) => a + b, 0), dove: elenco.join('; ') }));
 	}
 	return { profile: vert, holes, texts, info, warnings };
