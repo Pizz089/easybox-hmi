@@ -115,7 +115,7 @@ Procedura, se i servizi sono in Paused o le porte non sono loro:
 - backend: `D:\Prog\easybox\serverDati\start_server.bat` (`timeout /t 10`, `cd /d`, `mkdir log`, `node --max-old-space-size=1024 server.js`, `pause`);
 - pannello: `D:\Prog\easybox\HMI\start_hmi.bat` (`timeout /t 15`, `cd /d`, `npm run dev`).
 
-Con le finestre nessuno dei due si riavvia da solo, e **le due finestre non si chiudono senza rilanciarle.** Il 6/10 la chiusura della finestra del backend ha fermato il ponte fra PLC e SQL per circa 13 minuti.
+Con le finestre nessuno dei due si riavvia da solo, e **le due finestre non si chiudono senza rilanciarle.** Il 6/10 la chiusura della finestra del backend ha fermato il ponte fra PLC e SQL per circa 13 minuti. (8/10) Sul codice il backend non è nel percorso: il PLC parla con SQL Server direttamente (`SqlConfig`: 172.20.70.80:1433, `LSql_Microsoft`). La causa di quei 13 minuti non è il backend fermo e resta da capire; il catalogo delle chele ferma il backend apposta (passo 2 della finestra).
 
 Nel working tree di cella ci sono file non tracciati che il `.gitignore` non esclude: i due `.bat`, `easybox/nssm.exe` e la cartella `easybox/serverDati_BACKUP_2026-06-03/`. Sono normali: `pannello.ps1` conta come modifiche locali solo i file tracciati.
 
@@ -143,72 +143,203 @@ Nel working tree di cella ci sono file non tracciati che il `.gitignore` non esc
 
 ## [ ] 2026-10-07 — Catalogo delle chele della morsa: deploy in una finestra pianificata
 
-**Cosa.** Le tre misure della chela della morsa (lunghezza sull'asse di battuta, altezza, affondo) passano dalla riga della morsa a un catalogo, `VICE_JAW`. La morsa punta al tipo montato (`VICE.JAW_ID`) e le viste lette dal PLC (`COORDINATES_Z_MC`, `COORDINATES_PUSH_MC`, `COORDINATES_BLOW_MC`) prendono le misure da lì. Le query del PLC non cambiano. Due cose nuove nelle viste:
-- la **battuta corretta** quando cambiano le chele: dichiarata + `CLAW_LENGTH_REF`/2 − montata/2, così il riferimento sulla morsa (X_Support) non si sposta;
-- il **blocco chele** in `COORDINATES_Z_MC`: un ordine confermato con chele diverse da quelle montate non dà righe e il PLC si ferma col 799 prima di muovere.
+**Cosa.** Le tre misure della chela della morsa (lunghezza sull'asse di battuta, altezza, affondo) passano dalla riga della morsa a un catalogo, `VICE_JAW`. La morsa punta al tipo montato (`VICE.JAW_ID`) e le viste lette dal PLC (`COORDINATES_Z_MC`, `COORDINATES_PUSH_MC`, `COORDINATES_BLOW_MC`) prendono le misure da lì. Le query del PLC non cambiano. Nelle viste c'è una cosa nuova: la **battuta corretta** quando cambiano le chele, cioè dichiarata + lunghezza(tipo di riferimento)/2 − lunghezza(tipo montato)/2. Il tipo di riferimento è quello montato quando la battuta è stata dichiarata (`PIECE_ON_VICE.CLAW_JAW_REF`). Così:
+- montando chele diverse, il riferimento sulla morsa (X_Support) non si sposta;
+- correggendo la misura di un tipo, la battuta la segue.
 
-Decisioni in DECISIONI.md («Catalogo delle chele della morsa»), il 799 in ALLARMI-PLC.md. Gli script stanno in `serverDati\scripts`; ognuno ha la guardia sul codice (conforme / ALTER / FERMO), stampa la definizione che trova ed è ripetibile.
+(8/10, prompt 8) **Le viste non nascondono più righe.** Il controllo delle chele sta nel backend, al passaggio di un ordine a STATUS 3 (Play da Produzione e rilancio). Il passaggio è rifiutato, con un messaggio a pannello:
+- se il pallet dell'ordine ha una morsa senza tipo di chele montato (`KO_ORDER_VICE_NO_JAW`);
+- se l'ordine è confermato con chele diverse da quelle montate (`KO_ORDER_JAW_MISMATCH`).
 
-**I tre file da mettere prima in `D:\Backup`**, come `controlli-simulazione-bis.sql`: in cella non ci sono finché il catalogo non arriva sul ramo di cella (passo 4), e in cella non si lanciano comandi git a mano. Si prendono dal ramo di revisione su GitHub (`revisione/ui-v3`, cartella `easybox/serverDati/scripts`): `vice-jaw-controlli.sql`, `vice-jaw.sql`, `vice-jaw-check.sql`.
+Il blocco nella vista è stato tolto perché tre query del PLC prendono «l'ordine più recente» dalla vista: con la riga nascosta avrebbero preso le quote di un altro ordine. Decisioni in DECISIONI.md («Catalogo delle chele della morsa»), il 799 in ALLARMI-PLC.md.
 
-**Prima della finestra, quando si vuole** (sola lettura, non cambia niente): cosa toccherà la migrazione sui dati veri, quali ordini fermerebbe la variante «morsa senza tipo» (non applicata, da decidere) e se `VICE.ID` è IDENTITY (sezione 7). PowerShell sul PC della cella:
+Gli script stanno in `D:\Prog\easybox\serverDati\scripts` e arrivano col `git pull` della finestra: niente copie in `D:\Backup`. Ogni script di vista:
+- ha la guardia sul codice (conforme / ALTER / FERMO) e stampa la definizione che trova;
+- dopo l'ALTER **rilegge** la vista e dice FERMO se non è quella nuova;
+- è ripetibile.
 
+Gli esiti vanno in `D:\Backup`, e restano.
+
+**Prima della finestra, se si vuole** (sola lettura, non cambia niente). Serve a vedere cosa toccherà la migrazione sui dati veri: morse e tipi, battute, ordini su pallet con una morsa senza misure (il Play verrebbe rifiutato), colonne e trigger di VICE, pallet con più morse, viste con l'asterisco. Il file `vice-jaw-controlli.sql` in cella non c'è ancora: si prende dal ramo di revisione su GitHub (`easybox/serverDati/scripts`) e si mette in `D:\Backup`. Poi, PowerShell:
 ```
-cd D:\Backup; sqlcmd -S .\SQLEXPRESS -E -d ADMG -W -s "|" -i vice-jaw-controlli.sql -o D:\Backup\vice-jaw-controlli_esito.txt; Get-Content D:\Backup\vice-jaw-controlli_esito.txt
+cd D:\Backup; sqlcmd -S .\SQLEXPRESS -E -d ADMG -s "|" -y 0 -i vice-jaw-controlli.sql -o D:\Backup\vice-jaw-controlli_esito.txt; Get-Content D:\Backup\vice-jaw-controlli_esito.txt
 ```
+Lo stesso comando, dalla cartella `scripts`, è anche il primo del passo 4.
 
-**La finestra.** Cella ferma: robot in HOLD dal pannello, nessun ordine a STATUS 3, **nessuno usa il pannello** (touch e tablet) fino alla fine. PowerShell **da amministratore** sul PC della cella. Gli esiti vanno in `D:\Backup`, e restano. **I passi 4 e 5 si fanno uno dopo l'altro, senza pause:** fra i due il backend nuovo gira con le viste di prima.
+### La finestra (8/10, prompt 8: senza le due finestre dei .bat)
 
-1. **Backup del DB, verificato.** Va nella cartella di backup dell'istanza (lì SQL Server può scrivere di sicuro); la riga finale dice il percorso.
+PowerShell **da amministratore** sul PC della cella.
+
+1. **Cella ferma, backup verificato.**
+   - Robot in HOLD dal pannello, nessun ordine a STATUS 3, **nessuno usa il pannello** (touch e tablet) fino alla fine.
+   - Backup del DB, nella cartella di backup dell'istanza (lì SQL Server può scrivere di sicuro); la riga finale dice il percorso:
+     ```
+     cd D:\Backup; sqlcmd -S .\SQLEXPRESS -E -d master -b -Q "DECLARE @d nvarchar(4000); EXEC master.dbo.xp_instance_regread N'HKEY_LOCAL_MACHINE', N'Software\Microsoft\MSSQLServer\MSSQLServer', N'BackupDirectory', @d OUTPUT; DECLARE @f nvarchar(4000) = @d + N'\ADMG_prima_catalogo_chele.bak'; BACKUP DATABASE ADMG TO DISK = @f WITH COPY_ONLY, INIT, CHECKSUM; RESTORE VERIFYONLY FROM DISK = @f WITH CHECKSUM; PRINT @f;"
+     ```
+     Atteso: «Il set di backup del file '1' è valido» e il percorso. Se no, ci si ferma.
+2. **Backend fermo:**
    ```
-   cd D:\Backup; sqlcmd -S .\SQLEXPRESS -E -d master -b -Q "DECLARE @d nvarchar(4000); EXEC master.dbo.xp_instance_regread N'HKEY_LOCAL_MACHINE', N'Software\Microsoft\MSSQLServer\MSSQLServer', N'BackupDirectory', @d OUTPUT; DECLARE @f nvarchar(4000) = @d + N'\ADMG_prima_catalogo_chele.bak'; BACKUP DATABASE ADMG TO DISK = @f WITH COPY_ONLY, INIT, CHECKSUM; RESTORE VERIFYONLY FROM DISK = @f WITH CHECKSUM; PRINT @f;"
+   Stop-Service EasyBoxBackend; Get-Service EasyBoxBackend
    ```
-   Atteso: «Il set di backup del file '1' è valido» e il percorso. Se no, ci si ferma.
-2. **Tabella, colonne e migrazione**, con i conteggi prima e dopo (lo script è in `D:\Backup`, il `git pull` è al passo 4):
-   ```
-   cd D:\Backup; sqlcmd -S .\SQLEXPRESS -E -d ADMG -W -i vice-jaw.sql -o D:\Backup\vice-jaw_esito.txt; Get-Content D:\Backup\vice-jaw_esito.txt
-   ```
-   Atteso: «VICE_JAW creata», le tre colonne aggiunte, «MIGRAZIONE: fatta», `morse_con_tipo` = `morse_con_misure`, `battute_con_ref` uguale alle battute delle morse misurate, le tre VERIFICHE senza righe. Un «FERMO» (misura negativa) ferma la finestra: si ripristina niente, lo script non ha scritto.
-3. **Righe delle tre viste, prima** (le viste non sono ancora cambiate: `vice-jaw.sql` non le tocca):
-   ```
-   cd D:\Backup; sqlcmd -S .\SQLEXPRESS -E -d ADMG -W -s "|" -i vice-jaw-check.sql -o D:\Backup\viste_prima_chele.txt
-   ```
-4. **Backend e pannello nuovi** (il catalogo arriva sul ramo di cella adesso), e subito dopo il passo 5:
+   Atteso: `Stopped`. Uno stop voluto nssm non lo riavvia. Da qui al passo 5 il backend non gira: non scrive niente nel database mentre lo schema cambia, e il backend nuovo non parte mai senza lo schema (vedi «Backend nuovo senza lo schema» in fondo). **Il PLC non ne risente** (verificato sul codice l'8/10):
+   - il PLC parla con SQL Server direttamente (`SqlConfig`: 172.20.70.80:1433), non col backend;
+   - in HOLD l'unica query che parte da sola è il conteggio degli ordini a STATUS 3 di FB_Machine_Autonomous (ogni 10 s; ogni 3 s solo in automatico remoto in attesa di un comando);
+   - gli script prendono lock di pochi millisecondi (colonne nullable aggiunte, FK su tabelle piccole, ALTER VIEW), mentre `FB_ExecuteQuery` abbandona una query solo dopo 20 s.
+3. **Il codice nuovo sul disco** (il catalogo arriva sul ramo di cella adesso):
    ```
    cd D:\Prog; git pull
-   cd D:\Prog\easybox\tools; powershell -ExecutionPolicy Bypass -File D:\Prog\easybox\tools\servizi-cella.ps1 -Azione aggiorna
+   powershell -ExecutionPolicy Bypass -File D:\Prog\easybox\tools\pannello.ps1 -Versione stato
    ```
-5. **Le viste** (in quest'ordine; ogni esito tiene la definizione di prima, per il ritorno):
+   Atteso:
+   - nella riga `Commit` il commit annunciato da Dario per la finestra;
+   - `EasyBoxBackend Stopped`, `EasyBoxPannello Running` (serve ancora la build di prima: nessuno lo usa).
+
+   Se `git pull` elenca `easybox/HMI/package-lock.json`, ci si ferma e si chiama Dario: `-Azione aggiorna` non fa `npm install`.
+4. **Gli script SQL**, dalla cartella `scripts`, in quest'ordine:
+   ```
+   cd D:\Prog\easybox\serverDati\scripts; sqlcmd -S .\SQLEXPRESS -E -d ADMG -s "|" -y 0 -i vice-jaw-controlli.sql -o D:\Backup\vice-jaw-controlli_esito.txt
+   cd D:\Prog\easybox\serverDati\scripts; sqlcmd -S .\SQLEXPRESS -E -d ADMG -W -s "|" -i vice-jaw-check.sql -o D:\Backup\viste_prima_chele.txt
+   cd D:\Prog\easybox\serverDati\scripts; sqlcmd -S .\SQLEXPRESS -E -d ADMG -W -i vice-jaw.sql -o D:\Backup\vice-jaw_esito.txt; Get-Content D:\Backup\vice-jaw_esito.txt
+   ```
+   Atteso da `vice-jaw.sql`:
+   - «VICE_JAW creata», le tre colonne e le tre FK aggiunte, «refresh vista dbo.VICES: ok», «MIGRAZIONE: fatta»;
+   - `morse_con_tipo` = `morse_con_misure`, le VERIFICHE senza righe, `fk` = 3.
+
+   Il refresh si fa solo su VICES. Le altre viste con l'asterisco, lette dal PLC per posizione, non si rinfrescano: tengono le colonne di prima.
+
+   **Un «FERMO» (misura negativa) arriva dopo che tabella, colonne e FK sono già state create**, vuote; la migrazione non è avvenuta. Nessuno legge le tabelle nuove: le viste non sono ancora cambiate e il backend è fermo. Due strade:
+   - correggere la misura e rilanciare `vice-jaw.sql` (la migrazione si fa una volta sola, quando riesce);
+   - oppure il **ritorno** qui sotto. Con il catalogo vuoto il ritorno non tocca le misure delle morse.
+
+   Poi le viste:
    ```
    cd D:\Prog\easybox\serverDati\scripts; sqlcmd -S .\SQLEXPRESS -E -d ADMG -y 0 -i coordinates-z-mc.sql -o D:\Backup\coordinates-z-mc_esito.txt; Get-Content D:\Backup\coordinates-z-mc_esito.txt
    cd D:\Prog\easybox\serverDati\scripts; sqlcmd -S .\SQLEXPRESS -E -d ADMG -f 65001 -y 0 -i coordinates-push-mc.sql -o D:\Backup\coordinates-push-mc_esito.txt; Get-Content D:\Backup\coordinates-push-mc_esito.txt
    cd D:\Prog\easybox\serverDati\scripts; sqlcmd -S .\SQLEXPRESS -E -d ADMG -f 65001 -y 0 -i coordinates-blow-mc.sql -o D:\Backup\coordinates-blow-mc_esito.txt; Get-Content D:\Backup\coordinates-blow-mc_esito.txt
    cd D:\Prog\easybox\serverDati\scripts; sqlcmd -S .\SQLEXPRESS -E -d ADMG -y 0 -i vices-view.sql -o D:\Backup\vices-view_esito.txt; Get-Content D:\Backup\vices-view_esito.txt
+   cd D:\Prog\easybox\serverDati\scripts; sqlcmd -S .\SQLEXPRESS -E -d ADMG -y 0 -i coordinates-pickplace-mc.sql -o D:\Backup\coordinates-pickplace-mc_esito.txt; Get-Content D:\Backup\coordinates-pickplace-mc_esito.txt
    ```
-   Atteso: «portata alla versione del 7/10» (Z), «la porto alle chele dal catalogo» (spinta e soffiaggio), «misure della chela dal catalogo» (VICES). Un «FERMO» vuol dire che in cella c'è una definizione che il repo non conosce: ci si ferma e si legge l'esito.
-6. **Confronto delle righe**: devono essere identiche.
+   Atteso:
+
+   | Script | Riga attesa |
+   |---|---|
+   | `coordinates-z-mc.sql` | «trovata la versione del 6/10», poi «riletta, e' la versione dell'8/10» |
+   | `coordinates-push-mc.sql` | «variante del 6/10 … la porto alle chele dal catalogo», poi «riletta, e' la versione dell'8/10» |
+   | `coordinates-blow-mc.sql` | «trovata la versione del 5/10», poi «riletta, e' la versione dell'8/10» |
+   | `vices-view.sql` | «trovata la versione SELECT v.*», poi «riletta, misure della chela dal catalogo» |
+   | `coordinates-pickplace-mc.sql` | «conforme»: la vista della missione 16 prende le Z da `COORDINATES_Z_MC` e non cambia |
+
+   Ogni esito tiene la definizione di prima. Un «FERMO» vuol dire due cose possibili:
+   - in cella c'è una definizione che il repo non conosce;
+   - la vista riletta non è quella nuova.
+
+   In tutti e due i casi ci si ferma, si legge l'esito e si fa il ritorno.
+
+   Infine il **confronto delle righe** e il **controllo delle viste**:
+   - Le righe devono essere identiche:
+     ```
+     cd D:\Prog\easybox\serverDati\scripts; sqlcmd -S .\SQLEXPRESS -E -d ADMG -W -s "|" -i vice-jaw-check.sql -o D:\Backup\viste_dopo_chele.txt
+     cd D:\Backup; if ((Test-Path viste_prima_chele.txt) -and (Test-Path viste_dopo_chele.txt) -and ((Get-FileHash viste_prima_chele.txt).Hash -eq (Get-FileHash viste_dopo_chele.txt).Hash) -and -not (Select-String -Path viste_dopo_chele.txt -Pattern '^Msg ' -Quiet) -and (Select-String -Path viste_dopo_chele.txt -Pattern '== FINE ==' -Quiet)) { 'IDENTICHE' } else { 'DIVERSE O FILE MANCANTI' }
+     ```
+     Atteso: `IDENTICHE`. Il comando dice `DIVERSE O FILE MANCANTI` anche:
+     - se un file manca;
+     - se c'è un errore di sqlcmd («Msg»);
+     - se l'esito si è interrotto prima del marcatore `== FINE ==`.
+
+     In quei casi: ritorno.
+   - Le viste nominano il catalogo. Le righe identiche da sole non lo provano: dopo la migrazione sono uguali per costruzione.
+     ```
+     sqlcmd -S .\SQLEXPRESS -E -d ADMG -W -Q "SET NOCOUNT ON; SELECT name, CASE WHEN OBJECT_DEFINITION(object_id) LIKE '%VICE_JAW%' THEN 'catalogo' ELSE 'NO' END AS legge FROM sys.views WHERE name IN ('COORDINATES_Z_MC','COORDINATES_PUSH_MC','COORDINATES_BLOW_MC','VICES') ORDER BY name"
+     ```
+     Atteso: quattro righe, tutte `catalogo`.
+5. **Pannello ricompilato, backend e pannello riavviati:**
    ```
-   cd D:\Prog\easybox\serverDati\scripts; sqlcmd -S .\SQLEXPRESS -E -d ADMG -W -s "|" -i vice-jaw-check.sql -o D:\Backup\viste_dopo_chele.txt
-   cd D:\Backup; $d = Compare-Object (Get-Content viste_prima_chele.txt) (Get-Content viste_dopo_chele.txt); $d; if (-not $d) { 'IDENTICHE' }
+   powershell -ExecutionPolicy Bypass -File D:\Prog\easybox\tools\servizi-cella.ps1 -Azione aggiorna
+   powershell -ExecutionPolicy Bypass -File D:\Prog\easybox\tools\pannello.ps1 -Versione stato
    ```
-   Atteso: `IDENTICHE`. Altrimenti ritorno (qui sotto).
-7. **Prova a robot fermo**: le quote degli ordini vivi (in coda e attivi), da confrontare con le stesse righe di `viste_prima_chele.txt`:
+   Atteso:
+   - da `aggiorna`: «Aggiornato: pannello ricompilato, backend e pannello riavviati»;
+   - da `stato`: i due servizi `Running`, pannello servito aggiornato;
+   - sui client, Ctrl+F5.
+
+   **Se `aggiorna` non riesce:**
+   - **«build non riuscita»**: dist e servizi restano come sono. Il backend è ancora **fermo** (passo 2) e gira la build di prima del pannello. Database e codice del backend sul disco sono già nuovi e coerenti, quindi si rimette su il backend nuovo:
+     ```
+     Start-Service EasyBoxBackend
+     ```
+     La build vecchia del pannello funziona col backend nuovo. Due differenze finché la build non si rifà:
+     - non mostra il rifiuto del Play: l'ordine resta in coda senza messaggio;
+     - non riporta la battuta alle chele montate. Dopo la migrazione il riferimento è il tipo montato, quindi i numeri sono gli stessi.
+
+     Si manda a Dario `easybox\HMI\log\build_pannello.log`; dopo la correzione, di nuovo `-Azione aggiorna`.
+   - **Errore dopo la build** («i servizi non sono tutti a posto», «I servizi sono FERMI»): si leggono i messaggi; `servizi-cella.ps1 -Azione riavvia` rimette su i due servizi. Se è il pannello nuovo a non andare, `-Azione ripristina` torna alla build di prima. Si chiama Dario con la finestra.
+6. **Prova a robot fermo**: le quote degli ordini vivi (in coda e attivi), da confrontare con le stesse righe di `viste_prima_chele.txt`:
    ```
    cd D:\Backup; sqlcmd -S .\SQLEXPRESS -E -d ADMG -W -s "|" -Q "select z.ORDER_ID, w.STATUS, z.Z_PLACE_MC, z.Z_PICK_MC, p.X_PUSH, p.X_STOP, p.Z_PUSH_DROP, p.PUSH_STATUS, b.CLAW_LENGTH, b.STOP_BEYOND_CLAW, b.CLAW_LENGTH/2 + b.STOP_BEYOND_CLAW as X_SUPPORT from WORKORDER w join COORDINATES_Z_MC z on z.ORDER_ID = w.ID join COORDINATES_PUSH_MC p on p.ORDER_ID = w.ID join COORDINATES_BLOW_MC b on b.ORDER_ID = w.ID where w.STATUS in (3, 4) order by z.ORDER_ID"
    ```
-   E nel pannello: pagina della morsa e Spinta in battuta dicono «Chele montate: Chele attuali …» con le misure di prima.
-8. **Primo deposito a velocità ridotta**: velocità del robot al 10 % dalla pagina Robot, primo ordine con la morsa, si guarda il deposito (e la spinta, se il pezzo ce l'ha); poi la velocità di sempre.
+   E nel pannello: pagina della morsa e Spinta in battuta dicono «Chele montate: Chele attuali morsa <ID>» con le misure di prima.
+7. **Primo ciclo a velocità ridotta.** Velocità del robot al 10 % dalla pagina Robot, primo ordine con la morsa. Si guardano:
+   - il deposito in macchina;
+   - la spinta, se il pezzo ce l'ha;
+   - **il primo ciclo della missione 16** (prelievo e deposito in macchina dal ciclo di produzione). `COORDINATES_PICKPLACE_MC` prende le Z da `COORDINATES_Z_MC`.
 
-**Ritorno**, a cella ferma, in quest'ordine:
-1. le viste com'erano:
+   Poi la velocità di sempre.
+
+### Ritorno (8/10, prompt 8: un solo script, in transazione)
+
+**Prima l'SQL, poi `pannello.ps1`**, nessun `git checkout`. Ai commit di ritorno gli script `vice-jaw*.sql` non esistono più su disco: per questo l'SQL va prima. PowerShell da amministratore.
+
+0. **Backup verificato**, con un altro nome di file:
    ```
-   cd D:\Prog\easybox\serverDati\scripts; sqlcmd -S .\SQLEXPRESS -E -d ADMG -f 65001 -y 0 -i vice-jaw-views-rollback.sql -o D:\Backup\vice-jaw-views-rollback_esito.txt; Get-Content D:\Backup\vice-jaw-views-rollback_esito.txt
+   cd D:\Backup; sqlcmd -S .\SQLEXPRESS -E -d master -b -Q "DECLARE @d nvarchar(4000); EXEC master.dbo.xp_instance_regread N'HKEY_LOCAL_MACHINE', N'Software\Microsoft\MSSQLServer\MSSQLServer', N'BackupDirectory', @d OUTPUT; DECLARE @f nvarchar(4000) = @d + N'\ADMG_prima_ritorno_chele.bak'; BACKUP DATABASE ADMG TO DISK = @f WITH COPY_ONLY, INIT, CHECKSUM; RESTORE VERIFYONLY FROM DISK = @f WITH CHECKSUM; PRINT @f;"
    ```
-2. tabella e colonne: lo script riporta nella morsa le misure del tipo montato e la battuta corretta, così le viste di prima danno gli stessi numeri, poi toglie catalogo e colonne (si ferma se una vista legge ancora il catalogo):
+   Atteso: «Il set di backup del file '1' è valido». Se no, ci si ferma.
+1. **Cella ferma.** Robot in HOLD, nessun ordine a STATUS 3, nessuno al pannello.
+2. **Backend fermo:** `Stop-Service EasyBoxBackend; Get-Service EasyBoxBackend` → `Stopped`. Il backend col catalogo scriverebbe nelle tabelle che lo script toglie.
+3. **Righe delle viste, prima:**
    ```
-   cd D:\Prog\easybox\serverDati\scripts; sqlcmd -S .\SQLEXPRESS -E -d ADMG -W -i vice-jaw-rollback.sql -o D:\Backup\vice-jaw-rollback_esito.txt; Get-Content D:\Backup\vice-jaw-rollback_esito.txt
+   cd D:\Prog\easybox\serverDati\scripts; sqlcmd -S .\SQLEXPRESS -E -d ADMG -W -s "|" -i vice-jaw-check.sql -o D:\Backup\viste_prima_ritorno.txt
    ```
-3. backend e pannello di prima, con `pannello.ps1 -Versione ritorno`. Riporta la copia di lavoro al commit prima del catalogo, ricompila il pannello e riavvia backend e pannello. Si ferma se ci sono modifiche locali o se il commit non è nella storia del ramo; il ramo non si sposta. Il commit dipende dal ramo di cella (`pannello.ps1 -Versione stato` lo dice); dall'8/10 è quello con le correzioni dell'audit (prompt 7), che stanno prima del catalogo. Sul ramo `ui-v3`:
+4. **Lo script di ritorno** (UTF-8: `-f 65001`):
+   ```
+   cd D:\Prog\easybox\serverDati\scripts; sqlcmd -S .\SQLEXPRESS -E -d ADMG -f 65001 -y 0 -i vice-jaw-rollback.sql -o D:\Backup\vice-jaw-rollback_esito.txt; Get-Content D:\Backup\vice-jaw-rollback_esito.txt
+   ```
+   Cosa fa, in quest'ordine:
+   - **controlli**, senza scrivere. FERMO se:
+     - catalogo e colonne ci sono solo in parte;
+     - una vista non è né la versione col catalogo né quella di prima;
+     - una battuta, riportata alle chele montate, verrebbe negativa. Lo script elenca le righe: si rimontano le chele con cui è stata dichiarata, o la si dichiara di nuovo con le chele montate.
+   - **una transazione** (`XACT_ABORT`):
+     - le colonne della morsa prendono le misure del tipo montato, una morsa alla volta. Con il catalogo vuoto non si toccano;
+     - `STOP_BEYOND_CLAW` prende la battuta corretta;
+     - ALTER delle quattro viste alla definizione di prima;
+     - COMMIT.
+   - **poi, separati:**
+     - le tabelle di salvataggio: `VICE_JAW_BAK_<data>`, `VICE_JAW_ID_BAK_<data>`, `WORKORDER_JAW_BAK_<data>`, `PIECE_ON_VICE_JAWREF_BAK_<data>`. Quest'ultima tiene anche la battuta dichiarata di prima;
+     - il DROP: prima le tre FK, poi le colonne e `VICE_JAW`; poi il refresh della sola VICES.
+   - **conteggi** stampati prima e dopo.
+
+   Atteso:
+   - «RITORNO: misure, battute e viste riportate (transazione confermata)»;
+   - «salvate: …»;
+   - «DROP: tolti …»;
+   - nessuna riga sotto «viste che leggono ancora il catalogo».
+
+   **Dopo un FERMO** dei controlli o della transazione: il database è com'era, ma **non si riprende la produzione**. Si chiama Dario con l'esito; il backend resta fermo.
+
+   Se invece non riescono solo le tabelle di salvataggio o il DROP, viste e dati sono già quelli di prima. Le tabelle del catalogo restano lì, senza nessuno che le legga. Si va avanti col passo 5 e lo si dice a Dario.
+5. **Confronto delle righe**: lo stesso comando del passo 4 della finestra, con `viste_prima_ritorno.txt` e `viste_dopo_ritorno.txt`:
+   ```
+   cd D:\Prog\easybox\serverDati\scripts; sqlcmd -S .\SQLEXPRESS -E -d ADMG -W -s "|" -i vice-jaw-check.sql -o D:\Backup\viste_dopo_ritorno.txt
+   cd D:\Backup; if ((Test-Path viste_prima_ritorno.txt) -and (Test-Path viste_dopo_ritorno.txt) -and ((Get-FileHash viste_prima_ritorno.txt).Hash -eq (Get-FileHash viste_dopo_ritorno.txt).Hash) -and -not (Select-String -Path viste_dopo_ritorno.txt -Pattern '^Msg ' -Quiet) -and (Select-String -Path viste_dopo_ritorno.txt -Pattern '== FINE ==' -Quiet)) { 'IDENTICHE' } else { 'DIVERSE O FILE MANCANTI' }
+   ```
+6. **Backend e pannello di prima**, con `pannello.ps1 -Versione ritorno`.
+   - Riporta la copia di lavoro al commit prima del catalogo, ricompila il pannello e riavvia backend e pannello. Il ramo non si sposta.
+   - Si ferma se ci sono modifiche locali, o se il commit non è sulla linea principale del ramo (`git rev-list --first-parent`): su `ui-v3` un commit di `ui-lifting` arrivato con un merge non vale.
+   - **Se `aggiorna` non riesce** (o `npm install`), lo script riavvia comunque EasyBoxBackend e lo dice: il backend rilegge dal disco il codice vecchio, coerente con lo schema già tolto.
+   - Il commit dipende dal ramo di cella (`pannello.ps1 -Versione stato` lo dice). Sono i commit con le correzioni dell'audit (prompt 7), che stanno prima del catalogo.
+
+   Sul ramo `ui-v3`:
    ```
    cd D:\Prog\easybox\tools; powershell -ExecutionPolicy Bypass -File D:\Prog\easybox\tools\pannello.ps1 -Versione ritorno -Commit 3ed74c207a40d49ccd8bba9b548073c3928fc215
    ```
@@ -216,22 +347,58 @@ cd D:\Backup; sqlcmd -S .\SQLEXPRESS -E -d ADMG -W -s "|" -i vice-jaw-controlli.
    ```
    cd D:\Prog\easybox\tools; powershell -ExecutionPolicy Bypass -File D:\Prog\easybox\tools\pannello.ps1 -Versione ritorno -Commit 751e9591a28b6d8407ff1301c308521ec9abb2b0
    ```
-   Dopo il ritorno la copia di lavoro è fuori dal ramo: un `git pull` dice che non è su un ramo e non fa niente. Per rimettere il catalogo, la finestra da capo; il passo 4 diventa `pannello.ps1 -Versione v3` (o `-Versione stabile`), che torna sul ramo, aggiorna e ricompila. Se va male anche il ritorno: il backup del passo 1.
+7. **Dopo il ritorno:**
+   - **`tools\` è quello del commit di arrivo**, che non conosce `-Versione ritorno`;
+   - `-Versione stato` dice «Versione: nessuna delle due (ramo non previsto)»: è normale, la copia di lavoro è ferma su un commit, fuori dal ramo;
+   - un `git pull` dice che non è su un ramo e non fa niente;
+   - per tornare al ramo (e rimettere il catalogo, con la finestra da capo) vale `pannello.ps1 -Versione v3` (o `-Versione stabile`), che torna sul ramo, aggiorna e ricompila. In quella finestra il passo 3 diventa proprio questo, dopo il passo 2;
+   - prova a robot fermo e primo ciclo a velocità ridotta, come ai passi 6 e 7 della finestra;
+   - se va male anche il ritorno: il backup del passo 0 (o quello del passo 1 della finestra).
 
-**Provato il 7/10** sul clone del portatile (backup della cella del 6/10), con gli stessi comandi: righe identiche prima e dopo, guardie «conforme» al secondo lancio, ritorno con righe identiche a prima; in una transazione annullata anche con dati di prova (zeri, misure parziali, lunghezze dispari, chele cambiate: X_Support identico al micron; blocco chele). **Rifatta l'8/10** con gli script finali: in più l'affondo a 0 resta 0 nel tipo (chela piatta), lunghezza e altezza a 0 diventano NULL. Il ritorno del codice (`pannello.ps1 -Versione ritorno`) è provato in `tools/test_pannello_servizi.ps1`, CASO 7, su un clone parziale come quello di cella.
+### Provato
 
-**Il pannello vecchio (`ui-lifting`)** non ha pagine per il catalogo: legge e scrive le misure passando dal tipo montato, e dice «Chele montate: <codice>». Catalogo, montaggio e conferma delle chele nell'ordine sono nel pannello v3 (parte 2). Due cose cambiano per chi usa il pannello vecchio:
+- **7/10**, sul clone del portatile (backup della cella del 6/10), con gli stessi comandi:
+  - righe identiche prima e dopo;
+  - guardie «conforme» al secondo lancio.
+- **8/10, prompt 8**, su una copia del clone, ripristinata dal backup a ogni prova:
+  - deploy: righe IDENTICHE; ogni vista riletta nella versione dell'8/10; PICKPLACE conforme; secondo lancio senza modifiche;
+  - ritorno in quattro scenari, sempre con righe identiche prima e dopo:
+    - nessun cambio;
+    - chele montate più lunghe con battute a 0: FERMO prima di scrivere;
+    - chele montate più corte: 1 morsa e 4 battute riportate;
+    - misura del tipo corretta;
+  - un quinto scenario: `vice-jaw.sql` fermo prima della migrazione, poi il ritorno. Misure delle morse invariate, righe identiche.
+- **Le rotte vere sul database** (`serverDati/test_vice_jaw_db.js`, 26 controlli), con dati inventati:
+  - le misure di un tipo con un ordine a 3;
+  - il montaggio;
+  - la cancellazione di un tipo già montato;
+  - updateVice coi valori di prima;
+  - la battuta col tipo di riferimento, letta dalla vista;
+  - Play e rilancio rifiutati.
+- **Il ritorno del codice** (`pannello.ps1 -Versione ritorno`) è provato in `tools/test_pannello_servizi.ps1`, CASO 7, su un clone parziale come quello di cella. Ci sono anche aggiorna non riuscito e la linea principale di `ui-v3`.
+
+### Il pannello vecchio e il catalogo
+
+**Il pannello vecchio (`ui-lifting`)** non ha pagine per il catalogo. Legge e scrive le misure passando dal tipo montato, e dice «Chele montate: <codice>». Catalogo, montaggio e conferma delle chele nell'ordine sono nel pannello v3 (parte 2). Cose che cambiano per chi usa il pannello vecchio:
 - **una misura della chela non si azzera più** dal form morsa: un campo lasciato vuoto vuol dire «nessun cambio». Si azzera, o si corregge, dal catalogo delle chele (parte 2);
-- **una morsa nuova con le misure della chela viene rifiutata** (KO_NO_JAW) finché non arriva la parte 2: si crea la morsa senza misure, e le misure si danno al tipo di chele quando lo si monta.
+- **una morsa nuova con le misure della chela viene rifiutata** (KO_NO_JAW): si crea senza misure, e le misure si danno al tipo di chele quando lo si monta;
+- **una morsa nuova nasce senza tipo di chele** e, finché non c'è la parte 2, il pannello non sa montarne uno. Il Play di un ordine sul suo pallet viene rifiutato (KO_ORDER_VICE_NO_JAW, col messaggio). Il tipo si può creare e montare dal backend: `/api/conf/viceJaw/insertJaw`, poi `/api/conf/viceJaw/mountJaw`. Chiamare Dario;
+- **Spinta in battuta e form morsa** mostrano la battuta già riportata alle chele montate, e il salvataggio la scrive col tipo montato come riferimento: quello che si legge è quello che si salva.
 
-**Backend nuovo senza lo schema** (cioè `git pull` e `-Azione aggiorna` prima di `vice-jaw.sql`): verificato l'8/10 compilando sul clone, senza eseguirlo, l'SQL che il backend nuovo manda. Fallisce con «nome di colonna non valido»:
+**Backend nuovo senza lo schema** (cioè backend riavviato dopo il `git pull` e prima di `vice-jaw.sql`): verificato l'8/10 compilando sul clone, senza eseguirlo, l'SQL che il backend nuovo manda. Fallisce con «nome di colonna non valido»:
 - la **creazione di ogni ordine**, non solo quelli con la spinta;
 - salva morsa e il montaggio o lo smontaggio della morsa sul pallet in Attrezzaggi (`updateVice`);
 - l'elenco e la dichiarazione delle battute, quindi anche il controllo della spinta nel wizard, che senza battute ferma gli ordini dei pezzi con la spinta;
 - le misure della chela da Spinta in battuta;
 - tutte le rotte del catalogo.
 
-Funzionano: la lettura delle morse, la creazione di una morsa senza misure, la compensazione e le quote della spinta lette dalla vista; PLC e robot non ne risentono. Per questo il catalogo arriva sui rami di cella solo nella finestra, al passo 4.
+Funzionano:
+- la lettura delle morse;
+- la creazione di una morsa senza misure;
+- la compensazione e le quote della spinta lette dalla vista.
+
+PLC e robot non ne risentono. Per questo il backend si ferma al passo 2 e riparte solo al passo 5, dopo gli script.
+
 ## [ ] 2026-10-07 — Consegna 35 (7/10 sera): cassetto fuori anche su swap e pallet, spinta con quote NULL, 973
 
 **Cosa.** PLC, la scarica Dario: due file, da scaricare **insieme, nella stessa finestra**:

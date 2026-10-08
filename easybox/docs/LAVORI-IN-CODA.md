@@ -13,11 +13,11 @@
 
 **Trovato il** 2026-10-07, risposte sulla consegna 35.
 
-## [ ] «Crea morsa» del pannello vecchio passa l'ID esplicito
+## [x] «Crea morsa» del pannello vecchio passa l'ID esplicito
 
-**Cosa.** `CONF/Vice.js`, `insertVice`: `INSERT INTO VICE (ID, …)` con l'ID che arriva dal form. Se in cella `VICE.ID` è IDENTITY (sul clone del portatile lo è), SQL Server rifiuta il valore esplicito e «crea morsa» fallisce già oggi.
+**Cosa.** `CONF/Vice.js`, `insertVice`: `INSERT INTO VICE (ID, …)` con l'ID che arriva dal form. In cella `VICE.ID` è IDENTITY (controlli dell'8/10): SQL Server rifiuta il valore esplicito e «crea morsa» falliva già.
 
-**Direzione.** Prima la risposta di cella: `serverDati\scripts\vice-jaw-controlli.sql`, sezione 7, dice se è IDENTITY. Se sì, l'INSERT senza ID (e il form che non lo manda). Non si corregge prima di quella risposta.
+**Fatto** l'8/10 (prompt 8), col catalogo delle chele: INSERT senza ID, l'ID nuovo torna nella risposta (`SCOPE_IDENTITY`). Il form non lo manda più, usa quello restituito (messaggio e ritorno ad Attrezzaggio con la morsa già scelta). Ogni campo passa dai controlli (`sqlStr`, interi). Provato sul database in `serverDati/test_vice_jaw_db.js`.
 
 **Trovato il** 2026-10-07, prove del catalogo delle chele sul clone.
 
@@ -29,13 +29,24 @@
 
 **Trovato il** 2026-10-08, risposte al report del catalogo delle chele.
 
-## [ ] Chele della morsa: morsa sul pallet ma senza tipo di chele montato
+## [ ] Chele della morsa: il blocco anche nel PLC
 
-**Cosa.** Con il catalogo (7/10) una morsa senza tipo montato dà, nelle viste, misure della chela a zero (`ISNULL`): in `COORDINATES_Z_MC` la quota di deposito esce senza l'appoggio delle chele, cioè troppo bassa. Oggi è così anche con le misure sulla morsa: una morsa mai misurata dà lo stesso.
+**Cosa.** Dall'8/10 (prompt 8) il controllo delle chele sta nel backend, al passaggio a STATUS 3: Play e rilancio sono rifiutati se le chele confermate non sono quelle montate o se la morsa del pallet non ha un tipo. Un ordine che arrivasse a 3 per un'altra strada, per esempio a mano sul database, passerebbe. Nella vista `COORDINATES_Z_MC` il blocco non si può rimettere com'era. Tre punti di FB_Robot prendono «l'ordine più recente» dalla vista e, con la riga nascosta, riceverebbero le quote di un altro ordine:
+- prelievo del finito dal pannello con `OrderIdMC = 0` (`Z.MC=1 order by Z.ORDER_ID desc`);
+- soffiaggio (`top 1 ORDER_ID from COORDINATES_Z_MC`);
+- missione 16 manuale (`COORDINATES_PICKPLACE_MC` legge `COORDINATES_Z_MC`).
 
-**Direzione.** Variante proposta, non applicata: «morsa sul pallet ma senza tipo = nessuna riga» in `COORDINATES_Z_MC`, cioè il 799 prima di muovere, come per le chele diverse. Cambia il comportamento degli ordini di oggi su quelle morse: l'elenco lo dà `serverDati\scripts\vice-jaw-controlli.sql` (sezione 4), da lanciare in cella prima di decidere.
+**Direzione.** Se Dario vuole anche il blocco nel PLC: prima si cambiano quelle tre query perché prendano l'ordine da `WORKORDER` (o da `WORKORDERS`), poi si rimette il filtro nella vista. Serve un download del PLC.
 
-**Trovato il** 2026-10-07, catalogo delle chele della morsa (prompt 5 di 5).
+**Trovato il** 2026-10-08, audit del catalogo delle chele (prompt 8). Sostituisce la voce «morsa sul pallet ma senza tipo di chele montato» del 7/10: la variante «nessuna riga» aveva lo stesso difetto. Adesso una morsa senza tipo ferma il Play nel backend.
+
+## [ ] Chele della morsa: una morsa nuova non ha un tipo montabile dal pannello vecchio
+
+**Cosa.** Una morsa creata dopo il catalogo nasce senza tipo di chele (`VICE.JAW_ID` NULL). Il Play di un ordine sul suo pallet è rifiutato (`KO_ORDER_VICE_NO_JAW`), ma il pannello vecchio non ha la pagina per creare e montare un tipo. Le rotte ci sono: `/api/conf/viceJaw/insertJaw` e `/api/conf/viceJaw/mountJaw`.
+
+**Direzione.** La pagina del catalogo nel pannello v3 (parte 2). Fino ad allora si monta un tipo chiamando le rotte (Dario).
+
+**Trovato il** 2026-10-08, audit del catalogo delle chele (prompt 8).
 
 ## [ ] Pannello v3: pagine non rifatte e voci aperte
 
