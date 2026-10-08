@@ -410,7 +410,14 @@ Funzionano:
 
 PLC e robot non ne risentono. Per questo il backend si ferma al passo 2 e riparte solo al passo 5, dopo gli script.
 
-## [ ] 2026-10-07 — Consegna 35 (7/10 sera): cassetto fuori anche su swap e pallet, spinta con quote NULL, 973
+## [x] 2026-10-07 — Consegna 35 (7/10 sera): cassetto fuori anche su swap e pallet, spinta con quote NULL, 973
+
+**Consegna 35 scaricata l'8/10** (Dario).
+- **Export TIA dopo il download**, con `--compare-online` (commit `b3cf3f6`): confronto online **uguale** su tutti i 165 oggetti (diverso 0, solo offline 0, solo online 0).
+- FB_Robot e FB_easyBox sono identici byte per byte all'export del progetto del portatile fatto prima del download (`3707709`).
+- Il diff con 8c9da6a, blocco per blocco, è nel report della consegna 35, parte 3.
+- Test di accettazione fatti in cella (elenco qui sotto): l'esito lo riporta Dario.
+- La regola provvisoria della voce «Consegna 34» è tolta: lo swap, i master pallet e l'automatico col cassetto fuori li ferma il PLC.
 
 **Cosa.** PLC, la scarica Dario: due file, da scaricare **insieme, nella stessa finestra**:
 - `35_FB7_guardie_e_spinta.scl` (FB_Robot), base l'export 8c9da6a, uguale al PLC dopo le consegne 33 e 34;
@@ -465,7 +472,7 @@ FB_easyBox:
 - i timeout di swap (943) e cassetto (19003) non contano in HOLD;
 - deposito in tasca a posizione fissa solo su tasca vuota a database: altrimenti 691 (si controlla la tasca, la si dichiara con il 39, RESET, si ripete).
 
-**Dopo il download** (su richiesta di Dario): tia-export, `--compare-online` e diff con 8c9da6a per FB_Robot e FB_easyBox, blocco per blocco; poi si toglie la regola provvisoria della voce «Consegna 34» qui sotto.
+**Dopo il download**: fatto l'8/10 (vedi in cima alla voce).
 
 ## [ ] 2026-10-07 — Base dei grigliati: `Base.dxf` nella cartella dei modelli
 
@@ -514,12 +521,9 @@ Il DXF esportato dalla pagina sta nello stesso frame e si sovrappone 1:1 a `Base
 
 **Pinze col cassetto fuori.** Catene pinza (scaffale → robot e robot → scaffale), stato 10: con un cassetto fuori (registro `ExtractedTray`, sensori `I_OUT_TRAY1..12`, catene di estrazione o rilascio attive) la pinza non si muove: **1419** (carico) o **1519** (deposito). **Correzione del 7/10 sera (consegna 35):** qui c'era scritto che il divieto valeva per tutti i percorsi, swap e master automatici compresi. Era sbagliato: con la 34 lo copre solo chi passa dalle catene pinza; lo swap (master 970) andava allo scaffale col cassetto fuori, e i master 1020/1050 andavano avanti dopo il rifiuto. **Lo swap e i master pallet li copre la consegna 35**, voce qui sopra. Con la 34 i master che passano dalle catene restano in attesa con l'errore alzato, come col 949: RESET, si rientra il cassetto, si ripete. Solo il 700 chiude da sé la missione.
 
-**REGOLA PROVVISORIA, da togliere quando Dario conferma il download della 35:** finché in PLC c'è la 34, con un cassetto fuori:
-- niente cambio pinza (27);
-- niente «Carica pallet» (né pallet da MC1);
-- niente avvio dell'automatico se la pinza a bordo non è quella dell'ordine.
+**Dall'8/10 in PLC c'è la 35** (voce qui sopra): cambio pinza (27), «Carica pallet» (e pallet da MC1) e automatico con la pinza sbagliata, col cassetto fuori, li ferma il PLC prima di muovere (1419 / 1519). La regola provvisoria scritta qui finché c'era la 34 (niente cambio pinza, niente «Carica pallet», niente automatico con un'altra pinza col cassetto fuori) non serve più.
 
-Il PLC 34 non li ferma e il robot può andare allo scaffale pinze col cassetto aperto. Nel pannello (7/10 sera) i comandi pinza (pagina Robot e «sposta» della lista pinze) sono spenti col cassetto fuori o in manovra, con «Cassetto fuori: prima rientralo»; «Gestione pallet» propone solo i pallet che non chiedono un cambio pinza e si spegne se non ce n'è. Il confronto è quello del PLC al master 1010.
+Nel pannello (7/10 sera) i comandi pinza (pagina Robot e «sposta» della lista pinze) sono spenti col cassetto fuori o in manovra, con «Cassetto fuori: prima rientralo»; «Gestione pallet» propone solo i pallet che non chiedono un cambio pinza e si spegne se non ce n'è. Il confronto è quello del PLC al master 1010.
 
 (prompt 10) La regola vera del 1010:
 - **consegna 34**: cambio solo se `GripperRequested <> Gripper_ID[1] AND Gripper_ID[1] > 0`. Con la flangia nuda si saltava al 1050 e si lanciava il prelievo del pallet senza pinza;
