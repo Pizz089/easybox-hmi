@@ -2,6 +2,18 @@
 
 Decisioni di Dario che vincolano codice, dati e procedure in cella; la più recente in alto. Il come (script, comandi, ordine degli interventi) sta in [APPUNTI-CELLA.md](APPUNTI-CELLA.md).
 
+**Consegna 36: perché il ciclo è fermo, comandi manuali, timeout (8/10).** Dal fermo dell'8/10 (APPUNTI-CELLA.md, «Il fermo dell'8/10»).
+1. **Variante B: un comando manuale non viene più sovrascritto da una missione rimasta in sospeso.** Vale per i comandi manuali dal pannello: Home, manutenzione, posizionamenti, Riavvia programma (18), Reset (99). In FB7 ogni scrittura di un comando di movimento nei master e nelle catene (20 punti) avviene solo se `NOT RESET_ALL_DISPATCH`, cioè mai nel ciclo PLC in cui il comando manuale è stato accettato. `RESET_ALL_DISPATCH` è una Temp, azzerata a inizio blocco.
+   - Scartata la variante A: ricordare il comando manuale in una Temp e riscriverlo in `Command` in fondo a resetDispatcher. Era un punto solo, ma dipendeva dall'ordine delle REGION.
+   - Eccezione voluta: lo stato 45 di get_TCP_Data (comando 10, misure della pinza) resta come nella 35. I registri hanno già la pinza nuova: se arriva un comando manuale vince il 10, e il comando manuale va ripetuto.
+   - Origine: alle 13:19 un Home dato in HOLD è stato sovrascritto dal comando 25 di estrazione, e al Riprendi il robot ha estratto il cassetto senza che nessun ciclo lo aspettasse.
+2. **30 minuti per i timeout 943, 19003 e 958; corti gli altri.** Nella 35 erano 60 s (943) e 3 minuti (19003, 958).
+3. **Avviso fisso «perché il ciclo è fermo».** Il pannello mostra il motivo dell'attesa che il PLC pubblica (`FROM_PLANT/WAIT/MC1`), sempre, per tutti i motivi: un riquadro fisso sotto la striscia, col testo e il link alla pagina giusta. **Nessun pulsante di comando** nell'avviso.
+4. **Dichiarazioni MC1 anche a fine produzione**: FB204 al 97-99 le accetta (36, 37, 40-43).
+5. **Il 37 resta rifiutato al 5** (morsa chiusa a contenuto sconosciuto): al 5 si apre la morsa o si dichiara il pezzo (36).
+
+Il come (download, prove): APPUNTI-CELLA.md, «Consegna 36»; i codici: ALLARMI-PLC.md, «Consegna 36».
+
 **«Sblocca morsa» con un tocco solo (8/10).** In Controlli › Macchina MC1 «Sblocca morsa» (`TO_PLANT/CMD/MC1 10`) resta un comando diretto, **senza conferma**. L'audit del prompt 10 proponeva la conferma rossa dell'apertura della chela del robot (il PLC lo accetta a ciclo fermo o in HOLD, e con un pezzo in morsa il pezzo può cadere). Dario ha deciso di no: non riproporla.
 
 **Consegna 35: guardie del PLC (7/10).** Dalla seconda simulazione del 7/10.

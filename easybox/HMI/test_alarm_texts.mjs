@@ -56,8 +56,10 @@ const CODES = {
 	// 1419/1519/19005/19006/19007/20011 dalla consegna 34 (7/10, uncino),
 	// 973 e 691 (tasca non vuota) dalla consegna 35 (7/10); 948, 951, 996,
 	// 997, 999 dalla simulazione bis (B61, 7/10 sera); 949 e 1722 dalle
-	// risposte sulla consegna 35 (7/10 sera)
-	robot: [961, 962, 964, 967, 19004, 20009, 2205, 970, 971, 972, 1419, 1519, 19005, 19006, 19007, 20011, 973, 691, 948, 951, 996, 997, 999, 949, 1722],
+	// risposte sulla consegna 35 (7/10 sera); 940, 941, 942 (ripartenza del
+	// robot, FB_RobotEfort) e 19003 (timeout della catena cassetto) per
+	// l'avviso «perche' il ciclo e' fermo» (consegna 36, 8/10)
+	robot: [961, 962, 964, 967, 19004, 20009, 2205, 970, 971, 972, 1419, 1519, 19005, 19006, 19007, 20011, 973, 691, 948, 951, 996, 997, 999, 949, 1722, 940, 941, 942, 19003],
 	mc1: [952, 953, 954, 955, 956, 957, 958, 959, 947],
 };
 const raw = { it: readFileSync('src/locales/it.json', 'utf8'), en: readFileSync('src/locales/en.json', 'utf8') };
@@ -80,8 +82,17 @@ for (const [fam, codes] of Object.entries(CODES))
 	}
 
 console.log('\n3) 947 col testo nuovo, 18 e 20006 non toccati');
-check(loc.it.robot.alarm_947 === 'Comando macchina rifiutato: ciclo attivo o pallet già dichiarato. Portare la cella in HOLD e ripetere.', '947 it: testo nuovo (vale anche per morsa, pallet e porta)');
-check(/HOLD/.test(loc.en.robot.alarm_947), '947 en: testo inglese equivalente');
+// (8/10, prompt 12) il 947 diceva «portare la cella in HOLD e ripetere»: per
+// le dichiarazioni e' falso, li' l'HOLD non basta (FB204 le accetta solo a
+// ciclo fermo). Stesso testo nel riquadro e nel dialog delle dichiarazioni
+const T947 = 'Rifiutato: il ciclo MC1 è in corso. I comandi della macchina si danno in HOLD; le dichiarazioni solo a ciclo fermo (HOLD, poi Reset allarmi).';
+check(loc.it.robot.alarm_947 === T947 && loc.it.robot.declErr['947'] === T947, '947 it: testo nuovo, nel riquadro e nel dialog delle dichiarazioni (comandi in HOLD, dichiarazioni a ciclo fermo)');
+check(/HOLD/.test(loc.en.robot.alarm_947) && loc.en.robot.alarm_947 === loc.en.robot.declErr['947'] && /cycle stopped/.test(loc.en.robot.alarm_947), '947 en: testo inglese equivalente');
+check(!/Portare la cella in HOLD e ripetere/.test(loc.it.robot.alarm_947 + loc.it.robot.declErr['947']), '   «Portare la cella in HOLD e ripetere» non c\'e\' piu\'');
+// (8/10) 943, 19003 e 958 a 30 minuti (consegna 36); il 943 non dice un tempo
+check(/dopo 30 minuti/.test(loc.it.robot.alarm_958) && /after 30 minutes/.test(loc.en.robot.alarm_958) && !/3 minuti/.test(loc.it.robot.alarm_958), '958: «dopo 30 minuti» (era 3)');
+check(/30 minuti/.test(loc.it.robot.alarm_19003) && /30 minutes/.test(loc.en.robot.alarm_19003), '19003: timeout della catena cassetto, 30 minuti');
+check(!/minut/.test(loc.it.robot.alarm_943), '943: nessun tempo nel testo, invariato');
 // (7/10, consegna 33) il 970 vale anche per l'ordine avviato; il 972 e' nuovo
 check(/avviato, in coda o in pausa/.test(loc.it.robot.alarm_970) && /non serve avviarlo/.test(loc.it.robot.alarm_970) && /started, queued or paused/.test(loc.en.robot.alarm_970),
 	'970: nessun ordine di MC1 avviato, in coda o in pausa (consegna 33)');

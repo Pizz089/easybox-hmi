@@ -479,7 +479,9 @@ for (const code of ['947', '948', '99', '996', '997', '999', '944', '945', '946'
 	check(typeof en.robot.declErr[code] === 'string', 'rifiuto ' + code + ' tradotto');
 }
 check(/conferma, non una forzatura/.test(e['996']), 'il 996 dice che il 38 e\' una conferma, non una forzatura');
-check(/Portare la cella in HOLD/.test(e['947']), 'il 947 dice cosa fare, non solo cosa e\' andato storto');
+// (8/10, prompt 12) per le dichiarazioni l'HOLD non basta: ciclo fermo (HOLD, poi Reset allarmi)
+check(/le dichiarazioni solo a ciclo fermo \(HOLD, poi Reset allarmi\)/.test(e['947']) && !/Portare la cella in HOLD e ripetere/.test(e['947']),
+	'il 947 dice cosa fare, non solo cosa e\' andato storto: dichiarazioni a ciclo fermo (HOLD, poi Reset allarmi), non «HOLD e ripetere»');
 check(/invisibile al ciclo/.test(e['20006']), 'il 20006 dice la conseguenza vera: la tasca sparirebbe dal ciclo');
 check(/conferma, non una forzatura/.test(it.robot.decl.boxHint), 'e l\'avviso del cassetto lo dice PRIMA di provarci');
 check(it.robot.decl.seq.stopped.includes('NON sono state inviate'), 'la sequenza fermata dice che il resto non e\' partito');

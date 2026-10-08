@@ -69,6 +69,36 @@ const declareCache = {};
 // replay dello snapshot, come le altre cache (il PLC non ritiene i topic)
 let extractCache;
 
+// (consegna 36, 8/10) PERCHE' IL CICLO MC1 E' FERMO. FB7 pubblica
+// FROM_PLANT/WAIT/MC1 ogni 3 s, nello stesso ciclo di SAFETY/AUX, col payload
+// "codice;stato di FB204;dato" (tre interi; tabella dei codici in
+// docs/ALLARMI-PLC.md). Il pannello v3 ne fa un avviso fisso sotto la
+// striscia. L'8/10 la cella e' rimasta ferma per ore senza un messaggio a
+// video, e il fermo si e' ricostruito dal LOG in ore.
+//   - niente riga «ricevo MQTT» (una ogni 3 s: il log ruota su 5 file da 1 MB
+//     e la sua storia si accorcerebbe di meta' o piu'), niente UNKNOWN;
+//   - un payload che non sono tre interi si scarta, con UNA riga di log
+//     finche' non torna un payload buono;
+//   - cache dell'ultimo messaggio, mandata come MC1/WAIT a ogni messaggio, a
+//     ogni pannello che si connette e a chi la chiede (MC1/WAIT/REQUEST);
+//   - dopo WAIT_STALE_MS senza messaggi: codice null, «non aggiornato». Solo
+//     se ne e' arrivato almeno uno: un PLC senza la 36 il topic non lo
+//     pubblica, e il pannello non deve dire «non aggiornato» per sempre;
+//   - nella tabella LOG una riga solo quando il codice cambia (anche verso
+//     «non aggiornato»): il dato da solo che cambia non scrive;
+//   - col codice 10 (FB204 in 9999) l'ultimo FROM_PLANT/ALARM/MC1, codice e
+//     ora: dice QUALE allarme ha portato FB204 in 9999 (952, 953, 957, 958,
+//     959...). Non i rifiuti 947 e 948, che FB204 lo lasciano dov'e', e non un
+//     allarme vecchio: si dimentica appena un WAIT dice FB204 fuori dal 9999.
+const WAIT_STALE_MS = 10000;
+const WAIT_FB204_ERRORE = 9999;
+const WAIT_CODICE_FB204_ERRORE = 10;
+const MC1_RIFIUTI = [947, 948];
+let waitCache = null;          // { codice, statoFB204, dato, ts }; codice null = non aggiornato
+let waitStantio = null;        // timer del «non aggiornato»
+let waitScartoLoggato = false; // la riga del payload non valido e' gia' scritta
+let ultimoAllarmeMc1 = null;   // { codice, ts }
+
 client.on('error', function (err){
 	DBf.io.emit('PLC/ALARM/GENERIC', 'Impossible to connect to broker!    ['+err+']');
 	// Topic con prefisso "_" indicano eventi interni del backend,
@@ -207,7 +237,11 @@ client.on('message', function (topic, message, packet) {
 
 	// una sola conversione del payload: la usano sia il log sia la diagnostica
 	const payloadStr = message.toString();
-	log.standard("ricevo MQTT: "+topic+":\t"+payloadStr.trim())
+	// (consegna 36) WAIT/MC1 arriva ogni 3 s: niente riga «ricevo MQTT» (vedi
+	// waitCache). Nella diagnostica MQTT Live resta, come tutto il resto.
+	const waitMc1 = param[1] == "WAIT" && param[2] == "MC1";
+	if (!waitMc1)
+		log.standard("ricevo MQTT: "+topic+":\t"+payloadStr.trim())
 	try {
 		diag.publish({
 			ts: Date.now(),
@@ -218,6 +252,11 @@ client.on('message', function (topic, message, packet) {
 			size: Buffer.byteLength(payloadStr)
 		});
 	} catch (_) {}
+	// prima dei rami generici: nel ramo MC1 finirebbe nel default (UNKNOWN)
+	if (waitMc1) {
+		handleWaitMc1(payloadStr);
+		return;
+	}
 
 	// Branch HAAS_CMD (N4-3b): per FROM_PLANT/HAAS_CMD/<MC> delego al dispatcher
 	// dedicato. Return per evitare fall-through nei rami sotto (LOG/ALARM/MC*/...).
@@ -317,6 +356,7 @@ client.on('message', function (topic, message, packet) {
 	if (param[1] == "ALARM" && param[2] == "MC1") {
 		insertLog('ALARM MC1: ' + message.toString(), 'PLC', 'ALARM');
 		DBf.io.emit('ALARM/MC1', message.toString());
+		ricordaAllarmeMc1(message.toString());
 		return;
 	}
 	if (param[1] =="ALARM") {		//es: FROM_PLANT/ALARM
@@ -690,6 +730,14 @@ DBf.io.on('connection', (socket) => {
 		socket.emit('TRAY/EXTRACT', extractCache);
 	if (Object.keys(gripperStateCache).length === 0)
 		snapshotMiss('GRIPPER', '');
+  });
+
+  // (consegna 36) perche' il ciclo MC1 e' fermo: a chi si connette subito, e a
+  // chi lo chiede (il pannello, quando monta e a ogni riconnessione). Niente
+  // se dall'avvio del backend non e' arrivato nessun WAIT/MC1.
+  if (waitCache) socket.emit('MC1/WAIT', waitPerPannello());
+  socket.on('MC1/WAIT/REQUEST', () => {
+	if (waitCache) socket.emit('MC1/WAIT', waitPerPannello());
   });
 
   // Bottone "Riprova" delle view quando il PLC non ha risposto al refresh
@@ -1355,6 +1403,64 @@ function setPieceOnGripper(_STATUS, _SUB_POS){
     })
 }
 
+
+// ===== (consegna 36) FROM_PLANT/WAIT/MC1 =====
+// "codice;statoFB204;dato", tre interi; altrimenti null
+function parseWaitMc1(payload) {
+	const m = String(payload).trim().match(/^(-?\d+)\s*;\s*(-?\d+)\s*;\s*(-?\d+)$/);
+	if (!m) return null;
+	return { codice: parseInt(m[1], 10), statoFB204: parseInt(m[2], 10), dato: parseInt(m[3], 10) };
+}
+
+// quello che va al pannello: la cache, e col codice 10 l'ultimo allarme MC1
+function waitPerPannello() {
+	const w = waitCache || { codice: null, statoFB204: null, dato: null, ts: null };
+	return {
+		codice: w.codice, statoFB204: w.statoFB204, dato: w.dato, ts: w.ts,
+		allarme: w.codice === WAIT_CODICE_FB204_ERRORE && ultimoAllarmeMc1 ? Object.assign({}, ultimoAllarmeMc1) : null,
+	};
+}
+
+function handleWaitMc1(payloadStr) {
+	const w = parseWaitMc1(payloadStr);
+	if (!w) {
+		if (!waitScartoLoggato) {
+			waitScartoLoggato = true;
+			log.standard("WAIT/MC1: payload non valido [" + payloadStr.trim() + "] — scartato (questa riga non si ripete finche' non arriva un payload buono)");
+		}
+		return;
+	}
+	waitScartoLoggato = false;
+	// l'allarme vale per il 9999 in cui e' entrato FB204, non per il prossimo
+	if (w.statoFB204 !== WAIT_FB204_ERRORE) ultimoAllarmeMc1 = null;
+	const prima = waitCache ? waitCache.codice : undefined;
+	waitCache = { codice: w.codice, statoFB204: w.statoFB204, dato: w.dato, ts: Date.now() };
+	if (w.codice !== prima)
+		insertLog('WAIT MC1: ' + payloadStr.trim(), 'PLC', 'WAIT');
+	DBf.io.emit('MC1/WAIT', waitPerPannello());
+	if (waitStantio) clearTimeout(waitStantio);
+	waitStantio = setTimeout(waitNonAggiornato, WAIT_STALE_MS);
+	if (waitStantio && waitStantio.unref) waitStantio.unref();
+}
+
+function waitNonAggiornato() {
+	waitStantio = null;
+	if (!waitCache || waitCache.codice === null) return;
+	waitCache = { codice: null, statoFB204: null, dato: null, ts: Date.now() };
+	insertLog('WAIT MC1: non aggiornato (nessun messaggio da ' + (WAIT_STALE_MS / 1000) + ' s)', 'PLC', 'WAIT');
+	DBf.io.emit('MC1/WAIT', waitPerPannello());
+}
+
+function ricordaAllarmeMc1(payload) {
+	const testo = String(payload).trim();
+	if (!/^\d+$/.test(testo)) return;
+	const codice = parseInt(testo, 10);
+	if (MC1_RIFIUTI.includes(codice)) return;
+	ultimoAllarmeMc1 = { codice: codice, ts: Date.now() };
+	// arrivato dopo il WAIT che diceva gia' 9999: il pannello lo sa subito
+	if (waitCache && waitCache.codice === WAIT_CODICE_FB204_ERRORE)
+		DBf.io.emit('MC1/WAIT', waitPerPannello());
+}
 
 function insertLog(_QUERY, _unitA, _unitB){
 	sql.connect(DBf.configDB, function (err) {
