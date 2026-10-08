@@ -81,6 +81,7 @@ VERSION : 0.1
       RESET_ALL_DISPATCH : Bool;
       temp : Int;
       robotInPendant : Bool;
+      cassettoFuori : Bool;
    END_VAR
 
 
@@ -243,7 +244,22 @@ BEGIN
 	                // MissionCode = 0 (appena azzerato QUI) e conclude che lo scarico
 	                // e' finito, prosegue sui registri di bordo troncati, e arriva a
 	                // rilanciare la RICETTA su un pezzo GIA' LAVORATO ancora in morsa.
-	                "DB_MC1".Dispatcher["_master"] := 0;
+	                // (35) CON LA HAAS IN LAVORAZIONE (FB204 al 95 e porta della HAAS chiusa)
+	                // IL RESET NON ABBANDONA IL CICLO MACCHINA: substate 6, si aspetta il
+	                // fine ciclo, come fanno gia' home, posizionamenti e restart
+	                // (resetDispatcher). Portato a 0 dal 95, FB204 rileggeva l'ordine col
+	                // pezzo ancora in lavorazione (simulazione 7/10 bis, B35; problema 7
+	                // della prima). Il caso del 16/9 qui sopra resta coperto: al substate 6
+	                // FB204 non rilancia la ricetta, aspetta il fine ciclo.
+	                // Con la porta della HAAS APERTA la macchina non sta lavorando: il RESET
+	                // porta FB204 a 0 come prima. E' anche l'uscita se la HAAS si ferma a
+	                // ciclo interrotto senza dare il fine ciclo: si apre la porta e si
+	                // ripete il RESET (senza questa uscita FB204 restava al 95 per sempre).
+	                IF "DB_MC1".Dispatcher["_master"] = 95 AND "DB_MC1".io_in.doorClosed THEN
+	                    "DB_MC1".subState := 6;
+	                ELSE
+	                    "DB_MC1".Dispatcher["_master"] := 0;
+	                END_IF;
 	                "DB_MC2".Dispatcher["_master"] := 0;
 	                
 	                "DB_MQTT".lastCmdReceived := 0;
@@ -324,6 +340,12 @@ BEGIN
 	        // del pannello, e non nel master: in HOLD MissionCode puo' essere anche una
 	        // missione di FB204 in attesa, e azzerarla gliela farebbe leggere come
 	        // riuscita.
+	        // (35) DOPO IL 972 SI PUBBLICA IL CODICE ATTIVO. In HOLD Error non esce da
+	        // nessuna parte (DESCR solo al cambio di stato): il pannello riceveva il 972
+	        // senza sapere quale errore togliere, e dopo il RESET l'errore tornava muto
+	        // (simulazione 7/10 bis, B7). Due messaggi sullo stesso topic: il pannello
+	        // di oggi ha un solo riquadro di avviso e mostra l'ultimo, cioe' il codice
+	        // col suo testo; il pannello aggiornato li mette insieme.
 	        IF NOT #RemoteMode AND NOT #robotInPendant AND #Error <> 0 THEN
 	            CASE "DB_MQTT".lastCmdReceived OF
 	                "CMD_RobotPickGripper", "CMD_RobotRemoveGripper", "CMD_RobotExtractTray",
@@ -335,6 +357,40 @@ BEGIN
 	                   send := false,
 	                   topic := 'FROM_PLANT/ALARM/ROBOT',
 	                   payload := STRING_TO_WSTRING('972'));   // comando rifiutato: errore attivo, prima RESET
+	                    "FC_MQTT"(insert := true,
+	                   send := false,
+	                   topic := 'FROM_PLANT/ALARM/ROBOT',
+	                   payload := STRING_TO_WSTRING("INT_TO_STRING_WITHOUT_SIGN"(#Error)));   // l'errore attivo
+	                    "DB_MQTT".lastCmdReceived := 0;
+	            END_CASE;
+	        END_IF;
+	        
+	        // ---- Comandi di missione con una MISSIONE IN CORSO O SOSPESA: rifiutati (35) ----
+	        // Il manager accettava le missioni senza guardare il master e MissionCode.
+	        // In HOLD le missioni di FB204 possono restare scritte in MissionCode (molte
+	        // il master 0 le avvia solo con RemoteMode; altre, come la 16, cassetti e
+	        // pinze, aspettano Error = 0): un comando del pannello le sovrascriveva,
+	        // e a fine missione FB204 leggeva MissionCode = 0 come la PROPRIA missione
+	        // riuscita (simulazione 7/10 bis, B5). Durante una missione del pannello un
+	        // secondo comando cambiava GripperRequested, PartSubPos, Tray_ID a meta'.
+	        // Adesso: missione in corso (master <> 0) o in attesa (MissionCode <> 0) =
+	        // comando consumato e 973 su ALARM/ROBOT. Si esce con CONTINUA (la missione
+	        // sospesa riprende) oppure con la procedura (RESTART, HOME, Reimposta) o col
+	        // RESET. Home, manutenzione, posizionamenti, dichiarazioni e reset restano
+	        // ammessi: non sono in questo elenco.
+	        IF NOT #RemoteMode AND NOT #robotInPendant
+	            AND (#Dispatcher["_master"] <> 0 OR #MissionCode <> 0)
+	        THEN
+	            CASE "DB_MQTT".lastCmdReceived OF
+	                "CMD_RobotPickGripper", "CMD_RobotRemoveGripper", "CMD_RobotExtractTray",
+	                "CMD_RobotReleaseTray", "CMD_RobotPickObject", "CMD_RobotPlaceObject",
+	                "CMD_HMI_SwapGripper", "CMD_RobotPickPartTray", "CMD_RobotPlacePartTray",
+	                "CMD_RobotPickPartMC", "CMD_RobotPlacePartMC", "CMD_RobotPickPlacePartMC",
+	                "CMD_OpenGripper1", "CMD_CloseGripper1", "CMD_OpenGripper2", "CMD_CloseGripper2":
+	                    "FC_MQTT"(insert := true,
+	                   send := false,
+	                   topic := 'FROM_PLANT/ALARM/ROBOT',
+	                   payload := STRING_TO_WSTRING('973'));   // missione in corso o sospesa: CONTINUA, oppure RESET
 	                    "DB_MQTT".lastCmdReceived := 0;
 	            END_CASE;
 	        END_IF;
@@ -611,21 +667,29 @@ BEGIN
 	    
 	    //DA TESTARE
 	    (*IF "DB_RobotMissionStatus".StatusCode = "cmd_executed" THEN
-	        "DB_RobotMission".Command := 0;
-	    END_IF;
-	    *)
+	            "DB_RobotMission".Command := 0;
+	        END_IF;
+	        *)
 	    
 	    IF NOT "Main_Safety_RTG1_DB".Aux_OK THEN
 	        #MissionCode := 0;
 	    END_IF;
 	    
-	    #tonSwapA(IN := #Dispatcher["_master"] >= 973 AND #Dispatcher["_master"] <= 974,
+	    // (35) I TIMEOUT NON CONTANO IN HOLD: l'HOLD e' una pausa e CONTINUA deve
+	    // riprendere senza errori (decisione del 7/10). Prima una pausa oltre 60 s a
+	    // meta' swap dava 943, oltre 180 s a meta' cassetto 19003, e FB204 andava in
+	    // 9999 (simulazione 7/10 bis, B18). In HOLD il timer si azzera e riparte da
+	    // capo alla ripresa: il tempo pieno vale di nuovo.
+	    // "DB_plant".Hold e' l'HOLD del pulsante e della porta, #HOLD quello del pannello.
+	    #tonSwapA(IN := #Dispatcher["_master"] >= 973 AND #Dispatcher["_master"] <= 974
+	              AND NOT (#HOLD OR "DB_plant".Hold),
 	              PT := T#60s);
 	    // TIMEOUT ESTESO AL 9781 (17/9): il 978 ora chiude in un ciclo e passa la
 	    // registrazione alla catena unica. Senza estendere la sorveglianza, un ponte
 	    // SQL occupato lascerebbe il master appeso al 9781 in silenzio, con la pinza
 	    // gia' a bordo.
-	    #tonSwapB(IN := #Dispatcher["_master"] = 978 OR #Dispatcher["_master"] = 9781,
+	    #tonSwapB(IN := (#Dispatcher["_master"] = 978 OR #Dispatcher["_master"] = 9781)
+	              AND NOT (#HOLD OR "DB_plant".Hold),
 	              PT := T#60s);
 	    IF (#tonSwapA.Q OR #tonSwapB.Q) AND #Error = 0 THEN
 	        #Error := 943;  // swap: timeout di fase (deposito o prelievo)
@@ -636,11 +700,25 @@ BEGIN
 	    // una catena senza timeout, quando si ferma, ferma anche il 750 che la
 	    // aspetta e il 58 di FB204 che aspetta il 750, e nessuno lo dice.
 	    // Tre minuti coprono estrazione e rilascio con margine largo.
-	    #tonExtract(IN := #Dispatcher["Extract_TRAY"] > 0 OR #Dispatcher["Release_TRAY"] > 0,
+	    #tonExtract(IN := (#Dispatcher["Extract_TRAY"] > 0 OR #Dispatcher["Release_TRAY"] > 0)
+	                AND NOT (#HOLD OR "DB_plant".Hold),
 	                PT := T#180s);
 	    IF #tonExtract.Q AND #Error = 0 THEN
 	        #Error := 19003;   // catena cassetto: timeout
 	    END_IF;
+	    
+	    // (35) CASSETTO FUORI, CALCOLATO UNA VOLTA: registro, sensori di cassetto
+	    // fuori (gli stessi di FB_easyBox) e catene di estrazione e rilascio. E' la
+	    // stessa condizione dello stato 10 delle catene pinza (consegna 34), usata
+	    // dai master che cambiano pinza PRIMA di lanciare le catene: lo swap (che
+	    // non passa dalle catene), carico e scarico pinza, e i cambi pinza dei
+	    // master 1010, 1100, 1200 e 1310. Un cassetto a meta' corsa non lo vede
+	    // nessuno: AllTrayInside non e' cablato (limite noto, problema 19).
+	    #cassettoFuori := "DB_BOX_1".ExtractedTray > 0
+	    OR #Dispatcher["Extract_TRAY"] > 0 OR #Dispatcher["Release_TRAY"] > 0
+	    OR "I_OUT_TRAY1" OR "I_OUT_TRAY2" OR "I_OUT_TRAY3" OR "I_OUT_TRAY4"
+	    OR "I_OUT_TRAY5" OR "I_OUT_TRAY6" OR "I_OUT_TRAY7" OR "I_OUT_TRAY8"
+	    OR "I_OUT_TRAY9" OR "I_OUT_TRAY10" OR "I_OUT_TRAY11" OR "I_OUT_TRAY12";
 	    
 	    IF #communication_OK THEN
 	        CASE #Dispatcher["_master"] OF
@@ -762,15 +840,36 @@ BEGIN
 	                            END_IF;
 	                        END_IF;
 	                    "MISSION_UnloadGripper":
-	                        IF #Gripper_ID[1] > 0 AND #Dispatcher["_Gripper_Robot_to_TRAY"] = 0 THEN
+	                        // (35) LE GUARDIE DELLE CATENE PINZA ANCHE QUI: EasyBox in errore (949)
+	                        // e cassetto fuori (1519) chiudono la missione subito, invece di
+	                        // lasciare il 900 appeso dopo il rifiuto della catena.
+	                        IF #Gripper_ID[1] <= 0 THEN
+	                            #Error := 936;  // scarico richiesto ma nessuna pinza registrata al sistema
+	                            #MissionCode := 0;   // (35) non resta in sospeso
+	                        ELSIF NOT "DB_BOX_1".Robot_enabled_to_work THEN
+	                            #Error := 949;
+	                            #MissionCode := 0;
+	                        ELSIF #cassettoFuori THEN
+	                            #Error := 1519;
+	                            #MissionCode := 0;
+	                        ELSIF #Dispatcher["_Gripper_Robot_to_TRAY"] = 0 THEN
 	                            #Dispatcher["_Gripper_Robot_to_TRAY"] := 10;
 	                            #Dispatcher["_master"] := 900;
-	                        ELSIF #Gripper_ID[1] <= 0 THEN
-	                            #Error := 936;  // scarico richiesto ma nessuna pinza registrata al sistema
 	                        END_IF;
 	                    "MISSION_LoadGripper":
 	                        IF "Gripper_mounted" THEN
 	                            #Error := 935;
+	                            // (35) NON RESTA IN SOSPESO: col MissionCode scritto il master
+	                            // rivalutava a ogni ciclo e, appena il sensore pinza si
+	                            // spegneva, partiva il carico chiesto minuti prima
+	                            // (simulazione 7/10 bis, B13).
+	                            #MissionCode := 0;
+	                        ELSIF NOT "DB_BOX_1".Robot_enabled_to_work THEN
+	                            #Error := 949;
+	                            #MissionCode := 0;
+	                        ELSIF #cassettoFuori THEN
+	                            #Error := 1419;
+	                            #MissionCode := 0;
 	                        ELSE
 	                            #Dispatcher["_Gripper_TRAY_to_Robot"] := 10;
 	                            #MCRequested := 0;
@@ -783,6 +882,24 @@ BEGIN
 	                            #MissionCode := 0;
 	                        ELSIF #GripperRequested = #Gripper_ID[1] THEN
 	                            #Error := 939;          // swap: pinza richiesta gia' a bordo
+	                            #MissionCode := 0;
+	                        ELSIF NOT "DB_BOX_1".Robot_enabled_to_work THEN
+	                            // (35) LO SWAP NON PASSAVA DALLE GUARDIE DELLE CATENE PINZA: al
+	                            // 970 compone da solo la query dello scaffale e manda il comando
+	                            // 30. Col cassetto fuori il robot andava allo scaffale pinze,
+	                            // contro la decisione del 7/10, e l'intestazione della 34 diceva
+	                            // il contrario (simulazione 7/10 bis, B1). Le guardie stanno qui,
+	                            // prima di 950 e 970: valgono per il pannello e per FB204, che
+	                            // cambia pinza sempre con lo swap (35 di FB204). In automatico
+	                            // l'errore porta FB204 in 9999 col 952.
+	                            #Error := 949;
+	                            #MissionCode := 0;
+	                        ELSIF #cassettoFuori THEN
+	                            IF #Gripper_ID[1] = 0 THEN
+	                                #Error := 1419;     // flangia nuda: sarebbe un carico
+	                            ELSE
+	                                #Error := 1519;     // lo swap comincia col deposito della pinza a bordo
+	                            END_IF;
 	                            #MissionCode := 0;
 	                        ELSIF #Gripper_ID[1] = 0 THEN
 	                            // flangia vuota: degenera nel carico classico (chiude via 950/960)
@@ -905,9 +1022,22 @@ BEGIN
 	                // sovrapponendosi allo scarico sullo stesso ponte SQL.
 	                // Gli altri rami analoghi — 210, 310, 410 — la guardia ce l'hanno
 	                // gia': il 110 era l'unico rimasto scoperto.
-	                IF #Gripper_ID[1] = 0 AND #Dispatcher["_Gripper_Robot_to_TRAY"] = 0 THEN
-	                    #Dispatcher["_Gripper_TRAY_to_Robot"] := 10;
-	                    #Dispatcher["_master"] := 115;
+	                // (35) ESITO DELLO SCARICO: con la catena chiusa senza scaricare (949,
+	                // 1519 col cassetto fuori) o ferma a 990 il master restava appeso.
+	                // Adesso chiude e lascia l'errore: FB204 va in 9999 col 952.
+	                IF #Dispatcher["_Gripper_Robot_to_TRAY"] = 0 THEN
+	                    IF #Gripper_ID[1] = 0 THEN
+	                        #Dispatcher["_Gripper_TRAY_to_Robot"] := 10;
+	                        #Dispatcher["_master"] := 115;
+	                    ELSE
+	                        #MissionCode := 0;
+	                        #MCRequested := 0;
+	                        #Dispatcher["_master"] := 0;
+	                    END_IF;
+	                ELSIF #Dispatcher["_Gripper_Robot_to_TRAY"] >= 990 THEN
+	                    #MissionCode := 0;
+	                    #MCRequested := 0;
+	                    #Dispatcher["_master"] := 0;
 	                END_IF;
 	                
 	            115:
@@ -951,33 +1081,75 @@ BEGIN
 	                // TRE RAMI (17/9): a flangia nuda Gripper_ID[1]=0 e' diverso da
 	                // qualunque pinza richiesta, quindi partiva lo scarico di una
 	                // pinza inesistente -> query con id=0 -> 990. Vedi nota al 100.
+	                // (35) Dopo un carico pinza si passa dal 215, che manda il TCP della
+	                // pinza nuova come il 115 nel montaggio pallet. Prima il 220 lanciava
+	                // il prelievo del pallet in macchina col TCP della pinza di prima.
 	                IF #Gripper_ID[1] <> #GripperRequested AND #Gripper_ID[1] > 0 THEN
 	                    #Dispatcher["_Gripper_Robot_to_TRAY"] := 10;
 	                    #Dispatcher["_master"] := 210;
 	                ELSIF #Gripper_ID[1] = 0 THEN
 	                    #Dispatcher["_Gripper_TRAY_to_Robot"] := 10;
-	                    #Dispatcher["_master"] := 220;
+	                    #Dispatcher["_master"] := 215;
 	                ELSE
 	                    #Dispatcher["_master"] := 220;
 	                END_IF;
 	            210:
-	                IF #Gripper_ID[1] = 0 AND #Dispatcher["_Gripper_Robot_to_TRAY"] = 0 THEN
-	                    #Dispatcher["_Gripper_TRAY_to_Robot"] := 10;
-	                    #Dispatcher["_master"] := 220;
+	                // (35) esito dello scarico: con la catena chiusa senza scaricare
+	                // (949, 1519) o ferma a 990 il master restava appeso
+	                IF #Dispatcher["_Gripper_Robot_to_TRAY"] = 0 THEN
+	                    IF #Gripper_ID[1] = 0 THEN
+	                        #Dispatcher["_Gripper_TRAY_to_Robot"] := 10;
+	                        #Dispatcher["_master"] := 215;
+	                    ELSE
+	                        #MissionCode := 0;
+	                        #MCRequested := 0;
+	                        #Dispatcher["_master"] := 0;
+	                    END_IF;
+	                ELSIF #Dispatcher["_Gripper_Robot_to_TRAY"] >= 990 THEN
+	                    #MissionCode := 0;
+	                    #MCRequested := 0;
+	                    #Dispatcher["_master"] := 0;
 	                END_IF;
 	                
+	            215: // (35) pinza caricata: TCP al robot, come al 115
+	                IF #Dispatcher["_Gripper_TRAY_to_Robot"] = 0 THEN
+	                    IF #Gripper_ID[1] = #GripperRequested THEN
+	                        #Dispatcher["get_TCP_Data"] := 10;
+	                        #Dispatcher["_master"] := 220;
+	                    ELSE
+	                        // la catena ha chiuso senza montare la pinza (949, 1419, 990):
+	                        // resta l'errore, e FB204 va in 9999 col 952
+	                        #MissionCode := 0;
+	                        #MCRequested := 0;
+	                        #Dispatcher["_master"] := 0;
+	                    END_IF;
+	                END_IF;
 	            220: //gripper OK -> start mission
-	                IF #Gripper_ID[1] = #GripperRequested AND #Dispatcher["_Gripper_TRAY_to_Robot"] = 0 THEN
+	                // (35) TCP NON AGGIORNATO = NIENTE MISSIONE, come al 120
+	                IF #Dispatcher["get_TCP_Data"] = 0 AND #Error <> 0 THEN
+	                    #MissionCode := 0;
+	                    #MCRequested := 0;
+	                    #Dispatcher["_master"] := 0;
+	                ELSIF #Gripper_ID[1] = #GripperRequested AND #Dispatcher["_Gripper_TRAY_to_Robot"] = 0
+	                    AND #Dispatcher["get_TCP_Data"] = 0
+	                THEN
 	                    #Dispatcher["_Pallet_MC_to_Robot"] := 10;
 	                    #Dispatcher["_master"] := 230;
 	                END_IF;
 	            230:
-	                IF #GripperOccuped[1] AND "DB_RobotMissionStatus".StatusCode = "cmd_executed" AND #Dispatcher["_Pallet_MC_to_Robot"] = 0 THEN
+	                // (35) ATTESA SU waitingNewCmd, COME AL 130. Pallet_MC_to_Robot azzera
+	                // Command al suo 50: il robot torna a waitingNewCmd e "cmd_executed" qui
+	                // non si vedeva piu'. Il 230 restava fermo a ogni scarico pallet
+	                // automatico (simulazione 7/10 bis, B4; agente 4 della prima).
+	                IF #GripperOccuped[1] AND
+	                    "DB_RobotMissionStatus".StatusCode = "cmd_waitingNewCmd" AND
+	                    #Dispatcher["_Pallet_MC_to_Robot"] = 0 THEN
 	                    #Dispatcher["_Pallet_Robot_to_TRAY"] := 10;
 	                    "DB_RobotMission".Command := 0;  ///\\\
 	                    
 	                    #Dispatcher["_master"] := 240;
 	                END_IF;
+	                
 	            240: //Mission ended
 	                IF #Dispatcher["_Pallet_Robot_to_TRAY"] = 0 THEN
 	                    #MissionCode := 0;
@@ -1231,17 +1403,22 @@ BEGIN
 	                        #Dispatcher["_master"] := 715;
 	                    END_IF;
 	                END_IF;
+	                
 	            710: // scarico della pinza a bordo, che non ha l'uncino
 	                // Guardia doppia come al 110: registro a zero E catena chiusa.
 	                IF #Gripper_ID[1] = 0 AND #Dispatcher["_Gripper_Robot_to_TRAY"] = 0 THEN
 	                    #Dispatcher["_Gripper_TRAY_to_Robot"] := 10;
 	                    #Dispatcher["_master"] := 715;
-	                ELSIF #Dispatcher["_Gripper_Robot_to_TRAY"] = 0 THEN
-	                    // la catena ha chiuso senza scaricare (949, 1519 cassetto fuori):
-	                    // si chiude la missione, resta l'errore
+	                ELSIF #Dispatcher["_Gripper_Robot_to_TRAY"] = 0
+	                    OR #Dispatcher["_Gripper_Robot_to_TRAY"] >= 990
+	                THEN
+	                    // la catena ha chiuso senza scaricare (949, 1519 cassetto fuori),
+	                    // oppure (35) si e' fermata a 990 (slot a scaffale non trovato, che
+	                    // non torna a 0 da solo): si chiude la missione, resta l'errore
 	                    #MissionCode := 0;
 	                    #Dispatcher["_master"] := 0;
 	                END_IF;
+	                
 	            715: // carico della pinza con uncino
 	                IF #Dispatcher["_Gripper_TRAY_to_Robot"] = 0 THEN
 	                    IF #Gripper_ID[1] = #GripperRequested THEN
@@ -1305,16 +1482,32 @@ BEGIN
 	                END_IF;
 	                ///////////////////////////   
 	            900://"MISSION_UnloadGripper"
-	                IF #Dispatcher["_Gripper_Robot_to_TRAY"] = 0 AND #Error = 0 THEN
+	                // (35) CHIUDE ANCHE IN ERRORE: con "AND #Error = 0" una catena chiusa
+	                // con un errore (949) o ferma a 990 lasciava il master appeso con
+	                // MissionCode scritto. L'errore resta, si toglie col RESET.
+	                IF #Dispatcher["_Gripper_Robot_to_TRAY"] = 0
+	                    OR #Dispatcher["_Gripper_Robot_to_TRAY"] >= 990
+	                THEN
 	                    #MissionCode := 0;
 	                    
 	                    #Dispatcher["_master"] := 0;
 	                END_IF;
 	                ///////////////////////////   
 	            950://"MISSION_LoadGripper"
-	                IF #Dispatcher["_Gripper_TRAY_to_Robot"] = 0 AND #Error = 0 THEN
-	                    #Dispatcher["get_TCP_Data"] := 10;
-	                    #Dispatcher["_master"] := 960;
+	                // (35) SI DECIDE SUL REGISTRO, NON SULL'ERRORE: pinza montata e
+	                // registrata = TCP al robot (960), anche se nel frattempo e' salito un
+	                // errore che non c'entra (per esempio un 938 della supervisione). La
+	                // catena chiusa senza montare (949, 1419, 937, 990) chiude la missione
+	                // e lascia l'errore. Prima, con "AND #Error = 0", il master restava
+	                // appeso con MissionCode scritto.
+	                IF #Dispatcher["_Gripper_TRAY_to_Robot"] = 0 THEN
+	                    IF #Gripper_ID[1] = #GripperRequested AND #Gripper_ID[1] > 0 THEN
+	                        #Dispatcher["get_TCP_Data"] := 10;
+	                        #Dispatcher["_master"] := 960;
+	                    ELSE
+	                        #MissionCode := 0;
+	                        #Dispatcher["_master"] := 0;
+	                    END_IF;
 	                END_IF;
 	                
 	            960: //WAIT end update data
@@ -1487,33 +1680,84 @@ BEGIN
 	                
 	                //////////////////////
 	            1000: //MISSION_Load_Pallet
+	                // (35) GripperRequested azzerato prima della ricerca: se la ricerca non
+	                // trova la pinza del pallet (1722) il valore vecchio restava, e il 1010
+	                // cambiava pinza verso una pinza che col pallet non c'entra.
+	                #GripperRequested := 0;
 	                #Dispatcher["_Gripper4Pallet_Search"] := 10;
 	                #Dispatcher["_master"] := 1010;
 	                
 	            1010:
+	                // (35) OGNI PASSO GUARDA L'ESITO DEL PRECEDENTE. Prima il 1020 e il 1050
+	                // guardavano solo "catena a 0": dopo un rifiuto del cambio pinza (1519,
+	                // 1419 col cassetto fuori, 949) il robot andava a prendere il pallet
+	                // con la pinza di prima (simulazione 7/10 bis, B2). In piu':
+	                //   - cambio pinza col cassetto fuori: rifiutato qui, prima di muovere;
+	                //   - flangia nuda: si carica la pinza (prima si saltava al 1050 e si
+	                //     lanciava il prelievo pallet senza pinza);
+	                //   - dopo un carico, il TCP della pinza nuova (1030-1040), come al 115;
+	                //   - ogni esito negativo chiude la missione e lascia l'errore.
 	                IF #Dispatcher["_Gripper4Pallet_Search"] = 0 THEN
-	                    IF #GripperRequested > 0 THEN
-	                        IF #GripperRequested <> #Gripper_ID[1] AND #Gripper_ID[1] > 0 THEN
-	                            #Dispatcher["_Gripper_Robot_to_TRAY"] := 10;
-	                            #Dispatcher["_master"] := 1020;
-	                        ELSE
-	                            #Dispatcher["_master"] := 1050;
-	                        END_IF;
-	                    ELSE
+	                    IF #GripperRequested <= 0 THEN
 	                        #Error := "_Gripper4Pallet_Search" * 100 + 22;
+	                        #MissionCode := 0;
+	                        #Dispatcher["_master"] := 0;
+	                    ELSIF #GripperRequested = #Gripper_ID[1] THEN
+	                        #Dispatcher["_master"] := 1050;      // pinza giusta gia' a bordo
+	                    ELSIF #cassettoFuori THEN
+	                        #Error := 1519;                      // cambio pinza col cassetto fuori
+	                        #MissionCode := 0;
+	                        #Dispatcher["_master"] := 0;
+	                    ELSIF #Gripper_ID[1] > 0 THEN
+	                        #Dispatcher["_Gripper_Robot_to_TRAY"] := 10;
+	                        #Dispatcher["_master"] := 1020;
+	                    ELSE
+	                        #Dispatcher["_Gripper_TRAY_to_Robot"] := 10;
+	                        #Dispatcher["_master"] := 1030;
 	                    END_IF;
 	                END_IF;
 	                
-	            1020:
+	            1020: // scarico della pinza a bordo
 	                IF #Dispatcher["_Gripper_Robot_to_TRAY"] = 0 THEN
-	                    #Dispatcher["_Gripper_TRAY_to_Robot"] := 10;
-	                    #Dispatcher["_master"] := 1050;
+	                    IF #Gripper_ID[1] = 0 THEN
+	                        #Dispatcher["_Gripper_TRAY_to_Robot"] := 10;
+	                        #Dispatcher["_master"] := 1030;
+	                    ELSE
+	                        #MissionCode := 0;                   // scarico non riuscito: resta l'errore
+	                        #Dispatcher["_master"] := 0;
+	                    END_IF;
+	                ELSIF #Dispatcher["_Gripper_Robot_to_TRAY"] >= 990 THEN
+	                    #MissionCode := 0;                       // catena ferma a 990: resta l'errore
+	                    #Dispatcher["_master"] := 0;
 	                END_IF;
-	            1050:
+	            1030: // carico della pinza del pallet
 	                IF #Dispatcher["_Gripper_TRAY_to_Robot"] = 0 THEN
+	                    IF #Gripper_ID[1] = #GripperRequested THEN
+	                        #Dispatcher["get_TCP_Data"] := 10;
+	                        #Dispatcher["_master"] := 1040;
+	                    ELSE
+	                        #MissionCode := 0;                   // carico non riuscito: resta l'errore
+	                        #Dispatcher["_master"] := 0;
+	                    END_IF;
+	                END_IF;
+	            1040: // TCP della pinza nuova: non aggiornato = niente prelievo, come al 120
+	                IF #Dispatcher["get_TCP_Data"] = 0 THEN
+	                    IF #Error <> 0 THEN
+	                        #MissionCode := 0;
+	                        #Dispatcher["_master"] := 0;
+	                    ELSE
+	                        #Dispatcher["_master"] := 1050;
+	                    END_IF;
+	                END_IF;
+	            1050: // prelievo del pallet, solo con la pinza giusta
+	                IF #Gripper_ID[1] = #GripperRequested AND #Error = 0 THEN
 	                    #Dispatcher["_Pallet_TRAY_to_Robot"] := 10;
 	                    #Dispatcher["_master"] := 1060;
+	                ELSE
+	                    #MissionCode := 0;
+	                    #Dispatcher["_master"] := 0;
 	                END_IF;
+	                
 	            1060:
 	                IF #Dispatcher["_Pallet_TRAY_to_Robot"] = 0 THEN
 	                    #MissionCode := 0;
@@ -1531,7 +1775,16 @@ BEGIN
 	                
 	                ///////////// 1100: pick pezzo da cassetto (HMI)
 	            1100: // swap pinza se serve (pattern catene auto)
-	                IF #Gripper_ID[1] <> #GripperRequested AND #Gripper_ID[1] > 0 THEN
+	                // (35) cambio pinza col cassetto fuori: rifiutato qui, prima di muovere.
+	                // Questa missione vuole il cassetto fuori per costruzione: con una pinza
+	                // diversa da quella a bordo il master restava appeso al 1110 col 1519
+	                // della catena (simulazione 7/10 bis, B8).
+	                IF #Gripper_ID[1] <> #GripperRequested AND #cassettoFuori THEN
+	                    #Error := 1519;
+	                    #MissionCode := 0;
+	                    #MCRequested := 0;
+	                    #Dispatcher["_master"] := 0;
+	                ELSIF #Gripper_ID[1] <> #GripperRequested AND #Gripper_ID[1] > 0 THEN
 	                    #Dispatcher["_Gripper_Robot_to_TRAY"] := 10;
 	                    #Dispatcher["_master"] := 1110;
 	                ELSIF #Gripper_ID[1] = 0 THEN
@@ -1540,6 +1793,7 @@ BEGIN
 	                ELSE
 	                    #Dispatcher["_master"] := 1120;
 	                END_IF;
+	                
 	            1110: // scarico pinza attuale
 	                IF #Gripper_ID[1] = 0 AND #Dispatcher["_Gripper_Robot_to_TRAY"] = 0 THEN
 	                    #Dispatcher["_Gripper_TRAY_to_Robot"] := 10;
@@ -1571,7 +1825,13 @@ BEGIN
 	                
 	                ///////////// 1200: pick pezzo da MC1 (HMI)
 	            1200: // swap pinza se serve
-	                IF #Gripper_ID[1] <> #GripperRequested AND #Gripper_ID[1] > 0 THEN
+	                // (35) cambio pinza col cassetto fuori: rifiutato qui, come al 1100
+	                IF #Gripper_ID[1] <> #GripperRequested AND #cassettoFuori THEN
+	                    #Error := 1519;
+	                    #MissionCode := 0;
+	                    #MCRequested := 0;
+	                    #Dispatcher["_master"] := 0;
+	                ELSIF #Gripper_ID[1] <> #GripperRequested AND #Gripper_ID[1] > 0 THEN
 	                    #Dispatcher["_Gripper_Robot_to_TRAY"] := 10;
 	                    #Dispatcher["_master"] := 1210;
 	                ELSIF #Gripper_ID[1] = 0 THEN
@@ -1580,6 +1840,7 @@ BEGIN
 	                ELSE
 	                    #Dispatcher["_master"] := 1220;
 	                END_IF;
+	                
 	            1210:
 	                IF #Gripper_ID[1] = 0 AND #Dispatcher["_Gripper_Robot_to_TRAY"] = 0 THEN
 	                    #Dispatcher["_Gripper_TRAY_to_Robot"] := 10;
@@ -1611,37 +1872,78 @@ BEGIN
 	                
 	                ///////////// 1300: pick pallet da MC1 (HMI)
 	            1300: // pinza giusta dal pallet (come 1000 warehouse)
+	                #GripperRequested := 0;   // (35) vedi il 1000
 	                #Dispatcher["_Gripper4Pallet_Search"] := 10;
 	                #Dispatcher["_master"] := 1310;
 	            1310:
+	                // (35) STESSO SCHEMA DEL 1010: esito di ogni passo, cambio pinza col
+	                // cassetto fuori rifiutato, TCP dopo un carico (1335), chiusura con
+	                // l'errore invece del master appeso.
 	                IF #Dispatcher["_Gripper4Pallet_Search"] = 0 THEN
-	                    IF #GripperRequested > 0 THEN
-	                        IF #GripperRequested <> #Gripper_ID[1] AND #Gripper_ID[1] > 0 THEN
-	                            #Dispatcher["_Gripper_Robot_to_TRAY"] := 10;
-	                            #Dispatcher["_master"] := 1320;
-	                        ELSIF #Gripper_ID[1] = 0 THEN
-	                            #Dispatcher["_Gripper_TRAY_to_Robot"] := 10;
-	                            #Dispatcher["_master"] := 1330;
-	                        ELSE
-	                            #Dispatcher["_master"] := 1340;
-	                        END_IF;
-	                    ELSE
+	                    IF #GripperRequested <= 0 THEN
 	                        #Error := "_Gripper4Pallet_Search" * 100 + 22;
+	                        #MissionCode := 0;
+	                        #MCRequested := 0;
+	                        #Dispatcher["_master"] := 0;
+	                    ELSIF #GripperRequested = #Gripper_ID[1] THEN
+	                        #Dispatcher["_master"] := 1340;
+	                    ELSIF #cassettoFuori THEN
+	                        #Error := 1519;
+	                        #MissionCode := 0;
+	                        #MCRequested := 0;
+	                        #Dispatcher["_master"] := 0;
+	                    ELSIF #Gripper_ID[1] > 0 THEN
+	                        #Dispatcher["_Gripper_Robot_to_TRAY"] := 10;
+	                        #Dispatcher["_master"] := 1320;
+	                    ELSE
+	                        #Dispatcher["_Gripper_TRAY_to_Robot"] := 10;
+	                        #Dispatcher["_master"] := 1330;
 	                    END_IF;
 	                END_IF;
 	            1320:
 	                IF #Dispatcher["_Gripper_Robot_to_TRAY"] = 0 THEN
-	                    #Dispatcher["_Gripper_TRAY_to_Robot"] := 10;
-	                    #Dispatcher["_master"] := 1330;
+	                    IF #Gripper_ID[1] = 0 THEN
+	                        #Dispatcher["_Gripper_TRAY_to_Robot"] := 10;
+	                        #Dispatcher["_master"] := 1330;
+	                    ELSE
+	                        #MissionCode := 0;
+	                        #MCRequested := 0;
+	                        #Dispatcher["_master"] := 0;
+	                    END_IF;
+	                ELSIF #Dispatcher["_Gripper_Robot_to_TRAY"] >= 990 THEN
+	                    #MissionCode := 0;
+	                    #MCRequested := 0;
+	                    #Dispatcher["_master"] := 0;
 	                END_IF;
 	            1330:
 	                IF #Dispatcher["_Gripper_TRAY_to_Robot"] = 0 THEN
-	                    #Dispatcher["_master"] := 1340;
+	                    IF #Gripper_ID[1] = #GripperRequested THEN
+	                        #Dispatcher["get_TCP_Data"] := 10;
+	                        #Dispatcher["_master"] := 1335;
+	                    ELSE
+	                        #MissionCode := 0;
+	                        #MCRequested := 0;
+	                        #Dispatcher["_master"] := 0;
+	                    END_IF;
+	                END_IF;
+	            1335: // (35) TCP della pinza nuova: non aggiornato = niente prelievo
+	                IF #Dispatcher["get_TCP_Data"] = 0 THEN
+	                    IF #Error <> 0 THEN
+	                        #MissionCode := 0;
+	                        #MCRequested := 0;
+	                        #Dispatcher["_master"] := 0;
+	                    ELSE
+	                        #Dispatcher["_master"] := 1340;
+	                    END_IF;
 	                END_IF;
 	            1340:
-	                IF #Gripper_ID[1] = #GripperRequested THEN
+	                IF #Gripper_ID[1] = #GripperRequested AND #Error = 0 THEN
 	                    #Dispatcher["_Pallet_MC_to_Robot"] := 10;
 	                    #Dispatcher["_master"] := 1345;
+	                ELSE
+	                    #MissionCode := 0;
+	                    #MCRequested := 0;
+	                    #Dispatcher["_master"] := 0;
 	                END_IF;
 	            1345:
 	                IF #Dispatcher["_Pallet_MC_to_Robot"] = 0 AND #Error = 0 THEN
@@ -1820,14 +2122,15 @@ BEGIN
 	            1410: // SPINTA: query sulle quote di spinta e arrivo per il grezzo che
 	                // sta per entrare. Stesso schema dello stato 32 di Part_Robot_to_MC,
 	                // compresa la terza colonna Z_PUSH_DROP (6/10, vedi 1412).
+	                // (35) isnull sulle quote: vedi la nota al 32 di Part_Robot_to_MC.
 	                IF #MCRequested <> 1 THEN
 	                    #Dispatcher["_master"] := 1414;          // MC2 non esiste: nessuna spinta
 	                ELSIF "SqlCommands".sqlCommands[0] = '' THEN
 	                    IF "DB_MC1".order.ID > 0 THEN
-	                        #queryTemp := CONCAT(IN1 := 'select X_PUSH,X_STOP,Z_PUSH_DROP from COORDINATES_PUSH_MC where MC=1 and ORDER_ID=',
+	                        #queryTemp := CONCAT(IN1 := 'select isnull(X_PUSH,0),isnull(X_STOP,0),Z_PUSH_DROP from COORDINATES_PUSH_MC where MC=1 and ORDER_ID=',
 	                                             IN2 := "INT_TO_STRING_WITHOUT_SIGN"(DINT_TO_INT("DB_MC1".order.ID)));
 	                    ELSE
-	                        #queryTemp := 'select top 1 X_PUSH,X_STOP,Z_PUSH_DROP from COORDINATES_PUSH_MC where MC=1 order by ORDER_ID desc';
+	                        #queryTemp := 'select top 1 isnull(X_PUSH,0),isnull(X_STOP,0),Z_PUSH_DROP from COORDINATES_PUSH_MC where MC=1 order by ORDER_ID desc';
 	                    END_IF;
 	                    #queryStartExecution := TRUE;
 	                    #Dispatcher["_master"] := 1411;
@@ -1856,8 +2159,11 @@ BEGIN
 	                        #xPushTemp := "SqlData".data.rows[0].col[0];
 	                        #xStopTemp := "SqlData".data.rows[0].col[1];
 	                        
-	                        IF ABS(#xPushTemp - #xPlaceTemp) > 500000
-	                            OR ABS(#xStopTemp - #xPlaceTemp) > 500000
+	                        // (35) stessa plausibilita' del 36 di Part_Robot_to_MC
+	                        IF ABS(DINT_TO_LINT(#xPushTemp) - DINT_TO_LINT(#xPlaceTemp)) > 500000
+	                            OR ABS(DINT_TO_LINT(#xStopTemp) - DINT_TO_LINT(#xPlaceTemp)) > 500000
+	                            OR #xStopTemp < #xPushTemp
+	                            OR DINT_TO_LINT(#xStopTemp) - DINT_TO_LINT(#xPushTemp) > 200000
 	                        THEN
 	                            #xPushTemp := 0;
 	                            #xStopTemp := 0;
@@ -3346,11 +3652,18 @@ BEGIN
 	                        #Error := "_Part_Robot_to_TRAY" * 100 + 21;     //error 621
 	                        #Dispatcher["_Part_Robot_to_TRAY"] := "_Part_Robot_to_TRAY" * 100 + 21;
 	                    ELSE
+	                        // (35) SOLO SU UNA TASCA VUOTA A DATABASE (STATUS=2), nei due rami a
+	                        // tasca fissa. Prima il deposito non guardava lo stato: dopo
+	                        // un'emergenza, un RESTART o un HOLD a meta' deposito il finito
+	                        // poteva andare su una tasca gia' piena (problema 4 della prima
+	                        // simulazione; 7/10 bis, B42). Adesso zero righe = 691 e il robot
+	                        // non si muove: si controlla la tasca e la si dichiara (39).
 	                        IF NOT #RemoteMode AND #PartSubPos > 0 THEN   // HMI: posizione esplicita
 	                            #queryTemp := CONCAT(IN1 := 'select X_PICK,y_PICK,z_PICK,X_ROT,y_rot,Z_ROt,APPROACH_type,APPROACH_x,APPROACH_y,APPROACH_Z from COORDINATES_PIECES_TRAYS_4Robot where TRAY = $'',
 	                                                 IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#Tray_ID),
 	                                                 IN3 := '$' AND SUB_POS=',
-	                                                 IN4 := "INT_TO_STRING_WITHOUT_SIGN"(#PartSubPos));
+	                                                 IN4 := "INT_TO_STRING_WITHOUT_SIGN"(#PartSubPos),
+	                                                 IN5 := ' AND STATUS=2');
 	                        ELSIF NOT #RemoteMode THEN   // HMI: prima vuota — SUB_POS in coda (col[10]) per l'update stati
 	                            #queryTemp := CONCAT(IN1 := 'select X_PICK,y_PICK,z_PICK,X_ROT,y_rot,Z_ROt,APPROACH_type,APPROACH_x,APPROACH_y,APPROACH_Z,SUB_POS from COORDINATES_PIECES_TRAYS_4Robot where TRAY = $'',
 	                                                 IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#Tray_ID),
@@ -3367,7 +3680,8 @@ BEGIN
 	                            #queryTemp := CONCAT(IN1 := 'select X_PICK,y_PICK,z_PICK,X_ROT,y_rot,Z_ROt,APPROACH_type,APPROACH_x,APPROACH_y,APPROACH_Z from COORDINATES_PIECES_TRAYS_4Robot where TRAY = $'',
 	                                                 IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#Tray_ID),
 	                                                 IN3 := '$' AND SUB_POS=',
-	                                                 IN4 := "INT_TO_STRING_WITHOUT_SIGN"(#temp));
+	                                                 IN4 := "INT_TO_STRING_WITHOUT_SIGN"(#temp),
+	                                                 IN5 := ' AND STATUS=2');
 	                        END_IF;
 	                        #queryStartExecution := TRUE;
 	                        
@@ -3645,17 +3959,22 @@ BEGIN
 	                // (simulazione 7/10, problema 3).
 	                // (6/10 sera) terza colonna Z_PUSH_DROP: di quanto scendere con la
 	                // chela rispetto alla Z di deposito durante la spinta (vedi 36).
+	                // (35) ISNULL SULLE QUOTE: il ponte SQL legge un NULL come i 4 byte che
+	                // lo seguono. Con Z_PUSH_DROP in coda, X_PUSH e X_STOP NULL (spinta
+	                // non OK) diventavano 1024 e 4 micron: dentro i 500 mm del controllo,
+	                // spinta abilitata verso X = 1 mm (simulazione 7/10 bis, B3). Con
+	                // isnull arrivano 0 e 0, che il 36 tratta gia' come "niente spinta".
 	                IF #MCRequested <> 1 THEN
 	                    // MC2 non esiste in questa cella: nessuna spinta
 	                    #Dispatcher["_Part_Robot_to_MC"] := 40;
 	                ELSIF "SqlCommands".sqlCommands[0] = '' THEN
 	                    IF #Dispatcher["_master"] <> 1250 THEN
 	                        // automatico: l'ordine attivo, controllato > 0 al 10
-	                        #queryTemp := CONCAT(IN1 := 'select X_PUSH,X_STOP,Z_PUSH_DROP from COORDINATES_PUSH_MC where MC=1 and ORDER_ID=',
+	                        #queryTemp := CONCAT(IN1 := 'select isnull(X_PUSH,0),isnull(X_STOP,0),Z_PUSH_DROP from COORDINATES_PUSH_MC where MC=1 and ORDER_ID=',
 	                                             IN2 := "INT_TO_STRING_WITHOUT_SIGN"(DINT_TO_INT("DB_MC1".order.ID)));
 	                    ELSE
 	                        // manuale: l'ordine del pezzo prelevato, trovato al 12
-	                        #queryTemp := CONCAT(IN1 := 'select X_PUSH,X_STOP,Z_PUSH_DROP from COORDINATES_PUSH_MC where MC=1 and ORDER_ID=',
+	                        #queryTemp := CONCAT(IN1 := 'select isnull(X_PUSH,0),isnull(X_STOP,0),Z_PUSH_DROP from COORDINATES_PUSH_MC where MC=1 and ORDER_ID=',
 	                                             IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#OrderIdMC));
 	                    END_IF;
 	                    #queryStartExecution := TRUE;
@@ -3695,9 +4014,16 @@ BEGIN
 	                        #xStopTemp := "SqlData".data.rows[0].col[1];
 	                        
 	                        // controllo di plausibilita': entrambe le quote devono
-	                        // stare entro 500 mm dalla quota di deposito appena letta
-	                        IF ABS(#xPushTemp - "DB_RobotMission"."X_Pick-Place") > 500000
-	                            OR ABS(#xStopTemp - "DB_RobotMission"."X_Pick-Place") > 500000
+	                        // stare entro 500 mm dalla quota di deposito appena letta.
+	                        // (35) In piu' la GEOMETRIA della vista (coordinates-push-mc.sql):
+	                        // l'arrivo non sta dietro la partenza e la corsa non supera
+	                        // 200 mm (al piu' meta' ganascia piu' il tratto dichiarato: e'
+	                        // un limite contro i dati casuali, non di processo).
+	                        // Differenze in LInt: con dati casuali in DInt potevano traboccare.
+	                        IF ABS(DINT_TO_LINT(#xPushTemp) - DINT_TO_LINT("DB_RobotMission"."X_Pick-Place")) > 500000
+	                            OR ABS(DINT_TO_LINT(#xStopTemp) - DINT_TO_LINT("DB_RobotMission"."X_Pick-Place")) > 500000
+	                            OR #xStopTemp < #xPushTemp
+	                            OR DINT_TO_LINT(#xStopTemp) - DINT_TO_LINT(#xPushTemp) > 200000
 	                        THEN
 	                            #xPushTemp := 0;
 	                            #xStopTemp := 0;
