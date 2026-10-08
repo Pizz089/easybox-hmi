@@ -2,6 +2,8 @@
 
 Decisioni di Dario che vincolano codice, dati e procedure in cella; la più recente in alto. Il come (script, comandi, ordine degli interventi) sta in [APPUNTI-CELLA.md](APPUNTI-CELLA.md).
 
+**«Sblocca morsa» con un tocco solo (8/10).** In Controlli › Macchina MC1 «Sblocca morsa» (`TO_PLANT/CMD/MC1 10`) resta un comando diretto, **senza conferma**. L'audit del prompt 10 proponeva la conferma rossa dell'apertura della chela del robot (il PLC lo accetta a ciclo fermo o in HOLD, e con un pezzo in morsa il pezzo può cadere). Dario ha deciso di no: non riproporla.
+
 **Catalogo delle chele della morsa (7/10).** Il cliente vuole un punto dove dichiarare le chele della morsa con le loro misure, e ritrovarle quando le rimonta.
 1. **Catalogo per riferimento.** Le misure della chela (lunghezza sull'asse di battuta, altezza, affondo) stanno in un catalogo di tipi di chele (`VICE_JAW`); la morsa punta al tipo montato (`VICE.JAW_ID`) e le viste lette dal PLC prendono le misure dal catalogo. Dato unico: le colonne della morsa restano solo per il ritorno indietro.
 2. **Il «punto di appoggio» è la battuta dei pezzi più lunghi della chela.** Resta per coppia morsa + pezzo in `PIECE_ON_VICE`: il riferimento sta sulla morsa, non sulla chela. Ne segue che la battuta va corretta quando cambiano le chele. Geometria data per confermata: chele centrate sulla morsa, battuta fissa sulla morsa.
