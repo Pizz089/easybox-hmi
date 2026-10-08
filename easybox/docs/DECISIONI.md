@@ -2,6 +2,8 @@
 
 Decisioni di Dario che vincolano codice, dati e procedure in cella; la più recente in alto. Il come (script, comandi, ordine degli interventi) sta in [APPUNTI-CELLA.md](APPUNTI-CELLA.md).
 
+**«Sblocca morsa» con un tocco solo (8/10).** In Controlli › Macchina MC1 «Sblocca morsa» (`TO_PLANT/CMD/MC1 10`) resta un comando diretto, **senza conferma**. L'audit del prompt 10 proponeva la conferma rossa dell'apertura della chela del robot (il PLC lo accetta a ciclo fermo o in HOLD, e con un pezzo in morsa il pezzo può cadere). Dario ha deciso di no: non riproporla.
+
 **Consegna 35: guardie del PLC (7/10).** Dalla seconda simulazione del 7/10.
 1. **I timeout non contano in HOLD.** I timeout di swap (943) e del cassetto (19003) si fermano in HOLD: l'HOLD è una pausa, e CONTINUA riprende.
 2. **Il RESET non abbandona un ciclo HAAS in corso a porta chiusa.** Con la macchina in lavorazione (FB204 al 95, porta chiusa) FB204 aspetta il fine ciclo invece di tornare a 0 e rileggere l'ordine col pezzo in lavorazione. Con la porta aperta va a 0 come prima.
