@@ -240,6 +240,17 @@ check(sm.breve.title === '', '   l\'avviso breve si chiude da solo');
 	});
 	check(sbagliati.length === 0, '   (prompt 10) gli 11 esiti positivi vanno direttamente all\'avviso breve (' + (sbagliati.map(([f]) => f).join(', ') || 'tutti') + ')');
 }
+// (prompt 10, ramo del catalogo) e nessun esito positivo scritto ancora in
+// dataStored.alert, in tutto il pannello (qui c'e' anche la morsa creata)
+{
+	const { readdirSync, statSync } = await import('node:fs');
+	const tutti = [];
+	const giro = d => { for (const n of readdirSync(d)) { const p = d + '/' + n; if (statSync(p).isDirectory()) giro(p); else if (/\.(vue|js)$/.test(n)) tutti.push(p); } };
+	giro('src');
+	const ancora = tutti.filter(f => /alert\.type = ['"]message['"]/.test(readFileSync(f, 'utf8')));
+	check(ancora.length === 0 && /avvisoBreve\("INFO", this\.\$t\("vice\.created", \{ id \}\)\);/.test(readFileSync('src/views/conf/Vice/Vice.vue', 'utf8')),
+		'   (prompt 10) nessun message scritto in dataStored.alert in tutto il pannello, morsa creata compresa (' + (ancora.join(', ') || 'nessuno') + ')');
+}
 check(/<alert\s+v-if="dataStored\.alert && dataStored\.alert\.title && dataStored\.alert\.type !== 'message'"/.test(sh)
 	&& /<alert v-if="breve\.title" :key="breve\.n" :title="breve\.title" :desc="breve\.desc" type="message" @cmd_close="chiudiBreve" \/>/.test(sh)
 	&& /watch\(\(\) => dataStored\.alert && \[dataStored\.alert\.title, dataStored\.alert\.desc, dataStored\.alert\.type\], smista, \{ immediate: true \}\);/.test(sh),

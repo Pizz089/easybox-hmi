@@ -251,6 +251,7 @@ import {
 import { GLTFFileLoader } from "@babylonjs/loaders/glTF";
 import viceModelUrl from "@/assets/models/vice_1.glb?url";
 import { dataStored } from "../../../data.js";
+import { avvisoBreve } from "@/util/avvisoBreve.js";
 // (7/10) rifiuti del catalogo delle chele della morsa
 import { KO_NO_JAW, KO_JAW_ACTIVE_ORDER } from "../../../util/errorCodes.js";
 import { stopCorrected } from "../../../util/pushQuotes.js";
@@ -748,9 +749,8 @@ export default {
               dataStored.alert.type = "warning";
               return;
             }
-            dataStored.alert.title = "INFO";
-            dataStored.alert.desc = this.$t("vice.created", { id });
-            dataStored.alert.type = "message";
+            // (prompt 10) l'esito positivo va direttamente all'avviso breve
+            avvisoBreve("INFO", this.$t("vice.created", { id }));
             // di ritorno ad Attrezzaggio la morsa nuova si propone gia' scelta
             const back = this.$route.query.returnTo;
             if (back) return this.$router.push(back + (String(back).includes("?") ? "&" : "?") + "newVice=" + id);

@@ -13913,11 +13913,7 @@
         "fetch GET api/conf/vice/insertVice?FAMILY=MORSA-PROVA&DESCR=morsa+nuova&STATUS=0&X=150&Y=100&Z=80&CLAW_LENGTH=40000&Z_CLAW=0&Z_SINK_CLAW=0&MAG=0&MAG_POS=0&POS_PLANT=0",
         "router \"/conf/Vices\""
        ],
-       "stato": [
-        "dataStored.alert.title = \"INFO\"",
-        "dataStored.alert.desc = \"vice.created {\\\"id\\\":912}\"",
-        "dataStored.alert.type = \"message\""
-       ]
+       "stato": []
       },
       "nuova morsa da Attrezzaggio": {
        "abilitato": true,
@@ -13925,11 +13921,7 @@
         "fetch GET api/conf/vice/insertVice?FAMILY=MORSA-PROVA&DESCR=morsa+nuova&STATUS=0&X=150&Y=100&Z=80&CLAW_LENGTH=40000&Z_CLAW=0&Z_SINK_CLAW=0&MAG=0&MAG_POS=0&POS_PLANT=0",
         "router \"/conf/Attrezzaggio?newVice=912\""
        ],
-       "stato": [
-        "dataStored.alert.title = \"INFO\"",
-        "dataStored.alert.desc = \"vice.created {\\\"id\\\":912}\"",
-        "dataStored.alert.type = \"message\""
-       ]
+       "stato": []
       }
      }
     }
