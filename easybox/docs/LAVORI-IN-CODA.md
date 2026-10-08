@@ -68,9 +68,25 @@
 
 **Trovato il** 2026-10-07.
 
+## [ ] L'ACK alla HAAS parte anche dopo, alla riconnessione del broker
+
+**Cosa.** `publishHaasAck` (`serverDati/MQTT_Client.js`) pubblica in QoS 1: col broker giù il client MQTT tiene l'ACK in coda e lo manda quando si riconnette, anche molto dopo. Per la HAAS un ACK in ritardo può valere come conferma di un comando che nel frattempo è cambiato. I comandi `TO_PLANT/CMD` in QoS 0 dal 7/10 sera a broker giù si perdono e non partono dopo (`queueQoSZero: false`, B54): l'ACK in QoS 1 non segue questa regola.
+
+**Direzione.** Da decidere con Dario e Celada: QoS 0 (l'ACK si perde col broker giù e la HAAS lo richiede), oppure un ACK con un riferimento al comando che la HAAS controlla.
+
+**Trovato il** 2026-10-08, audit dei rami di revisione.
+
+## [ ] Grigliati: il nome del modello entra nel percorso del file senza essere ripulito
+
+**Cosa.** `serverDati/CONF/Grating.js`: il salvataggio del modello (`Grating_model_dir + model_name + '.svg'`) e `downloadModelSVG` (`./GRATING_MODEL/<name>.svg`) compongono il percorso del file col nome del modello così come arriva dalla richiesta. Un nome con `..`, `\` o `/` esce dalla cartella dei modelli. Preesistente, non toccato dal lavoro sui grigliati.
+
+**Direzione.** Correggere a parte: il nome del file dal solo ID del modello, o il nome ripulito (solo lettere, cifre, `-` e `_`) e il percorso finale controllato dentro la cartella dei modelli.
+
+**Trovato il** 2026-10-08, audit dei rami di revisione.
+
 ## [ ] Fori di fissaggio della piastra contro le tasche della colonna centrale
 
-**Cosa.** Nella base del 7/10 i fori di fissaggio della piastra stanno in due gruppi al centro dei lati corti, oltre i 20 mm del bordo minimo della griglia. Con una griglia d'esempio (pezzo 60×40, distanze 20 e 15) le tasche 5 e 86, della colonna centrale, cadono sui fori. Oggi è solo l'avviso (tasche in rosso, elenco in giallo, conferma su DXF e stampa).
+**Cosa.** Nella base del 7/10 i fori di fissaggio della piastra stanno in due gruppi a metà dei **lati lunghi** (819 mm), uno vicino al lato robot e uno vicino al lato operatore, oltre i 20 mm del bordo minimo della griglia (corretto l'8/10: qui c'era scritto «al centro dei lati corti»). Con una griglia d'esempio (pezzo 60×40, distanze 20 e 15) le tasche 5 e 86, della colonna centrale, cadono sui fori. Oggi è solo l'avviso (tasche in rosso, elenco in giallo, conferma su DXF e stampa).
 
 **Direzione.** Regola da decidere con Dario: per esempio lasciare libera la colonna centrale vicino ai fori, o spostare la griglia. Finché non c'è, resta l'avviso.
 

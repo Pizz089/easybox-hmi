@@ -176,7 +176,7 @@ FB_Robot, senza robot (bastano PLC e pannello):
 FB_Robot, col robot a velocità ridotta:
 
 4. cassetto fuori, DOPPIA a bordo: cambio pinza verso la PALLET (il pannello col cassetto fuori lo spegne: il comando va mandato senza il pannello, come nel test 2 della consegna 34). Atteso: 1519, il master resta a 0, il robot non si muove;
-5. cassetto fuori, DOPPIA a bordo: «Carica pallet» dal magazzino. Atteso: 1519 al 1010, nessun comando 13 al robot;
+5. cassetto fuori, DOPPIA a bordo: «Carica pallet» dal magazzino (il pannello col cassetto fuori lo spegne dal 7/10, `aa2433b`: il comando va mandato senza il pannello, come nel test 4). Atteso: 1519 al 1010, nessun comando 13 al robot;
 6. cassetti chiusi, DOPPIA a bordo: «Carica pallet». Atteso: 1010 → 1020 (scarico) → 1030 (carico della PALLET) → 1040 (TCP) → 1050 → 1060;
 7. pezzo di prova a bordo (lato 1, dichiarato). Una tasca vuota per davvero segnata piena a database (39;p;4), poi «deposita in tasca p». Atteso: 691, il robot non si muove. Ripristino: 39;p;2 e RESET (la catena resta a 691 fino al RESET, e intanto i comandi di missione danno 972);
 8. automatico con cambio pallet: lo scarico pallet arriva al 240 e il ciclo prosegue (prima si fermava al 230); al 215 parte il TCP;
@@ -250,7 +250,7 @@ Il DXF esportato dalla pagina sta nello stesso frame e si sovrappone 1:1 a `Base
 - niente «Carica pallet» (né pallet da MC1);
 - niente avvio dell'automatico se la pinza a bordo non è quella dell'ordine.
 
-Il PLC 34 non li ferma e il robot può andare allo scaffale pinze col cassetto aperto. Nel pannello (7/10 sera) i comandi pinza (pagina Robot e «sposta» della lista pinze) sono spenti col cassetto fuori o in manovra, con «Cassetto fuori: prima rientralo»; «Gestione pallet» propone solo i pallet della pinza a bordo (`PALLET.GripperREQ`) e si spegne se non ce n'è; il collaudo 31/33 offre solo la pinza a bordo. L'automatico non lo ferma il pannello.
+Il PLC 34 non li ferma e il robot può andare allo scaffale pinze col cassetto aperto. Nel pannello (7/10 sera) i comandi pinza (pagina Robot e «sposta» della lista pinze) sono spenti col cassetto fuori o in manovra, con «Cassetto fuori: prima rientralo»; «Gestione pallet» propone solo i pallet che non chiedono un cambio pinza e si spegne se non ce n'è. Il confronto è quello del PLC (master 1010: cambio quando `GripperRequested <> Gripper_ID[1]`): `PALLET.GripperREQ`, letta senza badare alle maiuscole del nome della colonna, contro la pinza che il PLC tiene come **lato 1** (`FROM_PLANT/GRIPPER/ROBOT`, nel pannello `GRIPPER/REGISTERED`). Dall'8/10 un pallet che chiede la gemella del lato 2 conta come cambio pinza, come nel PLC; se il registro del PLC non è arrivato e la pinza è doppia, il lato 1 non si sa e col cassetto fuori nessun pallet si propone; il collaudo 31/33 offre solo la pinza a bordo. L'automatico non lo ferma il pannello.
 
 **Codici** (tutti in `Error`, testi `robot.alarm_<codice>`, vedi ALLARMI-PLC.md): 1419 carico pinza rifiutato, cassetto fuori; 1519 deposito pinza rifiutato, cassetto fuori; 19005 estrazione rifiutata, pinza a bordo senza uncino; 19006 nessuna pinza con uncino, né a bordo né a scaffale; 19007 per prendere la pinza con l'uncino quella a bordo deve essere vuota; 20011 rilascio rifiutato, pinza a bordo senza uncino.
 
