@@ -58,6 +58,11 @@
 #     dicono i messaggi di aggiorna (8/10: aggiorna puo' fermarsi anche dopo
 #     lo scambio delle dist). Il messaggio finale dice cosa e' servito
 #     (dist\build.txt: ramo e commit della build).
+#   - (prompt 10) un servizio fermo si rimette su solo se le sue porte sono
+#     libere (backend 8080 e 3000, pannello 5173): se le tiene un altro
+#     processo, ed e' il caso di "I servizi sono FERMI" di aggiorna, non si
+#     avvia e lo si dice in rosso. "Di nuovo su" solo quando le porte sono in
+#     ascolto e del servizio, non guardando solo lo stato del servizio.
 # Non usa MAI reset, clean, stash, checkout -- o --force: nel peggiore dei
 # casi si ferma e spiega, e il repo resta com'era.
 # Testi senza lettere accentate: PowerShell 5.1 legge i file senza BOM come
@@ -129,22 +134,74 @@ function AspettaPorte([int]$secondi = 90) {
 	} while ((Get-Date) -lt $fine)
 	return $false
 }
+# (prompt 10) chi tiene una porta in ascolto: '' nessuno; EasyBoxBackend o
+# EasyBoxPannello se e' il processo del servizio o un suo discendente (nssm ->
+# node); 'altro' se e' un altro processo. Stessa regola di ServizioDelProcesso
+# in servizi-cella.ps1. La prova la sostituisce con una funzione finta.
+if (-not (Get-Command Get-EasyBoxProprietarioPorta -CommandType Function -ErrorAction SilentlyContinue)) {
+	function Get-EasyBoxProprietarioPorta([int]$porta) {
+		$ascolto = @(Get-NetTCPConnection -State Listen -LocalPort $porta -ErrorAction SilentlyContinue)
+		if ($ascolto.Count -eq 0) { return '' }
+		$diServizio = @{}
+		foreach ($nomeServizio in @($S_B, $S_P)) {
+			$ws = Get-CimInstance Win32_Service -Filter ("Name='" + $nomeServizio + "'") -ErrorAction SilentlyContinue
+			if ($ws -and $ws.ProcessId -gt 0) { $diServizio[[int]$ws.ProcessId] = $nomeServizio }
+		}
+		foreach ($conn in $ascolto) {
+			$pid1 = [int]$conn.OwningProcess
+			for ($passo = 0; $passo -lt 6 -and $pid1 -gt 0; $passo++) {
+				if ($diServizio.ContainsKey($pid1)) { return $diServizio[$pid1] }
+				$proc = Get-CimInstance Win32_Process -Filter ('ProcessId=' + $pid1) -ErrorAction SilentlyContinue
+				if (-not $proc) { break }
+				$pid1 = [int]$proc.ParentProcessId
+			}
+		}
+		return 'altro'
+	}
+}
+# le porte di ciascun servizio: il backend 8080 (HTTP) e 3000 (socket), il
+# pannello 5173
+function PorteDi([string]$nome) { if ($nome -eq $S_B) { return @(8080, 3000) } else { return @(5173) } }
+# aspetta che le porte del servizio siano in ascolto e SUE
+function AspettaPorteDel([string]$nome, [int]$secondi = 90) {
+	$fine = (Get-Date).AddSeconds($secondi)
+	do {
+		if (@(PorteDi $nome | Where-Object { (Get-EasyBoxProprietarioPorta $_) -ne $nome }).Count -eq 0) { return $true }
+		Start-Sleep -Seconds 3
+	} while ((Get-Date) -lt $fine)
+	return $false
+}
+# (prompt 10) rimette su un servizio fermo. Prima dell'avvio: se le sue porte
+# sono gia' in ascolto col servizio fermo, le tiene un altro processo (e'
+# proprio il caso in cui servizi-cella.ps1 -Azione aggiorna si ferma con "I
+# servizi sono FERMI"): non si avvia niente. Dopo l'avvio: "di nuovo su"
+# solo con le porte in ascolto e del servizio, non guardando solo lo stato del
+# servizio Windows (Running anche se node esce subito sulla porta occupata).
+function RimettiSu([string]$nome, [string]$cosa) {
+	$occupate = @(PorteDi $nome | Where-Object { (Get-EasyBoxProprietarioPorta $_) -ne '' })
+	if ($occupate.Count -gt 0) {
+		Scrivi ($nome + ' e'' fermo e le sue porte (' + ($occupate -join ', ') + ') sono in ascolto: porte occupate da un altro processo: chiamare Dario. Non lo avvio (chi le tiene: servizi-cella.ps1 -Azione stato).') 'Red'
+		return
+	}
+	Scrivi ('Rimetto su ' + $nome + ' sulla versione che c''e''...') 'Yellow'
+	Start-Service -Name $nome -ErrorAction SilentlyContinue
+	if ((StatoServizio $nome) -eq 'Running' -and (AspettaPorteDel $nome 90)) {
+		Scrivi ($nome + ' avviato: ' + $cosa + ' e'' di nuovo su (porte ' + ((PorteDi $nome) -join ', ') + ' in ascolto, del servizio).') 'Yellow'
+	} else {
+		$chi = @(PorteDi $nome | ForEach-Object { [string]$_ + ' ' + $(if ((Get-EasyBoxProprietarioPorta $_) -eq '') { 'libera' } else { Get-EasyBoxProprietarioPorta $_ }) })
+		Scrivi ($nome + ' NON di nuovo su (servizio ' + (StatoServizio $nome) + '; porte: ' + ($chi -join ', ') + '): con la cella in HOLD lanciare servizi-cella.ps1 -Azione riavvia, oppure chiamare Dario.') 'Red'
+	}
+}
 function RimettiSuPannello {
 	$script:PannelloFermato = $false
 	Scrivi ''
-	# (8/10) aggiorna (servizi-cella.ps1) puo' fermarsi coi DUE servizi fermi
-	# ("I servizi sono FERMI", porte occupate): il backend, se e' fermo, si
-	# rimette su prima del pannello, e lo si dice
+	# (8/10) aggiorna (servizi-cella.ps1) puo' fermarsi coi DUE servizi fermi:
+	# il backend, se e' fermo, si rimette su prima del pannello, e lo si dice
 	if ((Servizio $S_B) -and (StatoServizio $S_B) -ne 'Running') {
-		Scrivi ($S_B + ' e'' fermo (' + (StatoServizio $S_B) + '): lo rimetto su...') 'Yellow'
-		Start-Service -Name $S_B -ErrorAction SilentlyContinue
-		if ((StatoServizio $S_B) -eq 'Running') { Scrivi ($S_B + ' avviato: il backend e'' di nuovo su.') 'Yellow' }
-		else { Scrivi ($S_B + ' NON avviato: con la cella in HOLD lanciare servizi-cella.ps1 -Azione riavvia, oppure chiamare Dario.') 'Red' }
+		Scrivi ($S_B + ' e'' fermo (' + (StatoServizio $S_B) + ').') 'Yellow'
+		RimettiSu $S_B 'il backend'
 	}
-	Scrivi ('Rimetto su ' + $S_P + ' sulla versione che c''e''...') 'Yellow'
-	Start-Service -Name $S_P -ErrorAction SilentlyContinue
-	if ((StatoServizio $S_P) -eq 'Running') { Scrivi ($S_P + ' avviato: il pannello e'' di nuovo su.') 'Yellow' }
-	else { Scrivi ($S_P + ' NON avviato: con la cella in HOLD lanciare servizi-cella.ps1 -Azione riavvia, oppure chiamare Dario.') 'Red' }
+	RimettiSu $S_P 'il pannello'
 }
 
 # (7/10 sera) pannello compilato: il modo del servizio, il pannello servito e

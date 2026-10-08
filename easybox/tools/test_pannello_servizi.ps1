@@ -23,6 +23,10 @@
 # rimette su), e stato dice da che commit viene il pannello servito;
 # (8/10) aggiorna fermo coi due servizi fermi: si rimette su anche il backend,
 # e il messaggio di FERMO non dice quale pannello e' servito.
+# (prompt 10) "di nuovo su" solo con le porte in ascolto e del servizio
+# (proprietario delle porte finto: Get-EasyBoxProprietarioPorta); servizi
+# fermi con le porte occupate da un altro processo (il vero "I servizi sono
+# FERMI" di aggiorna): non si avvia niente, messaggio rosso.
 # Uso: powershell -ExecutionPolicy Bypass -File easybox\tools\test_pannello_servizi.ps1
 # Exit code = numero di controlli falliti. I rami ui-lifting e ui-v3 del
 # repo devono contenere il pannello.ps1 da provare (si prova il committato).
@@ -105,6 +109,15 @@ function global:Get-NetTCPConnection {
 	if ($global:SERVIZI['EasyBoxBackend'] -eq 'Running' -and $global:SERVIZI['EasyBoxPannello'] -eq 'Running') { foreach ($p in $LocalPort) { [pscustomobject]@{ LocalPort = $p } } }
 }
 function global:Test-EasyBoxAmministratore { return $global:ADMIN }
+# (prompt 10) chi tiene le porte: un altro processo se la porta e' in
+# PORTE_ALTRO, altrimenti il servizio se gira, altrimenti nessuno
+$global:PORTE_ALTRO = @()
+function global:Get-EasyBoxProprietarioPorta([int]$porta) {
+	if ($global:PORTE_ALTRO -contains $porta) { return 'altro' }
+	if (($porta -eq 8080 -or $porta -eq 3000) -and $global:SERVIZI['EasyBoxBackend'] -eq 'Running') { return 'EasyBoxBackend' }
+	if ($porta -eq 5173 -and $global:SERVIZI['EasyBoxPannello'] -eq 'Running') { return 'EasyBoxPannello' }
+	return ''
+}
 # (7/10 sera) pannello compilato: modo del servizio e servizi-cella.ps1 -Azione
 # aggiorna finti (quello vero fa la build e riavvia i due servizi)
 $global:MODO = 'dev'
@@ -113,8 +126,12 @@ function global:Get-EasyBoxModoPannello { return $global:MODO }
 function global:Invoke-EasyBoxAggiorna {
 	[void]$global:CHIAMATE.Add('Aggiorna @' + (((& git.exe -C $global:CLONE branch --show-current) -join '').Trim()))
 	if ($global:AGG_ESITO -eq 0) { $global:SERVIZI['EasyBoxBackend'] = 'Running'; $global:SERVIZI['EasyBoxPannello'] = 'Running' }
-	# (8/10) 2 = RiavviaServizi fermo con "I servizi sono FERMI"
+	# 2 = servizi fermi e porte libere (prompt 10: il caso del CASO 6d, che
+	# prima passava per "I servizi sono FERMI");
+	# 3 = "I servizi sono FERMI" davvero: servizi fermi, porte tenute da un
+	# altro processo (RiavviaServizi di servizi-cella.ps1 non li avvia)
 	if ($global:AGG_ESITO -eq 2) { $global:SERVIZI['EasyBoxBackend'] = 'Stopped'; $global:SERVIZI['EasyBoxPannello'] = 'Stopped'; return 1 }
+	if ($global:AGG_ESITO -eq 3) { $global:SERVIZI['EasyBoxBackend'] = 'Stopped'; $global:SERVIZI['EasyBoxPannello'] = 'Stopped'; $global:PORTE_ALTRO = @(8080, 3000, 5173); return 1 }
 	return $global:AGG_ESITO
 }
 function global:Show-EasyBoxPannelloServito { [void]$global:CHIAMATE.Add('Servito'); Write-Host 'Pannello servito: ramo finto, commit finto' }
@@ -221,15 +238,28 @@ Check ($iAgg -ge 0 -and $iStart -gt $iAgg -and $global:SERVIZI['EasyBoxPannello'
 Check ($r.Testo -match ('Il repo e'' gia'' sul ramo ' + $ramoDopo + '\. Quale pannello e'' servito \(quello di prima o il nuovo\)') -and $r.Testo -notmatch 'resta quello di prima' -and $r.Testo -match 'build_pannello\.log') 'e dice che il repo e'' sul ramo nuovo, che il pannello servito lo dicono i messaggi di aggiorna (non piu'' "resta quello di prima"), e dove leggere l''errore'
 Check (@($r.Chiamate | Where-Object { $_ -like 'Restart EasyBoxBackend*' -or $_ -like 'Start EasyBoxBackend*' }).Count -eq 0) 'il backend (che gira) non viene riavviato ne'' avviato da pannello.ps1'
 
-# (8/10) aggiorna fermo coi DUE servizi fermi: si rimettono su tutti e due
+# (8/10) aggiorna fermo coi DUE servizi fermi e le porte LIBERE: si
+# rimettono su tutti e due, e "di nuovo su" lo dicono le porte (prompt 10)
 $global:AGG_ESITO = 2
 $ramoPrima = Ramo
 $verso = $(if ($ramoPrima -eq 'ui-v3') { 'stabile' } else { 'v3' })
-$r = Lancia $verso 'CASO 6d: pannello compilato, aggiorna fermo coi servizi FERMI'
+$r = Lancia $verso 'CASO 6d: pannello compilato, aggiorna fermo coi servizi fermi e le porte libere'
 $iB = [array]::IndexOf($r.Chiamate, 'Start EasyBoxBackend')
 $iP = [array]::IndexOf($r.Chiamate, 'Start EasyBoxPannello')
-Check ($r.Codice -eq 1 -and $iB -ge 0 -and $iP -gt $iB -and $global:SERVIZI['EasyBoxBackend'] -eq 'Running' -and $global:SERVIZI['EasyBoxPannello'] -eq 'Running') ('servizi fermi dopo aggiorna: prima il backend, poi il pannello, tutti e due di nuovo Running (' + ($r.Chiamate -join ' ; ') + ')')
-Check ($r.Testo -match 'EasyBoxBackend e'' fermo \(Stopped\): lo rimetto su' -and $r.Testo -match 'EasyBoxBackend avviato: il backend e'' di nuovo su' -and $r.Testo -match 'EasyBoxPannello avviato') '   e lo dice'
+Check ($r.Codice -eq 1 -and $iB -ge 0 -and $iP -gt $iB -and $global:SERVIZI['EasyBoxBackend'] -eq 'Running' -and $global:SERVIZI['EasyBoxPannello'] -eq 'Running') ('servizi fermi, porte libere: prima il backend, poi il pannello, tutti e due di nuovo Running (' + ($r.Chiamate -join ' ; ') + ')')
+Check ($r.Testo -match 'EasyBoxBackend e'' fermo \(Stopped\)' -and $r.Testo -match 'EasyBoxBackend avviato: il backend e'' di nuovo su \(porte 8080, 3000 in ascolto, del servizio\)' -and $r.Testo -match 'EasyBoxPannello avviato: il pannello e'' di nuovo su \(porte 5173 in ascolto, del servizio\)') '   e lo dice guardando le porte, non solo lo stato del servizio'
+
+# (prompt 10) "I servizi sono FERMI" davvero: le porte le tiene un altro
+# processo. Avviare il backend li' non serve (node esce sulla porta occupata,
+# e prima si scriveva "di nuovo su" guardando solo il servizio Windows)
+$global:AGG_ESITO = 3
+$ramoPrima = Ramo
+$verso = $(if ($ramoPrima -eq 'ui-v3') { 'stabile' } else { 'v3' })
+$r = Lancia $verso 'CASO 6e: pannello compilato, aggiorna fermo coi servizi FERMI e le porte occupate'
+Check ($r.Codice -eq 1 -and @($r.Chiamate | Where-Object { $_ -like 'Start *' -or $_ -like 'Restart *' }).Count -eq 0 -and $global:SERVIZI['EasyBoxBackend'] -eq 'Stopped' -and $global:SERVIZI['EasyBoxPannello'] -eq 'Stopped') ('porte occupate a servizi fermi: nessun servizio avviato (' + ($r.Chiamate -join ' ; ') + ')')
+Check ($r.Testo -match 'EasyBoxBackend e'' fermo e le sue porte \(8080, 3000\) sono in ascolto: porte occupate da un altro processo: chiamare Dario' -and $r.Testo -match 'EasyBoxPannello e'' fermo e le sue porte \(5173\) sono in ascolto: porte occupate da un altro processo: chiamare Dario' -and $r.Testo -notmatch 'di nuovo su') '   e lo dice in rosso, senza mai "di nuovo su"'
+$global:PORTE_ALTRO = @()
+$global:SERVIZI = @{ 'EasyBoxBackend' = 'Running'; 'EasyBoxPannello' = 'Running' }
 $global:AGG_ESITO = 1
 
 $r = Lancia 'stato' 'CASO 6c: pannello compilato, stato'
@@ -237,7 +267,7 @@ Check ($r.Codice -eq 0 -and @($r.Chiamate | Where-Object { $_ -eq 'Servito' }).C
 $global:MODO = 'dev'; $global:AGG_ESITO = 0
 
 # ------------------------------------------------------------ pulizia
-foreach ($f in @('Get-Service', 'Stop-Service', 'Start-Service', 'Restart-Service', 'Get-NetTCPConnection', 'Test-EasyBoxAmministratore', 'npm.cmd', 'Get-EasyBoxModoPannello', 'Invoke-EasyBoxAggiorna', 'Show-EasyBoxPannelloServito')) { Remove-Item -LiteralPath ('function:\' + $f) -ErrorAction SilentlyContinue }
+foreach ($f in @('Get-Service', 'Stop-Service', 'Start-Service', 'Restart-Service', 'Get-NetTCPConnection', 'Test-EasyBoxAmministratore', 'npm.cmd', 'Get-EasyBoxModoPannello', 'Invoke-EasyBoxAggiorna', 'Show-EasyBoxPannelloServito', 'Get-EasyBoxProprietarioPorta')) { Remove-Item -LiteralPath ('function:\' + $f) -ErrorAction SilentlyContinue }
 Remove-Item -LiteralPath $BASE -Recurse -Force -ErrorAction SilentlyContinue
 
 Write-Host ''
