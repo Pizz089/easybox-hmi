@@ -150,7 +150,15 @@ Nel working tree di cella ci sono file non tracciati che il `.gitignore` non esc
 - **Export TIA dopo il download**, con `--compare-online` (commit `b3cf3f6`): confronto online **uguale** su tutti i 165 oggetti (diverso 0, solo offline 0, solo online 0).
 - FB_Robot e FB_easyBox sono identici byte per byte all'export del progetto del portatile fatto prima del download (`3707709`).
 - Il diff con 8c9da6a, blocco per blocco, è nel report della consegna 35, parte 3.
-- Test di accettazione fatti in cella (elenco qui sotto): l'esito lo riporta Dario.
+- **Test di accettazione in cella** (Dario, 8/10; numeri dell'elenco qui sotto):
+  - **passati**:
+    - FB_Robot 1 (973: pop-up giallo come i rifiuti);
+    - 2 (972 e 999 in un solo avviso);
+    - 3 (spinta: ordine 3114 OK, 235550 / 239190, corsa 3640);
+    - 7, 8, 9 e 10;
+    - i primi movimenti veri a velocità ridotta: deposito e prelievo in macchina, missione 16, spinta, cambio pinza;
+  - **da fare**: FB_Robot 4, 5 e 6 (cassetto fuori e pinza doppia);
+  - FB_easyBox 3 (pagina Cassetti senza HOLD): **non si applica al v3**, che lì non estrae. La guardia del PLC (blocco S) resta per il pannello stabile. FB_easyBox 1 e 2: esito non riportato.
 - La regola provvisoria della voce «Consegna 34» è tolta: lo swap, i master pallet e l'automatico col cassetto fuori li ferma il PLC.
 
 **Cosa.** PLC, la scarica Dario: due file, da scaricare **insieme, nella stessa finestra**:
