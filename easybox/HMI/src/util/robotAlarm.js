@@ -13,9 +13,21 @@
 // 972 e subito dopo, nello stesso ciclo, il codice dell'errore attivo
 // (FB_Robot, REGION Manager CMD from HMI). Da soli, a video restava il
 // secondo, senza dire che il comando era stato rifiutato. Un 972 seguito
-// entro ALARM_PAIR_MS da un altro codice diventa un avviso unico, «Comando
-// rifiutato: c'e' un errore attivo, <codice> <testo>. Premi RESET e ripeti
-// il comando.» (robot.alarm972Code). Un 972 senza seguito resta com'e'.
+// entro ALARM_PAIR_MS da un altro codice diventa un avviso unico.
+// (7/10 sera, risposte sulla consegna 35) com'e' fatto l'avviso unico:
+//   titolo  «Comando rifiutato: errore attivo <codice>» (robot.alarm972Title);
+//   testo   quello del codice (robot.alarm_<codice>), che dice gia' cosa
+//           fare: «Premi RESET» non si ripete;
+//   coda    «Premi RESET e ripeti il comando.» (robot.alarm972NoText) SOLO
+//           se il codice non ha un testo.
+// Un 972 senza seguito resta com'e'. QUALE messaggio si abbina: solo quello
+// che segue il 972 su PLC/ALARM/ROBOT (questo handler, robot), entro 1 s.
+// Mai ALARM/MC1 ne' PLC/ALARM/GENERIC, che hanno handler loro e non passano
+// di qui; un 972 che segue un altro 972 non si abbina. Basta cosi' perche'
+// nella 35 il PLC mette in coda i due messaggi uno dopo l'altro, nello stesso
+// ciclo e sullo stesso topic FROM_PLANT/ALARM/ROBOT (FB_Robot, REGION
+// Manager, due FC_MQTT con insert := true): il secondo e' #Error di
+// FB_Robot, un codice del robot.
 //
 // (7/10 sera, simulazione bis)
 //   B60  il codice passa da parseInt prima di comporre la chiave: "+900001"
@@ -73,13 +85,15 @@ export function codiceInDialog(codice) {
 }
 
 // ---------------------------------------------------------------- 972 + codice
-// payload -> desc del riquadro: la chiave robot.alarm_<codice>, come prima,
-// oppure il testo gia' tradotto dell'avviso unico 972 + codice.
+// payload -> desc del riquadro, sempre una CHIAVE (il riquadro mostra
+// $t(desc)): robot.alarm_<codice> come prima; nell'avviso unico la chiave del
+// codice se ha un testo, altrimenti robot.alarm972NoText (la coda).
+// Dopo ogni chiamata, f.ultimaCoppia e' il codice abbinato al 972 (null se
+// non era una coppia): l'handler ne fa il titolo.
 // daBox(codice) dice se lo stesso codice e' appena arrivato su ALARM/BOX.
 export function robotAlarmCombiner({ t, te, now = () => Date.now(), finestraMs = ALARM_PAIR_MS, daBox = () => false } = {}) {
 	let ultimo972 = null;
-	// (E1.2) il codice dell'ultima coppia 972 + codice, per il badge del
-	// riquadro («972 → <codice>»); null se l'ultimo payload non era una coppia
+	// (E1.2) f.ultimaCoppia serve anche al badge del riquadro («972 → <codice>»)
 	const f = payload => {
 		const code = codiceAllarme(payload);
 		const ora = now();
@@ -95,13 +109,18 @@ export function robotAlarmCombiner({ t, te, now = () => Date.now(), finestraMs =
 			if (Number.isInteger(code) && daBox(code) && te && te('robot.alarmBox_' + code)) return 'robot.alarmBox_' + code;
 			return chiaveAllarme(payload);
 		}
-		const chiave = 'robot.alarm_' + code;
-		const descrizione = te && te(chiave) ? String(t(chiave)).trim().replace(/[.\s]+$/, '') : '';
 		f.ultimaCoppia = code;
-		return t('robot.alarm972Code', { errore: descrizione ? code + ' ' + descrizione : String(code) });
+		const chiave = 'robot.alarm_' + code;
+		return te && te(chiave) ? chiave : 'robot.alarm972NoText';
 	};
 	f.ultimaCoppia = null;
 	return f;
+}
+
+// il titolo del riquadro per l'avviso unico: «Comando rifiutato: errore
+// attivo <codice>», gia' tradotto ($t lo lascia com'e': solo testo e numeri)
+export function titoloCoppia(t, codice) {
+	return t('robot.alarm972Title', { codice: String(codice) });
 }
 
 // ---------------------------------------------------------------- handler
@@ -119,13 +138,18 @@ export function makePlcAlarmHandlers(store, opzioni = {}) {
 			const d = desc(payload);
 			// (B61) lo sta gia' mostrando un dialog aperto: niente riquadro
 			if (codiceInDialog(codiceAllarme(payload))) return;
-			store.alert.title = 'PLC_Error';
+			// (7/10 sera) l'avviso unico 972 + codice ha il titolo suo
+			store.alert.title = desc.ultimaCoppia && opzioni.t ? titoloCoppia(opzioni.t, desc.ultimaCoppia) : 'PLC_Error';
 			store.alert.desc = d;
 			store.alert.type = 'warning';
 			// (E1.2) badge del riquadro per l'avviso unito; per gli altri il
 			// codice lo ricava il riquadro dalla chiave. Vale solo per QUESTO
-			// desc: chi scrive dopo un altro testo non si porta dietro il badge
-			store.alert.badge = desc.ultimaCoppia ? { desc: d, text: ALARM_REJECT_ACTIVE + ' → ' + desc.ultimaCoppia } : null;
+			// avviso: chi scrive dopo un altro avviso non si porta dietro il
+			// badge. (7/10 sera) il testo dell'avviso unito ora e' la chiave
+			// del codice, la stessa che puo' scrivere un altro handler (947 su
+			// ALARM/MC1): il badge vale solo con lo stesso testo E lo stesso
+			// titolo, che per l'avviso unito e' suo
+			store.alert.badge = desc.ultimaCoppia ? { desc: d, title: store.alert.title, text: ALARM_REJECT_ACTIVE + ' → ' + desc.ultimaCoppia } : null;
 		},
 		box: payload => {
 			const code = codiceAllarme(payload);

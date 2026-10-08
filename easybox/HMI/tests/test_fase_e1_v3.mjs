@@ -90,7 +90,10 @@ check(it.alertBox.ok && it.alertBox.close && en.alertBox.ok && en.alertBox.close
 const cu = leggi('src/components/ChangeUserModal.vue');
 check(/mission-dialog-overlay/.test(cu) && /mission-dialog/.test(cu) && /iconaLivello/.test(cu), 'ChangeUserModal nella scatola dei dialog, icona del livello');
 const ra = leggi('src/util/robotAlarm.js');
-check(/store\.alert\.badge = desc\.ultimaCoppia \? \{ desc: d, text: ALARM_REJECT_ACTIVE \+ ' → ' \+ desc\.ultimaCoppia \} : null;/.test(ra) && /ALARM_REJECT_ACTIVE = 972;/.test(ra), 'avviso unito della 35: badge «972 → <codice>», solo per quel testo');
+// (7/10 sera, consegna 35) il testo dell'avviso unito e' la chiave del codice:
+// il badge vale solo con lo stesso testo E lo stesso titolo
+check(/store\.alert\.badge = desc\.ultimaCoppia \? \{ desc: d, title: store\.alert\.title, text: ALARM_REJECT_ACTIVE \+ ' → ' \+ desc\.ultimaCoppia \} : null;/.test(ra) && /ALARM_REJECT_ACTIVE = 972;/.test(ra), 'avviso unito della 35: badge «972 → <codice>», solo per quell\'avviso');
+check(/return b && b\.desc === dataStored\.alert\.desc && b\.title === dataStored\.alert\.title \? b\.text : '';/.test(leggi('src/layout/v3/AppShell.vue')), '   AppShell: badge solo con testo e titolo dell\'avviso unito (un 947 su ALARM/MC1 non lo eredita)');
 
 console.log('\n3) striscia di stato');
 const ss = leggi('src/layout/v3/StatusStrip.vue');

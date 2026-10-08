@@ -166,7 +166,7 @@ Gli stati nuovi (215, 1030, 1040, 1335) nella versione di oggi non esistono: con
 
 FB_Robot, senza robot (bastano PLC e pannello):
 1. **973.** Da tabella di controllo `"DB_Robot".MissionCode := 140` (il master non fa niente con quel codice). Dal pannello «Chiudi chela». Atteso: su ALARM/ROBOT 973, `MissionCode` resta 140; a video il testo del 973. Poi RESET: `MissionCode` 0.
-2. **972 col codice.** Da tabella di controllo `"DB_Robot".Error := 999`. Dal pannello «Chiudi chela». Atteso: su ALARM/ROBOT prima 972, poi 999; a video l'avviso unico «Comando rifiutato: c'è un errore attivo, 999 …». RESET.
+2. **972 col codice.** Da tabella di controllo `"DB_Robot".Error := 999`. Dal pannello «Chiudi chela». Atteso: su ALARM/ROBOT prima 972, poi 999; a video l'avviso unico, titolo «Comando rifiutato: errore attivo 999» e il testo del 999 (senza la coda «Premi RESET e ripeti il comando.»: il 999 ha un testo). RESET.
 3. **Spinta**, da PowerShell sul database (sola lettura):
    ```
    cd D:\Backup; sqlcmd -S .\SQLEXPRESS -E -d ADMG -W -Q "select ORDER_ID, PUSH_STATUS, isnull(X_PUSH,0) as XP, isnull(X_STOP,0) as XS, X_STOP - X_PUSH as CORSA, Z_PUSH_DROP from COORDINATES_PUSH_MC where MC=1 order by ORDER_ID desc"

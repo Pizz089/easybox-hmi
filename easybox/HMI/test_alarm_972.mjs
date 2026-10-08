@@ -6,6 +6,10 @@
 // subito dopo il codice dell'errore. Il riquadro globale e' uno solo: un 972
 // seguito entro 1 s da un altro codice diventa un avviso unico; un 972 da
 // solo, e ogni altro codice, restano come prima (robot.alarm_<codice>).
+// (7/10 sera, risposte sulla consegna 35) l'avviso unico: titolo «Comando
+// rifiutato: errore attivo <codice>», testo del codice, la coda «Premi RESET
+// e ripeti il comando.» solo se il codice non ha un testo. Si abbina solo il
+// messaggio che segue su PLC/ALARM/ROBOT: mai ALARM/MC1 ne' GENERIC.
 //
 //   1. i due messaggi in fila (testi veri it ed en);
 //   2. il 972 da solo, il codice oltre 1 s, l'ordine inverso, codici senza testo;
@@ -18,7 +22,7 @@
 globalThis.window = { location: { hostname: 'localhost' }, performance: globalThis.performance };
 import { readFileSync, existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { robotAlarmCombiner, makePlcAlarmRobotHandler, makePlcAlarmHandlers, codiciInDialog, codiceInDialog, codiceAllarme, ALARM_REJECT_ACTIVE, ALARM_PAIR_MS, DIALOG_GRACE_MS } from './src/util/robotAlarm.js';
+import { robotAlarmCombiner, makePlcAlarmRobotHandler, makePlcAlarmHandlers, codiciInDialog, codiceInDialog, codiceAllarme, titoloCoppia, ALARM_REJECT_ACTIVE, ALARM_PAIR_MS, DIALOG_GRACE_MS } from './src/util/robotAlarm.js';
 import { aspettaEco } from './src/util/palletMachine.js';
 const require = createRequire(import.meta.url);
 const { createI18n } = require('vue-i18n');
@@ -42,20 +46,22 @@ let a = d('972');
 check(a === 'robot.alarm_972' && aVideo(a) === it.robot.alarm_972, 'arriva il 972: a video il testo del 972, come oggi');
 ora += 3;
 a = d('1419');
-check(aVideo(a) === "Comando rifiutato: c'è un errore attivo, 1419 Carico o cambio pinza rifiutato: c'è un cassetto fuori. Premi RESET, rientra il cassetto (Gestione cassetto), poi ripeti il comando. Premi RESET e ripeti il comando.",
-	'subito dopo il 1419: avviso unico «' + aVideo(a) + '»');
+const tit = titoloCoppia(t, d.ultimaCoppia);
+check(d.ultimaCoppia === 1419 && tit === 'Comando rifiutato: errore attivo 1419' && aVideo(a) === it.robot.alarm_1419,
+	'subito dopo il 1419: titolo «' + tit + '», testo del 1419');
+check(((tit + ' ' + aVideo(a)).match(/RESET/g) || []).length === 1, '   «RESET» compare UNA volta sola (lo dice gia\' il testo del 1419)');
 ora += 3;
 a = d('999');
-check(a === 'robot.alarm_999', 'il codice dopo non si accoppia piu\' (la coppia si consuma)');
+check(a === 'robot.alarm_999' && d.ultimaCoppia === null, 'il codice dopo non si accoppia piu\' (la coppia si consuma)');
 d = robotAlarmCombiner({ t, te, now });
 d('972'); ora += 999;
 a = d('947');
-check(/\.$/.test(it.robot.alarm_947) && aVideo(a) === "Comando rifiutato: c'è un errore attivo, 947 " + it.robot.alarm_947.replace(/[.\s]+$/, '') + '. Premi RESET e ripeti il comando.', 'a 999 ms: ancora accoppiato, punto finale del testo non raddoppiato («' + aVideo(a) + '»)');
+check(a === 'robot.alarm_947' && d.ultimaCoppia === 947, 'a 999 ms: ancora accoppiato');
 i18n.global.locale.value = 'en';
 d = robotAlarmCombiner({ t, te, now });
 d('972'); ora += 1;
 a = d('947');
-check(/^Command refused: there is an active error, 947 .+\. Press RESET and repeat the command\.$/.test(aVideo(a)), 'in inglese: «' + aVideo(a) + '»');
+check(titoloCoppia(t, d.ultimaCoppia) === 'Command refused: active error 947' && aVideo(a) === en.robot.alarm_947, 'in inglese: «' + titoloCoppia(t, d.ultimaCoppia) + '» + testo del 947');
 i18n.global.locale.value = 'it';
 
 console.log('\n2) quando NON si accoppia');
@@ -69,13 +75,17 @@ check(d('972') === 'robot.alarm_972', 'ordine inverso (codice, poi 972): niente 
 d = robotAlarmCombiner({ t, te, now });
 d('972'); ora += 1;
 a = d('12345');
-check(aVideo(a) === "Comando rifiutato: c'è un errore attivo, 12345. Premi RESET e ripeti il comando.", 'codice senza testo: il numero da solo («' + aVideo(a) + '»)');
+check(a === 'robot.alarm972NoText' && aVideo(a) === 'Premi RESET e ripeti il comando.' && titoloCoppia(t, d.ultimaCoppia) === 'Comando rifiutato: errore attivo 12345',
+	'codice senza testo: titolo col codice e la coda «Premi RESET e ripeti il comando.»');
 d = robotAlarmCombiner({ t, te, now });
 d('972'); ora += 1;
 check(d('Impossible to connect') === 'robot.alarm_Impossible to connect', 'un testo che non e\' un codice: come oggi');
 d = robotAlarmCombiner({ t, te, now });
 d('972'); ora += 1; d('972'); ora += 1;
-check(aVideo(d(' 947 ')).startsWith("Comando rifiutato: c'è un errore attivo, 947 Comando macchina"), 'due 972 di fila e poi il codice (con spazi): accoppiato');
+check(d(' 947 ') === 'robot.alarm_947' && d.ultimaCoppia === 947, 'due 972 di fila e poi il codice (con spazi): accoppiato al secondo');
+d = robotAlarmCombiner({ t, te, now });
+d('972'); ora += 1;
+check(d('972') === 'robot.alarm_972' && d.ultimaCoppia === null, 'un 972 che segue un altro 972 non si abbina: e\' il testo del 972');
 d = robotAlarmCombiner({ t, te, now });
 check(['18', '947', '973', '691'].every(c => d(c) === 'robot.alarm_' + c), 'gli altri codici: robot.alarm_<codice>, come oggi');
 
@@ -84,9 +94,23 @@ const store = { alert: { title: '', desc: '', type: 'alarm' } };
 const h = makePlcAlarmRobotHandler(store, { t, te, now });
 h('973');
 check(store.alert.title === 'PLC_Error' && store.alert.desc === 'robot.alarm_973' && store.alert.type === 'warning', '973: titolo, chiave e tipo come prima');
-h('972'); ora += 2; h('20011');
-check(store.alert.desc.startsWith("Comando rifiutato: c'è un errore attivo, 20011 Rilascio cassetto rifiutato") && aVideo(store.alert.desc) === store.alert.desc,
-	'972 + 20011: il riquadro mostra l\'avviso unico, e $t lo lascia com\'e\'');
+h('972');
+check(store.alert.title === 'PLC_Error' && store.alert.desc === 'robot.alarm_972', '972 da solo: titolo e testo del 972, come oggi');
+ora += 2; h('20011');
+check(store.alert.title === 'Comando rifiutato: errore attivo 20011' && t(store.alert.title) === store.alert.title && store.alert.desc === 'robot.alarm_20011',
+	'972 + 20011: titolo dell\'avviso unico ($t lo lascia com\'e\') e testo del 20011');
+// (7/10 sera) il 972 si abbina solo al messaggio che segue su PLC/ALARM/ROBOT
+const st2 = { alert: { title: '', desc: '', type: '' } };
+const hh = makePlcAlarmHandlers(st2, { t, te, now });
+hh.robot('972'); ora += 200; hh.mc1('947');
+check(st2.alert.title === 'MC1' && st2.alert.desc === 'robot.alarm_947', '972 e, 200 ms dopo, 947 su ALARM/MC1: nessun abbinamento, il 947 col suo testo come oggi');
+ora += 100; hh.robot('1419');
+check(st2.alert.title === 'Comando rifiutato: errore attivo 1419', '   e il 972 resta in attesa del SUO messaggio su PLC/ALARM/ROBOT (entro 1 s)');
+// l'handler di PLC/ALARM/GENERIC sta nel layout: StandardMenu.vue su
+// ui-lifting, layout/plantGlobals.js su ui-v3
+const layoutSrc = ['src/layout/StandardMenu.vue', 'src/layout/plantGlobals.js'].filter(existsSync).map(p => readFileSync(p, 'utf8')).join('\n');
+const gen = (layoutSrc.match(/const plcAlarmGenericHandler = payload => \{[\s\S]*?\n\s*\}/) || [''])[0];
+check(gen && !/allarmi|robotAlarmCombiner|desc\(/.test(gen) && /dataStored\.alert\.desc = payload/.test(gen), 'PLC/ALARM/GENERIC ha un handler suo, che non passa dal combinatore del 972');
 const alertVue = readFileSync('src/components/Alerts/Alert.vue', 'utf8');
 check(/\{\{ \$t\(desc\) \}\}/.test(alertVue), 'il riquadro (Alerts/Alert.vue) mostra $t(desc)');
 

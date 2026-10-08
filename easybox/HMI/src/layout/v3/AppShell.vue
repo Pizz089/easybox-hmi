@@ -72,7 +72,7 @@ onUnmounted(() => staccaAppHeight());
 const utente = ref(false);
 const badgeAllarme = computed(() => {
   const b = dataStored.alert && dataStored.alert.badge;
-  return b && b.desc === dataStored.alert.desc ? b.text : '';
+  return b && b.desc === dataStored.alert.desc && b.title === dataStored.alert.title ? b.text : '';
 });
 const nAllarmi = computed(() => activeAlarmUnits(isMachineConfigured(2)).length);
 </script>
