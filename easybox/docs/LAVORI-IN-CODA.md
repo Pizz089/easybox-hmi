@@ -13,6 +13,22 @@
 
 **Trovato il** 2026-10-07, risposte sulla consegna 35.
 
+## [ ] «Crea morsa» del pannello vecchio passa l'ID esplicito
+
+**Cosa.** `CONF/Vice.js`, `insertVice`: `INSERT INTO VICE (ID, …)` con l'ID che arriva dal form. Se in cella `VICE.ID` è IDENTITY (sul clone del portatile lo è), SQL Server rifiuta il valore esplicito e «crea morsa» fallisce già oggi.
+
+**Direzione.** Prima la risposta di cella: `serverDati\scripts\vice-jaw-controlli.sql`, sezione 7, dice se è IDENTITY. Se sì, l'INSERT senza ID (e il form che non lo manda). Non si corregge prima di quella risposta.
+
+**Trovato il** 2026-10-07, prove del catalogo delle chele sul clone.
+
+## [ ] Livelli utente controllati solo dal pannello
+
+**Cosa.** Le rotte del backend (`/api/conf/...`, comprese quelle nuove del catalogo delle chele, `/api/conf/viceJaw`) non sanno chi le chiama: i livelli (operatore, manutentore, ingegnere) li applica solo il pannello, nascondendo o spegnendo i comandi. Chi raggiunge il backend in rete scrive senza livello.
+
+**Direzione.** Un controllo del livello nel backend (un token di sessione col livello, verificato sulle rotte che scrivono). È lo stesso per tutte le pagine di configurazione, non solo per il catalogo.
+
+**Trovato il** 2026-10-08, risposte al report del catalogo delle chele.
+
 ## [ ] Chele della morsa: morsa sul pallet ma senza tipo di chele montato
 
 **Cosa.** Con il catalogo (7/10) una morsa senza tipo montato dà, nelle viste, misure della chela a zero (`ISNULL`): in `COORDINATES_Z_MC` la quota di deposito esce senza l'appoggio delle chele, cioè troppo bassa. Oggi è così anche con le misure sulla morsa: una morsa mai misurata dà lo stesso.

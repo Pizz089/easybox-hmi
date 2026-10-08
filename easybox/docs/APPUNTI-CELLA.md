@@ -149,23 +149,23 @@ Nel working tree di cella ci sono file non tracciati che il `.gitignore` non esc
 
 Decisioni in DECISIONI.md («Catalogo delle chele della morsa»), il 799 in ALLARMI-PLC.md. Gli script stanno in `serverDati\scripts`; ognuno ha la guardia sul codice (conforme / ALTER / FERMO), stampa la definizione che trova ed è ripetibile.
 
-**Prima della finestra, quando si vuole** (sola lettura, non cambia niente): cosa toccherà la migrazione sui dati veri, e quali ordini fermerebbe la variante «morsa senza tipo» (non applicata, da decidere). PowerShell sul PC della cella; il file si prende dal repo remoto senza toccare la copia di lavoro:
+**I tre file da mettere prima in `D:\Backup`**, come `controlli-simulazione-bis.sql`: in cella non ci sono finché il catalogo non arriva sul ramo di cella (passo 4), e in cella non si lanciano comandi git a mano. Si prendono dal ramo di revisione su GitHub (`revisione/ui-v3`, cartella `easybox/serverDati/scripts`): `vice-jaw-controlli.sql`, `vice-jaw.sql`, `vice-jaw-check.sql`.
+
+**Prima della finestra, quando si vuole** (sola lettura, non cambia niente): cosa toccherà la migrazione sui dati veri, quali ordini fermerebbe la variante «morsa senza tipo» (non applicata, da decidere) e se `VICE.ID` è IDENTITY (sezione 7). PowerShell sul PC della cella:
 
 ```
-cd D:\Prog; git fetch; $b = git rev-parse --abbrev-ref HEAD; git show "origin/${b}:easybox/serverDati/scripts/vice-jaw-controlli.sql" | Set-Content -Encoding ascii D:\Backup\vice-jaw-controlli.sql
 cd D:\Backup; sqlcmd -S .\SQLEXPRESS -E -d ADMG -W -s "|" -i vice-jaw-controlli.sql -o D:\Backup\vice-jaw-controlli_esito.txt; Get-Content D:\Backup\vice-jaw-controlli_esito.txt
 ```
 
-**La finestra.** Cella ferma: robot in HOLD dal pannello, nessun ordine a STATUS 3, nessuno che modifica morse, pinze o battute fino alla fine. PowerShell **da amministratore** sul PC della cella. Gli esiti vanno in `D:\Backup`, e restano.
+**La finestra.** Cella ferma: robot in HOLD dal pannello, nessun ordine a STATUS 3, **nessuno usa il pannello** (touch e tablet) fino alla fine. PowerShell **da amministratore** sul PC della cella. Gli esiti vanno in `D:\Backup`, e restano. **I passi 4 e 5 si fanno uno dopo l'altro, senza pause:** fra i due il backend nuovo gira con le viste di prima.
 
 1. **Backup del DB, verificato.** Va nella cartella di backup dell'istanza (lì SQL Server può scrivere di sicuro); la riga finale dice il percorso.
    ```
    cd D:\Backup; sqlcmd -S .\SQLEXPRESS -E -d master -b -Q "DECLARE @d nvarchar(4000); EXEC master.dbo.xp_instance_regread N'HKEY_LOCAL_MACHINE', N'Software\Microsoft\MSSQLServer\MSSQLServer', N'BackupDirectory', @d OUTPUT; DECLARE @f nvarchar(4000) = @d + N'\ADMG_prima_catalogo_chele.bak'; BACKUP DATABASE ADMG TO DISK = @f WITH COPY_ONLY, INIT, CHECKSUM; RESTORE VERIFYONLY FROM DISK = @f WITH CHECKSUM; PRINT @f;"
    ```
    Atteso: «Il set di backup del file '1' è valido» e il percorso. Se no, ci si ferma.
-2. **Tabella, colonne e migrazione**, con i conteggi prima e dopo. Lo script si prende dal repo remoto (il `git pull` è al passo 4):
+2. **Tabella, colonne e migrazione**, con i conteggi prima e dopo (lo script è in `D:\Backup`, il `git pull` è al passo 4):
    ```
-   cd D:\Prog; git fetch; $b = git rev-parse --abbrev-ref HEAD; git show "origin/${b}:easybox/serverDati/scripts/vice-jaw.sql" | Set-Content -Encoding ascii D:\Backup\vice-jaw.sql; git show "origin/${b}:easybox/serverDati/scripts/vice-jaw-check.sql" | Set-Content -Encoding ascii D:\Backup\vice-jaw-check.sql
    cd D:\Backup; sqlcmd -S .\SQLEXPRESS -E -d ADMG -W -i vice-jaw.sql -o D:\Backup\vice-jaw_esito.txt; Get-Content D:\Backup\vice-jaw_esito.txt
    ```
    Atteso: «VICE_JAW creata», le tre colonne aggiunte, «MIGRAZIONE: fatta», `morse_con_tipo` = `morse_con_misure`, `battute_con_ref` uguale alle battute delle morse misurate, le tre VERIFICHE senza righe. Un «FERMO» (misura negativa) ferma la finestra: si ripristina niente, lo script non ha scritto.
@@ -173,7 +173,7 @@ cd D:\Backup; sqlcmd -S .\SQLEXPRESS -E -d ADMG -W -s "|" -i vice-jaw-controlli.
    ```
    cd D:\Backup; sqlcmd -S .\SQLEXPRESS -E -d ADMG -W -s "|" -i vice-jaw-check.sql -o D:\Backup\viste_prima_chele.txt
    ```
-4. **Backend e pannello nuovi**:
+4. **Backend e pannello nuovi** (il catalogo arriva sul ramo di cella adesso), e subito dopo il passo 5:
    ```
    cd D:\Prog; git pull
    cd D:\Prog\easybox\tools; powershell -ExecutionPolicy Bypass -File D:\Prog\easybox\tools\servizi-cella.ps1 -Azione aggiorna
@@ -208,16 +208,30 @@ cd D:\Backup; sqlcmd -S .\SQLEXPRESS -E -d ADMG -W -s "|" -i vice-jaw-controlli.
    ```
    cd D:\Prog\easybox\serverDati\scripts; sqlcmd -S .\SQLEXPRESS -E -d ADMG -W -i vice-jaw-rollback.sql -o D:\Backup\vice-jaw-rollback_esito.txt; Get-Content D:\Backup\vice-jaw-rollback_esito.txt
    ```
-3. backend e pannello di prima: il commit prima del catalogo è `b6db7bc` su `ui-lifting` e `2413da3` su `ui-v3`. Sul ramo `ui-v3`:
+3. backend e pannello di prima, con `pannello.ps1 -Versione ritorno`. Riporta la copia di lavoro al commit prima del catalogo, ricompila il pannello e riavvia backend e pannello. Si ferma se ci sono modifiche locali o se il commit non è nella storia del ramo; il ramo non si sposta. Il commit dipende dal ramo di cella (`pannello.ps1 -Versione stato` lo dice). Sul ramo `ui-v3`:
    ```
-   cd D:\Prog; git checkout 2413da3
-   cd D:\Prog\easybox\tools; powershell -ExecutionPolicy Bypass -File D:\Prog\easybox\tools\servizi-cella.ps1 -Azione aggiorna
+   cd D:\Prog\easybox\tools; powershell -ExecutionPolicy Bypass -File D:\Prog\easybox\tools\pannello.ps1 -Versione ritorno -Commit fd0138a26b1bbb29d6370ecacb97f0032b14dfe5
    ```
-   (sul ramo `ui-lifting` lo stesso con `b6db7bc`). Per rimettere il catalogo, `cd D:\Prog; git checkout ui-v3` (o `ui-lifting`) e la finestra da capo. Se va male anche il ritorno: il backup del passo 1.
+   Sul ramo `ui-lifting`:
+   ```
+   cd D:\Prog\easybox\tools; powershell -ExecutionPolicy Bypass -File D:\Prog\easybox\tools\pannello.ps1 -Versione ritorno -Commit 632d60cf552b0e53f598a2dcc11cefafc49d50cd
+   ```
+   Dopo il ritorno la copia di lavoro è fuori dal ramo: un `git pull` dice che non è su un ramo e non fa niente. Per rimettere il catalogo, la finestra da capo; il passo 4 diventa `pannello.ps1 -Versione v3` (o `-Versione stabile`), che torna sul ramo, aggiorna e ricompila. Se va male anche il ritorno: il backup del passo 1.
 
-**Provato il 7/10** sul clone del portatile (backup della cella del 6/10), con gli stessi comandi: righe identiche prima e dopo, guardie «conforme» al secondo lancio, ritorno con righe identiche a prima; in una transazione annullata anche con dati di prova (zeri, misure parziali, lunghezze dispari, chele cambiate: X_Support identico al micron; blocco chele).
+**Provato il 7/10** sul clone del portatile (backup della cella del 6/10), con gli stessi comandi: righe identiche prima e dopo, guardie «conforme» al secondo lancio, ritorno con righe identiche a prima; in una transazione annullata anche con dati di prova (zeri, misure parziali, lunghezze dispari, chele cambiate: X_Support identico al micron; blocco chele). **Rifatta l'8/10** con gli script finali: in più l'affondo a 0 resta 0 nel tipo (chela piatta), lunghezza e altezza a 0 diventano NULL. Il ritorno del codice (`pannello.ps1 -Versione ritorno`) è provato in `tools/test_pannello_servizi.ps1`, CASO 7, su un clone parziale come quello di cella.
 
-**Il pannello vecchio (`ui-lifting`)** non ha pagine per il catalogo: legge e scrive le misure passando dal tipo montato, e dice «Chele montate: <codice>». Una morsa senza tipo montato non accetta misure (KO_NO_JAW). Catalogo, montaggio e conferma delle chele nell'ordine sono nel pannello v3 (parte 2).
+**Il pannello vecchio (`ui-lifting`)** non ha pagine per il catalogo: legge e scrive le misure passando dal tipo montato, e dice «Chele montate: <codice>». Catalogo, montaggio e conferma delle chele nell'ordine sono nel pannello v3 (parte 2). Due cose cambiano per chi usa il pannello vecchio:
+- **una misura della chela non si azzera più** dal form morsa: un campo lasciato vuoto vuol dire «nessun cambio». Si azzera, o si corregge, dal catalogo delle chele (parte 2);
+- **una morsa nuova con le misure della chela viene rifiutata** (KO_NO_JAW) finché non arriva la parte 2: si crea la morsa senza misure, e le misure si danno al tipo di chele quando lo si monta.
+
+**Backend nuovo senza lo schema** (cioè `git pull` e `-Azione aggiorna` prima di `vice-jaw.sql`): verificato l'8/10 compilando sul clone, senza eseguirlo, l'SQL che il backend nuovo manda. Fallisce con «nome di colonna non valido»:
+- la **creazione di ogni ordine**, non solo quelli con la spinta;
+- salva morsa e il montaggio o lo smontaggio della morsa sul pallet in Attrezzaggi (`updateVice`);
+- l'elenco e la dichiarazione delle battute, quindi anche il controllo della spinta nel wizard, che senza battute ferma gli ordini dei pezzi con la spinta;
+- le misure della chela da Spinta in battuta;
+- tutte le rotte del catalogo.
+
+Funzionano: la lettura delle morse, la creazione di una morsa senza misure, la compensazione e le quote della spinta lette dalla vista; PLC e robot non ne risentono. Per questo il catalogo arriva sui rami di cella solo nella finestra, al passo 4.
 ## [ ] 2026-10-07 — Consegna 35 (7/10 sera): cassetto fuori anche su swap e pallet, spinta con quote NULL, 973
 
 **Cosa.** PLC, la scarica Dario: due file, da scaricare **insieme, nella stessa finestra**:

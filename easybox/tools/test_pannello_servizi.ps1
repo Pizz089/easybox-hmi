@@ -23,6 +23,8 @@
 # rimette su), e stato dice da che commit viene il pannello servito;
 # (8/10) aggiorna fermo coi due servizi fermi: si rimette su anche il backend,
 # e il messaggio di FERMO non dice quale pannello e' servito.
+# (8/10) ritorno a un commit: commit corto, fuori dalla storia, modifiche
+# locali (si ferma), ritorno riuscito (ramo non spostato) e ritorno al ramo.
 # Uso: powershell -ExecutionPolicy Bypass -File easybox\tools\test_pannello_servizi.ps1
 # Exit code = numero di controlli falliti. I rami ui-lifting e ui-v3 del
 # repo devono contenere il pannello.ps1 da provare (si prova il committato).
@@ -124,13 +126,13 @@ function global:npm.cmd {
 	$global:LASTEXITCODE = $global:NPM_ESITO
 }
 
-function Lancia([string]$versione, [string]$titolo) {
+function Lancia([string]$versione, [string]$titolo, [hashtable]$altri = @{}) {
 	Write-Host ''
 	Write-Host ('=' * 78)
-	Write-Host ($titolo + '   ->   pannello.ps1 -Versione ' + $versione)
+	Write-Host ($titolo + '   ->   pannello.ps1 -Versione ' + $versione + $(if ($altri.Count) { ' -Commit ' + $altri['Commit'] } else { '' }))
 	Write-Host ('=' * 78)
 	$global:CHIAMATE.Clear()
-	$out = & $SCRIPT -Versione $versione *>&1 | ForEach-Object { "$_" }
+	$out = & $SCRIPT -Versione $versione @altri *>&1 | ForEach-Object { "$_" }
 	$codice = $LASTEXITCODE
 	$out | ForEach-Object { Write-Host ('  | ' + $_) }
 	Write-Host ('  exit code: ' + $codice + '   chiamate: ' + ($global:CHIAMATE -join ' ; '))
@@ -235,6 +237,36 @@ $global:AGG_ESITO = 1
 $r = Lancia 'stato' 'CASO 6c: pannello compilato, stato'
 Check ($r.Codice -eq 0 -and @($r.Chiamate | Where-Object { $_ -eq 'Servito' }).Count -eq 1 -and $r.Testo -match 'Pannello servito:') 'stato: dice da che commit viene il pannello servito'
 $global:MODO = 'dev'; $global:AGG_ESITO = 0
+
+# ------------------------------------------------------------ 7. ritorno a un commit (8/10)
+# si parte da ui-lifting, col pannello compilato e i servizi
+$global:SERVIZI = @{ 'EasyBoxBackend' = 'Running'; 'EasyBoxPannello' = 'Running' }
+$global:ADMIN = $true; $global:NPM_ESITO = 0; $global:MODO = 'dev'; $global:AGG_ESITO = 0
+if ((Ramo) -ne 'ui-lifting') { $null = Lancia 'stabile' 'CASO 7 (preparazione): su ui-lifting' }
+$global:MODO = 'preview'
+$punta = ((GitC rev-parse HEAD) -join '').Trim()
+$indietro = ((GitC rev-parse HEAD~1) -join '').Trim()
+$r = Lancia 'ritorno' 'CASO 7a: commit corto' @{ Commit = $indietro.Substring(0, 7) }
+Check ($r.Codice -eq 1 -and $r.Testo -match 'per esteso \(40 caratteri\)' -and ((GitC rev-parse HEAD) -join '').Trim() -eq $punta -and $r.Chiamate.Count -eq 0) 'commit corto: FERMO, niente toccato'
+$altro = ((GitC rev-parse refs/remotes/origin/ui-v3) -join '').Trim()
+$r = Lancia 'ritorno' 'CASO 7b: commit fuori dalla storia del ramo' @{ Commit = $altro }
+Check ($r.Codice -eq 1 -and $r.Testo -match 'non e'' nella storia del ramo ui-lifting' -and ((GitC rev-parse HEAD) -join '').Trim() -eq $punta -and @($r.Chiamate | Where-Object { $_ -like 'Stop*' }).Count -eq 0) 'commit di un altro ramo: FERMO prima di fermare il pannello'
+$file = Join-Path $global:CLONE 'easybox\HMI\package.json'
+$prima = [IO.File]::ReadAllBytes($file)
+Add-Content -Path $file -Value ' ' -Encoding ASCII
+$r = Lancia 'ritorno' 'CASO 7c: modifiche locali' @{ Commit = $indietro }
+[IO.File]::WriteAllBytes($file, $prima)
+Check ($r.Codice -eq 1 -and $r.Testo -match 'Ci sono modifiche locali' -and ((GitC rev-parse HEAD) -join '').Trim() -eq $punta) 'modifiche locali: FERMO, commit invariato'
+$r = Lancia 'ritorno' 'CASO 7d: ritorno riuscito' @{ Commit = $indietro }
+Check ($r.Codice -eq 0 -and ((GitC rev-parse HEAD) -join '').Trim() -eq $indietro -and (Ramo) -eq '') 'ritorno: copia di lavoro sul commit indicato, fuori dal ramo'
+Check (((GitC rev-parse refs/heads/ui-lifting) -join '').Trim() -eq $punta) '   il ramo ui-lifting NON si e'' spostato (niente reset)'
+$iStop = [array]::IndexOf($r.Chiamate, ($r.Chiamate | Where-Object { $_ -like 'Stop EasyBoxPannello*' } | Select-Object -First 1))
+$iAgg = [array]::IndexOf($r.Chiamate, ($r.Chiamate | Where-Object { $_ -like 'Aggiorna*' } | Select-Object -First 1))
+Check ($iStop -ge 0 -and $iAgg -gt $iStop) ('   pannello fermato, poi aggiorna: build e riavvio (' + ($r.Chiamate -join ' ; ') + ')')
+Check ($r.Testo -match 'Per tornare al ramo: pannello\.ps1 -Versione stabile') '   e dice come tornare al ramo'
+$global:MODO = 'dev'
+$r = Lancia 'stabile' 'CASO 7e: di nuovo sul ramo'
+Check ($r.Codice -eq 0 -and (Ramo) -eq 'ui-lifting' -and ((GitC rev-parse HEAD) -join '').Trim() -eq $punta) 'pannello.ps1 -Versione stabile riporta sul ramo, alla punta di prima'
 
 # ------------------------------------------------------------ pulizia
 foreach ($f in @('Get-Service', 'Stop-Service', 'Start-Service', 'Restart-Service', 'Get-NetTCPConnection', 'Test-EasyBoxAmministratore', 'npm.cmd', 'Get-EasyBoxModoPannello', 'Invoke-EasyBoxAggiorna', 'Show-EasyBoxPannelloServito')) { Remove-Item -LiteralPath ('function:\' + $f) -ErrorAction SilentlyContinue }

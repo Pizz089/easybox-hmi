@@ -4,11 +4,27 @@
 #   stabile  ramo ui-lifting: solo modifiche funzionali (quello di sempre)
 #   v3       ramo ui-v3: ui-lifting + la grafica nuova (pannello v3)
 #   stato    dice su che versione si e', senza cambiare niente
+#   ritorno  (8/10) riporta la copia di lavoro a un commit della storia del
+#            ramo attuale, scritto PER ESTESO (40 caratteri) col parametro
+#            -Commit: il ritorno dopo una finestra andata male (procedure in
+#            docs/APPUNTI-CELLA.md), senza comandi git a mano
 #
 # Uso (da qualunque cartella):
 #   powershell -ExecutionPolicy Bypass -File D:\Prog\easybox\tools\pannello.ps1 -Versione v3
 #   powershell -ExecutionPolicy Bypass -File D:\Prog\easybox\tools\pannello.ps1 -Versione stabile
 #   powershell -ExecutionPolicy Bypass -File D:\Prog\easybox\tools\pannello.ps1 -Versione stato
+#   powershell -ExecutionPolicy Bypass -File D:\Prog\easybox\tools\pannello.ps1 -Versione ritorno -Commit <40 caratteri>
+#
+# RITORNO (8/10). Il ramo NON si sposta (niente reset): la copia di lavoro si
+# stacca sul commit indicato (git switch --detach), che deve stare nella
+# storia del ramo attuale; il git pull di dopo resta un avanzamento semplice.
+# Per tornare al ramo: -Versione v3 o -Versione stabile, come sempre. Il
+# commit si cerca prima in locale: senza rete il ritorno funziona lo stesso
+# (git fetch solo se manca). Poi le stesse cautele e gli stessi passi del
+# cambio di versione qui sotto: HOLD, amministratore coi servizi, si ferma
+# con modifiche locali o con file non tracciati d'intralcio, pannello
+# fermato prima e rimesso su se qualcosa va storto, npm install se serve,
+# aggiorna col pannello compilato (build e riavvio di backend e pannello).
 #
 # Perche' sotto easybox/ e non in tools/ alla radice: il clone di cella e'
 # parziale (sparse-checkout in modalita' cone: D:\Prog\.git\info\sparse-checkout
@@ -65,8 +81,10 @@
 # ============================================================================
 param(
 	[Parameter(Mandatory = $true)]
-	[ValidateSet('v3', 'stabile', 'stato')]
-	[string]$Versione
+	[ValidateSet('v3', 'stabile', 'stato', 'ritorno')]
+	[string]$Versione,
+	# solo con -Versione ritorno: il commit di arrivo, per esteso
+	[string]$Commit = ''
 )
 
 $ErrorActionPreference = 'Continue'
@@ -177,12 +195,16 @@ function Stato {
 	$ramo = (G @('branch', '--show-current')).Uscita -join ''
 	$commit = (G @('log', '-1', '--format=%h  %s')).Uscita -join ''
 	$data = (G @('log', '-1', '--date=format:%d/%m/%Y %H:%M', '--format=%cd')).Uscita -join ''
-	$nome = if ($NOMI.ContainsKey($ramo)) { $NOMI[$ramo] } else { 'nessuna delle due (ramo non previsto)' }
+	$nome = if ($NOMI.ContainsKey($ramo)) { $NOMI[$ramo] } elseif (-not $ramo) { 'RITORNO: copia di lavoro ferma su un commit, fuori dal ramo (per tornare al ramo: -Versione v3 o -Versione stabile)' } else { 'nessuna delle due (ramo non previsto)' }
 	Scrivi ('Repo:     ' + $script:Radice)
 	Scrivi ('Versione: ' + $nome) 'Cyan'
 	Scrivi ('Ramo:     ' + $ramo)
 	Scrivi ('Commit:   ' + $commit)
 	Scrivi ('Data:     ' + $data)
+}
+# (8/10) dopo un ritorno: dove si e' e come si torna al ramo
+function NotaRitorno {
+	if ($script:ritorno) { Scrivi ('Ritorno: copia di lavoro sul commit ' + $script:Commit + ', fuori dal ramo ' + $script:ramo + '. Per tornare al ramo: pannello.ps1 -Versione ' + $(if ($script:ramo -eq 'ui-lifting') { 'stabile' } else { 'v3' }) + '.') 'Yellow' }
 }
 # solo i file tracciati: i non tracciati della cella (i .bat di avvio, il
 # backup di serverDati) ci sono sempre e fermerebbero lo script ogni volta.
@@ -205,8 +227,23 @@ if ($Versione -eq 'stato') {
 }
 
 # ---------------------------------------------------------------- cambio
-$ramo = $RAMI[$Versione]
-Scrivi ('Passo alla versione ' + $Versione + ' (ramo ' + $ramo + ')') 'Cyan'
+$ritorno = ($Versione -eq 'ritorno')
+if ($ritorno) {
+	# (8/10) il commit per esteso, 40 caratteri esadecimali: un hash corto
+	# potrebbe essere ambiguo, e in una procedura di ritorno non si indovina
+	$Commit = $Commit.Trim().ToLowerInvariant()
+	if ($Commit -notmatch '^[0-9a-f]{40}$') {
+		Fermati ('-Versione ritorno vuole -Commit col commit per esteso (40 caratteri), non "' + $Commit + '".') 'copiare il commit dalla procedura in docs\APPUNTI-CELLA.md, intero.'
+	}
+	$ramo = ((G @('branch', '--show-current')).Uscita -join '').Trim()
+	if (-not $ramo) {
+		Fermati 'la copia di lavoro non e'' su un ramo (un ritorno e'' gia'' stato fatto?).' 'prima tornare al ramo con -Versione v3 o -Versione stabile, poi rilanciare il ritorno; oppure chiamare Dario.'
+	}
+	Scrivi ('Ritorno al commit ' + $Commit + ' (dalla storia del ramo ' + $ramo + ')') 'Cyan'
+} else {
+	$ramo = $RAMI[$Versione]
+	Scrivi ('Passo alla versione ' + $Versione + ' (ramo ' + $ramo + ')') 'Cyan'
+}
 Scrivi 'Promemoria: la cella deve essere in HOLD.' 'Yellow'
 
 # 0. servizi installati? Allora serve l'amministratore (fermare e avviare i
@@ -215,7 +252,7 @@ $conServizi = @(@($S_B, $S_P) | Where-Object { Servizio $_ }).Count -gt 0
 if ($conServizi) {
 	Scrivi ('Servizi: ' + $S_B + ' ' + (StatoServizio $S_B) + ', ' + $S_P + ' ' + (StatoServizio $S_P))
 	if (-not (Test-EasyBoxAmministratore)) {
-		Fermati 'con i servizi EasyBoxBackend ed EasyBoxPannello installati serve PowerShell come amministratore.' ('aprire PowerShell con "Esegui come amministratore" e rilanciare: powershell -ExecutionPolicy Bypass -File ' + $PSCommandPath + ' -Versione ' + $Versione)
+		Fermati 'con i servizi EasyBoxBackend ed EasyBoxPannello installati serve PowerShell come amministratore.' ('aprire PowerShell con "Esegui come amministratore" e rilanciare: powershell -ExecutionPolicy Bypass -File ' + $PSCommandPath + ' -Versione ' + $Versione + $(if ($ritorno) { ' -Commit ' + $Commit } else { '' }))
 	}
 }
 
@@ -228,12 +265,26 @@ if ($mod.Count -gt 0) {
 	Fermati 'cambiando versione queste modifiche andrebbero perse o mescolate.' 'non cancellarle a mano: chiama Dario, che decide se tenerle (commit) o scartarle. Poi rilancia lo script.'
 }
 
-# 2. fetch
-Scrivi 'Leggo le versioni su GitHub (git fetch origin)...'
-$f = G @('fetch', 'origin')
-if ($f.Codice -ne 0) {
-	$f.Uscita | ForEach-Object { Scrivi ('  ' + $_) }
-	Fermati 'git fetch non riuscito.' 'controllare la rete del PC e l''accesso a GitHub, poi rilanciare. Se il problema resta, chiamare Dario.'
+# 2. fetch (ritorno: solo se il commit non c'e' gia' in locale)
+$serveFetch = $true
+if ($ritorno -and (G @('cat-file', '-e', ($Commit + '^{commit}'))).Codice -eq 0) { $serveFetch = $false }
+if ($serveFetch) {
+	Scrivi 'Leggo le versioni su GitHub (git fetch origin)...'
+	$f = G @('fetch', 'origin')
+	if ($f.Codice -ne 0) {
+		$f.Uscita | ForEach-Object { Scrivi ('  ' + $_) }
+		Fermati 'git fetch non riuscito.' 'controllare la rete del PC e l''accesso a GitHub, poi rilanciare. Se il problema resta, chiamare Dario.'
+	}
+}
+# 2a. (ritorno) il commit c'e' ed e' nella storia del ramo attuale: si torna
+#     indietro, mai su un altro ramo ne' su qualcosa che non si conosce
+if ($ritorno) {
+	if ((G @('cat-file', '-e', ($Commit + '^{commit}'))).Codice -ne 0) {
+		Fermati ('il commit ' + $Commit + ' non c''e'', nemmeno dopo git fetch.') 'controllare di averlo copiato intero dalla procedura; se e'' giusto, chiamare Dario.'
+	}
+	if ((G @('merge-base', '--is-ancestor', $Commit, 'HEAD')).Codice -ne 0) {
+		Fermati ('il commit ' + $Commit + ' non e'' nella storia del ramo ' + $ramo + '.') 'un ritorno va solo indietro sul ramo di cella: controllare il commit (la procedura ne da'' uno per ui-lifting e uno per ui-v3).'
+	}
 }
 
 # 2b. file non tracciati d'intralcio. Nel clone parziale di cella git switch
@@ -246,8 +297,11 @@ if ($f.Codice -ne 0) {
 #     ramo di arrivo aggiunge rispetto a HEAD e che sul disco ci sono gia'
 #     con un contenuto diverso. Uguale contenuto = nessuna perdita, si passa.
 $arrivi = @()
-foreach ($ref in @(('refs/remotes/origin/' + $ramo), ('refs/heads/' + $ramo))) {
-	if ((G @('rev-parse', '--verify', '--quiet', $ref)).Codice -eq 0) { $arrivi += $ref }
+if ($ritorno) { $arrivi = @($Commit) }
+else {
+	foreach ($ref in @(('refs/remotes/origin/' + $ramo), ('refs/heads/' + $ramo))) {
+		if ((G @('rev-parse', '--verify', '--quiet', $ref)).Codice -eq 0) { $arrivi += $ref }
+	}
 }
 $intralcio = @()
 foreach ($ref in $arrivi) {
@@ -281,9 +335,15 @@ if ($conServizi -and (Servizio $S_P)) {
 	$script:PannelloFermato = $true
 }
 
-# 3. switch
+# 3. switch (ritorno: la copia di lavoro si stacca sul commit, il ramo resta)
 $attuale = ((G @('branch', '--show-current')).Uscita -join '').Trim()
-if ($attuale -eq $ramo) {
+if ($ritorno) {
+	$s = G @('switch', '--detach', $Commit)
+	if ($s.Codice -ne 0) {
+		$s.Uscita | ForEach-Object { Scrivi ('  ' + $_) }
+		Fermati ('git switch --detach ' + $Commit + ' non riuscito.') 'chiamare Dario con questo messaggio.'
+	}
+} elseif ($attuale -eq $ramo) {
 	Scrivi ('Sono gia'' sul ramo ' + $ramo + ': lo aggiorno.')
 } else {
 	$remoto = G @('rev-parse', '--verify', '--quiet', ('refs/remotes/origin/' + $ramo))
@@ -299,8 +359,10 @@ if ($attuale -eq $ramo) {
 	}
 }
 
-# 4. pull solo in avanti
-if ((G @('rev-parse', '--verify', '--quiet', ('refs/remotes/origin/' + $ramo))).Codice -eq 0) {
+# 4. pull solo in avanti (non nel ritorno: si resta sul commit indicato)
+if ($ritorno) {
+	Scrivi ('Copia di lavoro sul commit ' + $Commit + '; il ramo ' + $ramo + ' non e'' stato spostato.')
+} elseif ((G @('rev-parse', '--verify', '--quiet', ('refs/remotes/origin/' + $ramo))).Codice -eq 0) {
 	$p = G @('pull', '--ff-only', 'origin', $ramo)
 	if ($p.Codice -ne 0) {
 		$p.Uscita | ForEach-Object { Scrivi ('  ' + $_) }
@@ -318,7 +380,7 @@ $moduli = Split-Path $segnoFile
 # non $segno: per PowerShell e' la stessa variabile di $SEGNO
 $lockSegnato = if (Test-Path $segnoFile) { (Get-Content $segnoFile -Raw).Trim() } else { '' }
 $serve = ($lockPrima -ne $lockDopo) -or ($lockSegnato -and $lockSegnato -ne $lockDopo) -or (-not (Test-Path $moduli))
-$giaCambiato = ('Il ramo e'' gia'' ' + $ramo + ': mancano solo le dipendenze del pannello.')
+$giaCambiato = $(if ($ritorno) { 'La copia di lavoro e'' gia'' sul commit ' + $Commit + ': mancano solo le dipendenze del pannello.' } else { 'Il ramo e'' gia'' ' + $ramo + ': mancano solo le dipendenze del pannello.' })
 if ($serve) {
 	Scrivi 'Le dipendenze del pannello sono cambiate: npm install in easybox\HMI...' 'Cyan'
 	# npm.cmd e non npm: con l'operatore & lo shim npm.ps1 di Node legge male
@@ -356,7 +418,7 @@ if ($conServizi -and (Servizio $S_P) -and (Get-EasyBoxModoPannello) -eq 'preview
 	Scrivi 'Il pannello gira COMPILATO: build nuova e riavvio con servizi-cella.ps1 -Azione aggiorna...' 'Cyan'
 	$esitoAggiorna = Invoke-EasyBoxAggiorna
 	if ($esitoAggiorna -ne 0) {
-		Fermati 'aggiornamento del pannello compilato non riuscito (servizi-cella.ps1 -Azione aggiorna, messaggi qui sopra).' 'leggere l''errore della build qui sopra (log completo in easybox\HMI\log\build_pannello.log) e mandarlo a Dario. Dopo la correzione: servizi-cella.ps1 -Azione aggiorna.' ('Il repo e'' gia'' sul ramo ' + $ramo + '. Quale pannello e'' servito (quello di prima o il nuovo) e come stanno i servizi lo dicono i messaggi di aggiorna qui sopra: aggiorna puo'' fermarsi anche dopo lo scambio delle dist.')
+		Fermati 'aggiornamento del pannello compilato non riuscito (servizi-cella.ps1 -Azione aggiorna, messaggi qui sopra).' 'leggere l''errore della build qui sopra (log completo in easybox\HMI\log\build_pannello.log) e mandarlo a Dario. Dopo la correzione: servizi-cella.ps1 -Azione aggiorna.' ($(if ($ritorno) { 'Il repo e'' gia'' sul commit ' + $Commit } else { 'Il repo e'' gia'' sul ramo ' + $ramo }) + '. Quale pannello e'' servito (quello di prima o il nuovo) e come stanno i servizi lo dicono i messaggi di aggiorna qui sopra: aggiorna puo'' fermarsi anche dopo lo scambio delle dist.')
 	}
 	$script:PannelloFermato = $false
 	Scrivi ''
@@ -364,6 +426,7 @@ if ($conServizi -and (Servizio $S_P) -and (Get-EasyBoxModoPannello) -eq 'preview
 	Scrivi ''
 	Scrivi 'Fatto. Servito: pannello COMPILATO, dalla build appena fatta (backend e pannello riavviati da aggiorna):' 'Green'
 	Show-EasyBoxPannelloServito
+	NotaRitorno
 	Scrivi 'Controlli:' 'Green'
 	Scrivi '  - Ctrl+F5 sui client (touch di cella e tablet);' 'Green'
 	Scrivi '  - stato del robot che si aggiorna;' 'Green'
@@ -395,6 +458,7 @@ if ($conServizi) {
 	Scrivi '  - Ctrl+F5 sui client (touch di cella e tablet);' 'Green'
 	Scrivi '  - stato del robot che si aggiorna;' 'Green'
 	Scrivi '  - DB_executeQuery.readyForNextQuery TRUE.' 'Green'
+	NotaRitorno
 	exit 0
 }
 
@@ -414,4 +478,5 @@ Scrivi '  - INIT nuovo in easybox\serverDati\log\access.log;' 'Green'
 Scrivi '  - stato del robot che si aggiorna;' 'Green'
 Scrivi '  - DB_executeQuery.readyForNextQuery TRUE.' 'Green'
 Scrivi 'Le due finestre non si chiudono senza rilanciarle: il 6/10 la chiusura di quella del backend ha fermato il ponte fra PLC e SQL per circa 13 minuti.' 'Yellow'
+NotaRitorno
 exit 0

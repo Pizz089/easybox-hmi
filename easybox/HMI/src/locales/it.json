@@ -2,7 +2,7 @@
   "viceJaw": {
     "mounted": "Chele montate: {code}",
     "none": "nessun tipo montato",
-    "KO_NO_JAW": "La morsa non ha un tipo di chele montato: le misure della chela si dichiarano sul tipo di chele, in Attrezzaggio › Chele morsa.",
+    "KO_NO_JAW": "La morsa non ha un tipo di chele montato: le misure della chela si dichiarano sul tipo di chele, non sulla morsa.",
     "KO_JAW_ACTIVE_ORDER": "Un ordine in lavorazione usa una morsa con queste chele: misure e montaggio non si cambiano finché l'ordine non è finito.",
     "KO_JAW_RETIRED": "Questo tipo di chele è dismesso: non si monta e non si conferma su un ordine.",
     "KO_JAW_MOUNTED": "Questo tipo di chele è montato su una morsa: prima si smonta, poi si dismette.",
@@ -759,7 +759,7 @@
     "alarm972NoText": "Premi RESET e ripeti il comando.",
     "alarm_949": "Comando rifiutato: porta operatore non chiusa durante l'estrazione o il rientro di un cassetto, oppure EasyBox in errore (il registro dei cassetti fuori non coincide coi sensori). Chiudi la porta operatore; se è chiusa, controlla la pagina EasyBox e rientra il cassetto o reimposta lo stato cella col cassetto giusto. Poi premi RESET e ripeti il comando.",
     "alarm_1722": "Missione pallet chiusa: il database non dice quale pinza serve per questo pallet, o la lettura è fallita. Dal pannello non si imposta: fai controllare l'anagrafica del pallet, poi premi RESET e ripeti.",
-    "alarm_799": "Deposito in macchina fermato: nessuna quota per questo ordine. Controlla pezzo e attrezzatura dell'ordine, e che le chele dell'ordine siano quelle montate sulla morsa (Attrezzaggio › Chele morsa). Poi RESET.",
+    "alarm_799": "Deposito in macchina fermato: nessuna quota per questo ordine. Controlla pezzo e attrezzatura dell'ordine, e che le chele dell'ordine siano quelle montate sulla morsa. Poi RESET.",
     "noGripper": "NO GRIPPER MOUNTED!",
     "speedLabel": "ROBOT SPEED:",
     "speedTitle": "Velocit\u00e0 robot",

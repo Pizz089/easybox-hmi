@@ -208,7 +208,9 @@ select  w.ID                            as ORDER_ID,
         ISNULL(j.CLAW_LENGTH,0)         as CLAW_LENGTH,
         ISNULL(pz.Y,0)                  as PART_WIDTH,
         -- (7/10) battuta CORRETTA per le chele montate: X_Support del PLC
-        -- (CLAW_LENGTH/2 + questa) resta CLAW_LENGTH_REF/2 + dichiarata
+        -- (CLAW_LENGTH/2 + questa) resta CLAW_LENGTH_REF/2 + dichiarata.
+        -- REF/2 - montata/2 e non (REF - montata)/2: con le divisioni intere
+        -- e' l'unica forma che lo tiene identico al micron (lunghezze dispari)
         ISNULL(case when pv.CLAW_LENGTH_REF is null or ISNULL(j.CLAW_LENGTH,0) <= 0
                     then pv.STOP_BEYOND_CLAW
                     else pv.STOP_BEYOND_CLAW + pv.CLAW_LENGTH_REF/2 - j.CLAW_LENGTH/2 end,0) as STOP_BEYOND_CLAW,

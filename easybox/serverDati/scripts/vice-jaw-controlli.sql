@@ -13,7 +13,10 @@
 --   4. VARIANTE da decidere (non applicata): con "morsa sul pallet ma senza
 --      tipo di chele = nessuna riga in COORDINATES_Z_MC" invece di ISNULL a 0,
 --      questi ordini si fermerebbero col 799. Oggi su quelle morse la quota
---      di deposito esce senza l'appoggio delle chele, cioe' troppo bassa.
+--      di deposito esce senza l'appoggio delle chele, cioe' troppo bassa;
+--   5, 6. chi legge VICES e le colonne di VICE (la vista nuova le elenca);
+--   7. se VICE.ID e' IDENTITY: "crea morsa" del pannello vecchio passa l'ID
+--      esplicito (CONF/Vice.js, insertVice) e fallirebbe gia' oggi.
 --
 -- COMANDO (cella, PowerShell; il file va copiato in D:\Backup prima del
 -- git pull, perche' in cella non c'e' ancora):
@@ -63,6 +66,9 @@ PRINT '== 5. CHI LEGGE VICES (atteso: nessuna vista ne procedura) ==';
 SELECT OBJECT_NAME(d.referencing_id) AS oggetto, o.type_desc
   FROM sys.sql_expression_dependencies d JOIN sys.objects o ON o.object_id = d.referencing_id
  WHERE d.referenced_entity_name = N'VICES';
+
+PRINT '== 7. VICE.ID e'' IDENTITY? (1 = si'': "crea morsa" del pannello vecchio, che passa l''ID, fallisce gia'' oggi; LAVORI-IN-CODA) ==';
+SELECT COLUMNPROPERTY(OBJECT_ID('dbo.VICE'), 'ID', 'IsIdentity') AS vice_id_identity;
 
 PRINT '== 6. COLONNE DI VICE (la vista VICES nuova le elenca: atteso nessuna oltre quelle note) ==';
 SELECT name FROM sys.columns WHERE object_id = OBJECT_ID('dbo.VICE')

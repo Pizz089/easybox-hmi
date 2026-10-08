@@ -411,7 +411,12 @@ from (
 	-- (7/10) BATTUTA CORRETTA per le chele montate: il riferimento sta sulla
 	-- morsa, la dichiarazione e' misurata dalla fine della chela con cui e'
 	-- stata fatta (CLAW_LENGTH_REF). Senza REF o con la chela montata non
-	-- misurata: nessuna correzione, come prima
+	-- misurata: nessuna correzione, come prima.
+	-- PERCHE' REF/2 - montata/2 E NON (REF - montata)/2: con le divisioni
+	-- intere il PLC calcola X_Support = montata/2 + battuta (FB_Robot,
+	-- COORDINATES_BLOW_MC). Con questa forma X_Support = REF/2 + dichiarata
+	-- ESATTAMENTE, al micron, anche con lunghezze dispari; con l'altra potrebbe
+	-- scostarsi di 1 micron (test_vice_jaw.js prova le lunghezze dispari)
 	cross apply (select case when pv.CLAW_LENGTH_REF is null or ISNULL(j.CLAW_LENGTH, 0) <= 0
 							 then pv.STOP_BEYOND_CLAW
 							 else pv.STOP_BEYOND_CLAW + pv.CLAW_LENGTH_REF/2 - j.CLAW_LENGTH/2 end as STOP_BEYOND_CLAW) s
