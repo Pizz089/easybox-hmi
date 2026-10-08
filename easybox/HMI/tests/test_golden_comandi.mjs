@@ -746,6 +746,21 @@ const PAGINE = [
 		'liv2': (vm, ds) => { ds.userLevel = 2; },
 		'dialog cambio utente aperto': (vm, ds) => { ds.userLevel = 0; vm.aperto = true; },
 	} },
+	// (consegna 36, 8/10) avviso fisso «perche' il ciclo MC1 e' fermo», sotto
+	// la striscia in tutte le pagine: nessun comando, solo il link alla
+	// pagina giusta (navigazione). Dati: stores/attesaMc1.js (MC1/WAIT).
+	{ nome: 'CycleWaitBar', file: 'src/layout/v3/CycleWaitBar.vue', modo: 'ssr', scenari: {
+		'nessuna attesa (0)': attesa({ codice: 0, statoFB204: 50, dato: 0 }),
+		'robot in manuale dal pendant (3)': attesa({ codice: 3, statoFB204: 50, dato: 0 }),
+		'errore robot 1419 (8)': attesa({ codice: 8, statoFB204: 50, dato: 1419 }),
+		'FB204 in errore col 959 (10)': attesa({ codice: 10, statoFB204: 9999, dato: 0, allarme: { codice: 959, ts: 1760000000000 } }),
+		'morsa chiusa a contenuto sconosciuto (11)': attesa({ codice: 11, statoFB204: 5, dato: 0 }),
+		'conferma attesa da 30 s (21), liv0': attesa({ codice: 21, statoFB204: 50, dato: 13 }),
+		'conferma attesa da 30 s (21), liv1': attesa({ codice: 21, statoFB204: 50, dato: 13 }, 1),
+		'FB204 in attesa di ordini (30)': attesa({ codice: 30, statoFB204: 97, dato: 0 }),
+		'FB204 a 0 senza ordine in Play (12)': attesa({ codice: 12, statoFB204: 0, dato: 0 }, 0, []),
+		'non aggiornato': attesa({ codice: null, statoFB204: null, dato: null }),
+	} },
 ];
 
 // ------------------------------------------------------------ istanze SSR
@@ -754,6 +769,17 @@ const PAGINE = [
 // vera espone. Render SSR con i18n e router in memoria; il proxy del
 // componente fa da vm (with() funziona sul proxy). onMounted non gira.
 const plantStore = await server.ssrLoadModule('/src/stores/plantStatus.js');
+// (consegna 36) l'avviso «perche' il ciclo MC1 e' fermo»: uno stato di
+// MC1/WAIT e gli ordini (con uno di MC1 in Play, salvo dove si dice)
+const attesaStore = await server.ssrLoadModule('/src/stores/attesaMc1.js');
+const IN_PLAY = [{ ID: 101, MACHINE_ID: 1, STATUS: 3, QUANTITY: 10, PRODUCTED: 2 }];
+// (gli scenari si costruiscono prima di questa riga: IN_PLAY si legge quando girano)
+function attesa(a, livello = 0, ordini) {
+	return (vm, ds) => {
+		ds.userLevel = livello;
+		Object.assign(attesaStore.attesaMc1, { attesa: Object.assign({ ts: 1760000000000, allarme: null }, a), ordini: ordini === undefined ? IN_PLAY : ordini, ordiniNoti: true });
+	};
+}
 const { createSSRApp, h } = await import('vue');
 const { renderToString } = await import('vue/server-renderer');
 const { createI18n } = await import('vue-i18n');
@@ -784,6 +810,10 @@ async function istanzaSSR(comp, props, route) {
 	const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/:p(.*)*', component: { render: () => null } }] });
 	await router.push((route && route.path) || '/');
 	await router.isReady();
+	// (consegna 36) la navigazione dei componenti <script setup> (useRouter)
+	// si registra come quella dei componenti options ($router.push)
+	const pushVero = router.push.bind(router);
+	router.push = x => { rec('router ' + J(x)); return pushVero(x); };
 	// gli eventi verso il padre si registrano come per i componenti options
 	const ascolto = {};
 	for (const ev of (Array.isArray(comp.emits) ? comp.emits : Object.keys(comp.emits || {})))
@@ -812,6 +842,7 @@ async function prova(pagina, comp, ctrls, scen, catena) {
 	// catena: [{c, lv}] controlli da eseguire in ordine; ritorna effetti e stato
 	resetDS(); timers = []; timerId = 1; effetti = [];
 	if (pagina.modo === 'ssr') Object.assign(plantStore.plant, { robot: null, mc1: null, mc2: null, box: null, robotAlarm: '', trayOut: null });
+	if (pagina.modo === 'ssr') Object.assign(attesaStore.attesaMc1, { attesa: null, ordini: [], ordiniNoti: false });
 	const vm = pagina.modo === 'ssr'
 		? await istanzaSSR(comp, JSON.parse(JSON.stringify(pagina.props || {})), pagina.route)
 		: vmDi(comp, JSON.parse(JSON.stringify(pagina.props || {})), pagina.route && JSON.parse(JSON.stringify(pagina.route)));

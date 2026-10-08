@@ -489,3 +489,11 @@ Scenari: liv0 · liv2 · dialog cambio utente aperto
 | {{t('settings.changeLanguage')}} | `cambiaLingua` |  | liv0: sì<br>liv2: sì<br>dialog cambio utente aperto: sì | – | no |
 | (close) | `aperto = false` |  | liv0: sì<br>liv2: sì<br>dialog cambio utente aperto: sì | – | no |
 
+## CycleWaitBar (`src/layout/v3/CycleWaitBar.vue`)
+
+Scenari: nessuna attesa (0) · robot in manuale dal pendant (3) · errore robot 1419 (8) · FB204 in errore col 959 (10) · morsa chiusa a contenuto sconosciuto (11) · conferma attesa da 30 s (21), liv0 · conferma attesa da 30 s (21), liv1 · FB204 in attesa di ordini (30) · FB204 a 0 senza ordine in Play (12) · non aggiornato
+
+| Etichetta | Handler | Abilitazione | Abilitato per scenario | Effetto | Conferma |
+|---|---|---|---|---|---|
+| {{brevi ? testi.linkBreve : testi.link}} | `vai` |  | nessuna attesa (0): –<br>robot in manuale dal pendant (3): –<br>errore robot 1419 (8): sì<br>FB204 in errore col 959 (10): sì<br>morsa chiusa a contenuto sconosciuto (11): sì<br>conferma attesa da 30 s (21), liv0: –<br>conferma attesa da 30 s (21), liv1: sì<br>FB204 in attesa di ordini (30): –<br>FB204 a 0 senza ordine in Play (12): –<br>non aggiornato: – | router "/unit/robot" | no |
+

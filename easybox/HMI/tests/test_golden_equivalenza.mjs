@@ -99,6 +99,13 @@ export const AMMESSE = [
 	// (fase E1.3, verso definitivo 2.1) antirimbalzo del HOLD della striscia
 	{ pagina: 'StatusStrip', tipo: 'cambiato', firma: /^emit TO_PLANT\/CMD\/ROBOT 17$/,
 		motivo: 'HOLD / Riprendi / START: stesso comando 17. Il 17 e\' un interruttore nel PLC, due tocchi rimettono in moto la cella: dopo un tocco il pulsante resta spento e (8/10) si riaccende al piu\' tardi fra «cambio di STATUS + 1 s» e «tocco + 1,5 s» (prima al primo cambio: con l\'eco a 100 ms un doppio tocco a 300 ms mandava due 17); un passaggio a ignoto o a 0 non conta; senza cambio in 5 s, avviso «HOLD non confermato dal PLC» (util/holdGuard.js). Negli scenari della golden (nessun tocco in corso) le abilitazioni sono quelle di prima. Coperto da test_hold_guard.mjs' },
+	// (consegna 36, 8/10, prompt 12) avviso fisso «perche' il ciclo MC1 e'
+	// fermo», sotto la striscia in tutte le pagine: elemento nuovo, sempre
+	// presente nella shell. Non ha comandi: la firma qui sotto e' navigazione
+	// (router), che il controllo 1 non conta. Scritto per dire perche' la
+	// golden ha una pagina in piu'.
+	{ pagina: 'CycleWaitBar', tipo: 'nuovo', firma: /^router "\/(unit\/robot|unit\/CNC1|diag\/mqtt)"$/,
+		motivo: 'avviso fisso «perche\' il ciclo MC1 e\' fermo» (FROM_PLANT/WAIT/MC1 della consegna 36, evento MC1/WAIT del backend): decisione di Dario dell\'8/10, testo e link alla pagina giusta, NESSUN pulsante di comando. L\'unico elemento toccabile e\' il link «Vai a ...»: Controlli › Robot (codici 1, 8, 9, 10, 15, 16, 20), Controlli › Macchina MC1 (11, 14), MQTT Live (21, solo dal livello 1, come nella barra). Nessun emit e nessuna chiamata HTTP. Regole in util/attesaMc1.js, coperte da tests/test_attesa_mc1_v3.mjs' },
 ];
 const ammessa = (pagina, firma, scenario) => AMMESSE.find(a => (!a.pagina || a.pagina === pagina) && a.firma.test(firma)
 	&& (!a.scenario || (scenario !== undefined && a.scenario.test(scenario))));

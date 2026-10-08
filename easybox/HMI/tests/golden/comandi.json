@@ -17183,6 +17183,67 @@
      }
     }
    ]
+  },
+  "CycleWaitBar": {
+   "file": "src/layout/v3/CycleWaitBar.vue",
+   "scenari": [
+    "nessuna attesa (0)",
+    "robot in manuale dal pendant (3)",
+    "errore robot 1419 (8)",
+    "FB204 in errore col 959 (10)",
+    "morsa chiusa a contenuto sconosciuto (11)",
+    "conferma attesa da 30 s (21), liv0",
+    "conferma attesa da 30 s (21), liv1",
+    "FB204 in attesa di ordini (30)",
+    "FB204 a 0 senza ordine in Play (12)",
+    "non aggiornato"
+   ],
+   "controlli": [
+    {
+     "id": "a@click vai",
+     "etichetta": "{{brevi ? testi.linkBreve : testi.link}}",
+     "evento": "click",
+     "handler": "vai",
+     "disabled": "",
+     "classe": "",
+     "esiti": {
+      "nessuna attesa (0)": "nascosto",
+      "robot in manuale dal pendant (3)": "nascosto",
+      "errore robot 1419 (8)": {
+       "abilitato": true,
+       "effetti": [
+        "router \"/unit/robot\""
+       ],
+       "stato": []
+      },
+      "FB204 in errore col 959 (10)": {
+       "abilitato": true,
+       "effetti": [
+        "router \"/unit/robot\""
+       ],
+       "stato": []
+      },
+      "morsa chiusa a contenuto sconosciuto (11)": {
+       "abilitato": true,
+       "effetti": [
+        "router \"/unit/CNC1\""
+       ],
+       "stato": []
+      },
+      "conferma attesa da 30 s (21), liv0": "nascosto",
+      "conferma attesa da 30 s (21), liv1": {
+       "abilitato": true,
+       "effetti": [
+        "router \"/diag/mqtt\""
+       ],
+       "stato": []
+      },
+      "FB204 in attesa di ordini (30)": "nascosto",
+      "FB204 a 0 senza ordine in Play (12)": "nascosto",
+      "non aggiornato": "nascosto"
+     }
+    }
+   ]
   }
  }
 }

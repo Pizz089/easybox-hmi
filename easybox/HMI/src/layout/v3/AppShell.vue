@@ -12,12 +12,17 @@
      Gli handler globali (toast allarmi, SAFETY/AUX, snapshot e refresh 90
      alla connessione) sono quelli di StandardMenu, dalla stessa sorgente:
      layout/plantGlobals.js.
+
+     (consegna 36, 8/10) Sotto la striscia l'avviso fisso «perche' il ciclo
+     MC1 e' fermo» (CycleWaitBar): nella colonna, fra striscia e contenuto,
+     spinge il contenuto in basso e non copre niente.
      ========================================================================== -->
 <template>
   <div class="shell">
     <NavRail :alarms="nAllarmi" @open-user="utente = true" />
     <div class="shell__main">
       <StatusStrip :alarms="nAllarmi" @open-user="utente = true" />
+      <CycleWaitBar />
       <main class="content shell__content">
         <!-- (fase E1.5) riga delle schede: a destra il punto di aggancio per i
              selettori delle pagine (in compatto le schede Movimenti /
@@ -60,6 +65,8 @@ import { usePlantGlobals } from '../plantGlobals.js';
 import { startPlantStatus, stopPlantStatus, activeAlarmUnits } from '@/stores/plantStatus.js';
 import NavRail from './NavRail.vue';
 import StatusStrip from './StatusStrip.vue';
+import CycleWaitBar from './CycleWaitBar.vue';
+import { startAttesaMc1, stopAttesaMc1 } from '@/stores/attesaMc1.js';
 import SectionTabs from './SectionTabs.vue';
 import { installAppHeight } from '@/util/appHeight.js';
 import { creaSmistaAvvisi } from '@/util/avvisoBreve.js';
@@ -67,6 +74,8 @@ import { creaSmistaAvvisi } from '@/util/avvisoBreve.js';
 usePlantGlobals();
 onMounted(startPlantStatus);
 onUnmounted(stopPlantStatus);
+onMounted(startAttesaMc1);
+onUnmounted(stopAttesaMc1);
 // (fase E1.4) --app-h da innerHeight dove il browser non conosce 100dvh
 let staccaAppHeight = () => {};
 onMounted(() => { staccaAppHeight = installAppHeight(); });
