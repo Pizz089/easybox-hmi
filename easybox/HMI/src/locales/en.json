@@ -587,6 +587,10 @@
     "holdUnknown": "Robot state unknown"
   },
   "robot": {
+    "alarm972Title": "Command refused: active error {codice}",
+    "alarm972NoText": "Press RESET and repeat the command.",
+    "alarm_949": "Command refused: EasyBox error, the record of trays out does not match the sensors. Check the EasyBox page, put the tray back or reset the cell state with the right tray, then press RESET and repeat the command.",
+    "alarm_1722": "Pallet mission closed: the database does not say which gripper this pallet needs, or the read failed. It cannot be set from the panel: have the pallet master data checked, then press RESET and repeat.",
     "dialog": {
       "chooseGripper": "Which gripper to load?",
       "choosePalletLoad": "Which pallet to load?",
@@ -704,12 +708,11 @@
     "alarm_971": "Manual load into MC1 refused: the tray pocket the gripped part comes from is not known. Pick the part from a pocket with the panel command, or start the order.",
     "alarm_972": "Command refused: the robot has an active error. Press RESET and repeat the command. With error 938, first declare the cell state.",
     "alarm_973": "Command refused: a mission is running or paused. CONTINUE to resume it, or RESET (or the procedure after an interrupted mission).",
-    "alarm972Code": "Command refused: there is an active error, {errore}. Press RESET and repeat the command.",
     "alarm_691": "Destination pocket not found or not empty in the database: check the pocket and declare it (39), then RESET and repeat.",
     "alarm_2205": "On-board gripper missing from the gripper registry (GRIPPERS / GRIPPER_HOOK)",
     "alarm_19004": "Tray extraction: no extraction coordinate for the tray (COORDINATES_FOR_EXTRACT)",
     "alarm_20009": "Tray release: no extraction coordinate for the extracted tray",
-    "alarm_1419": "Gripper pick or change refused: a tray is out. Press RESET, put the tray back (Tray handling), then repeat the command.",
+    "alarm_1419": "Gripper pick refused: a tray is out. Press RESET, put the tray back (Tray handling), then repeat the command.",
     "alarm_1519": "Gripper drop or change refused: a tray is out. Press RESET, put the tray back (Tray handling), then repeat the command.",
     "alarm_19005": "Tray extraction refused: the gripper on board has no hook",
     "alarm_19006": "No gripper with a hook, neither on board nor on the shelf",

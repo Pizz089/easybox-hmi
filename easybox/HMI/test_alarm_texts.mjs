@@ -55,8 +55,9 @@ const CODES = {
 	// 970/971 dalla consegna 30 (6/10), 972 dalla consegna 33 (7/10),
 	// 1419/1519/19005/19006/19007/20011 dalla consegna 34 (7/10, uncino),
 	// 973 e 691 (tasca non vuota) dalla consegna 35 (7/10); 948, 951, 996,
-	// 997, 999 dalla simulazione bis (B61, 7/10 sera)
-	robot: [961, 962, 964, 967, 19004, 20009, 2205, 970, 971, 972, 1419, 1519, 19005, 19006, 19007, 20011, 973, 691, 948, 951, 996, 997, 999],
+	// 997, 999 dalla simulazione bis (B61, 7/10 sera); 949 e 1722 dalle
+	// risposte sulla consegna 35 (7/10 sera)
+	robot: [961, 962, 964, 967, 19004, 20009, 2205, 970, 971, 972, 1419, 1519, 19005, 19006, 19007, 20011, 973, 691, 948, 951, 996, 997, 999, 949, 1722],
 	mc1: [952, 953, 954, 955, 956, 957, 958, 959, 947],
 };
 const raw = { it: readFileSync('src/locales/it.json', 'utf8'), en: readFileSync('src/locales/en.json', 'utf8') };
@@ -92,8 +93,20 @@ check(/errore attivo/.test(loc.it.robot.alarm_972) && /938/.test(loc.it.robot.al
 check([1419, 1519].every(c => /cassetto fuori/.test(loc.it.robot['alarm_' + c])
 	&& /Premi RESET, rientra il cassetto \(Gestione cassetto\), poi ripeti il comando\.$/.test(loc.it.robot['alarm_' + c])
 	&& /tray is out/.test(loc.en.robot['alarm_' + c]) && /Press RESET, put the tray back \(Tray handling\), then repeat the command\.$/.test(loc.en.robot['alarm_' + c]))
-	&& /Carico/.test(loc.it.robot.alarm_1419) && /Deposito/.test(loc.it.robot.alarm_1519) && [1419, 1519].every(c => /cambio pinza/.test(loc.it.robot['alarm_' + c])),
-	'1419 (carico) e 1519 (deposito), anche dal cambio pinza: «Premi RESET, rientra il cassetto (Gestione cassetto), poi ripeti il comando»');
+	&& /^Carico pinza rifiutato:/.test(loc.it.robot.alarm_1419) && /^Deposito o cambio pinza rifiutato:/.test(loc.it.robot.alarm_1519),
+	'1419 (carico) e 1519 (deposito o cambio): «Premi RESET, rientra il cassetto (Gestione cassetto), poi ripeti il comando»');
+// (7/10 sera, risposte sulla consegna 35) i testi di riferimento di Dario
+check(loc.it.robot.alarm_1419 === "Carico pinza rifiutato: c'è un cassetto fuori. Premi RESET, rientra il cassetto (Gestione cassetto), poi ripeti il comando."
+	&& loc.en.robot.alarm_1419 === 'Gripper pick refused: a tray is out. Press RESET, put the tray back (Tray handling), then repeat the command.'
+	&& loc.it.robot.alarm_1519 === "Deposito o cambio pinza rifiutato: c'è un cassetto fuori. Premi RESET, rientra il cassetto (Gestione cassetto), poi ripeti il comando."
+	&& loc.en.robot.alarm_1519 === 'Gripper drop or change refused: a tray is out. Press RESET, put the tray back (Tray handling), then repeat the command.',
+	'1419 e 1519: i testi di riferimento, in it ed en');
+check(loc.it.robot.alarm_949 === 'Comando rifiutato: EasyBox in errore, il registro dei cassetti fuori non coincide coi sensori. Controlla la pagina EasyBox, rientra il cassetto o reimposta lo stato cella col cassetto giusto, poi premi RESET e ripeti il comando.'
+	&& /^Command refused: EasyBox error, the record of trays out does not match the sensors\./.test(loc.en.robot.alarm_949) && !/porta|door/i.test(loc.it.robot.alarm_949 + loc.en.robot.alarm_949),
+	'949: EasyBox in errore (registro dei cassetti fuori contro sensori), non la porta');
+check(loc.it.robot.alarm_1722 === "Missione pallet chiusa: il database non dice quale pinza serve per questo pallet, o la lettura è fallita. Dal pannello non si imposta: fai controllare l'anagrafica del pallet, poi premi RESET e ripeti."
+	&& /^Pallet mission closed: the database does not say which gripper this pallet needs/.test(loc.en.robot.alarm_1722),
+	'1722: pinza del pallet assente a database, non si imposta dal pannello');
 check(!/Chiudi il cassetto e premi RESET/.test(loc.it.robot.alarm_1419 + loc.it.robot.alarm_1519), '   l\'ordine vecchio (prima il cassetto, poi RESET) non c\'e\' piu\'');
 check(/non ha l'uncino/.test(loc.it.robot.alarm_19005) && /né a bordo né a scaffale/.test(loc.it.robot.alarm_19006)
 	&& /deve essere vuota/.test(loc.it.robot.alarm_19007) && /non ha l'uncino/.test(loc.it.robot.alarm_20011) && /si rientra a mano/.test(loc.it.robot.alarm_20011),
@@ -105,8 +118,12 @@ check(loc.it.robot.alarm_973 === "Comando rifiutato: c'è una missione in corso 
 	&& /mission is running or paused/.test(loc.en.robot.alarm_973) && /CONTINUE/.test(loc.en.robot.alarm_973), '973: missione in corso o in pausa, CONTINUA oppure RESET');
 check(loc.it.robot.alarm_691 === 'Tasca di destinazione non trovata o non vuota a database: controlla la tasca e dichiarala (39), poi RESET e ripeti.'
 	&& /not empty in the database/.test(loc.en.robot.alarm_691), '691: tasca non trovata o non vuota a database, dichiarala (39)');
-check(loc.it.robot.alarm972Code === "Comando rifiutato: c'è un errore attivo, {errore}. Premi RESET e ripeti il comando." && /\{errore\}/.test(loc.en.robot.alarm972Code),
-	'972 + codice: «Comando rifiutato: c\'è un errore attivo, <codice> <testo>. Premi RESET e ripeti il comando.»');
+// (7/10 sera) l'avviso unico 972 + codice: titolo col codice, testo del
+// codice, la coda solo se il codice non ha un testo (test_alarm_972.mjs)
+check(loc.it.robot.alarm972Title === 'Comando rifiutato: errore attivo {codice}' && loc.en.robot.alarm972Title === 'Command refused: active error {codice}'
+	&& loc.it.robot.alarm972NoText === 'Premi RESET e ripeti il comando.' && loc.en.robot.alarm972NoText === 'Press RESET and repeat the command.'
+	&& loc.it.robot.alarm972Code === undefined && loc.en.robot.alarm972Code === undefined,
+	'972 + codice: titolo «Comando rifiutato: errore attivo <codice>», coda «Premi RESET e ripeti il comando.»; il testo unito di prima non c\'e\' piu\'');
 let head = null;
 try { head = { it: JSON.parse(execSync('git show HEAD:easybox/HMI/src/locales/it.json', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })) }; } catch (e) { head = null; }
 if (head) {

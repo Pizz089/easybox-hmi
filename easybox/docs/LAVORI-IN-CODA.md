@@ -5,6 +5,14 @@
 > stato corretto sul momento. Gli interventi manuali da fare in impianto
 > stanno invece in `APPUNTI-CELLA.md`.
 
+## [ ] La pinza richiesta del pallet non si imposta dal pannello
+
+**Cosa.** Il PLC sa quale pinza serve per un pallet dalla query `select GRIPPERREQ from pallets_grippers where palletID=<pallet>` (FB_Robot, REGION Gripper4Pallet_Search, e il master 1010). Il dato e' `pallet.GripperREQ` (le viste SQL lo leggono da li', `workorders-view-pp.sql:116`), ma nel pannello e in `serverDati/CONF` non c'e' niente che lo scriva. Se manca (nessuna riga, errore o, dalla consegna 35, 0) ogni missione pallet si chiude col 1722, e dal pannello l'operatore non lo puo' sistemare.
+
+**Direzione.** Un campo «pinza richiesta» nella pagina del pallet, con la scrittura nel backend; fino ad allora l'anagrafica del pallet si corregge sul database.
+
+**Trovato il** 2026-10-07, risposte sulla consegna 35.
+
 ## [ ] Pannello v3: pagine non rifatte e voci aperte
 
 **Cosa.** Sul ramo `ui-v3` restano fuori dal pannello nuovo:

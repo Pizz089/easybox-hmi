@@ -587,6 +587,10 @@
     "holdUnknown": "Stato del robot non noto"
   },
   "robot": {
+    "alarm972Title": "Comando rifiutato: errore attivo {codice}",
+    "alarm972NoText": "Premi RESET e ripeti il comando.",
+    "alarm_949": "Comando rifiutato: EasyBox in errore, il registro dei cassetti fuori non coincide coi sensori. Controlla la pagina EasyBox, rientra il cassetto o reimposta lo stato cella col cassetto giusto, poi premi RESET e ripeti il comando.",
+    "alarm_1722": "Missione pallet chiusa: il database non dice quale pinza serve per questo pallet, o la lettura è fallita. Dal pannello non si imposta: fai controllare l'anagrafica del pallet, poi premi RESET e ripeti.",
     "dialog": {
       "chooseGripper": "Quale pinza caricare?",
       "choosePalletLoad": "Quale pallet caricare?",
@@ -704,12 +708,11 @@
     "alarm_971": "Deposito manuale in MC1 rifiutato: non risulta da quale tasca viene il pezzo in pinza. Preleva il pezzo da una tasca con il comando del pannello, oppure avvia l'ordine.",
     "alarm_972": "Comando rifiutato: il robot ha un errore attivo. Premi RESET e ripeti il comando. Con l'errore 938 dichiara prima lo stato della cella.",
     "alarm_973": "Comando rifiutato: c'è una missione in corso o in pausa. CONTINUA per riprenderla, oppure RESET (o la procedura dopo una missione interrotta).",
-    "alarm972Code": "Comando rifiutato: c'è un errore attivo, {errore}. Premi RESET e ripeti il comando.",
     "alarm_691": "Tasca di destinazione non trovata o non vuota a database: controlla la tasca e dichiarala (39), poi RESET e ripeti.",
     "alarm_2205": "Pinza a bordo assente dall'anagrafica pinze (GRIPPERS / GRIPPER_HOOK)",
     "alarm_19004": "Estrazione cassetto: nessuna coordinata di estrazione per il cassetto (COORDINATES_FOR_EXTRACT)",
     "alarm_20009": "Rilascio cassetto: nessuna coordinata di estrazione per il cassetto estratto",
-    "alarm_1419": "Carico o cambio pinza rifiutato: c'è un cassetto fuori. Premi RESET, rientra il cassetto (Gestione cassetto), poi ripeti il comando.",
+    "alarm_1419": "Carico pinza rifiutato: c'è un cassetto fuori. Premi RESET, rientra il cassetto (Gestione cassetto), poi ripeti il comando.",
     "alarm_1519": "Deposito o cambio pinza rifiutato: c'è un cassetto fuori. Premi RESET, rientra il cassetto (Gestione cassetto), poi ripeti il comando.",
     "alarm_19005": "Estrazione cassetto rifiutata: la pinza a bordo non ha l'uncino",
     "alarm_19006": "Nessuna pinza con l'uncino, né a bordo né a scaffale",
