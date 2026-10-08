@@ -383,7 +383,8 @@
         "holeLayer": "fori sul layer «{layer}» ({n}): meglio sul layer HOLES.",
         "holeOutside": "fori fuori dal profilo ({n}): {dove}.",
         "pieces": "entità sul layer PIECES ignorate ({n}): la base non deve avere tasche.",
-        "insert": "blocco non letto ({n}): esplodilo."
+        "insert": "blocco non letto ({n}): esplodilo.",
+        "ignored": "entità non lette ({n}): {dove}. Non si disegnano, non entrano nel controllo delle tasche e non escono nel DXF da tagliare: i fori vanno disegnati come cerchi (CIRCLE) sul layer HOLES."
       }
     }
   },
@@ -589,7 +590,7 @@
   "robot": {
     "alarm972Title": "Comando rifiutato: errore attivo {codice}",
     "alarm972NoText": "Premi RESET e ripeti il comando.",
-    "alarm_949": "Comando rifiutato: EasyBox in errore, il registro dei cassetti fuori non coincide coi sensori. Controlla la pagina EasyBox, rientra il cassetto o reimposta lo stato cella col cassetto giusto, poi premi RESET e ripeti il comando.",
+    "alarm_949": "Comando rifiutato: porta operatore non chiusa durante l'estrazione o il rientro di un cassetto, oppure EasyBox in errore (il registro dei cassetti fuori non coincide coi sensori). Chiudi la porta operatore; se è chiusa, controlla la pagina EasyBox e rientra il cassetto o reimposta lo stato cella col cassetto giusto. Poi premi RESET e ripeti il comando.",
     "alarm_1722": "Missione pallet chiusa: il database non dice quale pinza serve per questo pallet, o la lettura è fallita. Dal pannello non si imposta: fai controllare l'anagrafica del pallet, poi premi RESET e ripeti.",
     "dialog": {
       "chooseGripper": "Quale pinza caricare?",

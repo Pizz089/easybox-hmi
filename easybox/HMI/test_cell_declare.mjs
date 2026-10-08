@@ -16,6 +16,13 @@
 //   4. le tasche: gate su cassetto estratto E su cella in HOLD, e il 39 parte
 //      con il SUB_POS cliccato, non con un numero digitato
 //
+// (8/10, prompt 7) DETERMINISTICO: le attese degli echi usano l'orologio di
+// util/orologio.js, qui finto. Il tempo passa solo con tick(ms); tick() senza
+// ms lascia solo finire le promesse. Prima l'attesa vera era 80 ms e sotto
+// carico scadeva prima del controllo (8-ter, eco «5;0;0»: 1 volta su 6).
+// Ogni vmOf annulla le attese rimaste aperte dal caso prima: ogni caso parte
+// pulito, e un eco di un caso non chiude l'attesa di un altro.
+//
 // Uso:   node test_cell_declare.mjs     (dalla cartella easybox/HMI)
 // ============================================================================
 process.on('unhandledRejection', () => {});
@@ -28,10 +35,18 @@ const { createServer } = await import('vite');
 const server = await createServer({ root: process.cwd(), logLevel: 'error', server: { middlewareMode: true }, appType: 'custom' });
 const { dataStored } = await server.ssrLoadModule('/src/data.js');
 const Robot = (await server.ssrLoadModule('/src/views/unit/robotView.vue')).default;
+const O = await server.ssrLoadModule('/src/util/orologio.js');
+const orologio = O.orologioFinto();
+O.usaOrologio(orologio);
 
 let failed = 0;
 const check = (c, l) => { console.log((c ? '  ok   ' : '  FAIL ') + l); if (!c) failed++; };
-const tick = (ms) => new Promise(r => setTimeout(r, ms || 20));
+// tick(ms): fa passare ms sull'orologio finto (scadono le attese), poi lascia
+// finire le promesse; tick(): solo le promesse
+const tick = async (ms) => {
+	if (ms) orologio.avanza(ms);
+	for (let i = 0; i < 3; i++) await new Promise(r => setImmediate(r));
+};
 const it = JSON.parse(readFileSync('src/locales/it.json', 'utf8'));
 const en = JSON.parse(readFileSync('src/locales/en.json', 'utf8'));
 
@@ -50,7 +65,10 @@ dataStored.WS = {
 const fire = (ev, payload) => (listeners[ev] || []).slice().forEach(h => h(payload));
 globalThis.fetch = async () => ({ ok: true, json: async () => [], text: async () => 'OK' });
 
+let aperti = [];
 function vmOf(extra) {
+	for (const v of aperti) v.annullaAtteseDecl();
+	aperti = [];
 	const vm = Object.assign({}, Robot.data.call({}), extra || {});
 	for (const [k, f] of Object.entries(Robot.methods || {})) vm[k] = f.bind(vm);
 	for (const [k, c] of Object.entries(Robot.computed || {}))
@@ -61,6 +79,7 @@ function vmOf(extra) {
 	vm.declDialog.step = 2;
 	vm.declDialog.gripperSel = 7;
 	wire(vm);
+	aperti.push(vm);
 	return vm;
 }
 // Registra gli stessi listener che registra mounted(): senza questo passo il
@@ -391,17 +410,41 @@ if (fb7 && fb204 && fbBox) {
 } else console.log('  (plc/FB non c\'e\': formati non riletti dal PLC)');
 check(Robot.methods.openPockets.toString().includes('this.pockets.tray = this.extractedTray.FLOOR_MAG'), 'openPockets si segna il cassetto disegnato');
 
-console.log('\n8-quater) (B61) Reimposta stato cella aperta: il riquadro globale tace');
-// il watcher VERO (Options API): deve vedere DECL_CODICI (se stesse nello
-// <script setup> sarebbe un ReferenceError all'apertura del dialog)
+console.log('\n8-quater) (B61, 8/10) i codici del dialog tacciono solo mentre aspetta un eco');
+// prima il dialog li zittiva tutti per tutto il tempo in cui era aperto,
+// anche nei passi che non li mostrano, e fino a circa 6,5 s dopo lo
+// smontaggio della pagina (5 s di attesa + 1,5 s di margine)
 const { codiceInDialog } = await server.ssrLoadModule('/src/util/robotAlarm.js');
 vm = vmOf();
-let erroreWatch = null;
-try { Robot.watch['declDialog.open'].call(vm, true); } catch (e) { erroreWatch = e; }
-check(erroreWatch === null && codiceInDialog(945) && codiceInDialog(20002) && codiceInDialog(99), 'dialog aperto: 945, 20002, 99 registrati (nessun errore nel watcher' + (erroreWatch ? ': ' + erroreWatch.message : '') + ')');
-Robot.watch['declDialog.open'].call(vm, false);
-await tick(1600);
-check(!codiceInDialog(945), 'dialog chiuso: dopo il margine i codici tornano al riquadro');
+await tick(5000);                                // ogni margine dei casi prima e' passato
+check(Robot.watch['declDialog.open'] === undefined && !codiceInDialog(945) && !codiceInDialog(99) && !codiceInDialog(20002),
+	'dialog aperto, nessuna attesa: 945, 99 e 20002 vanno al riquadro');
+sent.length = 0;
+vm.declDialog.pieceSel = 0;
+vm.declDialog.boxSel = 0;
+vm.sendDeclare();
+await tick();
+check(codiceInDialog(947) && !codiceInDialog(945) && !codiceInDialog(99), 'passo macchina in attesa: tace solo il suo 947');
+fire('DECLARE/MC1', '0;0;0');
+await tick();
+fire('TRAY/EXTRACT', '0');
+await tick();
+check(codiceInDialog(945) && codiceInDialog(968), 'passo robot in attesa: tacciono i suoi codici (945, 968)');
+dataStored.alert.desc = '';
+vm.closeDeclDialog();                            // l'operatore annulla durante l'attesa
+await tick();
+check(!codiceInDialog(945) && !codiceInDialog(968), '   dialog chiuso durante l\'attesa: i codici del robot tornano SUBITO al riquadro');
+await tick(200);
+check(String(dataStored.alert.desc) === '' && vm.declDialog.stoppedAt === '', '   e nessun «nessuna conferma» dopo: l\'attesa annullata non dice niente');
+// smontaggio della pagina con un'attesa aperta
+vm = vmOf();
+vm.declareBare();
+await tick();
+check(codiceInDialog(945), 'pagina smontata con un\'attesa aperta:');
+let erroreUnm = null;
+try { Robot.unmounted.call(vm); } catch (e) { erroreUnm = e; }
+await tick();
+check(erroreUnm === null && !codiceInDialog(945), '   unmounted annulla l\'attesa, il 945 torna subito al riquadro' + (erroreUnm ? ' (errore: ' + erroreUnm.message + ')' : ''));
 
 console.log('\n9) LA GRIGLIA E\' QUELLA DEL LAYOUT, non una seconda copia');
 const rsrc = readFileSync('src/views/unit/robotView.vue', 'utf8');

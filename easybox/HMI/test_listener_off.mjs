@@ -7,7 +7,8 @@
 // attaccati a una view smontata (fanno fetch, scrivono dati, rallentano).
 // Per i punti della simulazione bis: robotView (ROBOT/DESCR,
 // ROBOT/UPDATEGRIPPER, ROBOT/CHANGESPEED), TraysView (BOX/STATUS),
-// dispatch.vue (DISPATCH), e il primo setInterval di CNC1View.
+// dispatch.vue (DISPATCH), e il primo setInterval di CNC1View; (8/10)
+// smallboxView (BOX/STATUS, BOX/DESCR).
 //
 // Per ogni evento: on con un handler NOMINATO in mounted, e off SPECIFICO
 // (evento + lo stesso handler) in unmounted. Sul testo, senza commenti.
@@ -33,6 +34,7 @@ const casi = [
 	['src/views/unit/robotView.vue', [['ROBOT/DESCR', 'robotDescrHandler'], ['ROBOT/UPDATEGRIPPER', 'robotUpdateGripperHandler'], ['ROBOT/CHANGESPEED', 'robotChangeSpeedHandler']]],
 	['src/views/conf/TraysView.vue', [['BOX/STATUS', 'boxStatusHandler']]],
 	['src/components/dispatch.vue', [['DISPATCH', 'dispatchHandler']]],
+	['src/views/unit/smallboxView.vue', [['BOX/STATUS', 'boxStatusHandler'], ['BOX/DESCR', 'boxDescrHandler']]],
 ];
 for (const [file, eventi] of casi) {
 	const src = codice(file);

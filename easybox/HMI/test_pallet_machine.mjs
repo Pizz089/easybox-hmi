@@ -18,6 +18,14 @@
 //      letta: niente 41); se la scrittura fallisce lo stesso dopo il 41, il
 //      messaggio dice che il registro e' gia' a 0 e il database no.
 //
+// (8/10, prompt 7) DETERMINISTICO. Prima il test aspettava davvero (80 ms,
+// 1,65 s, 3,2 s) e sotto carico l'eco non era ancora arrivata al controllo
+// («41 rifiutato (947)» fallito una volta). Adesso il socket finto consegna
+// in un microtask, le attese di util/palletMachine.js usano l'orologio finto
+// di util/orologio.js, e il tempo passa solo quando il test lo dice:
+// attesa(ms) lascia finire tutto quello che non aspetta il tempo, poi fa
+// passare ms (scadono le attese), poi lascia finire di nuovo.
+//
 // Uso:   node test_pallet_machine.mjs
 // ============================================================================
 import { readFileSync } from 'node:fs';
@@ -32,10 +40,17 @@ const { dataStored } = await server.ssrLoadModule('/src/data.js');
 const M = await server.ssrLoadModule('/src/util/palletMachine.js');
 const CNC1 = (await server.ssrLoadModule('/src/views/unit/CNC1View.vue')).default;
 const ATT = (await server.ssrLoadModule('/src/views/conf/AttrezzaggiView.vue')).default;
+const O = await server.ssrLoadModule('/src/util/orologio.js');
+const orologio = O.orologioFinto();
+O.usaOrologio(orologio);
 
 let failed = 0;
 const check = (c, l) => { console.log((c ? '  ok   ' : '  FAIL ') + l); if (!c) failed++; };
-const attesa = ms => new Promise(r => setTimeout(r, ms));
+// finisce tutto quello che non aspetta il tempo (promesse, consegne del socket)
+const quiete = async () => { for (let i = 0; i < 5; i++) await new Promise(r => setImmediate(r)); };
+const attesa = async ms => { await quiete(); orologio.avanza(ms); await quiete(); };
+// una promessa che si chiude solo col tempo: si fa passare ms, poi la si aspetta
+const scade = async (p, ms) => { await quiete(); orologio.avanza(ms); return p; };
 
 // socket finto: risponde ai comandi secondo lo scenario
 //   risp: 'eco' | numero (allarme) | 'zitto' | stringa (eco diversa)
@@ -44,7 +59,7 @@ function socketFinto(o = {}) {
 	const s = Object.assign({ risp: 'eco', registro: '0;0;0' }, o);
 	const h = new Map();
 	const emessi = [];
-	const consegna = (e, p) => setTimeout(() => { for (const f of [...(h.get(e) || [])]) f(p); }, 2);
+	const consegna = (e, p) => queueMicrotask(() => { for (const f of [...(h.get(e) || [])]) f(p); });
 	return {
 		emessi,
 		on(e, f) { if (!h.has(e)) h.set(e, new Set()); h.get(e).add(f); },
@@ -98,12 +113,12 @@ r = await M.mandaComandoPallet(so, { mc: 1, tipo: 'set', palletId: 901, ms: 60 }
 check(!r.ok && r.codice === 947 && !r.scaduto, '947 su ALARM/MC1 chiude subito l\'attesa');
 check(M.messaggioEsitoMacchina(r, 'set') === 'palletMachine.err.set947' && M.messaggioEsitoMacchina(r, 'clear') === 'palletMachine.err.clear947', '   e ha il suo messaggio (40 e 41)');
 so = socketFinto({ risp: 'zitto' });
-r = await M.mandaComandoPallet(so, { mc: 1, tipo: 'set', palletId: 901, ms: 60 });
+r = await scade(M.mandaComandoPallet(so, { mc: 1, tipo: 'set', palletId: 901, ms: 60 }), 60);
 check(!r.ok && r.scaduto && M.messaggioEsitoMacchina(r, 'set') === 'machine.echoTimeout' && so.ascoltatori() === 0, 'niente eco: timeout, machine.echoTimeout, ascoltatori tolti');
 so = socketFinto({ risp: '902;0;0' });
-r = await M.mandaComandoPallet(so, { mc: 1, tipo: 'set', palletId: 901, ms: 60 });
+r = await scade(M.mandaComandoPallet(so, { mc: 1, tipo: 'set', palletId: 901, ms: 60 }), 60);
 check(!r.ok && r.scaduto, 'un\'eco con un altro pallet non vale come conferma del 40;901');
-check(await M.leggiRegistroMacchina(socketFinto({ registro: '902;0;1' }), 60) === 902 && await M.leggiRegistroMacchina(socketFinto({ registro: undefined }), 40) === undefined,
+check(await M.leggiRegistroMacchina(socketFinto({ registro: '902;0;1' }), 60) === 902 && await scade(M.leggiRegistroMacchina(socketFinto({ registro: undefined }), 40), 40) === undefined,
 	'registro della macchina dallo snapshot (902), undefined se non risponde');
 // (7/10) la guardia del 41
 const G = (pp, reg, id = 902) => JSON.stringify(M.guardia41({ palletId: id, posPlant: pp, registro: reg }));

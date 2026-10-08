@@ -383,7 +383,8 @@
         "holeLayer": "holes on layer «{layer}» ({n}): better on layer HOLES.",
         "holeOutside": "holes outside the outline ({n}): {dove}.",
         "pieces": "entities on layer PIECES ignored ({n}): the base must not contain pockets.",
-        "insert": "block not read ({n}): explode it."
+        "insert": "block not read ({n}): explode it.",
+        "ignored": "entities not read ({n}): {dove}. They are not drawn, not checked against the pockets and not exported in the DXF to cut: holes must be drawn as circles (CIRCLE) on the HOLES layer."
       }
     }
   },
@@ -589,7 +590,7 @@
   "robot": {
     "alarm972Title": "Command refused: active error {codice}",
     "alarm972NoText": "Press RESET and repeat the command.",
-    "alarm_949": "Command refused: EasyBox error, the record of trays out does not match the sensors. Check the EasyBox page, put the tray back or reset the cell state with the right tray, then press RESET and repeat the command.",
+    "alarm_949": "Command refused: operator door not closed while a tray is extracted or put back, or EasyBox error (the record of trays out does not match the sensors). Close the operator door; if it is closed, check the EasyBox page and put the tray back or reset the cell state with the right tray. Then press RESET and repeat the command.",
     "alarm_1722": "Pallet mission closed: the database does not say which gripper this pallet needs, or the read failed. It cannot be set from the panel: have the pallet master data checked, then press RESET and repeat.",
     "dialog": {
       "chooseGripper": "Which gripper to load?",

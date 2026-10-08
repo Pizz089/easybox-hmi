@@ -21,6 +21,9 @@ const { t, te } = useI18n()
 const allarmi = makePlcAlarmHandlers(dataStored, { t, te })
 const plcAlarmRobotHandler = allarmi.robot
 const alarmBoxHandler = allarmi.box
+// (8/10) l'abbinamento del 972 si decide su ALARM/ROBOT, che arriva solo da
+// FROM_PLANT/ALARM/ROBOT: PLC/ALARM/ROBOT porta anche ALARM/BOX e le emergenze
+const alarmRobotHandler = allarmi.alarmRobot
 
 // (AN 1-bis) precondizione ausiliari: stato globale in dataStored, un solo
 // listener per tutto il pannello (StandardMenu e' sempre montato).
@@ -58,6 +61,7 @@ onMounted(() => {
     dataStored.WS.socket.on('SAFETY/AUX', safetyAuxHandler)
     dataStored.WS.socket.on('ALARM/MC1', alarmMc1Handler)
     dataStored.WS.socket.on('ALARM/BOX', alarmBoxHandler)
+    dataStored.WS.socket.on('ALARM/ROBOT', alarmRobotHandler)
     dataStored.WS.socket.on('connect', requestOneShotStates)
     requestOneShotStates()
   }
@@ -72,6 +76,7 @@ onUnmounted(() => {
     dataStored.WS.socket.off('SAFETY/AUX', safetyAuxHandler)
     dataStored.WS.socket.off('ALARM/MC1', alarmMc1Handler)
     dataStored.WS.socket.off('ALARM/BOX', alarmBoxHandler)
+    dataStored.WS.socket.off('ALARM/ROBOT', alarmRobotHandler)
     dataStored.WS.socket.off('connect', requestOneShotStates)
   }
 })
