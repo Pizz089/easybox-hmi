@@ -160,7 +160,7 @@ Gli script stanno in `D:\Prog\easybox\serverDati\scripts` e arrivano col `git pu
 
 Gli esiti vanno in `D:\Backup`, e restano.
 
-**Prima della finestra, se si vuole** (sola lettura, non cambia niente). Serve a vedere cosa toccherà la migrazione sui dati veri: morse e tipi, battute, ordini su pallet con una morsa senza misure (il Play verrebbe rifiutato), colonne e trigger di VICE, pallet con più morse, viste con l'asterisco. Il file `vice-jaw-controlli.sql` in cella non c'è ancora: si prende dal ramo di revisione su GitHub (`easybox/serverDati/scripts`) e si mette in `D:\Backup`. Poi, PowerShell:
+**Prima della finestra, se si vuole** (sola lettura, non cambia niente). Serve a vedere cosa toccherà la migrazione sui dati veri: morse e tipi, battute, ordini su pallet con una morsa senza misure (il Play verrebbe rifiutato), colonne e trigger di VICE, pallet con più morse, viste con l'asterisco. Una riga da guardare: nella sezione 9 `log.DESCR` deve accettare NULL (vedi «Il trigger di VICE» al passo 4). Il file `vice-jaw-controlli.sql` in cella non c'è ancora: si prende dal ramo di revisione su GitHub (`easybox/serverDati/scripts`) e si mette in `D:\Backup`. Poi, PowerShell:
 ```
 cd D:\Backup; sqlcmd -S .\SQLEXPRESS -E -d ADMG -s "|" -y 0 -i vice-jaw-controlli.sql -o D:\Backup\vice-jaw-controlli_esito.txt; Get-Content D:\Backup\vice-jaw-controlli_esito.txt
 ```
@@ -210,6 +210,14 @@ PowerShell **da amministratore** sul PC della cella.
    **Un «FERMO» (misura negativa) arriva dopo che tabella, colonne e FK sono già state create**, vuote; la migrazione non è avvenuta. Nessuno legge le tabelle nuove: le viste non sono ancora cambiate e il backend è fermo. Due strade:
    - correggere la misura e rilanciare `vice-jaw.sql` (la migrazione si fa una volta sola, quando riesce);
    - oppure il **ritorno** qui sotto. Con il catalogo vuoto il ritorno non tocca le misure delle morse.
+
+   **Il trigger di VICE.** `VICE_trig` (AFTER UPDATE) scrive in `log` da `FROM inserted i, deleted d`, senza join, e concatena le colonne con `cast(... as varchar)`. Due conseguenze:
+   - con più morse nella stessa UPDATE scriverebbe il prodotto incrociato. Per questo la migrazione assegna il tipo **una morsa alla volta**; lo stesso fanno il ritorno e le rotte nuove;
+   - una misura NULL rende NULL tutta la descrizione.
+
+   Sul clone `log.DESCR` accetta NULL, e la migrazione scrive una riga di log per morsa e passa. In cella lo dice la sezione 9 dei controlli: `is_nullable` deve essere 1.
+
+   Se `log.DESCR` non accettasse NULL, `vice-jaw.sql` si fermerebbe con «FERMO: migrazione NON riuscita, annullata per intero (…)». È lo stesso caso del FERMO qui sopra: tabella e colonne create, catalogo vuoto. Si fa il ritorno, e il catalogo aspetta una decisione su `log.DESCR` o sul trigger.
 
    Poi le viste:
    ```
