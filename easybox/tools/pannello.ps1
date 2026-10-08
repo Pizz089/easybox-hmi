@@ -89,6 +89,8 @@
 #     processo, ed e' il caso di "I servizi sono FERMI" di aggiorna, non si
 #     avvia e lo si dice in rosso. "Di nuovo su" solo quando le porte sono in
 #     ascolto e del servizio, non guardando solo lo stato del servizio.
+#     (prompt 11) Un servizio che gira gia' non si tocca: si dice "gira, porte
+#     sue", oppure in rosso quale porta non e' sua.
 # Non usa MAI reset, clean, stash, checkout -- o --force: nel peggiore dei
 # casi si ferma e spiega, e il repo resta com'era.
 # Testi senza lettere accentate: PowerShell 5.1 legge i file senza BOM come
@@ -209,8 +211,28 @@ function AspettaPorteDel([string]$nome, [int]$secondi = 90) {
 # servizi sono FERMI"): non si avvia niente. Dopo l'avvio: "di nuovo su"
 # solo con le porte in ascolto e del servizio, non guardando solo lo stato del
 # servizio Windows (Running anche se node esce subito sulla porta occupata).
+# (prompt 11) il servizio puo' gia' girare: aggiorna si ferma anche DOPO aver
+# riavviato i servizi (per esempio uno scambio di dist non riuscito). Allora
+# non si avvia niente, si guardano le sue porte (attesa breve) e si dice com'e':
+# "gira, porte sue", oppure in rosso quale porta non e' sua. Prima ogni porta
+# con un proprietario contava come occupata, anche quella del servizio stesso:
+# messaggio rosso falso col pannello che girava sulla sua 5173.
 function RimettiSu([string]$nome, [string]$cosa) {
-	$occupate = @(PorteDi $nome | Where-Object { (Get-EasyBoxProprietarioPorta $_) -ne '' })
+	if ((StatoServizio $nome) -eq 'Running') {
+		if (AspettaPorteDel $nome 15) {
+			Scrivi ($nome + ' gira, porte sue (' + ((PorteDi $nome) -join ', ') + '): ' + $cosa + ' e'' su.') 'Yellow'
+		} else {
+			$male = @(PorteDi $nome | ForEach-Object {
+				$chi = Get-EasyBoxProprietarioPorta $_
+				if ($chi -eq '') { 'la porta ' + $_ + ' non e'' in ascolto' }
+				elseif ($chi -ne $nome) { 'la porta ' + $_ + ' e'' di un altro processo' }
+			})
+			Scrivi ($nome + ' gira ma ' + ($male -join ', ') + ': con la cella in HOLD lanciare servizi-cella.ps1 -Azione riavvia, oppure chiamare Dario.') 'Red'
+		}
+		return
+	}
+	# servizio fermo: occupate sono solo le porte di un ALTRO processo
+	$occupate = @(PorteDi $nome | Where-Object { $chi = Get-EasyBoxProprietarioPorta $_; $chi -ne '' -and $chi -ne $nome })
 	if ($occupate.Count -gt 0) {
 		Scrivi ($nome + ' e'' fermo e le sue porte (' + ($occupate -join ', ') + ') sono in ascolto: porte occupate da un altro processo: chiamare Dario. Non lo avvio (chi le tiene: servizi-cella.ps1 -Azione stato).') 'Red'
 		return
@@ -228,9 +250,10 @@ function RimettiSuPannello {
 	$script:PannelloFermato = $false
 	Scrivi ''
 	# (8/10) aggiorna (servizi-cella.ps1) puo' fermarsi coi DUE servizi fermi:
-	# il backend, se e' fermo, si rimette su prima del pannello, e lo si dice
-	if ((Servizio $S_B) -and (StatoServizio $S_B) -ne 'Running') {
-		Scrivi ($S_B + ' e'' fermo (' + (StatoServizio $S_B) + ').') 'Yellow'
+	# il backend, se e' fermo, si rimette su prima del pannello, e lo si dice.
+	# (prompt 11) Se gira, RimettiSu ne guarda le porte e non lo tocca.
+	if (Servizio $S_B) {
+		if ((StatoServizio $S_B) -ne 'Running') { Scrivi ($S_B + ' e'' fermo (' + (StatoServizio $S_B) + ').') 'Yellow' }
 		RimettiSu $S_B 'il backend'
 	}
 	RimettiSu $S_P 'il pannello'

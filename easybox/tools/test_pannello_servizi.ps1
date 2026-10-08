@@ -32,6 +32,10 @@
 # (proprietario delle porte finto: Get-EasyBoxProprietarioPorta); servizi
 # fermi con le porte occupate da un altro processo (il vero "I servizi sono
 # FERMI" di aggiorna): non si avvia niente, messaggio rosso.
+# (prompt 11) aggiorna esce con 1 coi servizi GIA' Running: niente avvii,
+# "gira, porte sue" (prima: "porte occupate" falso); con la porta del
+# pannello tenuta da un altro processo: rosso, "gira ma la porta 5173 e' di
+# un altro processo".
 # Uso: powershell -ExecutionPolicy Bypass -File easybox\tools\test_pannello_servizi.ps1
 # Exit code = numero di controlli falliti. I rami ui-lifting e ui-v3 del
 # repo devono contenere il pannello.ps1 da provare (si prova il committato).
@@ -142,6 +146,9 @@ function global:Invoke-EasyBoxAggiorna {
 	# altro processo (RiavviaServizi di servizi-cella.ps1 non li avvia)
 	if ($global:AGG_ESITO -eq 2) { $global:SERVIZI['EasyBoxBackend'] = 'Stopped'; $global:SERVIZI['EasyBoxPannello'] = 'Stopped'; return 1 }
 	if ($global:AGG_ESITO -eq 3) { $global:SERVIZI['EasyBoxBackend'] = 'Stopped'; $global:SERVIZI['EasyBoxPannello'] = 'Stopped'; $global:PORTE_ALTRO = @(8080, 3000, 5173); return 1 }
+	# (prompt 11) 4 = aggiorna esce con 1 DOPO aver riavviato i due servizi
+	# (per esempio scambio delle dist non riuscito): tutti e due Running
+	if ($global:AGG_ESITO -eq 4) { $global:SERVIZI['EasyBoxBackend'] = 'Running'; $global:SERVIZI['EasyBoxPannello'] = 'Running'; return 1 }
 	return $global:AGG_ESITO
 }
 function global:Show-EasyBoxPannelloServito { [void]$global:CHIAMATE.Add('Servito'); Write-Host 'Pannello servito: ramo finto, commit finto' }
@@ -268,6 +275,23 @@ $verso = $(if ($ramoPrima -eq 'ui-v3') { 'stabile' } else { 'v3' })
 $r = Lancia $verso 'CASO 6e: pannello compilato, aggiorna fermo coi servizi FERMI e le porte occupate'
 Check ($r.Codice -eq 1 -and @($r.Chiamate | Where-Object { $_ -like 'Start *' -or $_ -like 'Restart *' }).Count -eq 0 -and $global:SERVIZI['EasyBoxBackend'] -eq 'Stopped' -and $global:SERVIZI['EasyBoxPannello'] -eq 'Stopped') ('porte occupate a servizi fermi: nessun servizio avviato (' + ($r.Chiamate -join ' ; ') + ')')
 Check ($r.Testo -match 'EasyBoxBackend e'' fermo e le sue porte \(8080, 3000\) sono in ascolto: porte occupate da un altro processo: chiamare Dario' -and $r.Testo -match 'EasyBoxPannello e'' fermo e le sue porte \(5173\) sono in ascolto: porte occupate da un altro processo: chiamare Dario' -and $r.Testo -notmatch 'di nuovo su') '   e lo dice in rosso, senza mai "di nuovo su"'
+$global:PORTE_ALTRO = @()
+$global:SERVIZI = @{ 'EasyBoxBackend' = 'Running'; 'EasyBoxPannello' = 'Running' }
+
+# (prompt 11) aggiorna esce con 1 coi servizi gia' Running: niente avvii,
+# niente "porte occupate" (prima il rosso falso col pannello sulla sua 5173)
+$global:AGG_ESITO = 4
+$ramoPrima = Ramo
+$verso = $(if ($ramoPrima -eq 'ui-v3') { 'stabile' } else { 'v3' })
+$r = Lancia $verso 'CASO 6f: pannello compilato, aggiorna esce con 1 coi servizi Running'
+Check ($r.Codice -eq 1 -and @($r.Chiamate | Where-Object { $_ -like 'Start *' -or $_ -like 'Restart *' }).Count -eq 0) ('servizi gia'' Running dopo aggiorna: nessun servizio avviato o riavviato (' + ($r.Chiamate -join ' ; ') + ')')
+Check ($r.Testo -match 'EasyBoxBackend gira, porte sue \(8080, 3000\)' -and $r.Testo -match 'EasyBoxPannello gira, porte sue \(5173\)' -and $r.Testo -notmatch 'porte occupate da un altro processo') '   e dice "gira, porte sue", senza il rosso falso'
+# la porta del pannello tenuta da un altro processo, coi servizi Running
+$global:PORTE_ALTRO = @(5173)
+$ramoPrima = Ramo
+$verso = $(if ($ramoPrima -eq 'ui-v3') { 'stabile' } else { 'v3' })
+$r = Lancia $verso 'CASO 6g: aggiorna esce con 1, servizi Running, la 5173 di un altro processo'
+Check ($r.Codice -eq 1 -and @($r.Chiamate | Where-Object { $_ -like 'Start *' -or $_ -like 'Restart *' }).Count -eq 0 -and $r.Testo -match 'EasyBoxPannello gira ma la porta 5173 e'' di un altro processo' -and $r.Testo -match 'EasyBoxBackend gira, porte sue') '   con la 5173 di un altro processo: rosso, "gira ma la porta 5173 e'' di un altro processo", nessun avvio'
 $global:PORTE_ALTRO = @()
 $global:SERVIZI = @{ 'EasyBoxBackend' = 'Running'; 'EasyBoxPannello' = 'Running' }
 $global:AGG_ESITO = 1

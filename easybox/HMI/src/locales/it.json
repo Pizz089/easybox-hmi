@@ -811,6 +811,7 @@
       "notHold": "Robot non in HOLD: premere HOLD per abilitare i comandi",
       "noGripperSystem": "Nessuna pinza a bordo risulta al sistema",
       "palletUnknownOnBoard": "La pinza pallet risulta occupata ma nessun pallet risulta a bordo: il sistema non sa quale scaricare. Dichiarare lo stato cella, poi riprovare.",
+      "gripperBusyNotPallet": "La pinza a bordo è occupata e non è una pinza da pallet: Gestione pallet si usa con la pinza vuota o con un pallet in pinza.",
       "palletNoDest": "Nessuna destinazione raggiungibile per questo pallet: ne' una posizione di magazzino configurata e libera, ne' una macchina. Configurare la posizione a magazzino, poi riprovare.",
       "trayBusy": "Manovra cassetto in corso",
       "trayOutGripper": "Cassetto fuori: prima rientralo",

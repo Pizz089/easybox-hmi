@@ -20,6 +20,25 @@
     align-items: center;
     justify-content: center;
 }
+/* (prompt 11) e copre TUTTO il resto: anche l'angolo in alto a sinistra,
+   sopra la barra di navigazione, che la striscia non ha. Li' sta la voce Home
+   (fino a y = 63 in compatto, 75 in largo): con un dialog aperto un tocco
+   cambiava pagina e chiudeva il dialog, e una Reimposta stato cella si
+   interrompeva a meta'. Libera resta solo la striscia, da x = --rail-width.
+   Vale per tutti i veli: dialog di missione, allarme, cambio utente (stessa
+   classe). Il tocco sull'angolo va al velo (un ::before e' del suo elemento),
+   come sul resto: chi chiude col tocco sul velo chiude, gli altri no. Un
+   elemento fisso a parte e non un clip-path sul velo intero: col clip-path la
+   scatola del dialog, centrata, in compatto sarebbe tagliata in alto. */
+.mission-dialog-overlay::before {
+    content: '';
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: var(--rail-width);
+    height: var(--status-strip-height);
+    background: var(--bg-backdrop);
+}
 
 .mission-dialog {
     background: var(--bg-dialog);
@@ -187,8 +206,14 @@
     .alert-box__ok { align-self: flex-end; width: auto; min-width: 200px; }
 }
 
-/* esito positivo (type message): avviso breve senza velo, in alto a destra
-   sotto la striscia, fondo pieno; si chiude da solo dopo 4 s o al tocco */
+/* esito positivo (type message): avviso breve senza velo, in basso a destra,
+   fondo pieno; si chiude da solo dopo 4 s o al tocco. (prompt 11) Il tocco lo
+   prende l'avviso, che si chiude e basta: non arriva MAI al comando che sta
+   sotto. Col prompt 10 i tocchi passavano attraverso (pointer-events: none),
+   e a 960x472 toccare l'avviso per chiuderlo in Macchina MC1 mandava
+   «Sblocca morsa», senza conferma. Il fastidio del B6 (un tocco su Reset
+   allarmi chiude l'avviso e il comando non parte) e' accettato: si ripete il
+   tocco, e Reset ha comunque la sua conferma. */
 .alert-toast {
     position: fixed;
     /* (8/10, B6) in basso a destra: in alto copriva per 4 s il selettore
@@ -207,13 +232,9 @@
     border: 2px solid var(--color-success);
     box-shadow: var(--elevation-3);
     cursor: pointer;
-    /* (prompt 10) i tocchi passano attraverso: a 1920x970 l'avviso copre
-       «Reset allarmi» e «Riavvia programma robot», e un tocco li' chiudeva
-       l'avviso invece di mandare il comando. Si chiude con la X o da solo. */
-    pointer-events: none;
 }
 .alert-toast__icon { flex: none; width: 28px; height: 28px; margin-top: 2px; color: var(--color-success-fg); }
 .alert-toast__body { flex: 1; min-width: 0; }
 .alert-toast__title { margin: 0; font-size: var(--font-size-body); font-weight: var(--font-weight-extrabold); color: var(--color-success-fg); }
 .alert-toast__desc { margin: 4px 0 0; font-size: var(--font-size-md); line-height: 1.45; color: var(--text-primary); overflow-wrap: anywhere; }
-.alert-toast__x { width: 48px; height: 48px; pointer-events: auto; }
+.alert-toast__x { width: 48px; height: 48px; }

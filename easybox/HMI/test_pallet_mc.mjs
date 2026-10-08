@@ -206,6 +206,7 @@ rv3.warehousePositions = VISTA;
 rv3.dataRobot = { STATUS: dataStored.status_hold };
 rv3.gripperOnBoardNow = () => 1;
 rv3.palletGripperEmptyNow = () => 0;          // pinza occupata...
+rv3.lato1PinzaDaPallet = () => true;          // (prompt 11, v3) ...ed e' una pinza da pallet
 check(rv3.palletOnBoard === null, '...ma nessun pallet risulta a bordo');
 check(rv3.palletBranchEnabled === false, 'il bottone Gestione pallet e\' spento');
 check(rv3.palletDisabledReason === 'robot.hint.palletUnknownOnBoard', 'e dice perche\', invece di aprire un elenco da indovinare');
@@ -213,6 +214,33 @@ sent.length = 0;
 rv3.openPalletMission();
 check(rv3.dialog.type !== "palletUnload", "forzando l\'apertura il dialog non si apre");
 check(String(dataStored.alert.desc) === 'robot.hint.palletUnknownOnBoard', 'e il motivo torna a video');
+// (prompt 11, v3) la dichiarazione del pallet solo con una pinza DA PALLET: la
+// pinza del lato 1 (registro GRIPPER/REGISTERED) e' quella richiesta da almeno
+// un pallet (GripperREQ, senza badare alle maiuscole). Il pannello vecchio non
+// ha il metodo: i controlli valgono dove c'e'.
+{
+	const rv5 = vmOf(Robot);
+	if (typeof rv5.lato1PinzaDaPallet === 'function') {
+		rv5.dataGripper = [{ ID: 26, STATUS: dataStored.status_raw }, { ID: 37, STATUS: dataStored.status_empty }];
+		rv5.palletsList = [{ ID: 901, POS_PLANT: 0, GRIPPERREQ: 1 }];
+		rv5.gripperRegistered = 26;
+		check(rv5.lato1PinzaDaPallet() === false, '(prompt 11) pinza da pezzi (26) al lato 1: non e\' una pinza da pallet (i pallet chiedono la 1)');
+		rv5.gripperRegistered = 1;
+		check(rv5.lato1PinzaDaPallet() === true, '   pinza 1 al lato 1: e\' quella chiesta dal pallet (GRIPPERREQ letto senza badare alle maiuscole)');
+		const rv6 = vmOf(Robot);
+		rv6.palletsList = [ALTRO];
+		rv6.warehousePositions = VISTA;
+		rv6.dataRobot = { STATUS: dataStored.status_hold };
+		rv6.gripperOnBoardNow = () => 1;
+		rv6.palletGripperEmptyNow = () => 0;      // una pinza da pezzi che tiene un grezzo
+		rv6.lato1PinzaDaPallet = () => false;
+		check(rv6.palletDisabledReason === 'robot.hint.gripperBusyNotPallet' && rv6.palletDeclInstead === false,
+			'(prompt 11) pinza da pezzi con un grezzo: nessuna tile della dichiarazione, «Gestione pallet» spenta col suo motivo');
+		rv6.lato1PinzaDaPallet = () => true;
+		check(rv6.palletDisabledReason === 'robot.hint.palletUnknownOnBoard' && rv6.palletDeclInstead === true,
+			'   pinza da pallet occupata e nessun pallet a bordo: la tile della dichiarazione c\'e\'');
+	}
+}
 // nessuna griglia teorica nel codice del dialog
 const rsrc3 = readFileSync('src/views/unit/robotView.vue', 'utf8');
 check(!/palletGridOrder/.test(rsrc3), 'la griglia teorica (palletGridOrder, costante 20) non e\' piu\' la fonte');

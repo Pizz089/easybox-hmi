@@ -410,11 +410,13 @@ Funzionano:
 
 PLC e robot non ne risentono. Per questo il backend si ferma al passo 2 e riparte solo al passo 5, dopo gli script.
 
-## [x] 2026-10-07 — Consegna 35 (7/10 sera): cassetto fuori anche su swap e pallet, spinta con quote NULL, 973
+## [ ] 2026-10-07 — Consegna 35 (7/10 sera): cassetto fuori anche su swap e pallet, spinta con quote NULL, 973
 
 **Consegna 35 scaricata l'8/10** (Dario).
 - **Export TIA dopo il download**, con `--compare-online` (commit `b3cf3f6`): confronto online **uguale** su tutti i 165 oggetti (diverso 0, solo offline 0, solo online 0).
 - FB_Robot e FB_easyBox sono identici byte per byte all'export del progetto del portatile fatto prima del download (`3707709`).
+- Confronto dell'export col consegnato fatto l'8/10: codice identico, differenze solo di spaziatura e di un commento.
+- **La voce resta aperta** finché non ci sono i test 4, 5 e 6 di FB_Robot.
 - Il diff con 8c9da6a, blocco per blocco, è nel report della consegna 35, parte 3.
 - **Test di accettazione in cella** (Dario, 8/10; numeri dell'elenco qui sotto):
   - **passati**:
@@ -424,7 +426,7 @@ PLC e robot non ne risentono. Per questo il backend si ferma al passo 2 e ripart
     - 7, 8, 9 e 10;
     - i primi movimenti veri a velocità ridotta: deposito e prelievo in macchina, missione 16, spinta, cambio pinza;
   - **da fare**: FB_Robot 4, 5 e 6 (cassetto fuori e pinza doppia);
-  - FB_easyBox 3 (pagina Cassetti senza HOLD): **non si applica al v3**, che lì non estrae. La guardia del PLC (blocco S) resta per il pannello stabile. FB_easyBox 1 e 2: esito non riportato.
+  - FB_easyBox 1, 2 e 3: usano tutti «sposta» dalla pagina Cassetti, che nel v3 non estrae. **Non si applicano al v3**; valgono solo col pannello stabile, e la guardia del PLC (blocco S) resta per quello.
 - La regola provvisoria della voce «Consegna 34» è tolta: lo swap, i master pallet e l'automatico col cassetto fuori li ferma il PLC.
 
 **Cosa.** PLC, la scarica Dario: due file, da scaricare **insieme, nella stessa finestra**:
