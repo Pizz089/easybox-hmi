@@ -373,23 +373,58 @@ const blowBody = (blowSql.match(/ALTER VIEW dbo\.COORDINATES_BLOW_MC AS([\s\S]*?
 // Semantica (Dario e robotista, 5/10): PIECE.X lunghezza, Y larghezza, Z
 // altezza. Dal 18/9 al 5/10 PART_WIDTH era pz.X, cioe' la lunghezza.
 // ISNULL senza spazio dopo la virgola, come la legge OBJECT_DEFINITION.
+// (20/10) piu' l'ingombro della chela (pinza dell'ordine) e la quota di presa.
 for (const col of ['ISNULL(v.CLAW_LENGTH,0) as CLAW_LENGTH', 'ISNULL(pz.Y,0) as PART_WIDTH',
-	'ISNULL(pv.STOP_BEYOND_CLAW,0) as STOP_BEYOND_CLAW', 'ISNULL(pz.X,0) as PART_LENGTH', 'ISNULL(pz.Z,0) as PART_HEIGHT'])
+	'ISNULL(pv.STOP_BEYOND_CLAW,0) as STOP_BEYOND_CLAW', 'ISNULL(pz.X,0) as PART_LENGTH', 'ISNULL(pz.Z,0) as PART_HEIGHT',
+	'ISNULL(g.CLAW_LENGTH,0) as GRIPPER_CLAW_LENGTH', 'ISNULL(pz.Z_PICK,0) as PART_Z_PICK'])
 	check(blowBody.replace(/\s+/g, ' ').includes(col), 'soffiaggio: ' + col + ' — il ponte SQL non converte NULL in zero');
 check(!/pz\.X,0\)\s+as\s+PART_WIDTH/.test(blowBody), 'soffiaggio: PART_WIDTH non e\' piu\' pz.X (era la lunghezza)');
 check(/left  join PIECE_ON_VICE pv on pv\.VICE_ID = v\.ID and pv\.PIECE_ID = w\.PIECE_ID/.test(blowBody),
 	'soffiaggio: la dichiarazione segue la MORSA, come nella vista della spinta');
 check(/inner join PIECE pz/.test(blowBody) && /left  join VICE v/.test(blowBody),
 	'soffiaggio: PIECE in INNER (c\'e\' sempre), VICE in LEFT (puo\' mancare)');
-// guardia a tre vie: nuova -> conforme, vecchia a tre colonne -> ALTER, altro -> FERMO
+check(blowBody.replace(/\s+/g, ' ').includes('left join GRIPPER g on g.ID = w.GRIPPER_ID-((w.GRIPPER_ID/1000)*1000)'),
+	'soffiaggio: GRIPPER in LEFT (ordine senza pinza -> 0), la pinza dell\'ordine col join della vista WORKORDERS (ID modulo 1000)');
+// guardia a quattro vie (20/10): sette colonne -> conforme, cinque colonne
+// del 5/10 -> ALTER, tre colonne del 18/9 -> ALTER, altro -> FERMO. Ramo per
+// ramo, nell'ordine, coi messaggi esatti del file.
 const blowGuard = blowSql.slice(0, blowSql.indexOf('ALTER VIEW dbo.COORDINATES_BLOW_MC AS'));
-check(/LIKE N'%ISNULL\(pz\.Y,0\) as PART_WIDTH%'[\s\S]*?conforme, nessuna modifica/.test(blowGuard)
-	&& /LIKE N'%ISNULL\(pz\.X,0\) as PART_WIDTH%'[\s\S]*?NOT LIKE N'%PART_LENGTH%'[\s\S]*?PRINT 'coordinates-blow-mc: trovata la definizione a tre colonne[^\n]*\nELSE/.test(blowGuard)
-	&& /NON e'' quella attesa\. FERMO/.test(blowGuard),
-	'soffiaggio: guardia — nuova conforme, vecchia a tre colonne portata alla nuova, altro FERMO');
-const blowQuery = 'select CLAW_LENGTH,PART_WIDTH,STOP_BEYOND_CLAW,PART_LENGTH,PART_HEIGHT from COORDINATES_BLOW_MC where ORDER_ID=32767';
-check(blowQuery.length < 254, 'soffiaggio: la query del PLC (5 colonne, ORDER_ID a 5 cifre) sta in ' + blowQuery.length
+const blowRami = blowGuard.slice(blowGuard.indexOf('IF @def IS NULL')).split(/\nELSE(?: IF |\n)/);
+const [, ramo7, ramo5, ramo3, ramoAltro = ''] = blowRami;
+const LIKE = s => ramo => ramo.includes("@norm LIKE N'%" + s + "%'");
+const NOT_LIKE = s => ramo => ramo.includes("@norm NOT LIKE N'%" + s + "%'");
+const CINQUE = ['ISNULL(v.CLAW_LENGTH,0) as CLAW_LENGTH', 'ISNULL(pz.Y,0) as PART_WIDTH', 'ISNULL(pv.STOP_BEYOND_CLAW,0) as STOP_BEYOND_CLAW',
+	'ISNULL(pz.X,0) as PART_LENGTH', 'ISNULL(pz.Z,0) as PART_HEIGHT', 'inner join PIECE pz on pz.ID = w.PIECE_ID',
+	'left join VICE v on v.PALLET_ID = w.PALLET_ID', 'pv.VICE_ID = v.ID and pv.PIECE_ID = w.PIECE_ID'].map(LIKE);
+check(blowRami.length === 5, 'soffiaggio: guardia — dopo «la vista non esiste» quattro vie (' + (blowRami.length - 1) + ')');
+check(ramo7 && CINQUE.every(f => f(ramo7)) && LIKE('ISNULL(g.CLAW_LENGTH,0) as GRIPPER_CLAW_LENGTH')(ramo7) && LIKE('ISNULL(pz.Z_PICK,0) as PART_Z_PICK')(ramo7)
+	&& LIKE('left join GRIPPER g on g.ID = w.GRIPPER_ID-((w.GRIPPER_ID/1000)*1000)')(ramo7)
+	&& ramo7.includes("PRINT 'coordinates-blow-mc: vista gia'' presente e conforme (sette colonne), nessuna modifica.';") && /SET NOEXEC ON;/.test(ramo7),
+	'soffiaggio: guardia 1 — sette colonne: «conforme (sette colonne), nessuna modifica», niente ALTER');
+check(ramo5 && CINQUE.every(f => f(ramo5)) && NOT_LIKE('GRIPPER_CLAW_LENGTH')(ramo5) && NOT_LIKE('PART_Z_PICK')(ramo5) && NOT_LIKE('join GRIPPER')(ramo5)
+	&& ramo5.includes("PRINT 'coordinates-blow-mc: trovata la definizione a cinque colonne del 5/10: la porto alla nuova (sette colonne).';") && !/NOEXEC/.test(ramo5),
+	'soffiaggio: guardia 2 — cinque colonne del 5/10: «la porto alla nuova (sette colonne)», ALTER');
+check(ramo3 && LIKE('ISNULL(pz.X,0) as PART_WIDTH')(ramo3) && NOT_LIKE('PART_LENGTH')(ramo3) && NOT_LIKE('PART_HEIGHT')(ramo3)
+	&& ramo3.includes("PRINT 'coordinates-blow-mc: trovata la definizione a tre colonne (PART_WIDTH = pz.X): la porto alla nuova.';") && !/NOEXEC/.test(ramo3),
+	'soffiaggio: guardia 3 — tre colonne del 18/9: «la porto alla nuova», ALTER');
+check(ramoAltro.includes("PRINT 'coordinates-blow-mc: la vista esiste ma NON e'' quella attesa. FERMO.';") && /SET NOEXEC ON;/.test(ramoAltro),
+	'soffiaggio: guardia 4 — qualunque altra: «NON e\' quella attesa. FERMO.», niente ALTER');
+// (20/10) DUE query. blowQueryPLC e' quella che il PLC lancia oggi:
+// l'export di FB_Robot nel repo chiede ancora cinque colonne, e i controlli
+// su FB_Robot qui sotto restano su quella. blowQueryVista e' quella a sette
+// colonne che la vista regge dal 20/10. In fase 2 (export del FB_Robot
+// nuovo) cambia solo blowQueryPLC.
+const blowQueryPLC = 'select CLAW_LENGTH,PART_WIDTH,STOP_BEYOND_CLAW,PART_LENGTH,PART_HEIGHT from COORDINATES_BLOW_MC where ORDER_ID=32767';
+const blowQueryVista = 'select CLAW_LENGTH,PART_WIDTH,STOP_BEYOND_CLAW,PART_LENGTH,PART_HEIGHT,GRIPPER_CLAW_LENGTH,PART_Z_PICK from COORDINATES_BLOW_MC where ORDER_ID=32767';
+check(blowQueryPLC.length < 254, 'soffiaggio: la query del PLC (5 colonne, ORDER_ID a 5 cifre) sta in ' + blowQueryPLC.length
 	+ ' caratteri, sotto i 254 di queryTemp (con i join a mano erano 298: sarebbe arrivata troncata)');
+{
+	const p = blowQueryVista.replace(/32767$/, '');
+	for (const [q, cosa] of [[blowQueryVista, 'ORDER_ID a 5 cifre'],
+		[p + '(select top 1 ORDER_ID from COORDINATES_PICKPLACE_MC order by ORDER_ID desc)', 'ramo manuale dello scambio, COORDINATES_PICKPLACE_MC'],
+		[p + '(select top 1 ORDER_ID from COORDINATES_Z_MC where MC=1 order by ORDER_ID desc)', 'ramo manuale del prelievo, COORDINATES_Z_MC']])
+		check(q.length < 254, 'soffiaggio: la query a 7 colonne (' + cosa + ') sta in ' + q.length + ' caratteri, sotto i 254 di queryTemp');
+}
 // e' proprio quella del PLC, nei tre punti del soffiaggio di FB_Robot.
 // (consegna 30, 6/10) Il conteggio sul file intero non basta piu': ogni
 // punto ha due rami (ordine avviato e manuale) e il manuale cambia da un
@@ -414,7 +449,7 @@ function statoFB(regione, n) {
 	while (e < z && !(righe[e].startsWith(lab) && /^(\d+\s*:|ELSE\b|END_CASE\b)/.test(righe[e].slice(lab.length)))) e++;
 	return righe.slice(k, e).join('\n');
 }
-const prefissoBlow = blowQuery.replace(/32767$/, '');
+const prefissoBlow = blowQueryPLC.replace(/32767$/, '');
 for (const [regione, n, sequenza, poi, rami] of [['Part_Robot_to_MC', 37, '_Part_Robot_to_MC', 38, 2], ['Part_MC_to_Robot', 37, '_Part_MC_to_Robot', 38, 3], ['Cycle MASTER ROBOT', 1416, '_master', 1417, 2]]) {
 	const s = statoFB(regione, n);
 	const avanza = [...s.matchAll(/#Dispatcher\["(\w+)"\]\s*:=\s*(\d+)/g)].map(m => m[1] + ' := ' + m[2]);

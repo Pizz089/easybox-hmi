@@ -1,6 +1,6 @@
 -- ===========================================================================
 -- coordinates-blow-mc.sql — vista COORDINATES_BLOW_MC (SOFFIAGGIO, 18/9;
--- dati pezzo al robot, 5/10)
+-- dati pezzo al robot, 5/10; ingombro chela e quota di presa, 20/10)
 --
 -- *** NASCE IN CHIARO, DEFINIZIONE VERSIONATA QUI. ***
 -- Come COORDINATES_PUSH_MC, e per lo stesso motivo: le viste 4Robot e
@@ -22,7 +22,33 @@
 --   %QW644  N_Cassetto (6/10)
 --   %QW646  Z_Push_LOW, %QW648 Z_Push_HIGH (6/10, quota Z della spinta,
 --           consegna 31, ex spare_7/spare_8: COORDINATES_PUSH_MC.Z_PUSH_DROP)
---   libere da %QW650 a %QW666.
+--   %QW650  Sys_SetRobotspeed (non e' una misura: la nota del 6/10 la dava
+--           libera, nell'export della V2026_1_6 e' occupata)
+--   %QW652  Gripper_ClawWidth_mm = GRIPPER_CLAW_LENGTH (20/10, ex spare_10)
+--   %QW654  Part_ZPick_mm        = PART_Z_PICK         (20/10, ex spare_11)
+--   libere da %QW656 a %QW666.
+--
+-- INGOMBRO DELLA CHELA E QUOTA DI PRESA (20/10, richiesta del robotista via
+-- Dario). In deposito in macchina il robotista vuole sapere quanto e' larga
+-- la chela della pinza e a che altezza del pezzo la tiene:
+--   GRIPPER_CLAW_LENGTH  ISNULL(GRIPPER.CLAW_LENGTH, 0) della pinza
+--                        dell'ordine. E' la misura col calibro della spinta in
+--                        battuta (gripper-claw-length.sql), che la pagina
+--                        Pinza chiama "lunghezza nella direzione in cui spinge
+--                        il pezzo". Per il robotista e' la LARGHEZZA della
+--                        chela: il nome della variabile segue il robot, quello
+--                        della colonna segue l'anagrafica (stessa lezione del
+--                        6/10). NULL = non misurata -> 0.
+--   PART_Z_PICK          ISNULL(PIECE.Z_PICK, 0): quota di presa dal fondo
+--                        del grezzo, la stessa con cui COORDINATES_Z_MC calcola
+--                        la Z di deposito in macchina. NULL -> 0.
+-- La pinza e' quella dell'ORDINE (WORKORDER.GRIPPER_ID), con lo stesso join
+-- della vista WORKORDERS (ID modulo 1000). In automatico e' la pinza a bordo:
+-- FB204 la monta al 35 prima di lavorare. Con i comandi dal pannello l'ordine
+-- e' quello scelto dal PLC (OrderIdMC o il piu' recente) e la pinza a bordo
+-- potrebbe non essere la sua. GRIPPER in LEFT: senza pinza (ordini di
+-- attrezzatura, GRIPPER_ID 0) l'ordine resta nella vista con 0.
+-- Pinza doppia: la riga e' quella del lato 1, dove sta il grezzo.
 -- Il 6/10 Dario ha scambiato X e Y NEL PLC (per il robot erano invertite;
 -- la Z non e' mai stata toccata): la vista resta questa, quindi i nomi delle
 -- colonne qui e quelli delle variabili PROFINET non coincidono piu'.
@@ -57,7 +83,9 @@
 -- del 15/9, che non da' errore ma dati sbagliati. Con la vista la query del
 -- PLC a cinque colonne sta in 116 caratteri (ORDER_ID a 5 cifre). La
 -- lunghezza qui e' un vincolo di correttezza, non di stile: chiunque
--- aggiunga colonne tenga il SELECT del PLC sotto i 254.
+-- aggiunga colonne tenga il SELECT del PLC sotto i 254. Con le sette colonne
+-- del 20/10: 148 caratteri con ORDER_ID a 5 cifre; i due rami manuali con la
+-- sottoquery (scambio e prelievo dal pannello) 219 e 222.
 --
 -- ISNULL SU TUTTE LE COLONNE, obbligatorio. Le sorgenti della morsa sono
 -- opzionali (morsa non montata, chele non misurate, nessuna dichiarazione di
@@ -80,27 +108,33 @@
 -- 15000; al robot 40 / 109 / 15 mm. (Il riscontro del 18/9 sull'ordine 1105,
 -- PART_WIDTH 100000, era sulla definizione vecchia: quel numero era pz.X.)
 --
--- STATO: la vista e' in cella dal 18/9 e dal 5/10 19:17 ha la definizione
--- qui sotto. In cella questo script e' un NO-OP e la guardia lo dice:
---   - definizione nuova (cinque colonne)          -> "conforme", niente;
+-- STATO: la vista e' in cella dal 18/9; dal 5/10 19:17 ha la definizione a
+-- cinque colonne. Il 20/10 diventa a sette (qui sotto). La guardia:
+--   - definizione nuova (sette colonne)            -> "conforme", niente;
+--   - definizione a cinque colonne del 5/10        -> ALTER alla nuova;
 --   - definizione vecchia a tre colonne (PART_WIDTH = pz.X) -> ALTER alla
 --     nuova;
---   - qualunque altra                             -> FERMO, non sovrascrive:
+--   - qualunque altra                              -> FERMO, non sovrascrive:
 --     la fonte di verita' e' sys.sql_modules, non il repo (vedi la scheda
 --     WORKORDERS in APPUNTI-CELLA).
--- La vista e il PLC vanno insieme: FB_Robot dal 5/10 chiede cinque colonne;
--- con la vista a tre la lettura del soffiaggio fallisce.
+-- La vista e il PLC vanno insieme, IN QUEST'ORDINE: prima la vista, poi il
+-- PLC. Il FB_Robot di oggi chiede cinque colonne per nome e con la vista a
+-- sette continua a funzionare; il FB_Robot del 20/10 ne chiede sette, e con
+-- la vista a cinque la query fallisce: il robot riceverebbe i valori vecchi
+-- di TUTTE le misure, non solo delle due nuove.
 --
--- ORDINE DI DEPLOY: dopo vice-claw-length.sql e piece-on-vice.sql, che creano
--- le colonne lette qui. A cella ferma, con -E:
---   sqlcmd -S .\SQLEXPRESS -E -d ADMG -i coordinates-blow-mc.sql
+-- ORDINE DI DEPLOY: dopo vice-claw-length.sql, piece-on-vice.sql e
+-- gripper-claw-length.sql, che creano le colonne lette qui. A cella ferma:
+--   cd D:\Prog\easybox\serverDati\scripts; sqlcmd -S .\SQLEXPRESS -E -d ADMG -W -i coordinates-blow-mc.sql
 -- ===========================================================================
 SET NOCOUNT ON;
 
 IF COL_LENGTH('dbo.VICE', 'CLAW_LENGTH') IS NULL
    OR OBJECT_ID('dbo.PIECE_ON_VICE') IS NULL
+   OR COL_LENGTH('dbo.GRIPPER', 'CLAW_LENGTH') IS NULL
+   OR COL_LENGTH('dbo.PIECE', 'Z_PICK') IS NULL
 BEGIN
-	PRINT 'MANCANO colonne o tabelle: eseguire prima vice-claw-length.sql e piece-on-vice.sql.';
+	PRINT 'MANCANO colonne o tabelle: eseguire prima vice-claw-length.sql, piece-on-vice.sql e gripper-claw-length.sql. Nessuna modifica.';
 	SET NOEXEC ON;
 END
 GO
@@ -119,8 +153,25 @@ WHILE CHARINDEX(N'  ', @norm) > 0
 
 IF @def IS NULL
 	PRINT 'coordinates-blow-mc: la vista non esiste, la creo.';
--- gia' quella nuova: le cinque colonne con ISNULL, PIECE in INNER, VICE in
--- LEFT, la dichiarazione legata alla morsa
+-- gia' quella nuova (20/10): le sette colonne con ISNULL, PIECE in INNER,
+-- VICE e GRIPPER in LEFT, la dichiarazione legata alla morsa
+ELSE IF @norm LIKE N'%ISNULL(v.CLAW_LENGTH,0) as CLAW_LENGTH%'
+	 AND @norm LIKE N'%ISNULL(pz.Y,0) as PART_WIDTH%'
+	 AND @norm LIKE N'%ISNULL(pv.STOP_BEYOND_CLAW,0) as STOP_BEYOND_CLAW%'
+	 AND @norm LIKE N'%ISNULL(pz.X,0) as PART_LENGTH%'
+	 AND @norm LIKE N'%ISNULL(pz.Z,0) as PART_HEIGHT%'
+	 AND @norm LIKE N'%ISNULL(g.CLAW_LENGTH,0) as GRIPPER_CLAW_LENGTH%'
+	 AND @norm LIKE N'%ISNULL(pz.Z_PICK,0) as PART_Z_PICK%'
+	 AND @norm LIKE N'%inner join PIECE pz on pz.ID = w.PIECE_ID%'
+	 AND @norm LIKE N'%left join VICE v on v.PALLET_ID = w.PALLET_ID%'
+	 AND @norm LIKE N'%pv.VICE_ID = v.ID and pv.PIECE_ID = w.PIECE_ID%'
+	 AND @norm LIKE N'%left join GRIPPER g on g.ID = w.GRIPPER_ID-((w.GRIPPER_ID/1000)*1000)%'
+BEGIN
+	PRINT 'coordinates-blow-mc: vista gia'' presente e conforme (sette colonne), nessuna modifica.';
+	SET NOEXEC ON;
+END
+-- quella a cinque colonne del 5/10, in cella fino al 20/10: si porta alla
+-- nuova aggiungendo le due colonne in fondo
 ELSE IF @norm LIKE N'%ISNULL(v.CLAW_LENGTH,0) as CLAW_LENGTH%'
 	 AND @norm LIKE N'%ISNULL(pz.Y,0) as PART_WIDTH%'
 	 AND @norm LIKE N'%ISNULL(pv.STOP_BEYOND_CLAW,0) as STOP_BEYOND_CLAW%'
@@ -129,10 +180,10 @@ ELSE IF @norm LIKE N'%ISNULL(v.CLAW_LENGTH,0) as CLAW_LENGTH%'
 	 AND @norm LIKE N'%inner join PIECE pz on pz.ID = w.PIECE_ID%'
 	 AND @norm LIKE N'%left join VICE v on v.PALLET_ID = w.PALLET_ID%'
 	 AND @norm LIKE N'%pv.VICE_ID = v.ID and pv.PIECE_ID = w.PIECE_ID%'
-BEGIN
-	PRINT 'coordinates-blow-mc: vista gia'' presente e conforme, nessuna modifica.';
-	SET NOEXEC ON;
-END
+	 AND @norm NOT LIKE N'%GRIPPER_CLAW_LENGTH%'
+	 AND @norm NOT LIKE N'%PART_Z_PICK%'
+	 AND @norm NOT LIKE N'%join GRIPPER%'
+	PRINT 'coordinates-blow-mc: trovata la definizione a cinque colonne del 5/10: la porto alla nuova (sette colonne).';
 -- la vecchia a tre colonne del 18/9 (PART_WIDTH = pz.X, la lunghezza):
 -- si porta alla nuova
 ELSE IF @norm LIKE N'%ISNULL(v.CLAW_LENGTH,0) as CLAW_LENGTH%'
@@ -162,11 +213,14 @@ select  w.ID                            as ORDER_ID,
         ISNULL(pz.Y,0)                  as PART_WIDTH,
         ISNULL(pv.STOP_BEYOND_CLAW,0)   as STOP_BEYOND_CLAW,
         ISNULL(pz.X,0)                  as PART_LENGTH,
-        ISNULL(pz.Z,0)                  as PART_HEIGHT
+        ISNULL(pz.Z,0)                  as PART_HEIGHT,
+        ISNULL(g.CLAW_LENGTH,0)         as GRIPPER_CLAW_LENGTH,
+        ISNULL(pz.Z_PICK,0)             as PART_Z_PICK
 from WORKORDER w
 inner join PIECE pz     on pz.ID = w.PIECE_ID
 left  join VICE v       on v.PALLET_ID = w.PALLET_ID
-left  join PIECE_ON_VICE pv on pv.VICE_ID = v.ID and pv.PIECE_ID = w.PIECE_ID;
+left  join PIECE_ON_VICE pv on pv.VICE_ID = v.ID and pv.PIECE_ID = w.PIECE_ID
+left  join GRIPPER g    on g.ID = w.GRIPPER_ID-((w.GRIPPER_ID/1000)*1000);
 GO
 PRINT 'coordinates-blow-mc: fatto.';
 GO
@@ -190,10 +244,25 @@ GO
 --        OR b.PART_HEIGHT <> ISNULL(p.Z,0);
 --    Atteso: nessuna riga.
 --
+-- 2b) (20/10) Le due colonne nuove vengono dalla pinza dell'ordine e dal
+--    pezzo:
+--    SELECT b.ORDER_ID FROM COORDINATES_BLOW_MC b
+--      JOIN WORKORDER w ON w.ID = b.ORDER_ID
+--      JOIN PIECE p ON p.ID = w.PIECE_ID
+--      LEFT JOIN GRIPPER g ON g.ID = w.GRIPPER_ID-((w.GRIPPER_ID/1000)*1000)
+--     WHERE b.GRIPPER_CLAW_LENGTH <> ISNULL(g.CLAW_LENGTH,0)
+--        OR b.PART_Z_PICK <> ISNULL(p.Z_PICK,0);
+--    Atteso: nessuna riga.
+--    E, per l'ordine che si sta per lavorare, i valori in mm che andranno al
+--    robot (Gripper_ClawWidth_mm, Part_ZPick_mm):
+--    SELECT ORDER_ID, GRIPPER_CLAW_LENGTH/1000 AS chela_mm, PART_Z_PICK/1000 AS z_presa_mm
+--      FROM COORDINATES_BLOW_MC ORDER BY ORDER_ID DESC;
+--
 -- 3) Nessuna colonna NULL, su nessun ordine — e' tutto il senso degli ISNULL:
 --    SELECT ORDER_ID FROM COORDINATES_BLOW_MC
 --     WHERE CLAW_LENGTH IS NULL OR PART_WIDTH IS NULL OR STOP_BEYOND_CLAW IS NULL
---        OR PART_LENGTH IS NULL OR PART_HEIGHT IS NULL;
+--        OR PART_LENGTH IS NULL OR PART_HEIGHT IS NULL
+--        OR GRIPPER_CLAW_LENGTH IS NULL OR PART_Z_PICK IS NULL;
 --    Atteso: nessuna riga.
 --
 -- 4) Un ordine per riga: la vista non deve moltiplicare niente. Se esce una
@@ -204,12 +273,19 @@ GO
 --    Atteso: nessuna riga.
 --
 -- 5) La query che lancia il PLC (FB_Robot, tre punti), per contarne i
---    caratteri: 115 con ORDER_ID a 4 cifre, 116 a 5, sotto i 254 di queryTemp:
---    select CLAW_LENGTH,PART_WIDTH,STOP_BEYOND_CLAW,PART_LENGTH,PART_HEIGHT from COORDINATES_BLOW_MC where ORDER_ID=2117
+--    caratteri: dal 20/10 147 con ORDER_ID a 4 cifre, 148 a 5, sotto i 254
+--    di queryTemp (i due rami manuali con la sottoquery: 219 e 222):
+--    select CLAW_LENGTH,PART_WIDTH,STOP_BEYOND_CLAW,PART_LENGTH,PART_HEIGHT,GRIPPER_CLAW_LENGTH,PART_Z_PICK from COORDINATES_BLOW_MC where ORDER_ID=2117
 -- ===========================================================================
 
 -- ===========================================================================
--- ROLLBACK (manuale). Alla definizione del 18/9: quella salvata in
+-- ROLLBACK (manuale), DAL 20/10: PRIMA il PLC (FB_Robot che legge cinque
+-- colonne), POI la vista. Al contrario, il FB_Robot a sette colonne non
+-- trova le due nuove, la query fallisce e il robot riceve i valori vecchi di
+-- tutte le misure. Definizione a cinque colonne: quella del 5/10 qui sopra
+-- senza le due righe GRIPPER_CLAW_LENGTH e PART_Z_PICK e senza il join su
+-- GRIPPER (nel repo: questo file prima del 20/10).
+-- Alla definizione del 18/9: quella salvata in
 -- D:\Backup\COORDINATES_BLOW_MC_20261005.txt sul PC di cella. ATTENZIONE:
 -- FB_Robot dal 5/10 legge cinque colonne; con la vista a tre la lettura del
 -- soffiaggio fallisce, quindi si torna indietro insieme al PLC.
