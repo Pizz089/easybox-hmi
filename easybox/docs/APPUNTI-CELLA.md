@@ -141,6 +141,36 @@ Nel working tree di cella ci sono file non tracciati che il `.gitignore` non esc
    - stato del robot che si aggiorna;
    - `DB_executeQuery.readyForNextQuery` TRUE.
 
+## [ ] 2026-10-20 — Ingombro della chela e quota di presa al robot: vista `COORDINATES_BLOW_MC` a sette colonne **prima** del PLC
+
+**Cosa.** Su richiesta del robotista il PLC passa due misure in più, negli stessi tre punti e nello stesso modo delle misure del pezzo (Part_Robot_to_MC 37-39, Part_MC_to_Robot 37-39, scambio 1416-1418), in mm interi troncati:
+- %QW652 `Gripper_ClawWidth_mm` (ex `spare_10`) = `GRIPPER.CLAW_LENGTH` della pinza dell'ordine, colonna `GRIPPER_CLAW_LENGTH` della vista;
+- %QW654 `Part_ZPick_mm` (ex `spare_11`) = `PIECE.Z_PICK`, la quota di presa dal fondo del grezzo, colonna `PART_Z_PICK`.
+
+NULL → 0, ordine senza pinza → 0. Mappa, semantica e limiti nell'intestazione di `serverDati/scripts/coordinates-blow-mc.sql`.
+
+**Prima la vista, poi il PLC.** Il FB_Robot di oggi legge cinque colonne per nome e funziona anche con la vista a sette. Il FB_Robot nuovo, con la vista a cinque, fallirebbe la query e il robot riceverebbe i valori vecchi di **tutte** le misure, non solo delle due nuove.
+
+Ordine di deploy:
+1. **Vista.** Dopo il `git pull`, cella in HOLD, PowerShell come amministratore:
+   ```
+   cd D:\Prog\easybox\serverDati\scripts; sqlcmd -S .\SQLEXPRESS -E -d ADMG -W -i coordinates-blow-mc.sql
+   ```
+   Atteso: «trovata la definizione a cinque colonne del 5/10: la porto alla nuova (sette colonne)», poi «fatto». **Se esce FERMO non si tocca niente**: la definizione in cella non è quella del repo, si legge con la query che lo script stampa e si riporta.
+2. **Tag** in TIA, tabella Robot_Efort: `spare_10` (%QW652) rinominato `Gripper_ClawWidth_mm`, `spare_11` (%QW654) rinominato `Part_ZPick_mm`.
+3. **FB7** (FB_Robot): blocchi incollati e scaricati.
+4. **Test.**
+   - SQL, dopo la vista: verifiche 2b, 3 e 5 in fondo allo script.
+   - In campo, dopo il download del FB7, con in watch le sette misure verso il robot:
+     - deposito del grezzo in macchina (ciclo o pannello): `Gripper_ClawWidth_mm` e `Part_ZPick_mm` uguali ai valori della query della verifica 2b per quell'ordine (`chela_mm`, `z_presa_mm`), e le altre cinque misure invariate;
+     - prelievo del finito da macchina e missione 16: stessi valori, nello stesso momento delle altre misure;
+     - cambio ordine con un altro pezzo: i valori cambiano al primo deposito.
+5. **Programma robot** che usa le due misure.
+
+**Rollback** in fondo allo script: dal 20/10 prima il PLC, poi la vista.
+
+**Dopo il download** (fase 2): export del progetto, `test_push_to_stop.js` sulla query a sette colonne, diff fra il FB_Robot consegnato e quello esportato; poi questa voce passa a [x] con data, ora ed esito dei test.
+
 ## [ ] 2026-10-07 — Consegna 35 (7/10 sera): cassetto fuori anche su swap e pallet, spinta con quote NULL, 973
 
 **Cosa.** PLC, la scarica Dario: due file, da scaricare **insieme, nella stessa finestra**:
