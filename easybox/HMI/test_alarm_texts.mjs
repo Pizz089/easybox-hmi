@@ -56,9 +56,10 @@ const CODES = {
 	// 1419/1519/19005/19006/19007/20011 dalla consegna 34 (7/10, uncino),
 	// 973 e 691 (tasca non vuota) dalla consegna 35 (7/10); 948, 951, 996,
 	// 997, 999 dalla simulazione bis (B61, 7/10 sera); 949 e 1722 dalle
-	// risposte sulla consegna 35 (7/10 sera)
-	robot: [961, 962, 964, 967, 19004, 20009, 2205, 970, 971, 972, 1419, 1519, 19005, 19006, 19007, 20011, 973, 691, 948, 951, 996, 997, 999, 949, 1722],
-	mc1: [952, 953, 954, 955, 956, 957, 958, 959, 947],
+	// risposte sulla consegna 35 (7/10 sera); 981 dal HOLD unico (scaricato
+	// il 16/10); 982 (ALARM/MC1) dalla consegna reimposta_1_6
+	robot: [961, 962, 964, 967, 19004, 20009, 2205, 970, 971, 972, 1419, 1519, 19005, 19006, 19007, 20011, 973, 691, 948, 951, 996, 997, 999, 949, 1722, 981],
+	mc1: [952, 953, 954, 955, 956, 957, 958, 959, 947, 982],
 };
 const raw = { it: readFileSync('src/locales/it.json', 'utf8'), en: readFileSync('src/locales/en.json', 'utf8') };
 const loc = { it: JSON.parse(raw.it), en: JSON.parse(raw.en) };
@@ -121,8 +122,10 @@ check(/non ha l'uncino/.test(loc.it.robot.alarm_19005) && /né a bordo né a sca
 // (consegna 35, 7/10)
 check(/Rientrato il cassetto a mano: Reimposta stato cella con cassetto 0\.$/.test(loc.it.robot.alarm_20011) && /Reset cell state with tray 0\.$/.test(loc.en.robot.alarm_20011),
 	'20011: in fondo «Rientrato il cassetto a mano: Reimposta stato cella con cassetto 0»');
-check(loc.it.robot.alarm_973 === "Comando rifiutato: c'è una missione in corso o in pausa. CONTINUA per riprenderla, oppure RESET (o la procedura dopo una missione interrotta)."
-	&& /mission is running or paused/.test(loc.en.robot.alarm_973) && /CONTINUE/.test(loc.en.robot.alarm_973), '973: missione in corso o in pausa, CONTINUA oppure RESET');
+// (reimposta_1_6) il 973 anche per la Reimposta stato cella che aspetta il Riprendi
+check(loc.it.robot.alarm_973 === "Comando rifiutato: c'è una missione in corso o in pausa, oppure la Reimposta stato cella aspetta il Riprendi (misure della pinza e chele al robot). CONTINUA per proseguire; con una missione in pausa anche RESET o la procedura dopo una missione interrotta."
+	&& /mission is running or paused/.test(loc.en.robot.alarm_973) && /waiting for Resume/.test(loc.en.robot.alarm_973) && /CONTINUE/.test(loc.en.robot.alarm_973),
+	'973: missione in corso o in pausa, oppure Reimposta stato cella in attesa del Riprendi; CONTINUA, con la missione in pausa anche RESET');
 check(loc.it.robot.alarm_691 === 'Tasca di destinazione non trovata o non vuota a database: controlla la tasca e dichiarala (39), poi RESET e ripeti.'
 	&& /not empty in the database/.test(loc.en.robot.alarm_691), '691: tasca non trovata o non vuota a database, dichiarala (39)');
 // (7/10 sera) l'avviso unico 972 + codice: titolo col codice, testo del
