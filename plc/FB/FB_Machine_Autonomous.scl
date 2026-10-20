@@ -1676,13 +1676,40 @@ BEGIN
 	            "CMD_RemovePiece_MC":     // 37  dichiara la morsa vuota
 	                IF "DB_MC1".Dispatcher["_master"] <> 0 AND "DB_MC1".Dispatcher["_master"] <> 9999 THEN
 	                    "FC_MQTT"(insert := true,
-	                   send := false,
-	                   topic := 'FROM_PLANT/ALARM/MC1',
-	                   payload := STRING_TO_WSTRING('947'));
+	                              send := false,
+	                              topic := 'FROM_PLANT/ALARM/MC1',
+	                              payload := STRING_TO_WSTRING('947'));
 	                ELSE
 	                    "DB_MC1".piecepresent[1] := 0;
 	                    "DB_Robot".Dispatcher["updatePartOnMC"] := 10 + DINT_TO_INT("EMPTY");
 	                    "DB_MC1".declPiece_old := -1;   // eco forzato, come il 36
+	                    // (20/10) MORSA DICHIARATA VUOTA = MORSA APERTA, richiesta di Dario per la
+	                    // Reimposta stato cella (il pannello manda il 37 solo da li'). Decisione
+	                    // del 20/10: solo con la porta della HAAS aperta, che e' anche la prova che
+	                    // la HAAS non sta lavorando. In piu': cella in HOLD (la Reimposta) e robot
+	                    // fuori dalla macchina ("Robot_IN_AREA" alto = fuori ingombro, come nella
+	                    // REGION Fuori ingombro robot). Stesso comando di SBLOCCO MORSA dal pannello
+	                    // (MC_openVice, REGION SPECIFIC_implementation al giro dopo), con le
+	                    // stesse condizioni: nessun comando macchina in corso, robot in attesa.
+	                    // Morsa manuale (ManualVice) esclusa: la morsa la gestisce l'operatore.
+	                    // Se non si puo', 982 su ALARM/MC1: il pannello lo mostra e l'operatore
+	                    // apre la porta dalla HAAS e usa SBLOCCO MORSA.
+	                    // ATTENZIONE: la morsa si apre sulla parola della dichiarazione.
+	                    IF #ManualVice = 0 AND NOT #io_in.viceOpened THEN
+	                        IF #io_in.doorOpened
+	                            AND "DB_Robot".HOLD
+	                            AND "Robot_IN_AREA"
+	                            AND #cmd.code <= 0 AND NOT #cmd.executing
+	                            AND "DB_RobotMissionStatus".StatusCode = "cmd_waitingNewCmd"
+	                        THEN
+	                            #cmd.code := "MC_openVice";
+	                        ELSE
+	                            "FC_MQTT"(insert := true,
+	                                      send := false,
+	                                      topic := 'FROM_PLANT/ALARM/MC1',
+	                                      payload := STRING_TO_WSTRING('982'));   // morsa non aperta in automatico
+	                        END_IF;
+	                    END_IF;
 	                END_IF;
 	                "DB_MQTT".lastCmdReceived := 0;
 	            "CMD_ManualViceOn":       // 42

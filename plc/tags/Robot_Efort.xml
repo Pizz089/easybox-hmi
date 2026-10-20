@@ -2860,7 +2860,7 @@
         <AttributeList>
           <DataTypeName>Int</DataTypeName>
           <LogicalAddress>%QW652</LogicalAddress>
-          <Name>spare_10</Name>
+          <Name>Gripper_ClawWidth_mm</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="1CA" CompositionName="Comment">
@@ -2874,7 +2874,7 @@
               <MultilingualTextItem ID="1CC" CompositionName="Items">
                 <AttributeList>
                   <Culture>it-IT</Culture>
-                  <Text />
+                  <Text>larghezza chela pinza [mm] = GRIPPER.CLAW_LENGTH</Text>
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>
@@ -2885,7 +2885,7 @@
         <AttributeList>
           <DataTypeName>Int</DataTypeName>
           <LogicalAddress>%QW654</LogicalAddress>
-          <Name>spare_11</Name>
+          <Name>Part_ZPick_mm</Name>
         </AttributeList>
         <ObjectList>
           <MultilingualText ID="1CE" CompositionName="Comment">
@@ -2899,7 +2899,7 @@
               <MultilingualTextItem ID="1D0" CompositionName="Items">
                 <AttributeList>
                   <Culture>it-IT</Culture>
-                  <Text />
+                  <Text>quota di presa dal fondo del grezzo [mm] = PIECE.Z_PICK</Text>
                 </AttributeList>
               </MultilingualTextItem>
             </ObjectList>

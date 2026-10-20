@@ -18,12 +18,12 @@ BEGIN
 	// RequestedTray a 0, che per il tray manager vuol dire "rimetti dentro il
 	// cassetto in registro": con un cassetto fuori e il robot in Auto il
 	// rilascio partiva da solo.
-	// Si riparte in HOLD da PANNELLO: con DB_plant.Hold alto FB8 tiene acceso il
-	// reset allarmi del robot (sys_resetAlarm) e il robot non esegue comandi,
-	// quindi la dichiarazione 35 non si chiudeva mai (visto in cella il 5/10).
-	// L'hold si toglie dal pannello, oppure col pulsante fisico in due pressioni.
-	// ATTENZIONE: come ogni hold da pannello, lo toglie anche la richiusura
-	// della porta cella con robot in automatico (FB_plant).
+	// HOLD UNICO (13/10): si riparte in HOLD e lo si toglie con un tocco, dal
+	// pulsante in cella o dal pannello. La richiusura della porta non lo toglie.
+	// holdButton e DB_plant.Hold sono dismessi: FALSE fisso, li scrive anche
+	// FB_plant a ogni ciclo. Il testo di prima diceva che con DB_plant.Hold alto il
+	// robot non eseguiva comandi: era sbagliato (la 35 non si chiudeva perche' il
+	// robot era in T1, 5/10), e adesso sys_resetAlarm non dipende piu' dall'HOLD.
 	"DB_Robot".HOLD := TRUE;
 	"DB_Robot".holdButton := FALSE;
 	"DB_plant".Hold := FALSE;

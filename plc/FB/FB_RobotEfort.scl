@@ -18,16 +18,17 @@ VERSION : 0.1
 
 BEGIN
 	(* Robot EFORT:
-	    comunication with Profinet (MAX 176Words)
-	    I/O configuration: 
-	        Boolean 95
-	        Integer 77
-	        Float    2 (not used)
-	*)
+	        comunication with Profinet (MAX 176Words)
+	        I/O configuration: 
+	            Boolean 95
+	            Integer 77
+	            Float    2 (not used)
+	    *)
 	
 	REGION Signal_TO_ROBOT
 	    
-	    "sys_pauseProgram" := "DB_plant".Hold OR "DB_Robot".HOLD OR #dispatcher[1] >= 10;
+	    // HOLD unico (13/10): "DB_plant".Hold e' dismesso, l'HOLD e' solo "DB_Robot".HOLD.
+	    "sys_pauseProgram" := "DB_Robot".HOLD OR #dispatcher[1] >= 10;
 	    
 	    //"System_SetRobotspeed" := 100; /// DA TESTARE!!!
 	    
@@ -235,9 +236,9 @@ BEGIN
 	    
 	    IF DINT_TO_INT("DB_RobotMissionStatus".GripperCode) <> #codeOld THEN
 	        "FC_MQTT"(insert := true,
-	       send := false,
-	       topic := 'FROM_PLANT/GRIPPER/CODE',
-	       payload := STRING_TO_WSTRING("INT_TO_STRING_WITHOUT_SIGN"(DINT_TO_INT("DB_RobotMissionStatus".GripperCode))));
+	                  send := false,
+	                  topic := 'FROM_PLANT/GRIPPER/CODE',
+	                  payload := STRING_TO_WSTRING("INT_TO_STRING_WITHOUT_SIGN"(DINT_TO_INT("DB_RobotMissionStatus".GripperCode))));
 	        #codeOld := DINT_TO_INT("DB_RobotMissionStatus".GripperCode);
 	    END_IF;
 	    
@@ -256,9 +257,9 @@ BEGIN
 	    
 	    IF "Gripper_mounted" <> #sensorOld THEN
 	        "FC_MQTT"(insert := true,
-	       send := false,
-	       topic := 'FROM_PLANT/GRIPPER/SENSOR',
-	       payload := STRING_TO_WSTRING("INT_TO_STRING_WITHOUT_SIGN"(BOOL_TO_INT("Gripper_mounted"))));
+	                  send := false,
+	                  topic := 'FROM_PLANT/GRIPPER/SENSOR',
+	                  payload := STRING_TO_WSTRING("INT_TO_STRING_WITHOUT_SIGN"(BOOL_TO_INT("Gripper_mounted"))));
 	        #sensorOld := "Gripper_mounted";
 	    END_IF;
 	END_REGION
@@ -278,16 +279,21 @@ BEGIN
 	END_REGION
 	
 	REGION reset alarm
-	    // RESET SUL FRONTE DEL PULSANTE HOLD (5/10). "DB_plant".Hold e' lo stato
-	    // del toggle, non l'impulso: preso a livello azzerava DB_Robot.Error a
-	    // ogni scan per tutto l'hold, e gli errori sparivano prima che pannello
-	    // e FB204 li vedessero. FP[1] era gia' dichiarato (riga commentata qui).
-	    #FP[1](CLK := "DB_plant".Hold);
-	    IF ("sys_Robot_AlarmState" AND "Start_AUX") OR ("sys_Robot_AlarmState" AND "ResetAreaRobot") OR #FP[1].Q THEN
+	    // HOLD UNICO (13/10, decisioni C1 e D di Dario): L'HOLD NON AZZERA PIU' NIENTE.
+	    // Prima il fronte di "DB_plant".Hold (pulsante HOLD o apertura della porta)
+	    // azzerava DB_Robot.Error, anche con una catena ferma su quell'errore
+	    // (LAVORI-IN-CODA, «Il pulsante HOLD azzera Error»), e per tutto l'HOLD del
+	    // pulsante sys_resetAlarm restava alto. Con l'HOLD dal pannello nessuna delle
+	    // due cose succedeva: adesso vale per ogni HOLD.
+	    // Error si azzera col RESET dal pannello (99), con la Reimposta (35), oppure
+	    // con Start_AUX o ResetAreaRobot quando il robot e' in allarme.
+	    // sys_resetAlarm segue solo Start_AUX e ResetAreaRobot. #FP[1] resta
+	    // dichiarato e non si usa piu'.
+	    IF ("sys_Robot_AlarmState" AND "Start_AUX") OR ("sys_Robot_AlarmState" AND "ResetAreaRobot") THEN
 	        "DB_Robot".Error := 0;
 	    END_IF;
 	    
-	    "sys_resetAlarm" := "Start_AUX" OR "ResetAreaRobot" OR "DB_plant".Hold;
+	    "sys_resetAlarm" := "Start_AUX" OR "ResetAreaRobot";
 	END_REGION
 	
 	
@@ -352,14 +358,14 @@ BEGIN
 	
 	REGION rewind program
 	    #timeout[1](IN := #dispatcher[1] > 0 AND ("sys_resetProgram"),  //OR "sys_HOLD"
-	   PT := t#800ms);
+	                PT := t#800ms);
 	    // USCITA DI SICUREZZA (5/10): se il robot non si ferma (20) o non alza
 	    // ResetProgramState (30), pausa e reset programma restavano alti e se ne
 	    // usciva solo con STOP/RUN del PLC. Dopo 15 s: errore 967, reset
 	    // programma basso, comando azzerato (altrimenti lo 0 ripartirebbe
 	    // subito), catena a riposo.
 	    #timeout[4](IN := #dispatcher[1] >= 20,
-	   PT := T#15s);
+	                PT := T#15s);
 	    
 	    CASE #dispatcher[1] OF
 	        0: //nothing to do

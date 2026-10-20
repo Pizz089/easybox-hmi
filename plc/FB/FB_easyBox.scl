@@ -99,9 +99,9 @@ BEGIN
 	            //force update DB with data on PLC
 	            //IF #ExtractedTray > 0 THEN
 	            "FC_MQTT"(insert := true,
-	           send := false,
-	           topic := 'FROM_PLANT/TRAY/BOX/EXTRACT',
-	           payload := STRING_TO_WSTRING("INT_TO_STRING_WITHOUT_SIGN"(#ExtractedTray)));
+	                      send := false,
+	                      topic := 'FROM_PLANT/TRAY/BOX/EXTRACT',
+	                      payload := STRING_TO_WSTRING("INT_TO_STRING_WITHOUT_SIGN"(#ExtractedTray)));
 	        END_IF;
 	    END_IF;
 	    
@@ -264,9 +264,9 @@ BEGIN
 	            #ExtractedTray := #traySeen;
 	            #resyncDone := FALSE;
 	            "FC_MQTT"(insert := true,
-	           send := false,
-	           topic := 'FROM_PLANT/TRAY/BOX/EXTRACT',
-	           payload := STRING_TO_WSTRING("INT_TO_STRING_WITHOUT_SIGN"(#ExtractedTray)));
+	                      send := false,
+	                      topic := 'FROM_PLANT/TRAY/BOX/EXTRACT',
+	                      payload := STRING_TO_WSTRING("INT_TO_STRING_WITHOUT_SIGN"(#ExtractedTray)));
 	            
 	        ELSIF #trayCount = 0 AND #ExtractedTray > 0 THEN
 	            // NESSUN SENSORE VEDE, MA IL REGISTRO DICE ESTRATTO.
@@ -297,9 +297,9 @@ BEGIN
 	                #ExtractedTray := 0;
 	                #resyncDone := FALSE;
 	                "FC_MQTT"(insert := true,
-	               send := false,
-	               topic := 'FROM_PLANT/TRAY/BOX/EXTRACT',
-	               payload := STRING_TO_WSTRING("INT_TO_STRING_WITHOUT_SIGN"(#ExtractedTray)));
+	                          send := false,
+	                          topic := 'FROM_PLANT/TRAY/BOX/EXTRACT',
+	                          payload := STRING_TO_WSTRING("INT_TO_STRING_WITHOUT_SIGN"(#ExtractedTray)));
 	                
 	            ELSIF "DB_Robot".Dispatcher["Release_TRAY"] = 0
 	                AND "DB_Robot".Dispatcher["Extract_TRAY"] = 0
@@ -397,34 +397,35 @@ BEGIN
 	
 	
 	REGION LAMPS
-	    #HL_Start_Aux:=("Main_Safety_RTG1_DB".Aux_OK AND NOT "sys_Robot_AlarmState")
-	                    OR (NOT "Main_Safety_RTG1_DB".Aux_OK AND "Clock_1Hz")
-	                    OR ("Main_Safety_RTG1_DB".Aux_OK  AND "sys_Robot_AlarmState" AND "Clock_5Hz")                  //system error from robot -> a general reset is request 
-	                    OR ("Main_Safety_RTG1_DB".Aux_OK AND NOT "Main_Safety_RTG1_DB".RobotArea_OK AND "Clock_5Hz")
-	                    OR "DB_plant".testLamps;
+	    #HL_Start_Aux := ("Main_Safety_RTG1_DB".Aux_OK AND NOT "sys_Robot_AlarmState")
+	    OR (NOT "Main_Safety_RTG1_DB".Aux_OK AND "Clock_1Hz")
+	    OR ("Main_Safety_RTG1_DB".Aux_OK AND "sys_Robot_AlarmState" AND "Clock_5Hz")                  //system error from robot -> a general reset is request 
+	    OR ("Main_Safety_RTG1_DB".Aux_OK AND NOT "Main_Safety_RTG1_DB".RobotArea_OK AND "Clock_5Hz")
+	    OR "DB_plant".testLamps;
 	    
-	    #HL_Hold    := "DB_plant".Hold 
-	                    OR "DB_plant".testLamps
-	                    OR ("Clock_2Hz" AND"DB_Robot".HOLD AND NOT "sys_Robot_AlarmState" );
+	    // HOLD unico (13/10): lampada fissa con la cella in HOLD, da qualunque sorgente.
+	    // Prima era fissa per pulsante e porta, lampeggiante per l'HOLD dal pannello.
+	    #HL_Hold := "DB_Robot".HOLD
+	    OR "DB_plant".testLamps;
 	    
-	    #HL_Green   := "DB_RobotMissionStatus".StatusCode <="cmd_executed"
-	                    OR "DB_plant".testLamps;
+	    #HL_Green := "DB_RobotMissionStatus".StatusCode <= "cmd_executed"
+	    OR "DB_plant".testLamps;
 	    
-	    #HL_Orange  := NOT "Door_OP_locked" 
-	                   OR NOT "DB_Robot".Auto
-	                   OR (#Robot_enabled_to_work AND "Clock_5Hz" AND ( "DB_Robot".MissionCode="MISSION_LoadPartOnRobot" OR "DB_Robot".MissionCode="MISSION_UnloadPartFromRobot" ))
-	                   OR "DB_plant".testLamps;
+	    #HL_Orange := NOT "Door_OP_locked"
+	    OR NOT "DB_Robot".Auto
+	    OR (#Robot_enabled_to_work AND "Clock_5Hz" AND ("DB_Robot".MissionCode = "MISSION_LoadPartOnRobot" OR "DB_Robot".MissionCode = "MISSION_UnloadPartFromRobot"))
+	    OR "DB_plant".testLamps;
 	    
-	    #HL_Red     := "Clock_1Hz" AND ("DB_RobotMissionStatus".AllarmCode > 0
-	                                    OR "DB_Robot".Error <> 0 
-	                                    OR "DB_RobotMissionStatus".StatusCode = "cmd_aborted" 
-	                                    OR #Error > 0
-	                                   )
-	                    OR NOT "Main_Safety_RTG1_DB".RobotArea_OK
-	                    OR "DB_plant".testLamps;
-	                    
+	    #HL_Red := "Clock_1Hz" AND ("DB_RobotMissionStatus".AllarmCode > 0
+	    OR "DB_Robot".Error <> 0
+	    OR "DB_RobotMissionStatus".StatusCode = "cmd_aborted"
+	    OR #Error > 0
+	    )
+	    OR NOT "Main_Safety_RTG1_DB".RobotArea_OK
+	    OR "DB_plant".testLamps;
+	    
 	END_REGION
-	                
+	
 	REGION tray manager
 	    // GUARDIA CORRETTA 5/9: la condizione era "MissionCode = 0 OR RemoteMode".
 	    // In automatico RemoteMode e' sempre vero, quindi il manager sovrascriveva
@@ -475,7 +476,5 @@ BEGIN
 	        "px_tray_in_position" := false;
 	    END_IF;
 	END_REGION
-	
-	
 END_FUNCTION_BLOCK
 
