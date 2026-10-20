@@ -78,14 +78,15 @@ del robot. Dal PLC 33 (consegna del 7/10) arrivano davvero su `ALARM/ROBOT`,
 e la sezione robot del dialog, come la dichiarazione del pallet a bordo
 (`util/palletOnRobot.js`), mostra il testo del rifiuto.
 
-## Rifiuti dei comandi dal pannello (970, 971, 972, 973)
+## Rifiuti dei comandi dal pannello (970, 971, 972, 973, 981)
 
 | codice | canale | quando | testo |
 |---|---|---|---|
 | 970 | `Error` | deposito manuale in MC1: nessun ordine di MC1 per il pezzo prelevato. Dal PLC 33 l'ordine si cerca nella vista `MAN_ORDER_MC1` 7/10: prima quello **avviato e non completo** (STATUS 3, PRODUCTED < QUANTITY), poi in coda o in pausa (4, 6), il piu' recente. Prima valeva solo in coda o in pausa | `robot.alarm_970` |
 | 971 | `Error` | deposito manuale in MC1: non si sa da quale tasca viene il pezzo in pinza. Col PLC 33 esce solo se in piu' **non c'e' un ordine avviato di MC1**: «oppure avvia l'ordine» torna vero | `robot.alarm_971` |
 | 972 | `ALARM/ROBOT`, come il 968 | (PLC 33) comando dal pannello rifiutato perche' il robot ha un **errore attivo**: prima veniva accettato e partiva da solo quando l'errore si azzerava (simulazione del 7/10, problema 9). RESET e si ripete; col 938 prima la dichiarazione dello stato cella. **Dal PLC 35** subito dopo il 972, nello stesso ciclo, arriva su `ALARM/ROBOT` il codice dell'errore attivo | `robot.alarm_972`; col codice dopo, titolo `robot.alarm972Title`, testo del codice, coda `robot.alarm972NoText` solo se il codice non ha un testo |
-| 973 | `ALARM/ROBOT` | (PLC 35) comando di missione rifiutato perche' c'e' una **missione in corso** (master diverso da 0) **o sospesa** (`MissionCode` diverso da 0). In HOLD una missione di FB204 puo' restare in `MissionCode`: il pannello la sovrascriveva e FB204 leggeva la missione del pannello come la propria (simulazione bis, B5). Il comando e' consumato e `MissionCode` resta com'era. Si esce con CONTINUA (la missione sospesa riprende), con la procedura dopo una missione interrotta (RESTART MAIN PROGRAM, HOME, Reimposta stato cella) o col RESET. Home, manutenzione, posizionamenti, dichiarazioni e reset restano ammessi | `robot.alarm_973` |
+| 973 | `ALARM/ROBOT` | (PLC 35) comando di missione rifiutato perche' c'e' una **missione in corso** (master diverso da 0) **o sospesa** (`MissionCode` diverso da 0). In HOLD una missione di FB204 puo' restare in `MissionCode`: il pannello la sovrascriveva e FB204 leggeva la missione del pannello come la propria (simulazione bis, B5). Il comando e' consumato e `MissionCode` resta com'era. Si esce con CONTINUA (la missione sospesa riprende), con la procedura dopo una missione interrotta (RESTART MAIN PROGRAM, HOME, Reimposta stato cella) o col RESET. Home, manutenzione, posizionamenti, dichiarazioni e reset restano ammessi. **Dal 20/10 (Reimposta)** il rifiuto vale anche con la **Reimposta stato cella aperta**: `#Dispatcher["_Declare_State"] <> 0` o `#Dispatcher["get_TCP_Data"] <> 0` (`plc/FB/FB_Robot.scl` 410-427, REGION Manager CMD from HMI). Dopo l'eco del 35 la Reimposta resta aperta fino al Riprendi (REGION Declare_State, 5836-6260: il 76 manda il 10 al robot, riga 6058, il 75 aspetta il robot, in HOLD fino al Riprendi, il 90 chiude), con master e `MissionCode` a 0: una missione del pannello accettata in quel momento prendeva per sua l'eseguito del 10. Si esce con CONTINUA; qui il RESET non basta. Come dalla 35, il controllo vale solo in HOLD (`NOT #RemoteMode`) e col robot non sotto pendant, per i 16 comandi di missione e di chela elencati alle righe 416-420 | `robot.alarm_973` |
+| 981 | `ALARM/ROBOT` | (HOLD unico, scaricato il 16/10) **Riprendi dal pannello rifiutato**: comando 17 (`CMD_HOLD`) con la cella in HOLD, oppure 81 (`CMD_RobotRemoteMode`, togli HOLD), con la porta dell'area robot non bloccata (`NOT "Door_Robot_locked"`) e il robot in automatico (`"sys_Robot_Auto_Mode"`). L'HOLD resta (`plc/FB/FB_Robot.scl` 196-208, REGION Manager CMD from HMI). Con il robot non in automatico, per esempio in T1, la regola non vale. Il 17 a cella non in HOLD e l'82 (`CMD_RobotLocalMode`, metti HOLD) mettono l'HOLD sempre. Il pulsante in cella segue la stessa regola (`plc/FB/FB_plant.scl` 112-118, REGION HOLD_MANAGER) ma non pubblica niente: il Riprendi dal pulsante e' solo ignorato. La porta sbloccata col robot in automatico mette anche l'HOLD, sul fronte (107, 110-111) | `robot.alarm_981` |
 
 **972 seguito dal codice (PLC 35).** Il riquadro degli allarmi e' uno solo e
 mostra l'ultimo codice arrivato: da soli, a video sarebbe rimasto il codice
@@ -170,6 +171,20 @@ titolo e la coda dell'avviso unico (`robot.alarm972Title`,
 `robot.alarm_949` (porta operatore durante l'estrazione o il rientro di un
 cassetto, oppure EasyBox in errore: le due cause dall'8/10) e
 `robot.alarm_1722` (pinza del pallet assente a database).
+
+## HOLD unico (16/10) e Reimposta (20/10)
+
+Dal codice in `plc/`, export del progetto V2026_1_6 del 20/10 (righe di
+quell'export). Il come sta in APPUNTI-CELLA.md.
+
+| codice | dove | cosa cambia |
+|---|---|---|
+| 981 | `FB_Robot.scl` 196-208, Manager CMD from HMI; il pulsante in `FB_plant.scl` 107-119, HOLD_MANAGER, senza codice | nuovo: Riprendi rifiutato con la porta dell'area robot non bloccata e il robot in automatico (tabella dei rifiuti qui sopra) |
+| 973 | `FB_Robot.scl` 410-427, Manager CMD from HMI | esteso alla Reimposta aperta, `_Declare_State` o `get_TCP_Data` diversi da 0 (tabella dei rifiuti qui sopra) |
+| 982 | `FB_Machine_Autonomous.scl` 1676-1713, Declare MC1 from HMI, comando 37 (`CMD_RemovePiece_MC`) | nuovo, su `ALARM/MC1`: **morsa dichiarata vuota ma non aperta**. Dal 20/10 la morsa dichiarata vuota col 37 si apre da sola: `#cmd.code := "MC_openVice"` (1705), lo stesso comando di SBLOCCO MORSA, eseguito al giro dopo nella REGION SPECIFIC_implementation. Solo con la morsa automatica (`#ManualVice = 0`) e non gia' aperta (`NOT #io_in.viceOpened`, 1698). Servono (1699-1703): porta HAAS aperta (`#io_in.doorOpened`), cella in HOLD (`"DB_Robot".HOLD`), robot fuori dalla macchina (`"Robot_IN_AREA"` alto = fuori ingombro), nessun comando macchina in corso (`#cmd.code <= 0 AND NOT #cmd.executing`), robot in attesa (`"DB_RobotMissionStatus".StatusCode = "cmd_waitingNewCmd"`). Se una manca: 982 (1707-1710). **La dichiarazione e' gia' registrata** (`piecepresent[1] := 0`, `updatePartOnMC := 10 + EMPTY`, eco forzato, 1683-1685): il 982 dice solo che la morsa non si e' aperta: l'operatore apre la porta dalla HAAS e usa SBLOCCO MORSA (commento alle 1695-1696). Con la morsa manuale o gia' aperta niente 982. Col ciclo MC1 in corso (master diverso da 0 e da 9999) il 37 resta rifiutato col 947 (1677-1681) |
+
+Testi nel pannello (it ed en): `robot.alarm_981`, `robot.alarm_982`;
+`robot.alarm_973` aggiornato.
 
 ## Se manca una chiave
 

@@ -5,6 +5,42 @@
 > stato corretto sul momento. Gli interventi manuali da fare in impianto
 > stanno invece in `APPUNTI-CELLA.md`.
 
+## [ ] Commenti non allineati al codice: Z di deposito in macchina e «cinque variabili» in FB_Robot
+
+**Cosa.**
+- `easybox/HMI/src/util/rigging.js:7`, `easybox/HMI/src/data.js:78` ed `easybox/serverDati/WORKORDER/Order.js:393` dicono che il PLC calcola la quota di deposito in macchina come `P.Z + PIECE.Z_PLACE + FIXTURE.Z`. La vista `COORDINATES_Z_MC` usa `PIECE.Z_PICK` per il grezzo: `coordinates-z-mc.sql:58`, colonna `Z_PLACE_MC`. `PIECE.Z_PLACE` entra in `Z_PICK_MC` (righe 60-61).
+- `plc/FB/FB_Robot.scl`: gli stati 39 di Part_Robot_to_MC (riga 4153) e di Part_MC_to_Robot (riga 4488) e il 1418 del master (riga 2276) dicono «esito: scrive le cinque variabili PROFINET». Dal 20/10, con la parte B dei dati chela, sono sette.
+
+**Direzione.** I tre commenti del repo si correggono con un commit; quelli di FB_Robot in TIA alla prossima modifica del blocco, poi export.
+
+**Trovato il** 2026-10-20, lavoro sui dati chela.
+
+## [ ] en.json: «Comands» invece di «Commands»
+
+**Cosa.** In `easybox/HMI/src/locales/en.json` il testo «Comands» resta in 7 chiavi `"comands"` su `ui-lifting` (righe 140, 161, 204, 313, 526, 955, 981) e in 8 su `ui-v3`: le 7 `"comands"` (righe 261, 282, 325, 434, 661, 1149, 1175) e `"Comandi"` (riga 29), che su `ui-lifting` è corretta da 430df5b.
+
+**Direzione.** Un commit solo i18n per ramo. Su `ui-v3` la correzione di `"Comandi"` dovrebbe arrivare col merge di `ui-lifting` (voce sotto).
+
+**Trovato il** 2026-10-20, porting dei testi su `ui-lifting`.
+
+## [ ] Consegna 36 da rifare sopra il PLC del 20/10: V2026_1_7 non va scaricato
+
+**Cosa.** L'export di V2026_1_7 (`origin/export-v2026-1-7`, bc60a0c, 8/10, stesso `plc/` del `ui-lifting` locale b4b45cf) cambia rispetto all'export della 35 (b3cf3f6) solo `FB_Robot` e `FB_Machine_Autonomous`. Non ha l'HOLD unico (16/10), la Reimposta e la parte B dei dati chela (20/10), che sono nel PLC di cella e in `plc/` di `ui-lifting` dal 20/10 (26396d9). **V2026_1_7 NON va scaricato.**
+
+La 36 va riportata sopra il FB_Robot di `plc/` del 20/10 e deve tenere **`10 + EMPTY` nello stato 50 di Part_Robot_to_MC**: `#Dispatcher["updatePartOnRobot"] := 10 + DINT_TO_INT("EMPTY")`, `plc/FB/FB_Robot.scl` riga 4300 (il grezzo è appena stato lasciato in macchina). Nelle versioni 36c e 36d c'è ancora `10 + RAW`, righe 4341 e 4361 dei loro FB_Robot (dato di Dario: quei file non sono nel repo). Sul `ui-lifting` locale (b4b45cf, la 36 incollata in V2026_1_7) `10 + DINT_TO_INT("RAW")` sta alla riga 4301 di `plc/FB/FB_Robot.scl`, nello stato 50 di Part_Robot_to_MC (righe 4246-4305).
+
+**Direzione.** Rifare la 36 sopra l'export del 20/10, con lo stato 50 a EMPTY; i 6 commit della 36 sul `ui-lifting` locale si riportano sopra `origin/ui-lifting` quando la 36 va in cella.
+
+**Trovato il** 2026-10-20, export del PLC dopo la Reimposta.
+
+## [ ] Merge di ui-lifting in ui-v3 da pianificare
+
+**Cosa.** `ui-v3` ha `plc/` fermo al 7/10 (2a21dcc) e `test_push_to_stop.js` con `blowQueryPLC` a cinque colonne. Il merge porta l'export e i test del 20/10 (26396d9, 86ca698) e anche: HMI 3cfc7c4 (`util/baseDxf.js`, `util/cassettoFuori.js`), tools 12e8ea1 (`pannello.ps1`) e 873603e (`test_pannello_servizi.ps1`), i docs. Sul 982 c'è conflitto: 430df5b adatta `robot.alarm_982` al bottone del pannello di `ui-lifting`, e in `ui-v3` si tiene il testo di v3.
+
+**Direzione.** Merge, build e prova del pannello; in cella arriva solo dopo.
+
+**Trovato il** 2026-10-20, porting su `ui-lifting`.
+
 ## [ ] La pinza richiesta del pallet non si imposta dal pannello
 
 **Cosa.** Il PLC sa quale pinza serve per un pallet dalla query `select GRIPPERREQ from pallets_grippers where palletID=<pallet>` (FB_Robot, REGION Gripper4Pallet_Search, e il master 1010). Il dato e' `pallet.GripperREQ` (le viste SQL lo leggono da li', `workorders-view-pp.sql:116`), ma nel pannello e in `serverDati/CONF` non c'e' niente che lo scriva. Se manca (nessuna riga, errore o, dalla consegna 35, 0) ogni missione pallet si chiude col 1722, e dal pannello l'operatore non lo puo' sistemare.
