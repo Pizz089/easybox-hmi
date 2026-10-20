@@ -710,7 +710,7 @@
     "alarm_972": "Comando rifiutato: il robot ha un errore attivo. Premi RESET e ripeti il comando. Con l'errore 938 dichiara prima lo stato della cella.",
     "alarm_973": "Comando rifiutato: c'è una missione in corso o in pausa, oppure la Reimposta stato cella aspetta il Riprendi (misure della pinza e chele al robot). CONTINUA per proseguire; con una missione in pausa anche RESET o la procedura dopo una missione interrotta.",
     "alarm_981": "Riprendi rifiutato: la porta dell'area robot non è bloccata e il robot è in automatico. Chiudere e bloccare la porta, poi Riprendi.",
-    "alarm_982": "MC1: morsa dichiarata vuota ma non aperta in automatico. Serve: cella in HOLD, porta HAAS aperta, robot fuori dalla macchina e in attesa, nessun comando macchina in corso. Aprire la porta dalla HAAS, poi Macchina MC1 → Comandi macchina → Morsa: Sblocca.",
+    "alarm_982": "MC1: morsa dichiarata vuota ma non aperta in automatico. Serve: cella in HOLD, porta HAAS aperta, robot fuori dalla macchina e in attesa, nessun comando macchina in corso. Aprire la porta dalla HAAS, poi SBLOCCO MORSA nei Comandi della pagina Macchina 1.",
     "alarm_691": "Tasca di destinazione non trovata o non vuota a database: controlla la tasca e dichiarala (39), poi RESET e ripeti.",
     "alarm_2205": "Pinza a bordo assente dall'anagrafica pinze (GRIPPERS / GRIPPER_HOOK)",
     "alarm_19004": "Estrazione cassetto: nessuna coordinata di estrazione per il cassetto (COORDINATES_FOR_EXTRACT)",
