@@ -172,7 +172,11 @@ Ordine di deploy:
 
 **Rollback** in fondo allo script: dal 20/10 prima il PLC, poi la vista.
 
-**Dopo il download** (fase 2): export del progetto, `test_push_to_stop.js` sulla query a sette colonne, diff fra il FB_Robot consegnato e quello esportato; poi questa voce passa a [x] con data, ora ed esito dei test.
+**20/10, in cella.**
+- FB7 con la parte B (tag rinominati, query a sette colonne, le due misure nei tre punti) scaricato insieme alla Reimposta, prima della prova delle 14:33: quindi **prima** della vista, applicata alle 15:22. In quella finestra la query a sette colonne falliva.
+- Vista: rilancio dello script «conforme», verifiche V2-V4 senza righe.
+- Confronto online di FB7 e Robot_Efort uguale al progetto V2026_1_6 (Dario). Export del progetto in `plc/` (fase 2): FB_Robot uguale a `chela16_FB_Robot.scl` a meno della formattazione di TIA. `test_push_to_stop.js` controlla la query a sette colonne in tutti i rami dei tre punti, le colonne 5 e 6 nei tre stati che passano le misure e %QW652/%QW654 nella tabella Robot_Efort.
+- Restano i test di campo del punto 4 e il programma robot. La voce resta [ ] finché Dario non riporta i test di campo.
 
 ## [x] 2026-10-07 — Consegna 35 (7/10 sera): cassetto fuori anche su swap e pallet, spinta con quote NULL, 973
 

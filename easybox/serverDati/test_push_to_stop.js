@@ -409,14 +409,13 @@ check(ramo3 && LIKE('ISNULL(pz.X,0) as PART_WIDTH')(ramo3) && NOT_LIKE('PART_LEN
 	'soffiaggio: guardia 3 — tre colonne del 18/9: «la porto alla nuova», ALTER');
 check(ramoAltro.includes("PRINT 'coordinates-blow-mc: la vista esiste ma NON e'' quella attesa. FERMO.';") && /SET NOEXEC ON;/.test(ramoAltro),
 	'soffiaggio: guardia 4 — qualunque altra: «NON e\' quella attesa. FERMO.», niente ALTER');
-// (20/10) DUE query. blowQueryPLC e' quella che il PLC lancia oggi:
-// l'export di FB_Robot nel repo chiede ancora cinque colonne, e i controlli
-// su FB_Robot qui sotto restano su quella. blowQueryVista e' quella a sette
-// colonne che la vista regge dal 20/10. In fase 2 (export del FB_Robot
-// nuovo) cambia solo blowQueryPLC.
-const blowQueryPLC = 'select CLAW_LENGTH,PART_WIDTH,STOP_BEYOND_CLAW,PART_LENGTH,PART_HEIGHT from COORDINATES_BLOW_MC where ORDER_ID=32767';
+// (20/10) DUE query. blowQueryPLC e' quella che lancia il PLC (l'export di
+// FB_Robot nel repo, i controlli qui sotto): dal FB7 del 20/10, con la parte
+// B dei dati chela, sette colonne come la vista (fase 2). Prima ne chiedeva
+// cinque. blowQueryVista e' quella che la vista regge dal 20/10.
+const blowQueryPLC = 'select CLAW_LENGTH,PART_WIDTH,STOP_BEYOND_CLAW,PART_LENGTH,PART_HEIGHT,GRIPPER_CLAW_LENGTH,PART_Z_PICK from COORDINATES_BLOW_MC where ORDER_ID=32767';
 const blowQueryVista = 'select CLAW_LENGTH,PART_WIDTH,STOP_BEYOND_CLAW,PART_LENGTH,PART_HEIGHT,GRIPPER_CLAW_LENGTH,PART_Z_PICK from COORDINATES_BLOW_MC where ORDER_ID=32767';
-check(blowQueryPLC.length < 254, 'soffiaggio: la query del PLC (5 colonne, ORDER_ID a 5 cifre) sta in ' + blowQueryPLC.length
+check(blowQueryPLC.length < 254, 'soffiaggio: la query del PLC (7 colonne, ORDER_ID a 5 cifre) sta in ' + blowQueryPLC.length
 	+ ' caratteri, sotto i 254 di queryTemp (con i join a mano erano 298: sarebbe arrivata troncata)');
 {
 	const p = blowQueryVista.replace(/32767$/, '');
@@ -459,6 +458,8 @@ for (const [regione, n, sequenza, poi, rami] of [['Part_Robot_to_MC', 37, '_Part
 	check(avanza.length === rami && avanza.every(x => x === sequenza + ' := ' + poi),
 		'   e fa avanzare la propria sequenza: ' + sequenza + ' := ' + poi + ' (' + (avanza.join(', ') || 'stato non trovato') + ')');
 }
+check(!fb7.includes('select CLAW_LENGTH,PART_WIDTH,STOP_BEYOND_CLAW,PART_LENGTH,PART_HEIGHT from COORDINATES_BLOW_MC'),
+	'   e in FB_Robot non resta nessuna query del soffiaggio a cinque colonne');
 {
 	// i tre rami del 37 di Part_MC_to_Robot, in quest'ordine
 	const s = statoFB('Part_MC_to_Robot', 37);
@@ -474,13 +475,15 @@ for (const [regione, n, sequenza, poi, rami] of [['Part_Robot_to_MC', 37, '_Part
 // query: 0 CLAW_LENGTH, 1 PART_WIDTH (PIECE.Y), 2 STOP_BEYOND_CLAW,
 // 3 PART_LENGTH (PIECE.X), 4 PART_HEIGHT (PIECE.Z). Un primo tentativo in
 // TIA aveva scambiato X e Z: con questo controllo non passa.
-const MAPPA = { Vice_ClawLength_mm: 0, Part_Width_mm: 3, Part_Length_mm: 1, Part_Height_mm: 4 };
+// (20/10, fase 2) 5 GRIPPER_CLAW_LENGTH (pinza dell'ordine), 6 PART_Z_PICK
+// (PIECE.Z_PICK), negli stessi tre stati.
+const MAPPA = { Vice_ClawLength_mm: 0, Part_Width_mm: 3, Part_Length_mm: 1, Part_Height_mm: 4, Gripper_ClawWidth_mm: 5, Part_ZPick_mm: 6 };
 for (const [regione, n] of [['Part_Robot_to_MC', 39], ['Part_MC_to_Robot', 39], ['Cycle MASTER ROBOT', 1418]]) {
 	const s = statoFB(regione, n);
 	const letto = {};
 	for (const m of s.matchAll(/"(\w+_mm)"\s*:=\s*DINT_TO_INT\("SqlData"\.data\.rows\[0\]\.col\[(\d+)\] \/ 1000\)/g)) letto[m[1]] = Number(m[2]);
 	check(Object.entries(MAPPA).every(([v, c]) => letto[v] === c) && /"X_Support_mm"\s*:=\s*DINT_TO_INT\(\("SqlData"\.data\.rows\[0\]\.col\[0\] \/ 2\s*\+ "SqlData"\.data\.rows\[0\]\.col\[2\]\) \/ 1000\)/.test(s),
-		'soffiaggio: ' + regione + ' ' + n + ' passa al robot Width = PIECE.X (col 3), Length = PIECE.Y (col 1), Height = PIECE.Z (col 4) (' + (Object.entries(letto).map(([v, c]) => v + ' col ' + c).join(', ') || 'stato non trovato') + ')');
+		'soffiaggio: ' + regione + ' ' + n + ' passa al robot Width = PIECE.X (col 3), Length = PIECE.Y (col 1), Height = PIECE.Z (col 4), ClawWidth = GRIPPER_CLAW_LENGTH (col 5), ZPick = PART_Z_PICK (col 6) (' + (Object.entries(letto).map(([v, c]) => v + ' col ' + c).join(', ') || 'stato non trovato') + ')');
 }
 
 // (consegna 31, 6/10) QUOTA Z DELLA SPINTA nel PLC. La query della spinta
@@ -534,6 +537,11 @@ check(/<DataTypeName>Int<\/DataTypeName>\s*<LogicalAddress>%QW646<\/LogicalAddre
 	&& /<DataTypeName>Int<\/DataTypeName>\s*<LogicalAddress>%QW648<\/LogicalAddress>\s*<Name>Z_Push_HIGH<\/Name>/.test(tagRobot)
 	&& !/<Name>spare_[78]<\/Name>/.test(tagRobot),
 	'quota Z: tabella Robot_Efort, %QW646 Z_Push_LOW e %QW648 Z_Push_HIGH (Int, ex spare_7/spare_8), come X_Pick-Place');
+// (20/10, fase 2) ingombro della chela e quota di presa
+check(/<DataTypeName>Int<\/DataTypeName>\s*<LogicalAddress>%QW652<\/LogicalAddress>\s*<Name>Gripper_ClawWidth_mm<\/Name>/.test(tagRobot)
+	&& /<DataTypeName>Int<\/DataTypeName>\s*<LogicalAddress>%QW654<\/LogicalAddress>\s*<Name>Part_ZPick_mm<\/Name>/.test(tagRobot)
+	&& !/<Name>spare_1[01]<\/Name>/.test(tagRobot),
+	'dati chela: tabella Robot_Efort, %QW652 Gripper_ClawWidth_mm e %QW654 Part_ZPick_mm (Int, ex spare_10/spare_11)');
 
 const view = fs.readFileSync(path.join(__dirname, 'scripts', 'coordinates-push-mc.sql'), 'utf8');
 // i commenti PARLANO di WITH ENCRYPTION (per dire che non si usa): il controllo

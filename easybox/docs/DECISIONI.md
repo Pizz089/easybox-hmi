@@ -2,6 +2,14 @@
 
 Decisioni di Dario che vincolano codice, dati e procedure in cella; la più recente in alto. Il come (script, comandi, ordine degli interventi) sta in [APPUNTI-CELLA.md](APPUNTI-CELLA.md).
 
+**Ingombro della chela e quota di presa al robot (20/10).** Su richiesta del robotista il PLC passa due misure in più, %QW652 `Gripper_ClawWidth_mm` e %QW654 `Part_ZPick_mm`, lette dalla vista `COORDINATES_BLOW_MC`.
+1. La larghezza della chela è `GRIPPER.CLAW_LENGTH` del lato 1 della pinza dell'ordine.
+2. La quota di presa è solo quella del grezzo (`PIECE.Z_PICK`); quella del finito non si passa.
+3. Il lato 2 al robot non serve.
+4. In cella gira `ui-v3` (build.txt del 20/10); gli export di `plc/` si committano su `ui-lifting`.
+
+Il come (vista, ordine di deploy, test di campo): APPUNTI-CELLA.md, «Ingombro della chela e quota di presa».
+
 **Consegna 35: guardie del PLC (7/10).** Dalla seconda simulazione del 7/10.
 1. **I timeout non contano in HOLD.** I timeout di swap (943) e del cassetto (19003) si fermano in HOLD: l'HOLD è una pausa, e CONTINUA riprende.
 2. **Il RESET non abbandona un ciclo HAAS in corso a porta chiusa.** Con la macchina in lavorazione (FB204 al 95, porta chiusa) FB204 aspetta il fine ciclo invece di tornare a 0 e rileggere l'ordine col pezzo in lavorazione. Con la porta aperta va a 0 come prima.
