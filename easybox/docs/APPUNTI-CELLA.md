@@ -144,6 +144,26 @@ Nel working tree di cella ci sono file non tracciati che il `.gitignore` non esc
    - stato del robot che si aggiorna;
    - `DB_executeQuery.readyForNextQuery` TRUE.
 
+## [ ] 2026-10-26 — Pallet 2 (casella 11): punto di presa azzerato
+
+**Sintomo.** Prelievo del pallet 2 dalla casella 11 con Y 1001,919 mm. Il gemello, il pallet 9 in casella 10, va a 568,919: col passo di 410 mm la casella 11 deve dare 978,919.
+
+**Causa** (verificata sul database il 26/10). `PALLET.Y_HandlePoint` = 23000 e `Z_HandlePoint` = 25000 sul pallet 2, 0 sul 9. `COORDINATES_FOR_PALLET_WAREHOUSE` e `COORDINATES_MC_FOR_PALLET` calcolano:
+- Y = `POSITION.Y` + `PALLET.Y`/2 + `Y_CORR` + `Y_HandlePoint`, come dice il commento in `plc/FB/FB_Robot.scl:3088`. Il 26/10 `Y_CORR` era 0 su tutti e due i pallet: il termine `Y_CORR` non è stato misurato;
+- Z = `POSITION.Z` + `Z_HandlePoint`. `Z_CORR` era 0: non misurato.
+
+Differenze vista meno `POSITION` misurate: Y 198000 sul 9 e 221000 sul 2, Z 0 e 25000; le stesse su MC_1, MC_1_pallet e MC_2. X e Z non hanno termini sulle dimensioni del pallet: col pallet 9 le differenze in X e in Z sono 0, pur con X = 396000 e Z = 38500. Il 780 che ci si aspettava era `POSITION.Y` grezzo della casella (780919), non la quota del robot.
+
+`COORDINATES_FOR_PALLET_PLACE`, la vista del deposito comandato dal pannello (`MCRequested = 0`), fa lo stesso calcolo secondo `plc/FB/FB_Robot.scl:3082-3093`, verificato il 16/9 sul posto 10 col pallet 9. Il 26/10 non è stata misurata.
+
+**Intervento del 26/10 alle 18:53**, a cella in HOLD: `UPDATE PALLET SET Y_HandlePoint = 0, Z_HandlePoint = 0 WHERE ID = 2`, con guardia sui valori vecchi (0/23000/25000). Dopo: casella 11 a Y 978919, Z 842359; in macchina il pallet 2 ha le stesse quote del 9.
+
+**Rollback:** `Y_HandlePoint = 23000`, `Z_HandlePoint = 25000` sul pallet 2.
+
+Dario: i pallet sono tutti identici sul punto di presa. Perché dal pannello non si vedeva: LAVORI-IN-CODA.md, «Le misure del pallet spostano il robot e il pannello non le mostra tutte».
+
+La voce resta [ ] finché Dario non conferma il primo prelievo dalla casella 11 e il primo deposito in macchina del pallet 2.
+
 ## [ ] 2026-10-20 — Ingombro della chela e quota di presa al robot: vista `COORDINATES_BLOW_MC` a sette colonne **prima** del PLC
 
 **Cosa.** Su richiesta del robotista il PLC passa due misure in più, negli stessi tre punti e nello stesso modo delle misure del pezzo (Part_Robot_to_MC 37-39, Part_MC_to_Robot 37-39, scambio 1416-1418), in mm interi troncati:

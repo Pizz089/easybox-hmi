@@ -5,6 +5,17 @@
 > stato corretto sul momento. Gli interventi manuali da fare in impianto
 > stanno invece in `APPUNTI-CELLA.md`.
 
+## [ ] Le misure del pallet spostano il robot e il pannello non le mostra tutte
+
+**Cosa.**
+- Il form Pallet edita X, Y, Z e `*_CORR` (`easybox/HMI/src/views/conf/Pallet/Pallet.vue`, `editedFields` riga 135; `easybox/serverDati/CONF/Pallet.js`, `updatePallet` riga 99 e `insertPallet` riga 152), non `X/Y/Z_HandlePoint`. Un punto di presa scritto a mano nel database resta invisibile, ed è quello che ha spostato il pallet 2 di 23 mm in Y e 25 mm in Z (APPUNTI-CELLA.md, voce del 26/10).
+- Le quote del pallet al robot: Y = `POSITION.Y` + `PALLET.Y`/2 + `Y_CORR` + `Y_HandlePoint` (commento in `plc/FB/FB_Robot.scl:3088`), Z = `POSITION.Z` + `Z_HandlePoint`; X e Z non hanno termini sulle dimensioni del pallet. Misurate il 26/10 su `COORDINATES_FOR_PALLET_WAREHOUSE` (caselle) e `COORDINATES_MC_FOR_PALLET` (macchina); `Y_CORR` e `Z_CORR` erano 0, quindi quei termini non sono misurati. `COORDINATES_FOR_PALLET_PLACE` (deposito comandato dal pannello, `MCRequested = 0`) fa lo stesso calcolo secondo `plc/FB/FB_Robot.scl:3082-3093`, verificato il 16/9 sul posto 10 col pallet 9; il 26/10 non è stata misurata.
+- Le `POSITION` delle caselle `WPALLET` sono salvate già meno `PALLET.Y`/2 di un pallet da 396 mm (casella 10: 370919 + 198000 = 568919). Un pallet con una Y diversa, o una Y cambiata dal form, cade spostato in tutte le caselle e in macchina.
+
+**Direzione.** Nel form Pallet, punti di presa in sola lettura e, per ogni casella e per la macchina, le quote risultanti dalle tre viste (`COORDINATES_FOR_PALLET_WAREHOUSE`, `COORDINATES_FOR_PALLET_PLACE`, `COORDINATES_MC_FOR_PALLET`); avviso quando un pallet ha Y o punti di presa diversi dagli altri.
+
+**Trovato il** 2026-10-26, prelievo del pallet 2 dalla casella 11.
+
 ## [ ] Commenti non allineati al codice: Z di deposito in macchina e «cinque variabili» in FB_Robot
 
 **Cosa.**
