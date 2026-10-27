@@ -144,7 +144,7 @@ Nel working tree di cella ci sono file non tracciati che il `.gitignore` non esc
    - stato del robot che si aggiorna;
    - `DB_executeQuery.readyForNextQuery` TRUE.
 
-## [ ] 2026-10-26 — Pallet 2 (casella 11): punto di presa azzerato
+## [x] 2026-10-26 — Pallet 2 (casella 11): punto di presa azzerato
 
 **Sintomo.** Prelievo del pallet 2 dalla casella 11 con Y 1001,919 mm. Il gemello, il pallet 9 in casella 10, va a 568,919: col passo di 410 mm la casella 11 deve dare 978,919.
 
@@ -154,7 +154,7 @@ Nel working tree di cella ci sono file non tracciati che il `.gitignore` non esc
 
 Differenze vista meno `POSITION` misurate: Y 198000 sul 9 e 221000 sul 2, Z 0 e 25000; le stesse su MC_1, MC_1_pallet e MC_2. X e Z non hanno termini sulle dimensioni del pallet: col pallet 9 le differenze in X e in Z sono 0, pur con X = 396000 e Z = 38500. Il 780 che ci si aspettava era `POSITION.Y` grezzo della casella (780919), non la quota del robot.
 
-`COORDINATES_FOR_PALLET_PLACE`, la vista del deposito comandato dal pannello (`MCRequested = 0`), fa lo stesso calcolo secondo `plc/FB/FB_Robot.scl:3082-3093`, verificato il 16/9 sul posto 10 col pallet 9. Il 26/10 non è stata misurata.
+`COORDINATES_FOR_PALLET_PLACE`, la vista del deposito comandato dal pannello (`MCRequested = 0`), fa lo stesso calcolo secondo `plc/FB/FB_Robot.scl:3082-3093`, verificato il 16/9 sul posto 10 col pallet 9. Il 27/10, dopo l'intervento, dà le stesse quote delle altre due viste: pallet 9 in casella 10 Y 568919, Z 842359; pallet 2 in casella 11 Y 978919, Z 842359.
 
 **Intervento del 26/10 alle 18:53**, a cella in HOLD: `UPDATE PALLET SET Y_HandlePoint = 0, Z_HandlePoint = 0 WHERE ID = 2`, con guardia sui valori vecchi (0/23000/25000). Dopo: casella 11 a Y 978919, Z 842359; in macchina il pallet 2 ha le stesse quote del 9.
 
@@ -162,7 +162,7 @@ Differenze vista meno `POSITION` misurate: Y 198000 sul 9 e 221000 sul 2, Z 0 e 
 
 Dario: i pallet sono tutti identici sul punto di presa. Perché dal pannello non si vedeva: LAVORI-IN-CODA.md, «Le misure del pallet spostano il robot e il pannello non le mostra tutte».
 
-La voce resta [ ] finché Dario non conferma il primo prelievo dalla casella 11 e il primo deposito in macchina del pallet 2.
+Primo prelievo dalla casella 11 e primo deposito in macchina del pallet 2, a velocità ridotta: andati bene (Dario).
 
 ## [ ] 2026-10-20 — Ingombro della chela e quota di presa al robot: vista `COORDINATES_BLOW_MC` a sette colonne **prima** del PLC
 
