@@ -3135,6 +3135,10 @@ BEGIN
 	                        "DB_RobotMission".Object_Type := "Pallet";
 	                        "DB_RobotMission".Unit_code := "WarehousePallet";
 	                        "DB_RobotMission".Gripper_code := #GripperRequested;
+	                        // (29/10) il pallet sta sempre sul lato 1, come al 30 di Pallet_TRAY_to_Robot.
+	                        // Senza questa riga il lato restava quello della missione prima, o 0 dopo
+	                        // Reset_or_log_MissionData, e il 50 faceva leggere Gripper_ID[0]: CPU in STOP.
+	                        "DB_RobotMission".Gripper_Side := 1;
 	                        //"DB_RobotMission".Option
 	                        
 	                        "DB_executeQuery".readyForNextQuery := TRUE;
@@ -3819,7 +3823,13 @@ BEGIN
 	                        "DB_RobotMission".Command := 0;  ///\\\
 	                        
 	                        #Dispatcher["updatePartOnRobot"] := 10 + DINT_TO_INT("EMPTY");
-	                        #GripperOccuped["DB_RobotMission".Gripper_Side] := FALSE;
+	                        // (29/10) lato confrontato, non usato come indice: con Gripper_Side 0
+	                        // (STOP->RUN) GripperOccuped[0] e' fuori da [1..2], errore di accesso.
+	                        IF "DB_RobotMission".Gripper_Side = 2 THEN
+	                            #GripperOccuped[2] := FALSE;
+	                        ELSE
+	                            #GripperOccuped[1] := FALSE;
+	                        END_IF;
 	                        
 	                        #Dispatcher["_Part_Robot_to_TRAY"] := 60;
 	                    END_IF;
@@ -5153,66 +5163,80 @@ BEGIN
 	                    IF "SqlCommands".sqlCommands[0] = '' THEN
 	                        //la attivo con dispatcher=10+statoPezzo (RAW,FINISHED)
 	                        (* Modificato il 16/09/2025
-	                        IF #GripperOccuped[1] THEN
-	                            #queryTemp := CONCAT(IN1 := 'UPDATE GRIPPER SET STATUS=',
-	                                                 IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#Dispatcher["updatePartOnRobot"] - 10),
-	                                                 IN3 := ' WHERE ID=',
-	                                                 IN4 := "INT_TO_STRING_WITHOUT_SIGN"(#Gripper_ID[1]));
-	                        ELSE
-	                            #queryTemp := CONCAT(IN1 := 'UPDATE GRIPPER SET STATUS=2 WHERE ID=',    //EMPTY
-	                                                 IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#Gripper_ID[1]));
+	                            IF #GripperOccuped[1] THEN
+	                                #queryTemp := CONCAT(IN1 := 'UPDATE GRIPPER SET STATUS=',
+	                                                     IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#Dispatcher["updatePartOnRobot"] - 10),
+	                                                     IN3 := ' WHERE ID=',
+	                                                     IN4 := "INT_TO_STRING_WITHOUT_SIGN"(#Gripper_ID[1]));
+	                            ELSE
+	                                #queryTemp := CONCAT(IN1 := 'UPDATE GRIPPER SET STATUS=2 WHERE ID=',    //EMPTY
+	                                                     IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#Gripper_ID[1]));
+	                            END_IF;
+	                            *)
+	                            // (29/10) LATO CONFRONTATO, NON USATO COME INDICE. Gripper_Side vale 0
+	                            // dopo STOP->RUN (DB_RobotMission non ritentivo) e dopo
+	                            // Reset_or_log_MissionData; Pallet_Robot_to_TRAY non lo scriveva.
+	                            // Gripper_ID[0] e' fuori da [1..2]: errore di accesso in lettura e
+	                            // CPU in STOP (manca OB121), visto il 29/10. Lato 2 solo se dichiarato,
+	                            // altrimenti lato 1, come il ramo prima del 16/9 e come il 50 di
+	                            // Pallet_Robot_to_MC.
+	                            IF "DB_RobotMission".Gripper_Side = 2 THEN
+	                                #queryTemp := CONCAT(IN1 := 'UPDATE GRIPPER SET STATUS=',
+	                                                     IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#Dispatcher["updatePartOnRobot"] - 10),
+	                                                     IN3 := ' WHERE ID=',
+	                                                     IN4 := "INT_TO_STRING_WITHOUT_SIGN"(#Gripper_ID[2]));
+	                            ELSE
+	                                #queryTemp := CONCAT(IN1 := 'UPDATE GRIPPER SET STATUS=',
+	                                                     IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#Dispatcher["updatePartOnRobot"] - 10),
+	                                                     IN3 := ' WHERE ID=',
+	                                                     IN4 := "INT_TO_STRING_WITHOUT_SIGN"(#Gripper_ID[1]));
+	                            END_IF;
+	                            
+	                            #queryStartExecution := true;
+	                            #Dispatcher["updatePartOnRobot"] := 40;
 	                        END_IF;
-	                        *)
-	                        #queryTemp := CONCAT(IN1 := 'UPDATE GRIPPER SET STATUS=',
-	                                             IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#Dispatcher["updatePartOnRobot"] - 10),
-	                                             IN3 := ' WHERE ID=',
-	                                             IN4 := "INT_TO_STRING_WITHOUT_SIGN"(#Gripper_ID["DB_RobotMission".Gripper_Side]));
 	                        
-	                        #queryStartExecution := true;
-	                        #Dispatcher["updatePartOnRobot"] := 40;
-	                    END_IF;
-	                    
-	                20..25: // Update DB ------------ *** START HERE *** (change status gripper 2)
-	                    IF "SqlCommands".sqlCommands[0] = '' THEN
-	                        //la attivo con dispatcher=20+statoPezzo (RAW,FINISHED)
-	                        IF #GripperOccuped[2] THEN
-	                            #queryTemp := CONCAT(IN1 := 'UPDATE GRIPPER SET STATUS=',
-	                                                 IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#Dispatcher["updatePartOnRobot"] - 20),
-	                                                 IN3 := ' WHERE ID=',
-	                                                 IN4 := "INT_TO_STRING_WITHOUT_SIGN"(#Gripper_ID[2]));
-	                        ELSE
-	                            #queryTemp := CONCAT(IN1 := 'UPDATE GRIPPER SET STATUS=2 WHERE ID=',    //EMPTY
-	                                                 IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#Gripper_ID[2]));
+	                    20..25: // Update DB ------------ *** START HERE *** (change status gripper 2)
+	                        IF "SqlCommands".sqlCommands[0] = '' THEN
+	                            //la attivo con dispatcher=20+statoPezzo (RAW,FINISHED)
+	                            IF #GripperOccuped[2] THEN
+	                                #queryTemp := CONCAT(IN1 := 'UPDATE GRIPPER SET STATUS=',
+	                                                     IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#Dispatcher["updatePartOnRobot"] - 20),
+	                                                     IN3 := ' WHERE ID=',
+	                                                     IN4 := "INT_TO_STRING_WITHOUT_SIGN"(#Gripper_ID[2]));
+	                            ELSE
+	                                #queryTemp := CONCAT(IN1 := 'UPDATE GRIPPER SET STATUS=2 WHERE ID=',    //EMPTY
+	                                                     IN2 := "INT_TO_STRING_WITHOUT_SIGN"(#Gripper_ID[2]));
+	                            END_IF;
+	                            
+	                            #queryStartExecution := true;
+	                            #Dispatcher["updatePartOnRobot"] := 40;
 	                        END_IF;
 	                        
-	                        #queryStartExecution := true;
-	                        #Dispatcher["updatePartOnRobot"] := 40;
-	                    END_IF;
-	                    
-	                40:  // execute query
-	                    IF NOT "DB_executeQuery".readyForNextQuery THEN
-	                        #Dispatcher["updatePartOnRobot"] := 50;
-	                    END_IF;
-	                    
-	                50:  // wait result
-	                    IF "DB_executeQuery".dataReady THEN
-	                        "DB_executeQuery".readyForNextQuery := TRUE;
+	                    40:  // execute query
+	                        IF NOT "DB_executeQuery".readyForNextQuery THEN
+	                            #Dispatcher["updatePartOnRobot"] := 50;
+	                        END_IF;
 	                        
-	                        #Dispatcher["updatePartOnRobot"] := 55;
-	                    END_IF;
-	                    
-	                55:// wait for reset query
-	                    IF "DB_executeQuery".Dispatch["_master"] = 0 AND "SqlCommands".sqlCommands[0] = '' THEN
-	                        "FC_MQTT"(insert := true,
-	                                  send := false,
-	                                  topic := 'FROM_PLANT/GRIPPER/ROBOT',
-	                                  payload := STRING_TO_WSTRING("INT_TO_STRING_WITHOUT_SIGN"(#Gripper_ID[1])));
+	                    50:  // wait result
+	                        IF "DB_executeQuery".dataReady THEN
+	                            "DB_executeQuery".readyForNextQuery := TRUE;
+	                            
+	                            #Dispatcher["updatePartOnRobot"] := 55;
+	                        END_IF;
 	                        
-	                        #Dispatcher["updatePartOnRobot"] := 0;
-	                    END_IF;
-	                    
-	            END_CASE;
-	        END_REGION
+	                    55:// wait for reset query
+	                        IF "DB_executeQuery".Dispatch["_master"] = 0 AND "SqlCommands".sqlCommands[0] = '' THEN
+	                            "FC_MQTT"(insert := true,
+	                                      send := false,
+	                                      topic := 'FROM_PLANT/GRIPPER/ROBOT',
+	                                      payload := STRING_TO_WSTRING("INT_TO_STRING_WITHOUT_SIGN"(#Gripper_ID[1])));
+	                            
+	                            #Dispatcher["updatePartOnRobot"] := 0;
+	                        END_IF;
+	                        
+	                END_CASE;
+	            END_REGION
 	        
 	        REGION updatePalletOnTRAY
 	            CASE #Dispatcher["updatePalletOnTRAY"] OF
