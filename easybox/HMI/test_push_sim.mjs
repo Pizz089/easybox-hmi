@@ -377,8 +377,11 @@ check(vm.zPushPlaceholder === 'pushSim.zPushEmpty mm=10', 'il segnaposto dice il
 	check(it.pushSim.zPushEmpty === 'vuoto = {mm}' && it.pushSim.zPushPreviewSame.includes('alla stessa quota del deposito'),
 		'   corto, per non restare tagliato nel campo da 7rem; "come il deposito" lo dice il riscontro sotto');
 	const tpl = readFileSync(new URL('./src/views/sim/PushSim.vue', import.meta.url), 'utf8');
-	check(/<span v-if="canEdit" class="sim-unit">mm<\/span>/.test(tpl) && /zPushPlaceholder \+ " mm" : mmText\(sim\[f\.key\]\)/.test(tpl),
-		"   in sola lettura l'unita' una volta sola (mmText la scrive gia': prima \"0.3 mm mm\")");
+	// (16/11) il valore in sola lettura sta in fieldText: si prova il testo vero
+	const zc = vm.sim.zClaw; vm.sim.zClaw = 0.3;
+	check(/<span v-if="canEdit" class="sim-unit">mm<\/span>/.test(tpl) && vm.fieldText('zPush') === 'pushSim.zPushEmpty mm=10 mm' && vm.fieldText('zClaw') === '0.3 mm',
+		"   in sola lettura l'unita' una volta sola (fieldText la scrive gia': prima \"0.3 mm mm\")");
+	vm.sim.zClaw = zc;
 	// (v3 fase D-bis) il Salva e' un UiButton: lo stato spento lo disegna lui
 	const uiBtn = readFileSync(new URL('./src/components/ui/UiButton.vue', import.meta.url), 'utf8');
 	check(/<UiButton[^>]*class="sim-save"\s+:disabled="saving \|\| \(f\.key === 'zPush' && !!zPushError\)"/.test(tpl) && /\.ui-btn:disabled \{/.test(uiBtn),
@@ -442,6 +445,110 @@ check(/viewRow\.Z_PUSH_DROP != null/.test(src) && /pushSim\.qZDrop/.test(src), '
 const last = readFileSync('src/views/workOrder/lastData.vue', 'utf8');
 check(/zPushDrop\(\{ zPush: this\.pieceZPush, zPick: this\.pieceZPick \}\)/.test(last) && /row\.Z_PUSH/.test(last) && /wizard\.lastData\.pushZ/.test(last),
 	'lastData: accanto alla corsa, dove spinge la chela e quanto sotto il deposito');
+
+console.log('\n10) appoggio e compensazione al CENTESIMO (16/11)');
+// La catena dati porta gia' i micron (DB, setStop, vista, FB_Robot): il limite
+// era il pannello, col passo a 0.1. Si salva quantizzato a 10 micron in due
+// passi (micron interi, poi la decina): col passo unico 1.005 darebbe 1000.
+{
+	const tplC = src.split('<script')[0];
+	const itC = JSON.parse(readFileSync('src/locales/it.json', 'utf8'));
+	// $t col testo vero di it.json, per leggere la conferma come la legge l'operatore
+	const vero = (k, p) => { let s = k.split('.').reduce((o, x) => o && o[x], itC); for (const [a, b] of Object.entries(p || {})) s = s.split('{' + a + '}').join(b); return s; };
+	const riga = (um) => ({ PIECE_ID: 1099, STOP_BEYOND_CLAW: um });
+
+	vm = await page({ level: 2, pieceID: 1099, stopRow: riga(25000) });
+	const passi = Object.fromEntries(vm.fields.map(f => [f.key, f.step || '0.1']));
+	check(passi.stopBeyond === '0.01' && passi.compPush === '0.01'
+		&& Object.entries(passi).filter(([k]) => k !== 'stopBeyond' && k !== 'compPush').every(([, s]) => s === '0.1'),
+		'passo 0.01 solo su appoggio e compensazione, gli altri ' + (Object.keys(passi).length - 2) + ' campi restano a 0.1');
+	check(/:step="f\.step \|\| '0\.1'"/.test(tplC) && !/\sstep="0\.1"/.test(tplC), '   il passo viene dalla riga di fields, non e\' piu\' comune a tutti');
+
+	for (const [mm, um] of [[52.93, 52930], [52.935, 52940], ['52.935', 52940], [1.005, 1010], [0, 0]]) {
+		vm = await page({ level: 2, pieceID: 1099, stopRow: riga(25000) });
+		calls.length = 0;
+		vm.sim.stopBeyond = mm;
+		vm.askSave('stopBeyond');
+		vm.doSave(); await tick(); await tick();
+		const ws = calls.filter(u => /setStop|deleteStop/.test(u));
+		check(ws.length === 1 && new RegExp('setStop\\?VICE_ID=1&PIECE_ID=1099&STOP_BEYOND_CLAW=' + um + '$').test(ws[0]),
+			'appoggio ' + JSON.stringify(mm) + ' -> ' + (ws[0] || 'nessuna scrittura'));
+	}
+
+	vm = await page({ level: 2, pieceID: 1099, stopRow: riga(52930) });
+	check(vm.sim.stopBeyond === 52.93 && vm.fieldChanged('stopBeyond') === false && vm.diverged === false,
+		'DB 52930, campo 52.93: fieldChanged falso, nessun pulsante Salva, nessuna divergenza');
+	vm.sim.stopBeyond = 52.931;
+	check(vm.fieldChanged('stopBeyond') === false && vm.diverged === false, '   52.931 si salverebbe 52930 come a DB: niente Salva e niente divergenza');
+	vm.sim.stopBeyond = 52.94;
+	check(vm.fieldChanged('stopBeyond') === true && vm.diverged === true, '   52.94: il Salva compare');
+	vm.$t = vero; vm.t = vero;
+	vm.askSave('stopBeyond');
+	check(!!vm.confirm && /da 52\.93 mm a 52\.94 mm\./.test(vm.confirm.text), 'conferma 52930 -> 52940: «' + (vm.confirm && vm.confirm.text) + '»');
+
+	for (const [um, txt] of [[52900, '52.90'], [52935, '52.94'], [0, '0.00']]) {
+		vm = await page({ level: 0, pieceID: 1099, stopRow: riga(um) });
+		check(vm.fieldText('stopBeyond') === txt + ' mm', 'sola lettura, DB ' + um + ' -> «' + vm.fieldText('stopBeyond') + '»');
+	}
+	check(/<span v-else class="sim-readonly">\{\{ fieldText\(f\.key\) \}\}<\/span>/.test(tplC), '   ed e\' il testo che mostra il template');
+	check(vm.fieldText('viceClaw') === '150 mm' && vm.fieldText('pieceLen') === '180 mm' && vm.fieldText('toolClaw') === '30 mm',
+		'   le altre misure restano al decimo (150, 180, 30 mm)');
+
+	vm = await page({ level: 0, pieceID: 1099, stopRow: riga(52900) });
+	check(vm.mm2(vm.stopDeclared) === '52.90' && /\{\{ mm2\(stopDeclared\) \}\}/.test(tplC) && /restsOnDeclared", \{ mm: mm2\(stopDeclared\) \}/.test(tplC),
+		'etichetta del disegno e frase «appoggia ... oltre la ganascia» a due decimali (52.90)');
+	check(/\{\{ mm\(g\.pieceLen\) \}\}/.test(tplC) && /\{\{ mm\(g\.pieceWid\) \}\}/.test(tplC), '   le misure del pezzo nel disegno restano al decimo');
+
+	// quote: X arrivo e corsa seguono l'appoggio, X spinta no (pushQuotes)
+	vm = await page({ level: 2, pieceID: 1099, stopRow: riga(52930) });
+	const qt = () => ({ place: vm.mmText2(vm.quotes.xPlaceMm), push: vm.mmText2(vm.quotes.xPushMm), stop: vm.mmText2(vm.quotes.xStopMm), travel: vm.mmText2(vm.quotes.travelMm) });
+	const qa = qt();
+	vm.sim.stopBeyond = 52.94;
+	const qb = qt();
+	const passo = (a, b) => Math.round((parseFloat(b) - parseFloat(a)) * 100);
+	check(vm.ok && passo(qa.stop, qb.stop) === 1 && passo(qa.travel, qb.travel) === 1 && qa.push === qb.push && qa.place === qb.place,
+		'appoggio 52.93 -> 52.94: X arrivo ' + qa.stop + ' -> ' + qb.stop + ', corsa ' + qa.travel + ' -> ' + qb.travel + ', X spinta ferma a ' + qb.push);
+	check(['xPlaceMm', 'xPushMm', 'xStopMm', 'travelMm'].every(k => tplC.includes('mmText2(quotes.' + k + ')')) && !/mmText\(quotes\./.test(tplC),
+		'   il riquadro quote mostra i due decimali (deposito, spinta, arrivo, corsa)');
+	vm.sim.stopBeyond = 52.931;
+	check(vm.mmText2(vm.quotes.xStopMm) === qa.stop, '   il disegno usa il valore che si salverebbe: 52.931 vale 52930, X arrivo ' + vm.mmText2(vm.quotes.xStopMm));
+	check(['X_PUSH', 'X_STOP', 'Z_PUSH_DROP'].every(k => tplC.includes('mmText2(viewRow.' + k + ' / 1000)')) && !/mmText\(viewRow\./.test(tplC)
+		&& vm.mmText2(-121084 / 1000) === '-121.08 mm',
+		'quote lette dalla vista a due decimali (-121084 -> -121.08 mm)');
+
+	// compensazione: stesse regole
+	const rigaC = { PIECE_ID: 1029, STOP_BEYOND_CLAW: 0, COMP_PUSH: null, Z_PUSH: null };
+	for (const [mm, um] of [[0.33, 330], [0.335, 340], [1.005, 1010]]) {
+		vm = await page({ level: 2, pieceID: 1029, stopRow: rigaC });
+		calls.length = 0;
+		vm.sim.compPush = mm;
+		vm.askSave('compPush');
+		vm.doSave(); await tick(); await tick();
+		const wc = calls.filter(u => /setCompPush/.test(u));
+		check(wc.length === 1 && new RegExp('VICE_ID=1&PIECE_ID=1029&COMP_PUSH=' + um + '$').test(wc[0]), 'compensazione ' + mm + ' -> ' + (wc[0] || 'nessuna scrittura'));
+	}
+	rigaC.COMP_PUSH = 330;
+	vm = await page({ level: 2, pieceID: 1029, stopRow: rigaC });
+	check(vm.sim.compPush === 0.33 && !vm.fieldChanged('compPush') && vm.fieldText('compPush') === '0.33 mm',
+		'compensazione da DB 330: campo 0.33, niente Salva, in sola lettura «0.33 mm»');
+	vm.sim.compPush = 0.334;
+	check(!vm.fieldChanged('compPush'), '   0.334 si salverebbe 330: niente Salva');
+	vm.sim.compPush = 0.34;
+	vm.$t = vero; vm.t = vero;
+	vm.askSave('compPush');
+	check(!!vm.confirm && /da 0\.33 mm a 0\.34 mm\./.test(vm.confirm.text), '   conferma: «' + (vm.confirm && vm.confirm.text) + '»');
+	check(vm.mm2(vm.compPreview.comp) === '0.34' && /comp: mm2\(compPreview\.comp\)/.test(tplC),
+		'   riscontro della corsa: «' + vero('pushSim.compTravel', { travel: vm.compPreview.travelMm, comp: vm.mm2(vm.compPreview.comp) }) + '»');
+	rigaC.COMP_PUSH = null;
+	vm = await page({ level: 2, pieceID: 1029, stopRow: rigaC });
+	calls.length = 0;
+	vm.sim.compPush = 0.3; vm.askSave('compPush'); vm.doSave(); await tick(); await tick();
+	vm.sim.compPush = ''; vm.askSave('compPush');
+	check(/pushSim\.confirmCompClear/.test(vm.confirm.text), '   svuotare resta «nessuna compensazione»');
+	vm.doSave(); await tick(); await tick();
+	check(calls.filter(u => /setCompPush/.test(u)).some(u => /COMP_PUSH=300$/.test(u)) && calls.filter(u => /setCompPush/.test(u)).some(u => /COMP_PUSH=$/.test(u)),
+		'   0.3 -> COMP_PUSH=300, vuoto -> COMP_PUSH vuoto (NULL a DB)');
+}
 
 await server.close();
 console.log('\n' + (failed ? failed + ' CHECK FALLITI' : 'TUTTI I CHECK PASSATI'));

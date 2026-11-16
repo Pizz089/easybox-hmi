@@ -117,13 +117,15 @@
                  segnaposto dice quanto ("vuoto = 10", poi l'unita'); che e'
                  la quota del deposito lo dice la riga di riscontro sotto: la
                  frase intera in un campo da 7rem resterebbe tagliata.
-                 Massimo = quota di presa del pezzo -->
+                 Massimo = quota di presa del pezzo.
+                 (16/11) il passo viene dalla riga di fields: 0.01 per appoggio
+                 e compensazione, 0.1 per tutti gli altri -->
             <input
               v-if="canEdit"
               :id="'sim-' + f.key"
               class="sim-input"
               type="number"
-              step="0.1"
+              :step="f.step || '0.1'"
               min="0"
               :max="f.key === 'zPush' && pieceZPick > 0 ? pieceZPick / 1000 : null"
               :placeholder="f.key === 'zPush' ? zPushPlaceholder : null"
@@ -131,7 +133,7 @@
               autocomplete="off"
               v-model="sim[f.key]"
             />
-            <span v-else class="sim-readonly">{{ f.key === 'zPush' && toMicron(sim[f.key]) === null && zPushPlaceholder ? zPushPlaceholder + " mm" : mmText(sim[f.key]) }}</span>
+            <span v-else class="sim-readonly">{{ fieldText(f.key) }}</span>
             <!-- in sola lettura l'unita' la scrive gia' mmText: qui solo
                  accanto al campo (prima usciva "0.3 mm mm") -->
             <span v-if="canEdit" class="sim-unit">mm</span>
@@ -151,12 +153,14 @@
         </div>
 
         <!-- (comp-push) la CORSA accanto al campo: sull'ordine in produzione
-             e' 3,3 mm, e senza questo riscontro una compensazione da qualche
-             decimo si dichiara alla cieca. La corsa NON la tocca: quando c'e'
-             una compensazione si dice anche quanto prima si ferma il pezzo. -->
+             e' 3,3 mm, e senza questo riscontro una compensazione di qualche
+             decimo o di qualche centesimo (dal 16/11 si regola al centesimo)
+             si dichiara alla cieca. La corsa NON la tocca: quando c'e' una
+             compensazione si dice anche quanto prima si ferma il pezzo, a due
+             decimali come il campo. -->
         <p v-if="compPreview.travelMm !== null" class="sim-hint">
           {{ compPreview.comp
-             ? t("pushSim.compTravel", { travel: compPreview.travelMm, comp: compPreview.comp / 1000 })
+             ? t("pushSim.compTravel", { travel: compPreview.travelMm, comp: mm2(compPreview.comp) })
              : t("pushSim.compTravelNone", { travel: compPreview.travelMm }) }}
         </p>
 
@@ -342,7 +346,8 @@
             <text class="lbl-missing" x="0" y="0" :font-size="g.font" text-anchor="middle">?</text>
           </g>
 
-          <!-- quota della distanza dichiarata -->
+          <!-- quota della distanza dichiarata; (16/11) a due decimali, come
+               il campo da cui viene -->
           <g v-if="!restsOnClaw && stopDeclared !== null">
             <line
               class="dim"
@@ -353,7 +358,7 @@
               :stroke-width="g.line"
             />
             <g :transform="'translate(' + (g.claw / 2 + stopX) / 2 + ' ' + (g.viceY / 2 + g.line * 5) + ') scale(-1 1)'">
-              <text class="dim-lbl" x="0" y="0" :font-size="g.font" text-anchor="middle">{{ mm(stopDeclared) }}</text>
+              <text class="dim-lbl" x="0" y="0" :font-size="g.font" text-anchor="middle">{{ mm2(stopDeclared) }}</text>
             </g>
           </g>
 
@@ -402,17 +407,19 @@
       <aside class="sim-quotes sim-box">
         <h3 class="section-label">{{ t("pushSim.quotes") }}</h3>
 
+        <!-- (16/11) quote a due decimali: con l'appoggio al centesimo, al
+             decimo X arrivo e corsa resterebbero ferme mentre il valore cambia -->
         <div class="quote-row" :class="{ 'quote-na': !ok }">
-          <span>{{ t("pushSim.qPlace") }}</span><strong>{{ mmText(quotes.xPlaceMm) }}</strong>
+          <span>{{ t("pushSim.qPlace") }}</span><strong>{{ mmText2(quotes.xPlaceMm) }}</strong>
         </div>
         <div class="quote-row" :class="{ 'quote-na': !ok }">
-          <span>{{ t("pushSim.qPush") }}</span><strong>{{ mmText(quotes.xPushMm) }}</strong>
+          <span>{{ t("pushSim.qPush") }}</span><strong>{{ mmText2(quotes.xPushMm) }}</strong>
         </div>
         <div class="quote-row" :class="{ 'quote-na': !ok }">
-          <span>{{ t("pushSim.qStop") }}</span><strong>{{ mmText(quotes.xStopMm) }}</strong>
+          <span>{{ t("pushSim.qStop") }}</span><strong>{{ mmText2(quotes.xStopMm) }}</strong>
         </div>
         <div class="quote-row quote-travel" :class="{ 'quote-na': !ok }">
-          <span>{{ t("pushSim.qTravel") }}</span><strong>{{ mmText(quotes.travelMm) }}</strong>
+          <span>{{ t("pushSim.qTravel") }}</span><strong>{{ mmText2(quotes.travelMm) }}</strong>
         </div>
 
         <h3 class="section-label">{{ t("pushSim.outcome") }}</h3>
@@ -423,7 +430,7 @@
         </p>
         <p class="sim-reason">{{ t("pushSim.reason." + check.status, reasonArgs) }}</p>
         <p v-if="ok" class="sim-rest">
-          {{ restsOnClaw ? t("pushSim.restsOnClaw") : t("pushSim.restsOnDeclared", { mm: mm(stopDeclared) }) }}
+          {{ restsOnClaw ? t("pushSim.restsOnClaw") : t("pushSim.restsOnDeclared", { mm: mm2(stopDeclared) }) }}
         </p>
         <p v-if="!pieceHasPush && sel.pieceID" class="sim-hint">{{ t("pushSim.pushOff") }}</p>
 
@@ -436,11 +443,12 @@
           <h3 class="section-label">{{ t("pushSim.fromView") }}</h3>
           <p v-if="diverged" class="sim-hint">{{ t("pushSim.viewStale") }}</p>
           <template v-else>
+            <!-- (16/11) a due decimali come le quote della simulazione -->
             <div class="quote-row"><span>{{ t("pushSim.qOrder") }}</span><strong>{{ viewRow.ORDER_ID }}</strong></div>
-            <div class="quote-row"><span>{{ t("pushSim.qPush") }}</span><strong>{{ mmText(viewRow.X_PUSH / 1000) }}</strong></div>
-            <div class="quote-row"><span>{{ t("pushSim.qStop") }}</span><strong>{{ mmText(viewRow.X_STOP / 1000) }}</strong></div>
+            <div class="quote-row"><span>{{ t("pushSim.qPush") }}</span><strong>{{ mmText2(viewRow.X_PUSH / 1000) }}</strong></div>
+            <div class="quote-row"><span>{{ t("pushSim.qStop") }}</span><strong>{{ mmText2(viewRow.X_STOP / 1000) }}</strong></div>
             <!-- (6/10) quanto il PLC sottrae alla Z di deposito durante la spinta -->
-            <div v-if="viewRow.Z_PUSH_DROP != null" class="quote-row"><span>{{ t("pushSim.qZDrop") }}</span><strong>{{ mmText(viewRow.Z_PUSH_DROP / 1000) }}</strong></div>
+            <div v-if="viewRow.Z_PUSH_DROP != null" class="quote-row"><span>{{ t("pushSim.qZDrop") }}</span><strong>{{ mmText2(viewRow.Z_PUSH_DROP / 1000) }}</strong></div>
             <div class="quote-row"><span>{{ t("pushSim.outcome") }}</span><strong>{{ viewRow.PUSH_STATUS }}</strong></div>
           </template>
         </div>
@@ -462,6 +470,20 @@ import UiConfirmDialog from "../../components/ui/UiConfirmDialog.vue";
 // un valore, l'assenza e' un'altra cosa (vale per l'appoggio dichiarato)
 const toMicron = (mm) =>
   mm === null || mm === undefined || String(mm).trim() === "" ? null : Math.round(Number(mm) * 1000);
+
+// (16/11) appoggio dichiarato e compensazione si regolano al CENTESIMO di mm:
+// la catena dati (DB, setStop, vista, FB_Robot) porta gia' i micron, il
+// limite era il passo del campo. Si salva quantizzato a 10 micron, in due
+// passi: prima i micron interi, poi la decina. Il passo unico
+// Math.round(mm * 100) * 10 sbaglia per l'errore del float (1.005 -> 1000).
+// Tutte le altre misure restano al decimo.
+const CENTESIMO = ["stopBeyond", "compPush"];
+const toMicron10 = (mm) => {
+  const um = toMicron(mm);
+  return um === null ? null : Math.round(um / 10) * 10;
+};
+// i micron di un campo: quelli che si confrontano, si disegnano e si salvano
+const micronOf = (key, mm) => (CENTESIMO.includes(key) ? toMicron10(mm) : toMicron(mm));
 
 export default {
   name: "PushSim",
@@ -502,11 +524,13 @@ export default {
         { key: "zClaw", label: "pushSim.fZClaw" },
         { key: "zSink", label: "pushSim.fZSink" },
         { key: "toolClaw", label: "pushSim.fToolClaw" },
-        { key: "stopBeyond", label: "pushSim.fStopBeyond" },
+        // (16/11) step: appoggio e compensazione al centesimo (CENTESIMO); i
+        // campi senza step restano a 0.1
+        { key: "stopBeyond", label: "pushSim.fStopBeyond", step: "0.01" },
         // (comp-push) compensazione per SEMILAVORATI: accorcia la corsa, il
         // pezzo si ferma prima della battuta. Stessa chiave e stesso
         // salvataggio dell'appoggio dichiarato: segue la morsa, non il pallet.
-        { key: "compPush", label: "pushSim.fCompPush" },
+        { key: "compPush", label: "pushSim.fCompPush", step: "0.01" },
         // (6/10) QUOTA Z DELLA SPINTA: altezza della chela dal fondo del pezzo,
         // da 0 alla quota di presa; vuoto = alla quota di presa = come prima.
         // Stessa riga e stessa regola della compensazione (solo UPDATE).
@@ -525,14 +549,17 @@ export default {
     },
 
     // misure simulate in micron (quelle che entrano nel calcolo)
+    // (16/11) appoggio e compensazione quantizzati come al salvataggio: il
+    // disegno e le quote raccontano il valore che si scriverebbe, non quello
+    // digitato (52.931 si salva 52930, e 52930 si disegna)
     m() {
       return {
         pieceLen: toMicron(this.sim.pieceLen) || 0,
         pieceWid: toMicron(this.sim.pieceWid) || 0,
         viceClaw: toMicron(this.sim.viceClaw) || 0,
         toolClaw: toMicron(this.sim.toolClaw) || 0,
-        stopBeyond: toMicron(this.sim.stopBeyond),
-        compPush: toMicron(this.sim.compPush),
+        stopBeyond: micronOf("stopBeyond", this.sim.stopBeyond),
+        compPush: micronOf("compPush", this.sim.compPush),
         zPush: toMicron(this.sim.zPush),
       };
     },
@@ -675,12 +702,11 @@ export default {
       };
     },
 
+    // (16/11) stessa regola del pulsante Salva (fieldChanged): con l'appoggio
+    // al centesimo un 52.931 si salverebbe 52930 come a DB, e non deve
+    // comparire la divergenza senza un Salva da premere
     diverged() {
-      return this.fields.some((f) => {
-        const a = toMicron(this.sim[f.key]);
-        const b = toMicron(this.real[f.key]);
-        return a !== b;
-      });
+      return this.fields.some((f) => this.fieldChanged(f.key));
     },
 
     // geometria del disegno, tutta in micron
@@ -760,6 +786,25 @@ export default {
     mmText(v) {
       return v === null || v === undefined || v === "" ? "-" : Math.round(Number(v) * 10) / 10 + " mm";
     },
+    // (16/11) DUE DECIMALI FISSI per appoggio, compensazione e quote che ne
+    // dipendono. Si parte dai micron INTERI e non dal float: (1.005).toFixed(2)
+    // da' "1.00", i micron 1005 danno "1.01" come il salvataggio.
+    // mm2 vuole i micron (come mm), mmText2 i millimetri (come mmText).
+    mm2(micron) {
+      return micron === null || micron === undefined ? "-" : (Math.round(Number(micron) / 10) / 100).toFixed(2);
+    },
+    mmText2(v) {
+      return v === null || v === undefined || v === "" ? "-" : this.mm2(toMicron(v)) + " mm";
+    },
+    // il valore in SOLA LETTURA (prima un'espressione nel template): appoggio
+    // e compensazione a due decimali, il resto al decimo; l'unita' la scrive
+    // gia' mmText. (6/10) altezza di spinta vuota: il segnaposto, che dice
+    // a quanto spinge.
+    fieldText(key) {
+      const v = this.sim[key];
+      if (key === "zPush" && toMicron(v) === null && this.zPushPlaceholder) return this.zPushPlaceholder + " mm";
+      return CENTESIMO.includes(key) ? this.mmText2(v) : this.mmText(v);
+    },
     pieceLabel(p) {
       const n = String(p.FAMILY || "").trim() || "#" + p.ID;
       return n + " (" + Math.round(Number(p.X) / 1000) + " x " + Math.round(Number(p.Y) / 1000) + ")";
@@ -809,12 +854,6 @@ export default {
       }
       this.onSelectionChange();
       if (q.orderID) this.loadViewRow(Number(q.orderID));
-    },
-
-    // (6/10) per il template (il campo vuoto della quota Z si mostra col
-    // segnaposto anche in sola lettura)
-    toMicron(mm) {
-      return toMicron(mm);
     },
 
     // quello che leggera' il PLC, letto dalla vista e non ricalcolato
@@ -892,9 +931,11 @@ export default {
     // ---------------------------------------------------------------
     // SALVATAGGIO, sempre con conferma esplicita
     // ---------------------------------------------------------------
+    // (16/11) appoggio e compensazione si confrontano al centesimo, come si
+    // salvano: DB 52930 e campo 52.93 sono lo stesso valore, niente Salva
     fieldChanged(key) {
-      const a = toMicron(this.sim[key]);
-      const b = toMicron(this.real[key]);
+      const a = micronOf(key, this.sim[key]);
+      const b = micronOf(key, this.real[key]);
       return a !== b;
     },
 
@@ -904,18 +945,24 @@ export default {
       return (fam || this.t(fallbackKey)) + " #" + id;
     },
 
-    valText(micron) {
+    // (16/11) cent: due decimali fissi (appoggio e compensazione)
+    valText(micron, cent) {
       return micron === null || micron === undefined
         ? this.t("pushSim.notMeasured")
-        : Math.round(Number(micron) / 100) / 10 + " mm";
+        : cent
+          ? this.mm2(micron) + " mm"
+          : Math.round(Number(micron) / 100) / 10 + " mm";
     },
 
     // Prepara la frase di conferma. Nomina l'OGGETTO FISICO, non il campo del
     // database: chi salva deve riconoscere la morsa che ha davanti.
+    // (16/11) micronOf: appoggio e compensazione quantizzati a 10 micron,
+    // cosi' la conferma e la scrittura dicono lo stesso numero
     askSave(key) {
-      const now = toMicron(this.sim[key]);
-      const was = toMicron(this.real[key]);
-      const args = { from: this.valText(was), to: this.valText(now) };
+      const now = micronOf(key, this.sim[key]);
+      const was = micronOf(key, this.real[key]);
+      const cent = CENTESIMO.includes(key);
+      const args = { from: this.valText(was, cent), to: this.valText(now, cent) };
 
       if (key === "viceClaw") {
         if (now === null || now <= 0) return;
