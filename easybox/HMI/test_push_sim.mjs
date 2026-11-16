@@ -603,9 +603,12 @@ console.log('\n11) campi modificabili a due decimali dal database, corsa e motiv
 	vm = await page({ level: 0, pieceID: 1099, stopRow: { PIECE_ID: 1099, STOP_BEYOND_CLAW: 10000 } });
 	check(vm.check.status === PUSH_STATUS.NO_ROOM && vm.reasonArgs.stop === '10.00', 'NO_ROOM: {stop} = «' + vm.reasonArgs.stop + '»');
 	vm = await page({ level: 0, pieceID: 1029, stopRow: { PIECE_ID: 1029, STOP_BEYOND_CLAW: 0, COMP_PUSH: 15500, Z_PUSH: null } });
-	check(vm.check.status === PUSH_STATUS.NO_COMP && vm.reasonArgs.comp === '15.50', 'NO_COMP: {comp} = «' + vm.reasonArgs.comp + '»');
+	check(vm.check.status === PUSH_STATUS.NO_COMP && vm.reasonArgs.comp === '15.50' && vm.reasonArgs.travel === '15.00',
+		'NO_COMP: {comp} = «' + vm.reasonArgs.comp + '», {travel} = «' + vm.reasonArgs.travel + '»: «' + vero('pushSim.reason.NO_COMP', vm.reasonArgs).slice(0, 60) + '...»');
 	vm = await page({ level: 0, pieceID: 1029, stopRow: null });
 	check(vm.reasonArgs.stop === '-' && vm.reasonArgs.comp === '-', '   senza dichiarazione ne\' compensazione: «-», come prima');
+	vm = await page({ level: 0, pieceID: 1099, stopRow: null });
+	check(vm.compPreview.clearance === null && vm.reasonArgs.travel === '-', '   senza corsa (pezzo che eccede, appoggio non dichiarato): {travel} = «-», come prima');
 
 	// nessun conto diretto su real e sim: appoggio e compensazione si leggono
 	// solo attraverso micronOf/toMicron (o si assegnano)

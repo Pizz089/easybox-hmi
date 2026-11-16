@@ -697,8 +697,9 @@ export default {
         // (16/11) appoggio e compensazione a due decimali come i loro campi;
         // mm2 da' "-" quando mancano, come prima
         stop: this.mm2(this.stopDeclared),
-        // per NO_COMP: la corsa GEOMETRICA e la compensazione che la supera
-        travel: this.compPreview.travelMm === null ? "-" : this.compPreview.travelMm,
+        // per NO_COMP: la corsa GEOMETRICA e la compensazione che la supera;
+        // (16/11) tutte e due a due decimali, nella stessa frase
+        travel: this.mm2(this.compPreview.clearance),
         comp: this.mm2(this.m.compPush),
       };
     },
