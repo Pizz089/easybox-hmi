@@ -2,6 +2,8 @@
 
 Decisioni di Dario che vincolano codice, dati e procedure in cella; la più recente in alto. Il come (script, comandi, ordine degli interventi) sta in [APPUNTI-CELLA.md](APPUNTI-CELLA.md).
 
+**Appoggio e compensazione al centesimo (16/11, richiesta del cliente).** In Spinta in battuta e nella pagina Morsa l'appoggio oltre la ganascia (`PIECE_ON_VICE.STOP_BEYOND_CLAW`) e la compensazione (`COMP_PUSH`) si regolano al centesimo di mm: passo 0.01, salvataggio quantizzato a 10 µm (prima i micron interi, poi la decina, per l'errore del float), a video due decimali fissi calcolati dai micron interi, comprese le quote X deposito, spinta, arrivo e la corsa. Le altre misure restano al decimo. La catena dati era già in µm (DB, `setStop`, `COORDINATES_PUSH_MC`, FB_Robot, FB_RobotEfort): è cambiato solo il pannello (`ui-v3` 18a5589, `ui-lifting` 9135842). In cella dal 16/11 17:05; il robot legge X al centesimo (provato con X arrivo 140,85).
+
 **Ingombro della chela e quota di presa al robot (20/10).** Su richiesta del robotista il PLC passa due misure in più, %QW652 `Gripper_ClawWidth_mm` e %QW654 `Part_ZPick_mm`, lette dalla vista `COORDINATES_BLOW_MC`.
 1. La larghezza della chela è `GRIPPER.CLAW_LENGTH` del lato 1 della pinza dell'ordine.
 2. La quota di presa è solo quella del grezzo (`PIECE.Z_PICK`); quella del finito non si passa.
