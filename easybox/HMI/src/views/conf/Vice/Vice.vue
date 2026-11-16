@@ -142,11 +142,13 @@
                   <!-- Invio qui NON deve fare l'invio implicito del form:
                        cliccherebbe "Save" della morsa e la pagina uscirebbe
                        senza aver salvato l'appoggio (6/10, la sezione prima
-                       non compariva mai) -->
+                       non compariva mai).
+                       (16/11) passo 0.01: l'appoggio si regola al centesimo
+                       (la ganascia qui sopra resta a 0.1) -->
                   <input
                     class="aligned-foo"
                     type="number"
-                    step="0.1"
+                    step="0.01"
                     min="0"
                     v-model="row.value"
                     inputmode="decimal"
@@ -237,6 +239,14 @@ import { GLTFFileLoader } from "@babylonjs/loaders/glTF";
 import viceModelUrl from "@/assets/models/vice_1.glb?url";
 import { dataStored } from "../../../data.js";
 import optionStatus from "@/components/optionStatus.vue";
+
+// (16/11) l'appoggio si regola al CENTESIMO di mm, stessa regola della pagina
+// Spinta in battuta (PushSim.vue). Micron quantizzati a 10 in due passi, prima
+// i micron interi e poi la decina: il passo unico Math.round(mm * 100) * 10
+// sbaglia per l'errore del float (1.005 -> 1000 invece di 1010).
+const stopMicron = (mm) => Math.round(Math.round(Number(mm) * 1000) / 10) * 10;
+// a video due decimali fissi, dai micron interi e non dal float: 52900 -> "52.90"
+const stopMm = (micron) => (Math.round(Number(micron) / 10) / 100).toFixed(2);
 
 export default {
   components: { optionStatus },
@@ -519,7 +529,8 @@ export default {
           exceeds,
           overhang: exceeds ? Math.trunc((pieceY - claw) / 2) : 0,
           declared: !!st,
-          value: st ? Number(st.STOP_BEYOND_CLAW) / 1000 : null,
+          // (16/11) due decimali fissi anche nel campo: 52900 -> "52.90"
+          value: st ? stopMm(st.STOP_BEYOND_CLAW) : null,
         });
       }
       // dichiarazioni per pezzi non piu' in anagrafica: restano visibili per
@@ -534,7 +545,7 @@ export default {
           exceeds: false,
           overhang: 0,
           declared: true,
-          value: Number(st.STOP_BEYOND_CLAW) / 1000,
+          value: stopMm(st.STOP_BEYOND_CLAW),
         });
       }
       this.stopRows = rows;
@@ -551,7 +562,8 @@ export default {
     saveStop(row) {
       if (!this.stopValueValid(row) || !this.canDeclareStop) return;
       const viceID = Number(this.$route.query.viceID);
-      const micron = Math.round(Number(row.value) * 1000);
+      // (16/11) al centesimo: 52.93 -> 52930, 52.935 -> 52940, 1.005 -> 1010
+      const micron = stopMicron(row.value);
       const url =
         dataStored.server +
         "api/conf/vice/setStop?" +

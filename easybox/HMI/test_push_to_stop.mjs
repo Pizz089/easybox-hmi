@@ -146,7 +146,7 @@ vv.stops = [{ PIECE_ID: 1030, STOP_BEYOND_CLAW: 0 }];
 vv.buildStopRows();
 const r1029 = vv.stopRows.find(r => r.PIECE_ID === 1029), r1030 = vv.stopRows.find(r => r.PIECE_ID === 1030);
 check(vv.stopRows.length === 2 && r1029 && r1029.exceeds && r1029.overhang === 5000 && !r1029.declared
-	&& r1030 && r1030.declared && !r1030.exceeds && r1030.value === 0 && !vv.stopRows.some(r => r.PIECE_ID === 1031),
+	&& r1030 && r1030.declared && !r1030.exceeds && r1030.value === '0.00' && !vv.stopRows.some(r => r.PIECE_ID === 1031),
 	"   righe: il pezzo che eccede con la spinta (sporge 5 mm per lato) e la dichiarazione gia' fatta; non il pezzo senza spinta");
 check(vv.vicePositionLabel === 'Mag 1.1', '   e la posizione in sola lettura resta quella (Mag 1.1)');
 // la sezione compare da oggi: la dichiarazione segue la regola della pagina
@@ -173,6 +173,33 @@ check(/vice\.clawLength"/.test(srcVice) && /vice\.clawLengthHint/.test(srcVice),
 check(/&micro;m/.test(srcVice), 'X/Y/Z smettono di dire mm su valori in micron (difetto storico, ora l\'etichetta e\' onesta)');
 check(/v-model="row\.value"[\s\S]{0,120}@keydown\.enter\.prevent/.test(srcVice) && /<form[^>]*@submit\.prevent/.test(srcVice),
 	"Invio nel campo dell'appoggio non fa l'invio implicito del form (cliccherebbe Save della morsa)");
+
+// (16/11) appoggio al CENTESIMO: passo 0.01 sulla riga, la ganascia resta a
+// 0.1; micron quantizzati a 10 in due passi, a video due decimali fissi
+{
+	const tplV = srcVice.split('<script')[0];
+	check(/id="vice-claw"[\s\S]{0,100}step="0\.1"[\s\S]{0,80}v-model="vice\.CLAW_LENGTH"/.test(tplV), 'ganascia (CLAW_LENGTH): passo 0.1 come prima');
+	check(/step="0\.01"[\s\S]{0,80}v-model="row\.value"/.test(tplV) && (tplV.match(/step="0\.01"/g) || []).length === 1, 'riga appoggio: passo 0.01, e solo li\'');
+	vv.vice.CLAW_LENGTH = 150;
+	vv.stops = [{ PIECE_ID: 1029, STOP_BEYOND_CLAW: 52900 }, { PIECE_ID: 1030, STOP_BEYOND_CLAW: 52935 }, { PIECE_ID: 9999, STOP_BEYOND_CLAW: 0 }];
+	vv.buildStopRows();
+	const val = (id) => (vv.stopRows.find(r => r.PIECE_ID === id) || {}).value;
+	check(val(1029) === '52.90' && val(1030) === '52.94' && val(9999) === '0.00',
+		'valori caricati a due decimali fissi, campo compreso: 52900 -> ' + JSON.stringify(val(1029)) + ', 52935 -> ' + JSON.stringify(val(1030)) + ', 0 -> ' + JSON.stringify(val(9999)) + ' (riga orfana)');
+	const scritte = [];
+	globalThis.fetch = async (url) => { scritte.push(String(url)); return { ok: true, json: async () => [], text: async () => 'OK' }; };
+	vv.loadStops = () => {};
+	dataStored.userLevel = 1;
+	const r = vv.stopRows.find(x => x.PIECE_ID === 1029);
+	for (const [mm, um] of [[52.93, 52930], ['52.935', 52940], [1.005, 1010], ['52.90', 52900], [0, 0]]) {
+		scritte.length = 0;
+		r.value = mm;
+		vv.saveStop(r); await tick();
+		check(scritte.length === 1 && new RegExp('setStop\\?VICE_ID=1&PIECE_ID=1029&STOP_BEYOND_CLAW=' + um + '$').test(scritte[0]),
+			'saveStop ' + JSON.stringify(mm) + ' -> ' + (scritte[0] || 'nessuna scrittura').replace(dataStored.server, ''));
+	}
+	dataStored.userLevel = 0;
+}
 
 const it = JSON.parse(readFileSync('src/locales/it.json', 'utf8')), en = JSON.parse(readFileSync('src/locales/en.json', 'utf8'));
 const flat = (o, p = '') => Object.entries(o).flatMap(([k, v]) => v && typeof v === 'object' ? flat(v, p + k + '.') : [p + k]);
