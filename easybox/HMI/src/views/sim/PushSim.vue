@@ -156,12 +156,12 @@
              e' 3,3 mm, e senza questo riscontro una compensazione di qualche
              decimo o di qualche centesimo (dal 16/11 si regola al centesimo)
              si dichiara alla cieca. La corsa NON la tocca: quando c'e' una
-             compensazione si dice anche quanto prima si ferma il pezzo, a due
-             decimali come il campo. -->
+             compensazione si dice anche quanto prima si ferma il pezzo. Corsa
+             e compensazione a due decimali come il campo. -->
         <p v-if="compPreview.travelMm !== null" class="sim-hint">
           {{ compPreview.comp
-             ? t("pushSim.compTravel", { travel: compPreview.travelMm, comp: mm2(compPreview.comp) })
-             : t("pushSim.compTravelNone", { travel: compPreview.travelMm }) }}
+             ? t("pushSim.compTravel", { travel: mm2(compPreview.clearance), comp: mm2(compPreview.comp) })
+             : t("pushSim.compTravelNone", { travel: mm2(compPreview.clearance) }) }}
         </p>
 
         <!-- senza riga PIECE_ON_VICE la compensazione non ha dove scriversi:
@@ -502,6 +502,9 @@ export default {
       // valori SIMULATI, in millimetri (quelli che si toccano)
       sim: { pieceLen: null, pieceWid: null, viceClaw: null, zClaw: null, zSink: null, toolClaw: null, stopBeyond: null, compPush: null, zPush: null },
       // copia dei valori REALI letti dal database, in millimetri
+      // (16/11) appoggio e compensazione come TESTO a due decimali ("52.90",
+      // vedi loadStop), in sim finche' l'operatore non li riscrive: si leggono
+      // solo attraverso micronOf, mai con conti diretti
       real: { pieceLen: null, pieceWid: null, viceClaw: null, zClaw: null, zSink: null, toolClaw: null, stopBeyond: null, compPush: null, zPush: null },
       phase: 0,
       timers: [],
@@ -621,8 +624,10 @@ export default {
         gripperClawLength: this.m.toolClaw,
         stopBeyondClaw: this.m.stopBeyond,
       });
+      // (16/11) clearance in micron per la frase a due decimali (mm2)
       return {
         travelMm: geom.clearance === null ? null : geom.clearance / 1000,
+        clearance: geom.clearance,
         comp: this.m.compPush,
       };
     },
@@ -695,10 +700,12 @@ export default {
         piece: this.m.pieceLen / 1000,
         claw: this.m.viceClaw / 1000,
         over: Math.trunc((this.m.pieceLen - this.m.viceClaw) / 2) / 1000,
-        stop: this.stopDeclared === null ? "-" : this.stopDeclared / 1000,
+        // (16/11) appoggio e compensazione a due decimali come i loro campi;
+        // mm2 da' "-" quando mancano, come prima
+        stop: this.mm2(this.stopDeclared),
         // per NO_COMP: la corsa GEOMETRICA e la compensazione che la supera
         travel: this.compPreview.travelMm === null ? "-" : this.compPreview.travelMm,
-        comp: this.m.compPush === null ? "-" : this.m.compPush / 1000,
+        comp: this.mm2(this.m.compPush),
       };
     },
 
@@ -908,11 +915,15 @@ export default {
           const row = (rows || []).find((x) => x.PIECE_ID == this.sel.pieceID) || null;
           // la riga serve anche a sapere se la compensazione ha dove scriversi
           this.stopRow = row;
-          this.real.stopBeyond = row ? Number(row.STOP_BEYOND_CLAW) / 1000 : null;
+          // (16/11) appoggio e compensazione si caricano a due decimali fissi,
+          // come in Vice: 52900 -> "52.90", COMP_PUSH 330 -> "0.33". Testo e
+          // non numero (52.9 perderebbe lo zero), quindi da qui ogni conto
+          // passa da micronOf
+          this.real.stopBeyond = row ? this.mm2(Number(row.STOP_BEYOND_CLAW)) : null;
           // COMP_PUSH e' NULL quando non c'e' compensazione: resta null, non
-          // diventa zero — il campo deve restare vuoto, non mostrare "0"
+          // diventa zero — il campo deve restare vuoto, non mostrare "0.00"
           this.real.compPush = row && row.COMP_PUSH !== null && row.COMP_PUSH !== undefined
-            ? Number(row.COMP_PUSH) / 1000 : null;
+            ? this.mm2(row.COMP_PUSH) : null;
           // (6/10) Z_PUSH NULL = alla quota di presa: il campo resta vuoto
           this.real.zPush = row && row.Z_PUSH !== null && row.Z_PUSH !== undefined
             ? Number(row.Z_PUSH) / 1000 : null;

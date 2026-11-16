@@ -420,7 +420,8 @@ vm.sim.compPush = 0.3;
 vm.askSave('compPush');
 rigaZ.COMP_PUSH = 300;
 vm.doSave(); await tick(); await tick(); await tick();
-check(vm.real.compPush === 0.3 && vm.sim.compPush === 0.3 && !vm.fieldChanged('compPush'), 'compensazione: dopo il salvataggio il campo resta al valore salvato (prima tornava al vecchio)');
+// (16/11) dal database il campo torna a due decimali fissi: "0.30"
+check(vm.real.compPush === '0.30' && vm.sim.compPush === '0.30' && !vm.fieldChanged('compPush'), 'compensazione: dopo il salvataggio il campo resta al valore salvato (prima tornava al vecchio)');
 rigaZ.COMP_PUSH = null;
 // senza riga PIECE_ON_VICE: si dice prima, non parte nessuna richiesta
 vm = await page({ level: 2, pieceID: 1029, stopRow: null });
@@ -476,7 +477,7 @@ console.log('\n10) appoggio e compensazione al CENTESIMO (16/11)');
 	}
 
 	vm = await page({ level: 2, pieceID: 1099, stopRow: riga(52930) });
-	check(vm.sim.stopBeyond === 52.93 && vm.fieldChanged('stopBeyond') === false && vm.diverged === false,
+	check(vm.sim.stopBeyond === '52.93' && vm.fieldChanged('stopBeyond') === false && vm.diverged === false,
 		'DB 52930, campo 52.93: fieldChanged falso, nessun pulsante Salva, nessuna divergenza');
 	vm.sim.stopBeyond = 52.931;
 	check(vm.fieldChanged('stopBeyond') === false && vm.diverged === false, '   52.931 si salverebbe 52930 come a DB: niente Salva e niente divergenza');
@@ -529,7 +530,7 @@ console.log('\n10) appoggio e compensazione al CENTESIMO (16/11)');
 	}
 	rigaC.COMP_PUSH = 330;
 	vm = await page({ level: 2, pieceID: 1029, stopRow: rigaC });
-	check(vm.sim.compPush === 0.33 && !vm.fieldChanged('compPush') && vm.fieldText('compPush') === '0.33 mm',
+	check(vm.sim.compPush === '0.33' && !vm.fieldChanged('compPush') && vm.fieldText('compPush') === '0.33 mm',
 		'compensazione da DB 330: campo 0.33, niente Salva, in sola lettura «0.33 mm»');
 	vm.sim.compPush = 0.334;
 	check(!vm.fieldChanged('compPush'), '   0.334 si salverebbe 330: niente Salva');
@@ -538,7 +539,7 @@ console.log('\n10) appoggio e compensazione al CENTESIMO (16/11)');
 	vm.askSave('compPush');
 	check(!!vm.confirm && /da 0\.33 mm a 0\.34 mm\./.test(vm.confirm.text), '   conferma: «' + (vm.confirm && vm.confirm.text) + '»');
 	check(vm.mm2(vm.compPreview.comp) === '0.34' && /comp: mm2\(compPreview\.comp\)/.test(tplC),
-		'   riscontro della corsa: «' + vero('pushSim.compTravel', { travel: vm.compPreview.travelMm, comp: vm.mm2(vm.compPreview.comp) }) + '»');
+		'   riscontro della corsa: «' + vero('pushSim.compTravel', { travel: vm.mm2(vm.compPreview.clearance), comp: vm.mm2(vm.compPreview.comp) }) + '»');
 	rigaC.COMP_PUSH = null;
 	vm = await page({ level: 2, pieceID: 1029, stopRow: rigaC });
 	calls.length = 0;
@@ -548,6 +549,80 @@ console.log('\n10) appoggio e compensazione al CENTESIMO (16/11)');
 	vm.doSave(); await tick(); await tick();
 	check(calls.filter(u => /setCompPush/.test(u)).some(u => /COMP_PUSH=300$/.test(u)) && calls.filter(u => /setCompPush/.test(u)).some(u => /COMP_PUSH=$/.test(u)),
 		'   0.3 -> COMP_PUSH=300, vuoto -> COMP_PUSH vuoto (NULL a DB)');
+}
+
+console.log('\n11) campi modificabili a due decimali dal database, corsa e motivi (16/11)');
+// Come in Vice: appoggio e compensazione si caricano come TESTO a due decimali
+// fissi (mm2), quindi real.* e sim.* di quelle due chiavi sono stringhe. Ogni
+// conto passa da micronOf/toMicron: qui si prova che il testo "52.90" fa gli
+// stessi conti del numero 52.9.
+{
+	const tplD = src.split('<script')[0];
+	const script = src.slice(src.indexOf('<script'), src.indexOf('</script>'));
+	const itD = JSON.parse(readFileSync('src/locales/it.json', 'utf8'));
+	const vero = (k, p) => { let s = k.split('.').reduce((o, x) => o && o[x], itD); for (const [a, b] of Object.entries(p || {})) s = s.split('{' + a + '}').join(b); return s; };
+
+	vm = await page({ level: 2, pieceID: 1099, stopRow: { PIECE_ID: 1099, STOP_BEYOND_CLAW: 52900 } });
+	check(vm.real.stopBeyond === '52.90' && vm.sim.stopBeyond === '52.90', 'DB 52900 -> campo «' + vm.sim.stopBeyond + '» (testo, come in Vice)');
+	check(!vm.fieldChanged('stopBeyond') && !vm.diverged, '   nessun Salva e nessuna divergenza');
+	check(vm.m.stopBeyond === 52900 && vm.stopDeclared === 52900 && vm.check.status === PUSH_STATUS.OK && vm.check.clearance === 37900,
+		'   il calcolo riceve 52900 micron, non la stringa: corsa ' + vm.check.clearance);
+	vm.sim.stopBeyond = 52.9;        // l'operatore riscrive lo stesso valore (v-model number)
+	check(!vm.fieldChanged('stopBeyond') && !vm.diverged, '   riscritto come numero 52.9: stesso valore, niente Salva');
+	vm.sim.stopBeyond = 52.93;
+	calls.length = 0;
+	vm.askSave('stopBeyond'); vm.doSave(); await tick(); await tick();
+	check(calls.some(u => /setStop\?VICE_ID=1&PIECE_ID=1099&STOP_BEYOND_CLAW=52930$/.test(u)), '   cambiato in 52.93: setStop con 52930');
+	vm.sim.stopBeyond = '52.90'; vm.sim.viceClaw = 160;
+	vm.restoreReal();
+	check(vm.sim.stopBeyond === '52.90' && Number(vm.sim.viceClaw) === 150 && !vm.diverged, '   il ripristino rimette il testo del database');
+
+	vm = await page({ level: 2, pieceID: 1099, stopRow: { PIECE_ID: 1099, STOP_BEYOND_CLAW: 52935 } });
+	check(vm.sim.stopBeyond === '52.94' && !vm.fieldChanged('stopBeyond') && !vm.diverged, 'DB 52935 -> campo «' + vm.sim.stopBeyond + '», nessun Salva');
+
+	vm = await page({ level: 2, pieceID: 1099, stopRow: { PIECE_ID: 1099, STOP_BEYOND_CLAW: 0 } });
+	check(vm.sim.stopBeyond === '0.00' && vm.m.stopBeyond === 0 && vm.stopDeclaredReal === 0, 'DB 0 -> campo «0.00»: lo zero resta una dichiarazione, non un vuoto');
+
+	const rigaD = { PIECE_ID: 1029, STOP_BEYOND_CLAW: 0, COMP_PUSH: 330, Z_PUSH: null };
+	vm = await page({ level: 2, pieceID: 1029, stopRow: rigaD });
+	check(vm.real.compPush === '0.33' && vm.sim.compPush === '0.33' && !vm.fieldChanged('compPush') && vm.m.compPush === 330,
+		'COMP_PUSH 330 -> campo «' + vm.sim.compPush + '», niente Salva, il calcolo riceve 330');
+	check(vm.check.xStop === vm.check.xPush + vm.check.clearance - 330, '   e X arrivo la sottrae come numero');
+	calls.length = 0;
+	vm.sim.compPush = '';
+	vm.askSave('compPush');
+	check(/pushSim\.confirmCompClear/.test(vm.confirm.text), '   svuotato: conferma «nessuna compensazione»');
+	rigaD.COMP_PUSH = null;          // quello che il database ha dopo la scrittura
+	vm.doSave(); await tick(); await tick(); await tick();
+	check(calls.some(u => /setCompPush\?VICE_ID=1&PIECE_ID=1029&COMP_PUSH=$/.test(u)), '   e manda COMP_PUSH vuoto (NULL a DB)');
+	check(vm.real.compPush === null && vm.sim.compPush === null && !vm.fieldChanged('compPush'), '   dopo il salvataggio il campo torna vuoto, non «0.00»');
+
+	vm = await page({ level: 2, pieceID: 1029, stopRow: rigaD });
+	check(vm.sim.compPush === null && vm.m.compPush === null && vm.fieldText('compPush') === '-', 'COMP_PUSH NULL -> campo vuoto, non «0.00»');
+
+	// corsa a due decimali, con e senza compensazione
+	check(vm.compPreview.clearance === 15000
+		&& vero('pushSim.compTravelNone', { travel: vm.mm2(vm.compPreview.clearance) }) === 'Corsa: 15.00 mm'
+		&& /compTravelNone", \{ travel: mm2\(compPreview\.clearance\) \}/.test(tplD)
+		&& /compTravel", \{ travel: mm2\(compPreview\.clearance\), comp: mm2\(compPreview\.comp\) \}/.test(tplD),
+		'compTravel e compTravelNone: {travel} a due decimali («Corsa: 15.00 mm»)');
+
+	// motivi: stop e comp a due decimali
+	vm = await page({ level: 0, pieceID: 1099, stopRow: { PIECE_ID: 1099, STOP_BEYOND_CLAW: 10000 } });
+	check(vm.check.status === PUSH_STATUS.NO_ROOM && vm.reasonArgs.stop === '10.00', 'NO_ROOM: {stop} = «' + vm.reasonArgs.stop + '»');
+	vm = await page({ level: 0, pieceID: 1029, stopRow: { PIECE_ID: 1029, STOP_BEYOND_CLAW: 0, COMP_PUSH: 15500, Z_PUSH: null } });
+	check(vm.check.status === PUSH_STATUS.NO_COMP && vm.reasonArgs.comp === '15.50', 'NO_COMP: {comp} = «' + vm.reasonArgs.comp + '»');
+	vm = await page({ level: 0, pieceID: 1029, stopRow: null });
+	check(vm.reasonArgs.stop === '-' && vm.reasonArgs.comp === '-', '   senza dichiarazione ne\' compensazione: «-», come prima');
+
+	// nessun conto diretto su real e sim: appoggio e compensazione si leggono
+	// solo attraverso micronOf/toMicron (o si assegnano)
+	const usi = [...script.matchAll(/this\.(sim|real)\.(stopBeyond|compPush)/g)]
+		.map(m => ({ prima: script.slice(Math.max(0, m.index - 40), m.index), dopo: script.slice(m.index + m[0].length, m.index + m[0].length + 3) }));
+	check(usi.length >= 6 && usi.every(u => /(micronOf\("\w+", |toMicron\()$/.test(u.prima) || /^ = /.test(u.dopo)),
+		'appoggio e compensazione: ' + usi.length + ' accessi diretti, tutti dentro micronOf/toMicron o assegnazioni');
+	const conto = /(?:\b(?:sim|real)(?:\.\w+|\[[^\]]+\]))\s*[-+*/%](?!=)|[-+*/%]\s*(?:this\.)?(?:sim|real)(?:\.\w+|\[)/;
+	check(!conto.test(script) && !conto.test(tplD) && !/Number\((?:this\.)?(?:sim|real)[.[]/.test(src), '   nessuna somma o Number() diretto su sim o real, ne\' nello script ne\' nel template');
 }
 
 await server.close();
