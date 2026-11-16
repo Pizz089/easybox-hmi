@@ -676,6 +676,18 @@ non rischiare di sovrascrivere la vista buona della cella.
 
 ## [ ] 2026-09-15 — ciclo SPINTA IN BATTUTA: cinque script, poi le misure
 
+**Quota X al robot (16/11).** `"DB_RobotMission"."X_Pick-Place"` è una DInt in µm. FB_RobotEfort la spezza a ogni ciclo con FC_Split_Dint: %QW528 `X_Pick-Place_HIGH` = `X / 65536`, %QW526 `X_Pick-Place_LOW` = `X MOD 65536`, che in TIA si legge negativa sopra 32767 (311700 → 4 e -15980 = `16#C194`; 140850 → 2 e 9778 = `16#2632`). Il robot la ricostruisce al centesimo (provato il 16/11).
+
+Prova a mano: robot fermo o in T1, `"DB_RobotMission"."Command"` = 0, si modifica `X_Pick-Place` in tabella di controllo, non le %QW (riscritte a ogni ciclo). Fuori missione FB_Robot non la sovrascrive; alla fine si rimette il valore di prima.
+
+In un ciclo con spinta (missione 16) X vale, nell'ordine: prelievo del finito = deposito + (`X_STOP - X_PUSH`) della spinta precedente (1402); deposito del grezzo = `COORDINATES_PICKPLACE_MC.X` (1404); `X_PUSH` (1420); `X_STOP` (1422). Le quattro quote con le due parole, per l'ultimo ordine di MC1, da PowerShell:
+
+```
+cd D:\Backup; sqlcmd -S .\SQLEXPRESS -E -d ADMG -W -s "|" -Q "SELECT q.ORDER_ID, f.N, f.FASE, f.X AS X_UM, f.X / 65536 AS HIGH_QW528, CASE WHEN f.X % 65536 > 32767 THEN f.X % 65536 - 65536 ELSE f.X % 65536 END AS LOW_QW526, CONVERT(varchar(6), CAST(f.X % 65536 AS binary(2)), 1) AS LOW_HEX, CAST(f.X / 1000.0 AS decimal(9,3)) AS X_MM FROM (SELECT TOP 1 p.ORDER_ID, d.X AS X_DEP, p.X_PUSH, p.X_STOP FROM COORDINATES_PUSH_MC p JOIN COORDINATES_PICKPLACE_MC d ON d.ORDER_ID = p.ORDER_ID WHERE p.MC = 1 ORDER BY p.ORDER_ID DESC) q CROSS APPLY (VALUES (1, 'prelievo finito', q.X_DEP + q.X_STOP - q.X_PUSH), (2, 'deposito grezzo', q.X_DEP), (3, 'partenza spinta', q.X_PUSH), (4, 'arrivo spinta', q.X_STOP)) f(N, FASE, X) ORDER BY f.N"
+```
+
+`X_Support_mm` (%QW638) NON è una quota di posizione: è (`CLAW_LENGTH/2 + STOP_BEYOND_CLAW`) in mm interi troncati, per il soffiaggio. Il 16/11 il robotista l'aveva letta al posto di X (153 invece di 140,9).
+
 ### [ ] 6/10 — quota Z della spinta: da mettere in servizio
 
 Decisione di Dario (6/10, 18:24):

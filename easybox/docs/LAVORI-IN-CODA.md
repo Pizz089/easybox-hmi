@@ -5,6 +5,22 @@
 > stato corretto sul momento. Gli interventi manuali da fare in impianto
 > stanno invece in `APPUNTI-CELLA.md`.
 
+## [ ] Commit solo sul portatile: ui-v3 e ui-lifting locali divergenti da origin
+
+**Cosa.** `ui-v3` locale ha 23 commit (prompt 10-12, fino a c8a8d7d) e `ui-lifting` locale 7 (prompt 11-12 ed export) che origin non ha. Dal 16/11 `origin/ui-v3` = 18a5589 e `origin/ui-lifting` = 9135842 (appoggio al centesimo), quindi i rami locali sono divergenti. Finché restano solo sul disco del portatile si possono perdere.
+
+**Come si chiude.** Audit dei commit, unione con i rami di origin (rebase o merge, decide Dario), test, push con ok di Dario. Prima, se Dario vuole, push su due rami di backup.
+
+**Trovato il** 2026-11-16.
+
+## [ ] `test_oneshot_refresh` instabile su ui-lifting
+
+**Cosa.** Il 16/11 è uscito rosso una volta e verde 5 volte su 5 rilanciato, anche sulla base pulita. Non dipende dall'appoggio al centesimo.
+
+**Come si chiude.** Trovare la dipendenza dai tempi o dall'ordine e renderlo deterministico.
+
+**Trovato il** 2026-11-16.
+
 ## [ ] La pinza richiesta del pallet non si imposta dal pannello
 
 **Cosa.** Il PLC sa quale pinza serve per un pallet dalla query `select GRIPPERREQ from pallets_grippers where palletID=<pallet>` (FB_Robot, REGION Gripper4Pallet_Search, e il master 1010). Il dato e' `pallet.GripperREQ` (le viste SQL lo leggono da li', `workorders-view-pp.sql:116`), ma nel pannello e in `serverDati/CONF` non c'e' niente che lo scriva. Se manca (nessuna riga, errore o, dalla consegna 35, 0) ogni missione pallet si chiude col 1722, e dal pannello l'operatore non lo puo' sistemare.
