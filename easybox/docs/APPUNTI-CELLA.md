@@ -144,6 +144,24 @@ Nel working tree di cella ci sono file non tracciati che il `.gitignore` non esc
    - stato del robot che si aggiorna;
    - `DB_executeQuery.readyForNextQuery` TRUE.
 
+## [ ] 2026-11-17 — Tabella LOG: pulizia a blocchi nel backend, **poi** `log-compatta.sql` a cella ferma
+
+**Cosa.** In LOG `DESCR` è nchar(2000): 8 KB a riga, 774 MB sui 779 del database. La DELETE unica del backend ogni 4 h superava il log del database (MAXSIZE 100 MB) e tornava indietro (`access.log` del 13/11 e del 16/11, «transaction log full ... ACTIVE_TRANSACTION»).
+
+**Prima il backend, poi lo script.** Il backend vecchio, sulla tabella compatta, riuscirebbe a cancellare in un colpo tutto quello che ha più di 3 giorni.
+
+1. **Backend** (aggiornamento come sopra). La pulizia a blocchi (`serverDati/logTableCleanup.js`) prende il posto della DELETE unica: ogni 10 minuti, mai nei primi 10 dall'avvio, a cella senza produzione attiva o con la HAAS in lavorazione e il robot fermo. Tiene `LOG_TABLE_KEEP_DAYS` giorni (nel `.env`, se manca 60). Controllo: in `access.log` la riga d'avvio `pulizia LOG: tengo 60 giorni` e, alla prima pulizia, `PULIZIA LOG: ... righe cancellate in ... blocchi ..., fine: finito`.
+2. **Script**, a cella ferma e col servizio `EasyBoxBackend` fermo, PowerShell come amministratore:
+   ```
+   cd D:\Prog\easybox\serverDati\scripts; sqlcmd -S .\SQLEXPRESS -E -d ADMG -W -v GIORNI=60 -i log-compatta.sql -o D:\Backup\log_compatta.txt; Get-Content D:\Backup\log_compatta.txt
+   ```
+   Atteso: PASSO da 0 a 6, «a LOG bloccata» con i due conteggi uguali, «prova INSERT/SELECT riuscita», «FATTO». **Un FERMO prima del PASSO 1 non ha toccato niente**; dopo, la LOG è comunque intatta (lo scambio è l'ultima cosa, in una transazione) e può restare `LOG_NEW` da eliminare a mano. Nel resoconto, da leggere: modello di recupero, oggetti che referenziano LOG (la definizione di `POSITION_trig`), permessi.
+3. Riavvio di `EasyBoxBackend`.
+
+**Ritorno indietro** commentato in fondo allo script. `LOG_OLD` resta: eliminarla e restituire lo spazio al disco è una decisione a parte.
+
+**Dopo:** questa voce passa a [x] con data ed esito (righe tenute, `sp_spaceused` di LOG e LOG_OLD).
+
 ## [x] 2026-10-26 — Pallet 2 (casella 11): punto di presa azzerato
 
 **Sintomo.** Prelievo del pallet 2 dalla casella 11 con Y 1001,919 mm. Il gemello, il pallet 9 in casella 10, va a 568,919: col passo di 410 mm la casella 11 deve dare 978,919.
