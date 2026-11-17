@@ -176,22 +176,16 @@ const server = app.listen(process.env.serverPort, serverHost, () => {
       + ', log scartate ' + log.righeScartate());
   }, 5 * 60 * 1000);
 
-  //delete old LOG TABLE entries...
-  setInterval(() => {
-	var sql 	= require('mssql');
-	sql.connect(DBf.configDB, function (err) {
-		let query = `SET DEADLOCK_PRIORITY LOW; DELETE FROM log WHERE data <= DateAdd(day,-3,GETDate());`
-		
-		var request = new sql.Request();
-		request.query(query, function (err, recordset) { 
-			log.info("LOG TABLE ERASED!!")
-			if (err) {
-                log.error("Err query: " + err)
-            }
-		});
-	});
-  }, (4*3600*1000) ); 
-  
+  // (pulizia LOG 17/11) pulizia a blocchi della tabella LOG, ogni 10 min e
+  // solo a cella senza produzione attiva o con HAAS in lavorazione e robot
+  // fermo (vedi logTableCleanup.js). Prima qui: una DELETE unica ogni 4 h che
+  // riempiva il log del database e tornava indietro, da settembre.
+  require('./logTableCleanup').createLogTableCleanup({
+    sql: require('mssql'), configDB: DBf.configDB, log: log,
+    giorni: process.env.LOG_TABLE_KEEP_DAYS,
+    ultimoDispatch: MQTT.lastDispatch,
+  }).start();
+
 })
 
 // Shutdown pulito (N4-3d): SIGTERM/SIGINT/SIGBREAK convergono in un unico
