@@ -69,6 +69,13 @@ const declareCache = {};
 // replay dello snapshot, come le altre cache (il PLC non ritiene i topic)
 let extractCache;
 
+// (pulizia LOG 17/11) ultimo FROM_PLANT/DISPATCH/<unit>/<n> ricevuto, come
+// intero (chiave 'MC1/0'). Lo legge logTableCleanup.js per la condizione b:
+// HAAS in lavorazione (MC1/0 = 95) con il robot fermo (ROBOT/0 = 0). Stesso
+// limite delle altre cache: vuota dopo un riavvio finche' il PLC non
+// ripubblica (refresh 90 al connect), e vuota vuol dire condizione b falsa.
+const dispatchCache = {};
+
 client.on('error', function (err){
 	DBf.io.emit('PLC/ALARM/GENERIC', 'Impossible to connect to broker!    ['+err+']');
 	// Topic con prefisso "_" indicano eventi interni del backend,
@@ -337,7 +344,10 @@ client.on('message', function (topic, message, packet) {
 		obj.dispatch = param[3];
 		obj.value = message.toString()
 		DBf.io.emit('DISPATCH', obj);
-		
+		// payload non intero: undefined, non il valore di prima
+		const dispatchValue = parseUnitStatus(obj.value);
+		dispatchCache[param[2] + '/' + param[3]] = dispatchValue === null ? undefined : dispatchValue;
+
 		//insertLog( 'DISPATCH['+param[3]+']='+message.toString().trim(), 'DISPATCH ',param[2] )
 		return;
 	}
@@ -1437,3 +1447,9 @@ function publish(topic, msg){
 }
 exports.publish = publish
 exports.HAAS = HAAS;
+
+// ultimo DISPATCH/<unit>/<n> ricevuto dopo l'avvio (numero), undefined se mai
+// arrivato o non intero. Per logTableCleanup.js (condizione b).
+exports.lastDispatch = function (unit, n) {
+	return dispatchCache[String(unit).toUpperCase() + '/' + n];
+};
